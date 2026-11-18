@@ -978,7 +978,7 @@ export class Stage {
     this.staged[i]?.explode(t);
     this.lamps.place(); // lamps ride the hardware they are on
     this.dirty = true;
-    this.shadowsOwed = true; // drawn again in frame(): at once, or a few times a second in a view nobody is steering
+    this.shadowsOwed = true; // drawn again in step(): at once, or a few times a second in a view nobody is steering
   }
 
   private fetch(url: string, onProgress?: (fraction: number, loaded?: number, total?: number) => void): Promise<THREE.Object3D> {
@@ -2232,12 +2232,6 @@ export class Stage {
       this.renderer.shadowMap.needsUpdate = true;
       this.dirty = true;
     }
-    // Hardware that has moved wants its shadows drawn again, in the same frame: a shadow drawn
-    // a moment late lags behind what casts it and then jumps after it.
-    if (this.shadowsOwed) {
-      this.renderer.shadowMap.needsUpdate = true;
-      this.shadowsOwed = false;
-    }
     const drawn = this.pipe.drawn;
     this.step();
     this.pipe.counted(began);
@@ -2307,6 +2301,12 @@ export class Stage {
     const moved = !this.lastView.equals(this.camera.matrixWorld) || !this.lastProjection.equals(this.camera.projectionMatrix);
     this.sinceDrawn += dt;
     const ambient = this.frozen ? 0.5 : 1 / 12;
+    // The craft and the fine Sun target have reached this frame's positions. A map asked for
+    // by either belongs to this draw. Requests raised during the draw remain owed for the next.
+    if (this.shadowsOwed) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.shadowsOwed = false;
+    }
     if (!(this.dirty || moved || this.renderer.shadowMap.needsUpdate || this.sinceDrawn >= ambient)) return;
     if (this.held) return;
     // A frozen frame owes nothing to an earlier one: its shadow maps are drawn with it. (Kept, a map is of the scene
