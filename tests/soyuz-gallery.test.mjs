@@ -7,6 +7,7 @@ import { Box3, Vector3 } from 'three';
 import { flight as soyuz1 } from '../missions/ussr/soyuz/flights/soyuz-1/flight.ts';
 import { flight as soyuz3 } from '../missions/ussr/soyuz/flights/soyuz-3/flight.ts';
 import { flight as soyuz4 } from '../missions/ussr/soyuz/flights/soyuz-4/flight.ts';
+import { flight as soyuz10 } from '../missions/ussr/soyuz/flights/soyuz-10/flight.ts';
 import { plinths } from '../src/app/address.ts';
 import { Exploder } from '../src/viewer/explode.ts';
 import { framesOf, hierarchy } from './glb.mjs';
@@ -15,6 +16,7 @@ for (const [flight, leftOpens] of [
   [soyuz1, false],
   [soyuz3, true],
   [soyuz4, true],
+  [soyuz10, true],
 ]) {
   const model = flight.models[0];
   for (const suffix of ['', '.lod1', '.lod2']) {
@@ -47,11 +49,14 @@ for (const [flight, leftOpens] of [
         ['Cabin', 'DescentModule'],
         ['Couches', 'DescentModule'],
       ];
-      if (flight !== soyuz1) pairs.push(['RendezvousLights', 'OrbitalModule'], ['InfraredVertical', 'ServiceModule']);
+      if (flight !== soyuz1) pairs.push(['InfraredVertical', 'ServiceModule']);
+      if (flight === soyuz3 || flight === soyuz4) pairs.push(['RendezvousLights', 'OrbitalModule']);
+      if (flight === soyuz10) pairs.push(['DockingCollar', 'OrbitalModule']);
       if (flight === soyuz4) pairs.push(['EvaHandrails', 'OrbitalModule']);
       const rest = pairs.map(([a, b]) => relative(a, b));
       const box = framesOf(file);
-      assert.ok(Math.abs(box.box('DockingProbe').hi[1] - box.box('ServiceModule').lo[1] - 7.6) < 0.002);
+      const length = flight === soyuz10 ? 7.5 : 7.6;
+      assert.ok(Math.abs(box.box('DockingProbe').hi[1] - box.box('ServiceModule').lo[1] - length) < 0.002);
       const centre = (name) => {
         const { lo, hi } = box.box(name);
         return new Vector3(...lo).lerp(new Vector3(...hi), 0.5);
@@ -96,10 +101,14 @@ for (const [flight, leftOpens] of [
       const rightPacked = outerHinge('Right');
       const leftPacked = outerHinge('Left');
       const wingReady = () => {
-        assert.ok(Math.abs(outerHinge('Right').x - 2.25) < 0.002, 'the working right wing extends to starboard');
+        const reach = outerHinge('Right').x;
+        if (flight === soyuz10) {
+          const span = bounds(root.getObjectByName('SolarRight')).max.x - bounds(root.getObjectByName('SolarLeft')).min.x;
+          assert.ok(Math.abs(span - 8.37) < 0.01, `the station transport's deployed wings span 8.37 m (got ${span})`);
+        } else assert.ok(Math.abs(reach - 2.25) < 0.002, 'the working right wing extends to starboard');
         assert.ok(Math.abs(whip('Right').y - 1.88) < 0.001, 'the right shortwave element extends from the open leaf');
         if (leftOpens) {
-          assert.ok(Math.abs(outerHinge('Left').x + 2.25) < 0.002, 'the working left wing extends to port');
+          assert.ok(Math.abs(outerHinge('Left').x + reach) < 0.002, 'the working left wing extends to port');
           assert.ok(Math.abs(whip('Left').y - 1.88) < 0.001, 'the left shortwave element extends from the open leaf');
         } else {
           assert.ok(
@@ -186,4 +195,37 @@ test('Soyuz 4 models Shatalov’s solo launch with the two return places vacant'
   const transfer = model.views.find((view) => view.id === 'transfer');
   assert.ok(transfer.isolate && transfer.from[2] > 0, 'the transfer view shows the access side without the fairing');
   assert.deepEqual(transfer.nodes, ['OrbitalModule', 'EvaHandrails', 'DockingProbe']);
+});
+
+test('Soyuz 10 places its three crew in separate couches under the station docking assembly', () => {
+  const model = soyuz10.models[0];
+  const file = new URL(`../public/${model.url}`, import.meta.url);
+  const buffer = readFileSync(file);
+  const gltf = JSON.parse(buffer.subarray(20, 20 + buffer.readUInt32LE(12)));
+  const root = hierarchy(gltf);
+  const couches = root.getObjectByName('Couches');
+  const surnames = ['Shatalov', 'Yeliseyev', 'Rukavishnikov'];
+  const seated = ['Shatalov', 'Rukavishnikov', 'Yeliseyev'];
+  assert.deepEqual(
+    soyuz10.crew.map((name) => name.split(' ').at(-1)),
+    surnames,
+  );
+  assert.deepEqual(
+    model.seats.map((seat) => seat.node),
+    ['Seat_Commander', 'Seat_Port', 'Seat_Starboard'],
+  );
+  for (const [index, seat] of model.seats.entries()) {
+    const wearer = seated[index];
+    assert.ok(couches.getObjectByName(`Crew_${wearer}`));
+    assert.ok(couches.getObjectByName(seat.node));
+    assert.ok(seat.hide.length && seat.hide.every((node) => node.startsWith(wearer) && couches.getObjectByName(node)));
+  }
+  const collar = root.getObjectByName('DockingCollar');
+  for (const name of ['SSVP_TunnelBody', 'SSVP_PressureHatch', 'SSVP_LatchPockets']) assert.ok(collar.getObjectByName(name), name);
+  assert.ok(root.getObjectByName('DockingProbe').getObjectByName('SSVP_ProbeBellows'));
+  assert.equal(root.getObjectByName('SSVP_ClosedCompartment'), undefined, 'the earlier solid docking compartment was replaced');
+  assert.equal(root.getObjectByName('PAO_AftEquipmentTorus'), undefined, 'the station transport omits the aft torus');
+  const dock = model.views.find((view) => view.id === 'dock');
+  assert.deepEqual(dock.nodes, ['OrbitalModule', 'DockingCollar', 'DockingProbe']);
+  assert.ok(dock.isolate);
 });

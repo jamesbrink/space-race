@@ -1,7 +1,7 @@
 # Working notes for agents in this repo
 
 SPACE RACE: every crewed spacecraft and its launch vehicle, modelled to scale in Blender and shown
-in three.js. Today it ships 31 flights (`missions/index.ts`, Vostok 1 to Apollo 10), each in its Gallery;
+in three.js. Today it ships 32 flights (`missions/index.ts`, Vostok 1 to Soyuz 10), each in its Gallery;
 Freedom 7, Liberty Bell 7, Friendship 7 (the first American flight into orbit), Aurora 7, Sigma 7, Faith 7, Vostok 1 to 6, Voskhod 1 and 2, and Gemini 3 (three burns
 of its own and a lifting entry) also have their Launch site and can be flown; Gemini 4 to 12 have their Launch site. The goal is a
 simulator in which you fly the USA's, the USSR's and later programmes from the historical record to the present, so **the models and the

@@ -949,11 +949,11 @@ export const MILESTONES: readonly Milestone[] = [
     date: '1971-04-24T01:47Z',
     flight: 'ussr/soyuz/soyuz-10',
     nation: 'USSR',
-    title: 'First ship to dock with a space station',
+    title: 'First soft docking with a space station',
     text:
-      'Soyuz 10 caught Salyut and held on, but the latches never closed: a gap of nine centimetres stayed between them, and ' +
-      'no one went aboard. Getting loose again took five and a half hours.',
-    source: `${SIDDIQI}, pp. 774 and 775 (soft dock at 04:47 Moscow time; ${MSK})`,
+      'Soyuz 10’s probe caught in Salyut’s docking cone. The docking rings stayed nine centimetres apart, leaving the transfer ' +
+      'passage unsealed. It took hours to free the ship.',
+    source: `TASS, 25 April 1971 (capture at 04:47 Moscow time, ${MSK}); Kamanin, Hidden Cosmos, 25 April 1971`,
     confidence: 'derived',
   },
   {
@@ -1296,15 +1296,14 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
     flight: 'ussr/soyuz/soyuz-10',
     headline: 'Reached the first station, and could not go in',
     story:
-      'Its crew were to be the first to live in Salyut. Shatalov flew the last 200 metres by hand and the ships met too ' +
-      'hard: the docking gear’s shock absorbers broke, and the latches never closed.\n\n' +
-      'For a while they could not get loose either, which would have blocked the station’s one port for good. They came ' +
-      'down in the dark, the first Soviet landing at night.',
-    firsts: ['First ship to dock with a space station'],
-    source: `${SIDDIQI}, pp. 773 to 775`,
+      'Shatalov flew the final approach to Salyut by hand. After the probe caught, Soyuz’s attitude thrusters kept firing, ' +
+      'overloading the mechanism that aligned the two ships. With the passage unsealed, the crew could not enter Salyut. ' +
+      'They freed Soyuz from the station’s only port and came home early, making the first Soviet crewed landing at night.',
+    firsts: ['First soft docking with a space station'],
+    source: 'Chertok, Rockets and People, vol. 4, ch. 15; Kamanin, Hidden Cosmos, 25 April and 10 May 1971',
     named: {
       why: 'Гранит (Granit), “granite”: Shatalov’s call sign, as on Soyuz 8.',
-      source: `${SF_MISSION}, Soyuz 10`,
+      source: 'NASA, Mir Hardware Heritage, §1.7.3; Afanasyev and Vorontsov, The First Soyuz Spacecraft, p. 227',
       confidence: 'documented',
     },
   },

@@ -36,6 +36,7 @@ class Wearer:
     breadth: float = 1.0  # distances from the midline, beside figurelib's man of 1.80 m carried to this stature
     girth: float = 0.97  # every section's radii, beside the same man
     contrasting_headset: bool = False  # the grey lower cap and phones seen on Beregovoy
+    wool_colour: tuple[float, float, float] | None = None
 
 
 KOMAROV = Wearer("Komarov")
@@ -89,10 +90,15 @@ def materials() -> dict:
             return None
         return bpy.data.materials.get(name) or material(name, *args)
 
+    wool = (
+        m(f"suit-wool-{WEARER.name.lower()}", WEARER.wool_colour, 0.0, 0.92)
+        if WEARER.wool_colour
+        else m("suit-wool-grey", (0.14, 0.15, 0.17), 0.0, 0.92)
+    )
     return {
         # (the viewer gives any material named suit... a weave). A dark grey with a little blue in it, by eye from the
         # suit kept at Kaluga and the colour frames from the cabin: estimated
-        "wool": m("suit-wool-grey", (0.14, 0.15, 0.17), 0.0, 0.92),
+        "wool": wool,
         "cap": m("cap-cloth-white", (0.84, 0.83, 0.79), 0.0, 0.8),
         "lower_cap": m("cap-cloth-olive", (0.17, 0.18, 0.15), 0.0, 0.76) if WEARER.contrasting_headset else None,
         "skin": m("skin", (0.62, 0.42, 0.33), 0.0, 0.65),
