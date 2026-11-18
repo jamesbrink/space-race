@@ -25,8 +25,16 @@ gimbal angles and Saturn's iterative guidance equations. Aerodynamic drag of the
 stack is approximate. The raw integration reaches 7,779.13 m/s at J-2 cutoff,
 1.19 m/s below the flight report. The raw inclination is 32.467° against 31.58°,
 0.887° high. Raw ellipsoidal altitude is about 240 km against the report's 228 km.
-The historical display joins the published insertion state, then follows
-published fixes on either side of orbital venting and at separation. The
+The replay flies the vertical programme from the modeled launch mount through
+10.31 s. Table XI of the postflight trajectory gives about 121 m of rise and 5 m
+of lateral displacement in the first ten seconds. The simulation rises 127 m and
+drifts about 0.24 m. After the vertical programme it interpolates the differences
+between the integrated trajectory and seven measured position and velocity
+states from 50 s to insertion. Table XIII tracks the vehicle centre of gravity.
+The model uses the stack base as its ascent datum, an offset of tens of metres.
+The postflight table gives 61.9777° W at guidance cutoff and 61.2293° W at
+insertion ten seconds later. On orbit the replay joins the venting and separation
+fixes. [Postflight trajectory, §2 and Tables XI and XIII](https://apollojournals.org/afj/ap07fj/pdf/as205-postflight-traj-rep-19920075302.pdf). The
 attached stack aligns to local horizontal, later pitches nose down and holds
 that inertial attitude before release. The brief crew takeover of the S-IVB
 controls is on the timeline. The replay does not reconstruct those individual

@@ -49,6 +49,7 @@ import {
   sub,
   type Vec3,
 } from '../world/frames.ts';
+import { hermite as between } from '../world/orbit.ts';
 import { AIR_TOP } from './atmosphere.ts';
 import { type BallisticOptions, ballistic } from './fliers.ts';
 import { type Doing, MEAN_RADIUS } from './fly.ts';
@@ -60,7 +61,7 @@ import { acceleration } from './core/rk4.ts';
 import { ENTRY_G } from './loads.ts';
 import { EARTH_GRAVITY, fieldOf, type GravityTerm } from './core/gravity.ts';
 
-export { AIR_TOP };
+export { AIR_TOP, between };
 
 /**
  * Where a prediction starts: a `Sample`'s own fields (fly.ts), so any sample will do. `r` is best the centre of mass. What it
@@ -235,21 +236,6 @@ const bisect = (lo: number, hi: number, past: (t: number) => boolean): number =>
 export function gridStep(speed: number, turning: number, bend = BEND, longest = 16): number {
   const want = Math.max(bend / Math.max(turning, 1e-9), SHORTEST / Math.max(speed, 1e-3));
   return 2 ** Math.max(-4, Math.min(Math.log2(longest), Math.floor(Math.log2(want))));
-}
-
-/** Where a cubic through two states puts the path at `t` between them (Hermite: each end's place and speed). */
-export function between(t0: number, r0: Vec3, v0: Vec3, t1: number, r1: Vec3, v1: Vec3, t: number): { r: Vec3; v: Vec3 } {
-  const h = t1 - t0;
-  if (!(h > 0)) return { r: r0, v: v0 };
-  const s = (t - t0) / h;
-  const s2 = s * s;
-  const s3 = s2 * s;
-  const [a, b, c, d] = [2 * s3 - 3 * s2 + 1, (s3 - 2 * s2 + s) * h, -2 * s3 + 3 * s2, (s3 - s2) * h];
-  // and its slope: the speed there
-  const [da, db, dc, dd] = [(6 * s2 - 6 * s) / h, 3 * s2 - 4 * s + 1, (-6 * s2 + 6 * s) / h, 3 * s2 - 2 * s];
-  const at = (i: 0 | 1 | 2): number => a * r0[i] + b * v0[i] + c * r1[i] + d * v1[i];
-  const slope = (i: 0 | 1 | 2): number => da * r0[i] + db * v0[i] + dc * r1[i] + dd * v1[i];
-  return { r: [at(0), at(1), at(2)], v: [slope(0), slope(1), slope(2)] };
 }
 
 /**

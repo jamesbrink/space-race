@@ -45,7 +45,7 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { alongPublished } from '../world/meanelements.ts';
-import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
+import { elementsOf, hermite, period, planeThrough, type State, step } from '../world/orbit.ts';
 import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { integrate, sensed } from './apparent.ts';
 import { downOf } from './descent.ts';
@@ -785,7 +785,7 @@ export function flyWhole(
 ): FlownWhole {
   const x = solved ?? steer(plan, site, frame, seaLevel);
   const ascent = ascend(plan, site, frame, seaLevel, x);
-  if (handover === 'published') followAscentFixes(plan, frame, ascent);
+  if (handover === 'published') followAscentFixes(plan, site, frame, seaLevel, ascent);
   const coast = flyOrbit(
     plan,
     site,
@@ -802,37 +802,62 @@ export function flyWhole(
   return { ascent, coast, down };
 }
 
-/** Continue the attached stack's orbital coast from the tracked insertion and venting fixes. */
-function followAscentFixes(plan: FlightPlan, frame: EarthFrame, ascent: Ascended): void {
+/** Join the attached stack’s ascent and orbital coast to the recorded tracking states. */
+function followAscentFixes(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: number, ascent: Ascended): void {
   const fixes = plan.record?.coastFixes?.filter((fix) => fix.at.value <= ascent.separation.t);
   if (!fixes?.length) return;
   const samples = ascent.samples;
-  let start = 0;
+  const guidance = guidanceOf(plan);
+  const insertion = plan.record!.orbit!.injection.at.value;
+  const airHere = airOf(seaLevel, frame, skyOf(plan));
+  const pad = geodeticToEcef(site);
+  // Keep the force-integrated rise through the vertical programme. Published ascent fixes measure
+  // residuals against that same powered trajectory. Coast fixes start a fresh gravity arc instead.
+  let start = samples.findIndex((s) => s.t === guidance.vertical.value);
+  if (start < 0 || fixes[0]!.at.value <= guidance.vertical.value) start = 0;
+  let residual: State = { r: [0, 0, 0], v: [0, 0, 0] };
   for (const fix of fixes) {
     const end = samples.findIndex((s) => s.t === fix.at.value);
-    if (end < 1 || end <= start) continue;
+    if (end <= start) continue;
     const want = trackedState(fix, frame);
-    const arc: State[] = [];
-    let last: State = samples[start]!;
-    for (let i = start + 1; i <= end; i++) {
-      const s = samples[i]!;
-      last = start === 0 ? s : step(last, samples[i - 1]!.t, s.t - samples[i - 1]!.t);
-      arc.push(last);
+    const first = samples[start]!;
+    const last = samples[end]!;
+    let stateAt: (s: AscentSample, i: number) => State;
+    if (first.t < insertion) {
+      const before = residual;
+      residual = { r: sub(want.r, last.r), v: sub(want.v, last.v) };
+      stateAt = (s) => {
+        const d = hermite(first.t, before.r, before.v, last.t, residual.r, residual.v, s.t);
+        return { r: add(s.r, d.r), v: add(s.v, d.v) };
+      };
+    } else {
+      const arc: State[] = [];
+      let state: State = first;
+      for (let i = start + 1; i <= end; i++) {
+        const previous = samples[i - 1]!.t;
+        state = step(state, previous, samples[i]!.t - previous);
+        arc.push(state);
+      }
+      const correct = trackingArc(first.t, last.t, state, want);
+      stateAt = (s, i) => correct(arc[i - start - 1]!, s.t);
     }
-    const correct = trackingArc(samples[start]!.t, samples[end]!.t, last, want);
     for (let i = start + 1; i <= end; i++) {
       const s = samples[i]!;
-      const state = i === end ? want : correct(arc[i - start - 1]!, s.t);
-      const here = frame.place(state.r, s.t);
-      const air = airAt(frame, state.r, state.v, s.t, 0);
+      const state = i === end ? want : stateAt(s, i);
+      const air = airHere(state, s.t);
+      const up = frame.upOver(air.here, s.t);
+      const climb = (v: Vec3) => 90 - angleBetween(v, up) / DEG;
       samples[i] = {
         ...s,
         ...state,
-        altitude: here.height,
-        latitude: here.latitude,
-        longitude: here.longitude,
+        altitude: air.altitude,
+        latitude: air.here.latitude,
+        longitude: air.here.longitude,
+        downrange: angleBetween(frame.toFixed(state.r, s.t), pad) * MEAN_RADIUS,
         speed: length(state.v),
         groundSpeed: air.airspeed,
+        climb: climb(state.v),
+        groundClimb: climb(air.wind),
         q: air.q,
         mach: air.mach,
       };

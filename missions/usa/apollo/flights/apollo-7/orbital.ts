@@ -4,7 +4,7 @@ import { trackedState } from '../../../../../src/sim/orbital.ts';
 import type { Action, AttitudeDef, EngineDef, EventDef, FlightPlan, OrbitFix, PlanCheck, Trigger } from '../../../../../src/sim/plan.ts';
 import type { ShedBody } from '../../../../../src/types.ts';
 import { earthFrame } from '../../../../../src/world/earthframe.ts';
-import { cross, dot, sub, unit } from '../../../../../src/world/frames.ts';
+import { cross, dot, ecefToGeodetic, enuAxes, scale, sub, unit } from '../../../../../src/world/frames.ts';
 import { step } from '../../../../../src/world/orbit.ts';
 
 import { aborts, escapeEngine } from './escape.ts';
@@ -29,7 +29,7 @@ const DROGUE = T(260, 3, 23);
 const MAIN = T(260, 4, 13);
 const SPLASH = T(260, 9, 3);
 const J2_OFF = 616.75;
-const INSERTION = 626.75;
+const INSERTION = 626.76;
 
 function timed(id: string, label: string, at: number, actions: Action[], source = EVENTS, when: Trigger[] = [{ time: at }]): EventDef {
   return { id, label, when, do: actions, automatic: true, at: doc(at, source), record: { id, label }, source };
@@ -45,6 +45,31 @@ function fix(
     longitude: doc(longitude, source),
     altitude: doc(altitude * FT, source),
     speed: doc(speed * FT, source),
+    climb: doc(climb, source),
+    heading: doc(heading, source),
+  };
+}
+
+// Table XIII gives geocentric radius and latitude. The replay accepts WGS 84 geodetic positions.
+function ascentFix(
+  page: number,
+  t: number,
+  longitude: number,
+  gcLatitude: number,
+  radiusKm: number,
+  speed: number,
+  climb: number,
+  heading: number,
+): OrbitFix {
+  const source = `${LV_TRAJ}, Table XIII, p. ${page}, range time ${t} s`;
+  const radial = enuAxes({ latitude: gcLatitude, longitude }).up;
+  const place = ecefToGeodetic(scale(radial, radiusKm * 1000));
+  return {
+    at: doc(t, source),
+    longitude: doc(longitude, source),
+    latitude: derived(place.latitude, `${source}, geocentric radius and latitude converted to WGS 84`),
+    altitude: derived(place.height, `${source}, geocentric radius and latitude converted to WGS 84`),
+    speed: doc(speed, source),
     climb: doc(climb, source),
     heading: doc(heading, source),
   };
@@ -782,14 +807,20 @@ export const apollo7Plan: FlightPlan = {
       kind: { is: 'anomalistic', confidence: 'documented', source: `${REPORT}, Table 3-I, perigee to perigee` },
       mass: doc(32_356 * LB, `${WEIGHTS}, first SPS firing, nearest tabulated free-flight mass`),
       injection: {
-        at: doc(INSERTION, `${ASCENT}, §1.0`),
+        at: doc(INSERTION, `${LV_TRAJ}, Table XIII, p. 74`),
         heading: 'north',
         arc: derived(16.2, `${REPORT}, Table 3-II, along-orbit arc from launch to insertion`),
         anomaly: estimated(0, 'Insertion close to perigee; for standalone initial orbit solver'),
       },
     },
     coastFixes: [
-      fix(`${REPORT}, Table 3-II, actual insertion, time from ${ASCENT}, §1.0`, [INSERTION, 31.58, -61.98, 748_439, 25_553, 0.01, 86.32]),
+      ascentFix(69, 50, -80.5571, 28.3622, 6377.851, 505.4, 25.17, 88.01),
+      ascentFix(70, 75.5, -80.5264, 28.3708, 6385.48, 734.2, 31.64, 83.65),
+      ascentFix(72, 145.59, -79.9558, 28.531, 6435.104, 2320.3, 26.32, 75.79),
+      ascentFix(73, 300, -76.7541, 29.3409, 6545.545, 3150.1, 8.6, 77.44),
+      ascentFix(74, 500, -69.2121, 30.6568, 6597.563, 5554.5, 0.93, 81.92),
+      ascentFix(74, 616.76, -61.9777, 31.3633, 6600.454, 7780.3, 0, 85.91),
+      ascentFix(74, INSERTION, -61.2293, 31.4091, 6600.459, 7788.6, 0.01, 86.32),
       fix(`${REPORT}, Table 3-II, actual venting start`, [T(1, 34, 29), 27.77, -107.39, 752_413, 25_560, -0.09, 74.38]),
       fix(`${REPORT}, Table 3-II, actual venting end`, [T(1, 46, 30), 29.43, -55.24, 767_308, 25_555, 0.18, 102.47]),
       beforeSeparation,
@@ -809,7 +840,7 @@ export const apollo7Plan: FlightPlan = {
     automatic:
       'The Earth landing sequence ran automatically. The crew flew the initial entry bank by hand before handing roll control to the computer.',
     marks: [
-      mark('insertion', 'Orbital insertion', INSERTION, `${ASCENT}, §1.0`),
+      mark('insertion', 'Orbital insertion', INSERTION, `${LV_TRAJ}, Table XIII, p. 74`),
       mark('sivb-safing', 'S-IVB propellant dump begins', T(1, 34, 29)),
       mark('sivb-safing-end', 'S-IVB propellant dump ends', T(1, 46, 30)),
       mark('sivb-takeover', 'Crew takes over S-IVB attitude', T(2, 30, 49.1)),

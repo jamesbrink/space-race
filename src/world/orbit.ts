@@ -328,3 +328,18 @@ export function crossings(
   }
   return out;
 }
+
+/** Where a cubic through two states puts the path at `t` between them (Hermite: each end's place and speed). */
+export function hermite(t0: number, r0: Vec3, v0: Vec3, t1: number, r1: Vec3, v1: Vec3, t: number): { r: Vec3; v: Vec3 } {
+  const h = t1 - t0;
+  if (!(h > 0)) return { r: r0, v: v0 };
+  const s = (t - t0) / h;
+  const s2 = s * s;
+  const s3 = s2 * s;
+  const [a, b, c, d] = [2 * s3 - 3 * s2 + 1, (s3 - 2 * s2 + s) * h, -2 * s3 + 3 * s2, (s3 - s2) * h];
+  // and its slope: the speed there
+  const [da, db, dc, dd] = [(6 * s2 - 6 * s) / h, 3 * s2 - 4 * s + 1, (-6 * s2 + 6 * s) / h, 3 * s2 - 2 * s];
+  const at = (i: 0 | 1 | 2): number => a * r0[i] + b * v0[i] + c * r1[i] + d * v1[i];
+  const slope = (i: 0 | 1 | 2): number => da * r0[i] + db * v0[i] + dc * r1[i] + dd * v1[i];
+  return { r: [at(0), at(1), at(2)], v: [slope(0), slope(1), slope(2)] };
+}
