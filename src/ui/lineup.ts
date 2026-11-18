@@ -26,6 +26,7 @@ import type { Spec } from '../types.ts';
 import { esc } from '../util/dom.ts';
 import { tier } from '../viewer/tier.ts';
 import { dock, handle, hintOnce, narrow, sayIn, viewHeight } from './fold.ts';
+import { emblem, flag, icon } from './icons.ts';
 import { type Sheet, sheet } from './sheet.ts';
 import { dot, legend } from './ui.ts';
 import { capsOf, doesOf, kbd, keyRows, padCaps, which } from '../util/keys.ts';
@@ -193,7 +194,7 @@ export class LineupUi {
         <ul class="lu-key" aria-label="Programmes">${sections
           .map(
             (s) =>
-              `<li><button data-section="${esc(s.id)}" style="--tint: ${css(s.tint)}" title="${esc(s.name)}: its section of the row"><i></i>${esc(s.name)}<em>${esc(s.nation)}</em></button></li>`,
+              `<li><button data-section="${esc(s.id)}" style="--tint: ${css(s.tint)}" title="${esc(s.name)}: its section of the row"><i></i>${emblem(s.id)}${esc(s.name)}<em>${flag(s.nation)}${esc(s.nation)}</em></button></li>`,
           )
           .join('')}</ul>
       </header>
@@ -670,7 +671,7 @@ export class LineupUi {
     return `
       ${
         section
-          ? `<div class="lu-head" style="--tint: ${css(section.tint)}"><p class="lu-eyebrow"><i></i>${esc(section.nation)} <b>·</b> ${esc(section.years)}</p><h2 class="lu-big">${esc(section.name)}</h2>
+          ? `<div class="lu-head" style="--tint: ${css(section.tint)}"><p class="lu-eyebrow"><i></i>${flag(section.nation)}${esc(section.nation)} <b>·</b> ${esc(section.years)}</p><h2 class="lu-big">${emblem(section.id)}${esc(section.name)}</h2>
              <p class="hist-actions"><button data-tab-to="Programmes">Read about it</button><button data-whole>Whole row</button></p></div>`
           : `<p class="fine lu-hint">${this.view.picking ? 'Choose the one to stand beside it.' : 'Choose a vehicle: here, on the timeline, or in the row itself.'}</p>`
       }
@@ -706,12 +707,12 @@ export class LineupUi {
       height?.spec && figures.some((x) => x.label === height.spec!.label && x.value === height.spec!.value) ? null : this.stands(e);
     return `
       <article class="lu-card hist-card" style="--tint: ${css(e.tint)}">
-        <p class="lu-eyebrow"><i></i><button data-section="${esc(section.id)}" title="${esc(section.name)}: its section of the row, and its story">${esc(section.name)}</button> <b>·</b> ${esc(f.nation)} <b>·</b> ${String(all.indexOf(e) + 1).padStart(2, '0')} of ${all.length}</p>
+        <p class="lu-eyebrow"><i></i><button data-section="${esc(section.id)}" title="${esc(section.name)}: its section of the row, and its story">${emblem(section.id)}${esc(section.name)}</button> <b>·</b> ${flag(f.nation)}${esc(f.nation)} <b>·</b> ${String(all.indexOf(e) + 1).padStart(2, '0')} of ${all.length}</p>
         <h2 class="lu-big">${esc(f.callsign)}</h2>
         <p class="sub">${esc(f.designation)} <b>·</b> ${day(f.launch)}</p>
         ${storyMarkup(e.headline, e.story?.story || f.summary, e.story ? e.firsts : [])}
         <p class="hist-actions">
-          <button class="hist-go" data-gallery="${esc(f.id)}" title="Its gallery: turn it, take it apart, cut it open (O)">Open its gallery<i class="arrow"></i></button>
+          <button class="hist-go" data-gallery="${esc(f.id)}" title="Its gallery: turn it, take it apart, cut it open (O)">${icon('gallery')}Open its gallery<i class="arrow"></i></button>
           <button data-pick class="switch" aria-pressed="${this.view.picking}" title="Choose another to stand beside it (X)">Compare</button>
         </p>
         ${e.story?.named ? namedMarkup(e.story.named) : ''}
@@ -803,8 +804,8 @@ export class LineupUi {
         return `
         <li style="--tint: ${css(s.tint)}"><button data-section="${esc(s.id)}" aria-expanded="${open}">
           <span class="n">${String(i + 1).padStart(2, '0')}</span>
-          <span class="name"><i class="lu-chip"></i>${esc(s.name)}</span>
-          <span class="what">${esc(s.nation)} <b>·</b> ${esc(s.years)} <b>·</b> ${s.flights.length} ${s.flights.length === 1 ? 'vehicle' : 'vehicles'} here</span>
+          <span class="name"><i class="lu-chip"></i>${emblem(s.id)}${esc(s.name)}</span>
+          <span class="what">${flag(s.nation)}${esc(s.nation)} <b>·</b> ${esc(s.years)} <b>·</b> ${s.flights.length} ${s.flights.length === 1 ? 'vehicle' : 'vehicles'} here</span>
         </button>
         <div class="hist-told lu-programme">
           ${told ? programmeMarkup(told) : '<p>Its story is not written here yet. Its vehicles are in the row:</p>'}

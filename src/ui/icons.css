@@ -1,0 +1,20 @@
+/* The page's small pictures (icons.ts): each sized by the text it stands in, so it is as tall as the words beside it at any size.
+   An icon is drawn in the text's colour and dims, lights and is pointed at with it; a flag and an emblem keep their own colours. */
+.icon { flex: none; display: inline-block; width: 1.25em; height: 1.25em; margin-right: 0.6em; vertical-align: -0.28em; overflow: visible; }
+.flag { flex: none; display: inline-block; height: 0.8em; width: calc(0.8em * var(--ratio, 1.5)); margin-right: 0.55em; vertical-align: -0.02em; border-radius: 1px;
+  box-shadow: 0 0 0 0.5px rgba(243, 239, 230, 0.32); }
+/* (an emblem is taller than the capitals beside it, and lends its line no height: it hangs over the line's leading) */
+.emblem { flex: none; display: inline-flex; margin: -0.3em 0.5em -0.3em 0; vertical-align: -0.42em; }
+.emblem svg { display: block; width: 1.55em; height: 1.55em; overflow: visible; }
+/* (a mark of this site's own is a line drawing in the text's colour, a little quieter than the words: it is no patch) */
+.emblem.ours svg { opacity: 0.85; }
+
+/* where a programme is told: its emblem large, and what it is written under it */
+.emblem-figure { display: flex; align-items: center; gap: 14px; margin: 2px 0 14px; }
+.emblem-figure svg { flex: none; width: 46px; height: 46px; }
+.emblem-figure.ours svg { color: var(--dim); }
+.emblem-figure figcaption { font: 12px/1.4 var(--sans); color: var(--faint); }
+.hist-told .emblem-figure + h4 { margin-top: 0; }
+/* (beside a heading's large name the emblem is about its capitals' height) */
+.lu-big .emblem { vertical-align: -0.16em; }
+.lu-big .emblem svg { width: 1em; height: 1em; }

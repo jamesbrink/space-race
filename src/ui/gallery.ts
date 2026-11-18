@@ -23,6 +23,7 @@ import {
 } from '../app/address.ts';
 import { Callout } from './callout.ts';
 import { crewMarkup, momentMarkup, namedMarkup, programmeMarkup, storyMarkup } from './history.ts';
+import { emblem, flag, icon } from './icons.ts';
 import { type Told, toldOf } from '../app/lineup/row.ts';
 import { CURTAIN, Curtain, follow } from '../app/curtain.ts';
 import { Demo, type Pacing, type Shot } from '../app/demo.ts';
@@ -104,7 +105,7 @@ export function placesNav(flight: Flight, here: Place, go: (to: Place) => void, 
   const button = (place: Place): string => {
     const why = lacks(flight, place);
     // ("site" alone where there is no room for more: beside "gallery" and "fly" it can be nothing else)
-    const label = place === 'site' ? '<i>Launch </i>site' : PLACE_NAME[place];
+    const label = shortName(place);
     // (on a phone's menu a line under each name says what it is, or why it is not there yet, without the name again: gallery.css)
     const short = why ? why.replace(/^[^:]*:\s*/, '') : PLACE_SAYS[place].replace(/:.*/, '');
     const absent = why ? ` aria-disabled="true" data-why="${esc(why)}"` : '';
@@ -200,8 +201,11 @@ function fitPlaceName(nav: HTMLElement, scope: Scope): void {
   watch.observe(nav);
 }
 
-/** A place's name, with what may go where there is no room for it ("Launch site" is "site" beside "gallery" and "fly"). */
-const shortName = (place: Place): string => (place === 'site' ? '<i>Launch </i>site' : PLACE_NAME[place]);
+/**
+ * A place's icon and name, with what may go where there is no room for it ("Launch site" is "site" beside "gallery" and
+ * "fly"). The icon dims with the name where the flight lacks the place: it is drawn in the name's colour.
+ */
+const shortName = (place: Place): string => `${icon(place)}${place === 'site' ? '<i>Launch </i>site' : PLACE_NAME[place]}`;
 
 /** Mark which place a switch is in (the site's shows the launch site or the flight deck). */
 export function markPlace(nav: Element | null, here: Place): void {
@@ -213,7 +217,7 @@ export function markPlace(nav: Element | null, here: Place): void {
 
 /** The way back, as the title card's crumbs say it: the front page, the flight (its gallery), the place. */
 export const crumbs = (flight: Flight, here: Place): string =>
-  `<button data-home title="Front page">Space Race</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).nation)}" title="Every flight of the ${esc(flight.nation)}">${esc(flight.nation)}</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).programme)}" title="Every ${esc(flight.program)} flight">${esc(programmeName(browseOf(flight.id).programme))}</button> <b>/</b> ${
+  `<button data-home title="Front page">Space Race</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).nation)}" title="Every flight of the ${esc(flight.nation)}">${flag(browseOf(flight.id).nation)}${esc(flight.nation)}</button> <b>/</b> <button data-browse="${esc(browseOf(flight.id).programme)}" title="Every ${esc(flight.program)} flight">${emblem(browseOf(flight.id).programme)}${esc(programmeName(browseOf(flight.id).programme))}</button> <b>/</b> ${
     here === 'gallery'
       ? esc(flight.callsign)
       : `<button data-flight-home title="${esc(flight.callsign)}: its gallery">${esc(flight.callsign)}</button>`
@@ -633,7 +637,7 @@ export class Gallery {
     return `
       <article class="hist-card">
         ${storyMarkup(story.headline, story.story, story.firsts)}
-        <p class="hist-actions"><button class="hist-go" data-lineup title="The Lineup: it beside every other vehicle, to one scale, in the order they flew">See it in the Lineup<i class="arrow"></i></button></p>
+        <p class="hist-actions"><button class="hist-go" data-lineup title="The Lineup: it beside every other vehicle, to one scale, in the order they flew">${icon('lineup')}See it in the Lineup<i class="arrow"></i></button></p>
         ${story.named ? namedMarkup(story.named) : ''}
         ${crew.length ? crewMarkup(crew) : ''}
         ${
@@ -645,7 +649,7 @@ export class Gallery {
         }
         ${
           programme
-            ? `<h3>The programme</h3><ul class="hist-crew"><li><button data-programme aria-expanded="false"><span class="name">${esc(programme.name)}</span><span class="what">${esc(programme.nation)} · ${esc(programme.years)}</span><i class="chevron"></i></button>
+            ? `<h3>The programme</h3><ul class="hist-crew"><li><button data-programme aria-expanded="false"><span class="name">${emblem(programme.id)}${esc(programme.name)}</span><span class="what">${flag(programme.nation)}${esc(programme.nation)} · ${esc(programme.years)}</span><i class="chevron"></i></button>
                <div class="hist-told">${programmeMarkup(programme)}</div></li></ul>`
             : ''
         }

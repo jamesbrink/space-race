@@ -34,7 +34,7 @@ body.titled #ui { visibility: hidden; }
 .title-browse [data-of] button { letter-spacing: 0.1em; padding: 7px 10px; }
 .title-flights [hidden] { display: none; }
 .title-flights { width: min(720px, 100%); display: grid; gap: 10px; align-self: start; }
-.title-flights button { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; width: 100%; padding: 16px 20px; text-align: left;
+.title-flights button { display: grid; grid-template-columns: auto auto 1fr auto auto; align-items: center; gap: 18px; width: 100%; padding: 16px 20px; text-align: left;
   background: var(--title-glass); backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; }
 /* pointed at, a row is lit where it stands (its amber edge thickens inside it): one that moved would slide to and fro under a still pointer as the list scrolled past it */
 .title-flights button:is(:hover, :focus-visible) { background: rgba(28, 24, 16, 0.9); border-color: rgba(255, 196, 107, 0.6); box-shadow: inset 3px 0 0 var(--amber); }
@@ -42,13 +42,22 @@ body.titled #ui { visibility: hidden; }
 .title-flights .what { display: grid; gap: 3px; min-width: 0; }
 .title-flights .what b { font: 600 20px/1.15 var(--sans); color: var(--ink); letter-spacing: 0.01em; }
 .title-flights .what em { font-style: normal; font-size: 13px; color: var(--dim); }
-.title-flights .when { font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: right; white-space: nowrap; }
+/* (the programme's emblem beside the number, a little apart from it, at the height of the name) */
+.title-flights .mark { display: flex; width: 24px; margin-left: -8px; font-size: 15px; }
+.title-flights .mark .emblem { margin: 0; }
+.title-flights .when { display: grid; justify-items: end; gap: 6px; font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--faint); text-align: right; white-space: nowrap; }
+/* which of its places a flight has: the three icons, lit for each it has (an icon is the text's colour: --faint at the least) */
+.title-flights .has { display: flex; gap: 7px; color: var(--dim); font-size: 12px; }
+.title-flights .has i { display: flex; }
+.title-flights .has .icon { margin: 0; }
+.title-flights .has .lacks { color: var(--faint); opacity: 0.5; }
 .title-flights .go { font: 11px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); padding: 9px 12px; border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
 /* the Lineup: every vehicle side by side. No flight's: it stands before them, a little apart, marked by a row of heights */
 .title-flights .title-lineup { grid-template-columns: auto 1fr auto; margin-bottom: 8px; border-color: rgba(255, 196, 107, 0.4); }
-.title-flights .title-lineup svg.n { width: 26px; height: 18px; fill: none; stroke: var(--amber); stroke-width: 1.7; stroke-linecap: round; }
+.title-flights .title-lineup .n { display: flex; color: var(--amber); font-size: 19px; }
+.title-flights .title-lineup .n .icon { margin: 0; }
 /* a flight to come: a slimmer line among the ones that can be gone into, and not a button */
-.title-flights .to-come { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 18px; margin: 0; padding: 7px 20px; background: var(--title-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px dashed var(--line); border-left: 2px solid var(--faint); border-radius: 3px; }
+.title-flights .to-come { display: grid; grid-template-columns: auto auto 1fr auto auto; align-items: center; gap: 18px; margin: 0; padding: 7px 20px; background: var(--title-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px dashed var(--line); border-left: 2px solid var(--faint); border-radius: 3px; }
 .title-flights .to-come .what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; }
 .title-flights .to-come .what b { font-size: 15px; font-weight: 500; color: var(--dim); }
 .title-flights .to-come .what em { font-size: 12px; color: var(--faint); }
@@ -63,10 +72,12 @@ body.titled #ui { visibility: hidden; }
 }
 @media (max-width: 620px) {
   .title-mark { width: 100%; }
-  .title-flights button { grid-template-columns: auto 1fr auto; padding: 14px; gap: 8px 12px; }
-  .title-flights .to-come { grid-template-columns: auto 1fr auto; padding: 7px 14px; gap: 2px 12px; }
-  .title-flights .when { grid-column: 2 / -1; grid-row: 2; text-align: left; white-space: normal; }
-  .title-flights .go { grid-column: 3; grid-row: 1; }
+  .title-flights button { grid-template-columns: auto auto 1fr auto; padding: 14px; gap: 8px 12px; }
+  .title-flights .to-come { grid-template-columns: auto auto 1fr auto; padding: 7px 14px; gap: 2px 12px; }
+  .title-flights .when { grid-column: 3 / -1; grid-row: 2; justify-items: start; text-align: left; white-space: normal; }
+  .title-flights .go { grid-column: 4; grid-row: 1; }
+  .title-flights .title-lineup .go { grid-column: 3; }
+  .title-flights .when { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .logo-trail { animation: none; stroke-dashoffset: 0; }
