@@ -205,7 +205,7 @@ def centre_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet, box) -> None:
     fx, fy, r = TEMPERATURE
     u, v = at(fx, fy)
     mc.round_dial(c, P, faces, "Temperature", TEMPERATURE_DIAL, u, v, r)
-    c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -3.6)), r * 0.95 * IN, 12)
+    c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -3.6)), r * 0.95 * IN, 48)
     for (fx, fy), around in zip(SELECTORS, SELECTS):
         u, v = at(fx, fy)
         c.turned("CrewCabin_Knobs", P, u, v, [(0.62, 0.0), (0.62, 0.12), (0.46, 0.2), (0.42, 0.6), (0.0, 0.6)], 14)
@@ -220,12 +220,12 @@ def centre_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet, box) -> None:
     fx, fy, r = DUALS[0]
     u, v = at(fx, fy)
     mc.fuel_gauge(c, P, faces, u, v, r)
-    c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -3.6)), r * 0.95 * IN, 12)
+    c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -3.6)), r * 0.95 * IN, 48)
     fx, fy, r = DUALS[1]
     u, v = at(fx, fy)
     c.turned("CrewCabin_Bezels", P, u, v, [(r + 0.14, 0.0), (r + 0.14, 0.3), (r * 0.94, 0.3), (r * 0.92, 0.06)], 32)
     c.disc("CrewCabin_Bezels", P, u, v, r * 0.93, 0.06, None)
-    c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -3.6)), r * 0.95 * IN, 12)
+    c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -3.6)), r * 0.95 * IN, 48)
 
     for (fx, fy), name, (a, b) in SWITCHES:
         u, v = at(fx, fy)

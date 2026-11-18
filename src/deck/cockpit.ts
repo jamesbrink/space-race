@@ -37,6 +37,8 @@ import { pack } from './tape.ts';
 
 /** What Space does next, in the order a flight goes. */
 type Step = 'ignite' | 'cutoff' | 'tower' | 'separate' | 'retro' | 'retropack' | 'drogue' | 'main' | 'hatch';
+const RATE_ON = new Set(['rate']);
+const RATE_OFF = new Set<string>();
 const STEPS: Record<Step, string> = {
   ignite: 'Ignition',
   cutoff: 'Engine cutoff',
@@ -134,6 +136,7 @@ export class Cockpit extends Deck {
   private hatchAt = Infinity;
   /** The flown model's mechanisms (types.ts: MechanismDef), and for each what the hands have told it, at the flight's instants. */
   private readonly mechanisms: MechanismDef[];
+  private rateChanges: Hand[] = [];
   private readonly hands = new Map<string, Hand[]>();
   /** The stretches of this flight flown with the sequencer off: a mechanism's programme is not heard in them (sim/mechanism.ts). */
   private unsequenced: Span[] = [];
@@ -314,6 +317,7 @@ export class Cockpit extends Deck {
     this.eventAt = Number.NEGATIVE_INFINITY;
     this.towerAt = this.retropackAt = this.hatchAt = Infinity;
     this.hands.clear();
+    this.rateChanges = [{ t: 0, out: this.rate }];
     this.unsequenced = this.sequence ? [] : [{ from: Number.NEGATIVE_INFINITY, to: Infinity }];
     this.run = runOf(this.flight, {
       samples: [v.sample(this.state)],
@@ -549,7 +553,7 @@ export class Cockpit extends Deck {
    * are; any other names the one thing to set off now (a pull ring does its own thing, whatever is next in order).
    */
   protected obey(what: string): void {
-    if (what === 'abort' || what === 'next') return void this.command(what);
+    if (what === 'abort' || what === 'next' || what === 'rate') return void this.command(what);
     if (what.startsWith(WORK)) return void this.work(what.slice(WORK.length)); // (a mechanism worked by hand: types.ts `Command`)
     if (what === 'hatch') return void this.blow();
     const s = this.state;
@@ -684,8 +688,10 @@ export class Cockpit extends Deck {
     if (what === 'leave') this.leave();
     else if (what === 'again') this.fresh();
     else if (what === 'guidance') this.guidance = !this.guidance;
-    else if (what === 'rate' && rolesOf(this.flight)?.craft.rigid?.capsule.rcs?.rate) this.rate = !this.rate;
-    else if (what === 'sequence') {
+    else if (what === 'rate' && rolesOf(this.flight)?.craft.rigid?.capsule.rcs?.rate) {
+      this.rate = !this.rate;
+      this.rateChanges.push({ t: this.state?.t ?? 0, out: this.rate });
+    } else if (what === 'sequence') {
       this.sequence = !this.sequence;
       // (when in this flight it was off: a mechanism's programme is not heard then, and is taken up again where it is switched on)
       const now = this.state?.t ?? 0;
@@ -802,7 +808,8 @@ export class Cockpit extends Deck {
     set('next', replay ? 'Run on' : step ? STEPS[step] : 'Nothing left to do');
     this.root.querySelector<HTMLButtonElement>('[data-do=next]')!.disabled = !replay && !step;
     // (the two switches say how it is being flown; this line is for what is out of the ordinary)
-    const rated = this.rate && hasLeft(state.craft, this.roles.booster.id);
+    const ratedAt = replay ? this.rateChanges.reduce((old, change) => (change.t <= s.t ? change.out : old), false) : this.rate;
+    const rated = ratedAt && hasLeft(state.craft, this.roles.booster.id);
     set(
       'mode',
       replay
@@ -817,7 +824,7 @@ export class Cockpit extends Deck {
     );
     this.root.querySelector('[data-do=guidance]')!.setAttribute('aria-pressed', String(this.guidance));
     this.root.querySelector('[data-do=sequence]')!.setAttribute('aria-pressed', String(this.sequence));
-    this.root.querySelector('[data-do=rate]')?.setAttribute('aria-pressed', String(this.rate));
+    this.root.querySelector('[data-do=rate]')?.setAttribute('aria-pressed', String(ratedAt));
     for (const m of this.mechanisms)
       this.root
         .querySelector(`[data-work="${m.id}"]`)!
@@ -829,7 +836,7 @@ export class Cockpit extends Deck {
     if (heat?.warm)
       set('heat', `${heat.name} ${heat.temperature.toFixed(0)} K of ${heat.limit.toFixed(0)} · ${(heat.flux / 1000).toFixed(0)} kW/m²`);
     this.gauges(s, state, replay);
-    for (const fn of this.watchers) fn(s, replay ? null : state);
+    for (const fn of this.watchers) fn(s, replay ? null : state, { holds: ratedAt ? RATE_ON : RATE_OFF });
   }
 
   /** The systems strip and the prompt: what there is left to fly with, what is firing, and what is due. */

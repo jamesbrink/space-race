@@ -789,6 +789,7 @@ def dress(c: Cabin, M: dict, parent, P: Matrix, pilot: dict, seat, main: Sheet, 
             "CrewCabin_PortFrames",
             "CrewCabin_PortSleeves",
             "CrewCabin_Bezels",
+            "CrewCabin_Equipment",
             "CrewCabin_PanelFittings",
             "CrewCabin_Knobs",
             "CrewCabin_RedCaps",
@@ -1286,7 +1287,7 @@ def main_panel(c: Cabin, P: Matrix, sheet: Sheet, faces: Sheet) -> None:
     for name, spec in ROUND.items():
         (u, v), r = fig(*spec["at"]), spec["d"] * S / 2
         round_dial(c, P, faces, name, spec, u, v, r, rim=True)
-        c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 12)  # its case behind the panel
+        c.into("CrewCabin_Equipment").tube(P @ Vector((u, v, -0.95)), P @ Vector((u, v, -4.2)), r * 0.95 * IN, 48)  # its case behind the panel
     # the blanked hole of an instrument not flown (Figure 3.1-2 draws it empty)
     u, v = fig(1632, 870)
     rg.ring(u, v, 0, 1.15, (0.55, 0.56, 0.55))

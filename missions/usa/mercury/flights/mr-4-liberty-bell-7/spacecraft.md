@@ -277,7 +277,7 @@ capsule's stays 41.5 from its own photographs).
 - **Lettering is Arial Bold**, stretched to the photographs' proportions. The name and the crack
   were painted by hand; UNITED STATES was a stencil with breaks in its letters.
 - **Paint stands 0.1 in off the skin it follows**, so that it clears the screw heads under it.
-- **The hatch's sill is not modelled**: the two seals, the fuse in its channel, the magnesium
+- **The titanium sill and two pressure seals remain in the opening when the hatch leaves.** Their widths and spacing are estimated. Omitted are the fuse in its channel, the magnesium
   gasket, the retention springs, the two pressure valves in the hatch, the cable from the
   initiator to the outside lanyard. The initiator is a shape, not the mechanism of SEDR 104's
   Figure 2-2, and is shown with its cover off and its pin in.
@@ -295,7 +295,7 @@ capsule's stays 41.5 from its own photographs).
   plugged in on the couch, is not run anywhere. The couch's lap strap rides over the suit's hose inlet
   on his left, as No. 7's does.
 - **The panel's faces are capsule 7's**, and the instrument with two needles is blank.
-- **The rate command system is not modelled** beyond its switch and handle on the console.
+- **The ASCS selector on the console works the deck’s rate-command mode.** The fuel handle is fixed.
 - **The periscope's door opens as far as the model's linkage takes it** (109°), and the objective comes out
   5.65 in along the last run of the periscope's tube in the cabin (`SCOPE_TUBE`, the cabin's estimate), 4° from square to
   the skin. The receptacle is sunk 0.95 in under the shut door. No latch, seal, motor or roller guide is drawn. This
@@ -313,8 +313,7 @@ capsule's stays 41.5 from its own photographs).
   spacecraft alone the stick asks for a rate, and the manual chambers fire full on an axis while its rate is more than the
   deadband (±3 deg/s: *Results*, pp. 3 and 52) from it, none within. The rate at full throw (10 deg/s) is ours; how the
   valves were worked is not recorded; the sluggish linkage of the day ("design turning rates were not achieved with full
-  stick deflection", p. 7) is not modelled. On No. 11 it was a switch on the panel; the model has no node for it, so it is
-  thrown from the deck alone.
+  stick deflection", p. 7) is not modelled. The AUTO / RATE COMD lever on the left console can be thrown from the seat and follows the same switch on the deck.
 - **Of the panel, what reads the flight**: the attitude, rate, altimeter, descent, accelerometer, control fuel, clock and
   counter needles, and eight sequence lights (tower, separation, retro sequence and fire, jettison retro, 0.05 g, drogue,
   main) and the abort light. Dark, with no event to show: retro attitude, retract scope, snorkel, reserve, landing bag,
