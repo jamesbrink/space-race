@@ -422,6 +422,8 @@ where it was left.
 
 - `src/sim/docking.ts` propagates independently flying spacecraft, their keyed docking ports, the coupled pair and an optional carrier released during extraction. `tests/orbital-docking.test.mjs` checks capture limits, momentum, combined propulsion and extraction.
 
+- `src/sim/rendezvous.ts` reconstructs the LM terminal phase from radar geometry and RCS maneuvers.
+- `src/sim/flyby.ts` propagates the three vehicles during a second target visit.
 - `src/sim/tether.ts` applies a tensile impulse at the two spacecraft attachment points.
 - `src/viewer/dockjets.ts` binds the orbital RCS mouths and the Agena engine to the shared exhaust renderer.
 - `tools/docking.mjs` flies the Apollo and Gemini decks in Chrome, including a saved joint maneuver.

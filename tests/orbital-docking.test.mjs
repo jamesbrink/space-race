@@ -214,3 +214,61 @@ test('simultaneous loads act on their own vehicles when joined and after the pil
   assert.ok(length(sub(run.bodies[0].v, inert.bodies[0].v)) < 1e-7);
   assert.ok(length(sub(run.bodies[1].v, inert.bodies[1].v)) > 0.03);
 });
+
+test('Gemini X leaves its first target, flies its optical transfer, and station-keeps alongside Gemini VIII’s Agena', async () => {
+  const { flight } = await import('../missions/usa/gemini/flights/gt-10/flight.ts');
+  const { terminalApproach, startDockedBurn } = await import('../src/sim/approach.ts');
+  const { startVisit, flybyInput, stationKeep } = await import('../src/sim/flyby.ts');
+  const first = terminalApproach(flight);
+  while (first.phase !== 'hard') {
+    first.advance(0.05, 0);
+    first.attempt();
+  }
+  for (const burn of flight.docking.burns) {
+    const op = startDockedBurn(first, burn);
+    first.advance(op.until - first.t, 1, [0, op.thrust, 0]);
+  }
+  const visit = flight.docking.visit;
+  const run = startVisit(first, visit);
+  const [a, b] = run.bodies;
+  assert.ok(run.released && run.released !== b);
+  assert.ok(Math.abs(length(sub(a.r, b.r)) / 1852 - 14.2) < 1e-8);
+  assert.equal(run.attempt(), false);
+  while (run.t < visit.hold) run.advance(0.1, 0, flybyInput(run, visit, 2 * flight.docking.controls.ahead.value));
+  assert.ok(length(sub(a.r, b.r)) < 10);
+  assert.ok(length(sub(a.v, b.v)) < 0.01);
+  assert.ok(length(sub(b.r, run.released.r)) > 1000);
+  assert.ok(stationKeep(run, visit));
+  const nose = add(a.r, turn(a.q, [0, a.port, 0]));
+  const reach = unturn(b.q, sub(nose, b.r));
+  assert.ok(Math.abs((reach[2] - visit.radius.value) / 0.3048 - 5) < 1e-6);
+  assert.ok(Math.abs(turn(a.q, [0, 1, 0]).reduce((n, x, i) => n + x * turn(b.q, [0, 1, 0])[i], 0) + 0.5) < 1e-9);
+});
+
+test('LM-active terminal rendezvous flies from the radar fix through the photographic stand-off into a hard joint', async () => {
+  const { flight } = await import('../missions/usa/apollo/flights/apollo-9/flight.ts');
+  const { startRendezvous, rendezvousInput } = await import('../src/sim/rendezvous.ts');
+  const run = startRendezvous(flight),
+    op = flight.docking.rendezvous;
+  assert.ok(length(sub(...run.bodies.map((b) => b.r))) > 21 * 1852);
+  let hold = NaN,
+    contact,
+    photographed = false;
+  for (let i = 0; i < 81000 && run.phase !== 'hard'; i++) {
+    const f = run.phase === 'free' ? rendezvousInput(run, flight) : [0, 0, 0];
+    run.advance(0.05, 1, f);
+    if (Math.abs(run.t - op.station) < 0.025) hold = portGap(...run.bodies).gap;
+    if (
+      run.t > op.station &&
+      run.phase === 'free' &&
+      Math.abs(portGap(...run.bodies).gap - op.hold.value) < 0.3 &&
+      Math.abs(portGap(...run.bodies).closing) < 0.1
+    )
+      photographed = true;
+    if (run.attempt()) contact = run.t;
+  }
+  assert.ok(Number.isFinite(hold));
+  assert.ok(photographed, 'formation for photography');
+  assert.ok(Math.abs(contact - op.contact) < 1, 'contact epoch ' + contact);
+  assert.equal(run.phase, 'hard');
+});

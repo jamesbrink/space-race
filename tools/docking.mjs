@@ -43,6 +43,15 @@ try {
     await fast();
     await wait('hard');
     assert.equal(await page.evaluate(() => window.sr.docking.mounted), false);
+    await button('rendezvous').click();
+    assert.equal(await page.evaluate(() => window.sr.docking.phase), 'free');
+    const range = await page.evaluate(() => {
+      const [a, b] = window.sr.docking.bodies;
+      return Math.hypot(...a.r.map((v, i) => v - b.r[i]));
+    });
+    assert.ok(range > 21 * 1852 && range < 22 * 1852);
+    for (let i = 0; i < 8; i++) await page.keyboard.press(']');
+    await page.waitForFunction(() => window.sr.docking.phase === 'hard', null, { timeout: 180000 });
   });
   await trial('gemini/gt-11', async ({ page, button, wait, fast }) => {
     await fast();
@@ -68,6 +77,23 @@ try {
     await fast();
     await page.waitForFunction(() => !document.querySelector('[data-do="next-burn"]').disabled);
     assert.match(await page.locator('[data-cell="apogee"]').innerText(), /1,?3\d\d/);
+  });
+  await trial('gemini/gt-10', async ({ page, button, wait, fast }) => {
+    await fast();
+    await wait('hard');
+    await button('keys').click();
+    for (let n = 0; n < 3; n++) {
+      await button('next-burn').click();
+      await page.waitForFunction(
+        (last) => !document.querySelector(last ? '[data-do="second-target"]' : '[data-do="next-burn"]').disabled,
+        n === 2,
+      );
+    }
+    await button('second-target').click();
+    assert.match(await page.locator('.dockflight strong').innerText(), /5003/);
+    assert.ok(await page.evaluate(() => window.sr.docking.released && window.sr.docking.phase === 'free'));
+    await button('eva-target').click();
+    assert.match(await page.locator('[data-cell="phase"]').innerText(), /EVA/);
   });
   await trial('gemini/gt-8', async ({ page, button, wait, fast }) => {
     await fast();

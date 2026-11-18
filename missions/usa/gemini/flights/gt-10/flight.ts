@@ -1,4 +1,4 @@
-import { doc } from '../../../../../src/measure.ts';
+import { assumed, doc } from '../../../../../src/measure.ts';
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19_SPECS } from '../../../places/cape-canaveral/lc-19.parts.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
@@ -24,10 +24,52 @@ const DURATION = get(70, 46, 39);
 const [crew, pilot] = lateCrew(10, crewAboard);
 const vehicle = lateVehicle(10, [crewAboard, hatchesShut]);
 
+const visitSource = REPORT + ', table 4-VIII and sections 4.3.1.2 and 7.1.2.6.5.';
+const correction = (at: number, dv: number, pitch: number, yaw: number, seconds: number) => ({
+  at,
+  dv: doc(dv * 0.3048, visitSource),
+  pitch: doc(pitch, visitSource),
+  yaw: doc(yaw, visitSource),
+  duration: doc(seconds, visitSource),
+});
+
 export const flight: Flight = {
   docking: {
     jets: [{ body: 1, node: 'AgenaEngine_Extension', radius: 16.5 * 0.0254, main: true, tip: true }],
     controls: geminiControls,
+    visit: {
+      model: oldAgena.id,
+      label: oldAgena.name,
+      separate: get(44, 40, 16),
+      at: get(47, 26, 44),
+      brake: get(47, 39, 10),
+      hold: get(47, 59, 22),
+      eva: get(48, 40, 48),
+      mass: assumed(
+        7116 * LB,
+        'Gemini VIII mission report section 3.6 insertion; the July residual propellant is unknown. Passive target is unpowered.',
+      ),
+      elevation: doc(31, visitSource),
+      range: doc(14.2 * NMI, visitSource),
+      gap: doc(5 * 0.3048, visitSource + ' Midpoint of reported 4 to 6 ft stand-off.'),
+      attitude: doc(120, visitSource),
+      radius: doc(30 * 0.0254, 'Lockheed Agena D systems data catalog, vehicle dimensions: 60-inch tank diameter.'),
+      shaping: [
+        correction(get(27, 45, 36), 9.7, 0, 0, 10),
+        correction(get(41, 4, 26), 16, 0, -90, 20),
+        correction(get(41, 35, 50), 4.4, 0, 180, 4),
+      ],
+      corrections: [
+        correction(get(44, 40, 16), 2, 0, 0, 3),
+        correction(get(45, 54, 1), 4.2, 65, -53, 6),
+        correction(get(46, 9, 29), 10.64, -85, 0, 15),
+      ],
+      terminal: [
+        correction(get(47, 26, 44), 22.3, 31, 0, 26),
+        correction(get(47, 34, 10), 4.4, 44, 3, 9),
+        correction(get(47, 38, 58), 0.9, 56, 9, 1.2),
+      ],
+    },
     retractTime: doc(5, REPORT + ', section 7.1.2.6.1, crew reported approximately five seconds'),
     massProperties: dockingProperties(REPORT, 104.68, 343.7, 7184),
     burns: [
