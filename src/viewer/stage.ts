@@ -1038,7 +1038,14 @@ export class Stage {
     const clear: THREE.Mesh[] = [];
     object.traverse((o) => {
       const mesh = o as THREE.Mesh;
-      if (!mesh.isMesh) return;
+      if (!mesh.isMesh) {
+        // GLTFLoader expands a multi-material mesh into a group of drawable primitives.
+        // Its extras stay on the group. Give each primitive the authored shell flag.
+        if (o.userData.shell) {
+          for (const child of o.children) if ((child as THREE.Mesh).isMesh) child.userData.shell = o.userData.shell;
+        }
+        return;
+      }
       mesh.castShadow = mesh.receiveShadow = true;
       const shell = Boolean(mesh.userData.shell);
       const mat = mesh.material as THREE.MeshStandardMaterial;
@@ -1120,6 +1127,9 @@ export class Stage {
     this.dirty = true;
     this.onCutaway(on);
     const at = this.main?.position ?? new THREE.Vector3();
+    const [x, z] = this.def?.cutawayQuadrant ?? [-1, 1];
+    this.cutPlanes[0]!.normal.set(-x, 0, 0);
+    this.cutPlanes[1]!.normal.set(0, 0, -z);
     for (const plane of this.cutPlanes) plane.constant = -plane.normal.dot(at);
     const whole = on && this.lifted.flying && this.def?.id === this.ascent?.model;
     // only the section's own model opens (and only its full level has an inside to show)

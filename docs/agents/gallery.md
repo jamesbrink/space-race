@@ -354,3 +354,5 @@ shows the flight that is only a vehicle (`tests/fixtures/vehicle-only`), through
 `sr.gallery` is the handle; `sr.gallery.stage` its stage. `pnpm test:places` (`tools/places-test.mjs`, with `pnpm dev`
 running) goes between the places with slow loads and real keys and checks what is promised above. `tools/shot.mjs out.png
 usa/mercury/mr-3-freedom-7/gallery "" 1440 900 --ui` takes its picture.
+
+A flight with a second crewed spacecraft may supply its deployed configuration as another model with a `galleryCraft` label. Its URL is `#<flight>/gallery/<model>`; a part or seat follows that path. The launch exhibit can carry the same hardware folded inside its adapter. The additional model has its own plinths, cutaway quadrant, crew stations, views and assembly slider.

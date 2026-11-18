@@ -581,6 +581,11 @@ export interface MechanismDef {
 
 /** One thing a flight lets you look at: its vehicle, its pad, its pilot. */
 export interface ModelDef {
+  /** A separately inspectable spacecraft in the same mission, with its own cabin and model origin. */
+  galleryCraft?: string;
+  galleryAlias?: string;
+  galleryFrom?: [number, number, number];
+  boardingLabel?: string;
   id: string;
   name: string;
   /** Relative to the site root (no leading slash): the viewer prefixes Vite's base path. */
@@ -603,6 +608,8 @@ export interface ModelDef {
   views: ViewDef[];
   /** The model has internals and flagged shells (srlib.mark_shells): offer a cutaway. */
   cutaway?: boolean;
+  /** Signs of the model X/Z quadrant to expose when its shells open. */
+  cutawayQuadrant?: [1 | -1, 1 | -1];
   /**
    * This model is a person the site can be walked as (viewer/onfoot/walk.ts): the walk starts where the
    * figure stands, at its eye height, looking the way it faces. A flight may have several.
@@ -670,6 +677,8 @@ export interface ModelDef {
   wide?: boolean;
   /** Which spec groups are this model's: they are listed first. */
   specGroups?: string[];
+  /** Motor names carried by this exhibit when a flight has more than one spacecraft. */
+  motorNames?: string[];
   /**
    * The heading of its parts list (`Part.group`) under which stands what the spacecraft flew to meet: a docking
    * target, a vehicle of its own, built into this model standing on the floor beside the launch vehicle (an

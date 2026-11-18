@@ -1048,3 +1048,5 @@ is under takes one. Today the site's ground reads 13 and the globe 11; a model's
   by side in one texture, each read half a texel inside its own half), so the land reads two maps where it would read
   four. Tyuratam does, for its one table of heights and ways (`uWorks`, missions/ussr/places/tyuratam/works.ts): 12 units. The Cape reads 13.
 - The output pass reads 13 (the clouds' composite 12, the glow 1) and is not lit: it is outside the budget, but is not to grow past 16.
+
+In a Lineup exhibit, a top-level group marked `lineup_enclosed` stays completely enclosed in both the launch vehicle and spacecraft-only configurations. The Lineup omits its meshes when building its GPU geometry. The Gallery retains those parts, including the folded LM-3 in its adapter, at the normal inspection detail.
