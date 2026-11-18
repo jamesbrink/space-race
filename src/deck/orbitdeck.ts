@@ -17,9 +17,11 @@ import {
 import { type AbortMode, abortAt, clockAt, eventOf, type FlightPlan, flownByHand } from '../sim/plan.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
 import { due, onRails } from '../sim/rails.ts';
-import { aboutAxis, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
+import { aboutAxis, conjugate, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
 import {
+  attitudeBetween,
   coastContacts,
+  either,
   descentRecords,
   firesOf,
   grown,
@@ -1015,11 +1017,16 @@ export class OrbitDeck extends Deck {
   /** The hand controls free: the timer's burn given up, the attitude the hand's from this instant (and the flight flown again without that burn). */
   private freeHands(why: string | null): void {
     this.free = true;
+    const t = this.clock.t;
+    const [a, b, k] = either(this.run!.samples as LiveSample[], t);
+    const attitude = attitudeBetween(a, b, k);
+    const drift = this.encounters?.contacts.rotation?.(t);
+    const q = drift ? multiply(attitude, conjugate(drift.delta)) : attitude;
+    this.hand = { q, t, log: [{ t, q }] };
     if (why !== null) this.refly();
+    else this.drawHands();
     // (the timer's burn given up: nothing of the descent happens until a hand fires the engine)
     for (const id of descentRecords(this.flight.plan!)) this.times[id] = Infinity;
-    const s = this.sampleAt(this.clock.t);
-    this.hand = { q: s.attitude, t: s.t, log: [{ t: s.t, q: s.attitude }] };
     if (why) this.host.say?.('Hand controls free', why);
     this.show();
   }
@@ -1038,7 +1045,16 @@ export class OrbitDeck extends Deck {
     const samples = this.samplesOf(plan, baseline);
     this.handSamples(samples, shipOf(plan));
     const dropped = this.coastDrops(plan, baseline);
-    this.encounters = coastContacts(this.flight, plan, samples, from.t, dropped, this.run?.sheds, this.centre);
+    this.encounters = coastContacts(
+      this.flight,
+      plan,
+      samples,
+      from.t,
+      dropped,
+      this.run?.sheds,
+      this.centre,
+      user ? this.state?.w : undefined,
+    );
     const whole = flyOn(plan, site, this.frame, sea, ascent, from, hands, 1, this.encounters.contacts);
     this.nextImpact = 0;
     while (this.nextImpact < this.encounters.hits.length && this.encounters.hits[this.nextImpact]!.t < this.clock.t - 1e-8)
@@ -1165,7 +1181,7 @@ export class OrbitDeck extends Deck {
     if (!deltaV) return;
     this.turnTo(t);
     // the long axis, in the flight's frame
-    const aim: Vec3 = turn(this.hand!.q, [1, 0, 0]);
+    const aim = this.handAxis(t);
     const plan = byHand(this.planned ?? this.flight.plan!, t, aim);
     const burn = shipOf(plan).off - t;
     this.planned = plan;
@@ -1201,7 +1217,7 @@ export class OrbitDeck extends Deck {
     const m = this.nextMove();
     if (!m) return;
     this.turnTo(t);
-    const axis: Vec3 = turn(this.hand!.q, [1, 0, 0]);
+    const axis = this.handAxis(t);
     this.planned = movedTo(this.flight.plan!, this.planned ?? this.givenUp(), this.moved.length, t, axis);
     this.moved.push(t);
     this.refly();
@@ -1246,20 +1262,27 @@ export class OrbitDeck extends Deck {
   private handSamples(samples: LiveSample[], ship: ReturnType<typeof shipOf>) {
     const t = this.fired;
     const parts = ship.parted;
-    if (t !== null && this.hand) {
+    if (this.hand && (t !== null || this.free)) {
       // as the hand turned it, to the burn's end; then as the hand left it, until the modules part; then turning from there
       // over half a minute to lie along its motion through the air, as the record's rule turns it (staged.ts recordSamples)
       const log = this.hand.log;
       const left = log.at(-1)!.q;
+      let i = 0;
       for (const sample of samples) {
-        if (sample.t < log[0]!.t) continue;
+        if (sample.riding || sample.t < log[0]!.t) continue;
         let q: Quat;
-        if (sample.t <= Math.min(ship.off, parts)) q = (log.filter((k) => k.t <= sample.t).at(-1) ?? log[0]!).q;
-        else if (sample.t < parts) q = left;
-        else q = towards(left, sample.attitude, Math.min(1, (sample.t - parts) / 30));
+        if (t === null || sample.t <= Math.min(ship.off, parts)) {
+          while (i + 1 < log.length && log[i + 1]!.t <= sample.t) i++;
+          q = log[i]!.q;
+        } else if (sample.t < parts) q = left;
+        else {
+          const base = sample.rotation ? multiply(sample.attitude, conjugate(sample.rotation.delta)) : sample.attitude;
+          q = towards(left, base, Math.min(1, (sample.t - parts) / 30));
+        }
+        if (sample.rotation) q = multiply(q, sample.rotation.delta);
         sample.attitude = q;
         sample.axis = turn(q, [1, 0, 0]);
-        if (!sample.riding) sample.r = sub(sample.centre, scale(sample.axis, this.centre));
+        sample.r = sub(sample.centre, scale(sample.axis, this.centre));
       }
     }
   }
@@ -1548,6 +1571,19 @@ export class OrbitDeck extends Deck {
     this.host.fly(this.run);
   }
 
+  private drawHands(): void {
+    const run = this.run!;
+    const samples = (run.samples as LiveSample[]).map((s) => ({ ...s }));
+    this.handSamples(samples, shipOf(this.planned ?? this.flight.plan!));
+    this.run = { ...run, samples, fires: this.fires() };
+    this.host.fly(this.run);
+  }
+
+  private handAxis(t: number): Vec3 {
+    const drift = this.encounters?.contacts.rotation?.(t);
+    return turn(drift ? multiply(this.hand!.q, drift.delta) : this.hand!.q, [1, 0, 0]);
+  }
+
   /** Turn the hand's attitude on to `t` by the keys held and the finger's stick. */
   private turnTo(t: number): void {
     const h = this.hand;
@@ -1598,15 +1634,9 @@ export class OrbitDeck extends Deck {
       this.impact(this.encounters.hits[this.nextImpact++]!);
     if (!this.free && this.mine === null && this.fired === null && this.downMine === null) this.planHands(t);
     if (this.free && this.fired === null && this.hand) {
+      const logged = this.hand.log.length;
       this.turnTo(t);
-      // the turned attitude is what the scene shows from here on
-      const samples = this.run.samples as LiveSample[];
-      const copy = samples.map((s) =>
-        s.t >= this.hand!.log[0]!.t ? { ...s, attitude: this.hand!.q, axis: turn(this.hand!.q, [1, 0, 0]) } : s,
-      );
-      // (and the timer's burn given up: the braking engine does not fire at the record's instant)
-      this.run = { ...this.run, samples: copy, fires: this.fires() };
-      this.host.fly(this.run);
+      if (logged !== this.hand.log.length) this.drawHands();
     }
     if (t > this.over() + 12) {
       this.clock.pause();
@@ -1680,7 +1710,7 @@ export class OrbitDeck extends Deck {
         touched = met.r !== s.r;
         if (touched) {
           this.kept = keepContact(run.samples, this.kept, was, s, met.hits, (state) => v.sample(state, centre));
-          s = { ...s, r: met.r, v: met.v };
+          s = { ...s, r: met.r, v: met.v, q: met.q, w: met.w };
         }
         for (const hit of [...met.hits, ...run.sheds.siblings(was.t, s.t)]) this.impact(hit);
       }

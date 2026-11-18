@@ -19,7 +19,7 @@ import { ballisticOf, flownOnce, type Sample, sampleAt } from './fly.ts';
 import { flyLoose, type LooseFlown } from './loose.ts';
 import { type CoastContacts, coastEvents, coastOf, shipOf } from './orbital.ts';
 import { type Action, type EventDef, eventOf, type FlightPlan } from './plan.ts';
-import { nlerp, type Quat, turn } from './rigid.ts';
+import { type CoastRotation, conjugate, IDENTITY, multiply, nlerp, type Quat, rotateFor, turn } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 import type { State } from '../world/orbit.ts';
 import { wavesOf } from './sea.ts';
@@ -213,6 +213,14 @@ export function between(samples: readonly Sample[], t: number, point: (s: Sample
   return { r, v };
 }
 
+/** A spinning spacecraft can turn many revolutions between orbital samples. Interpolate its
+ * commanded attitude, then apply the analytic angular drift from the last impact. */
+export function attitudeBetween(a: LiveSample, b: LiveSample, k: number): Quat {
+  if (!a.rotation || !b.rotation) return nlerp(a.attitude, b.attitude, k);
+  const base = nlerp(multiply(a.attitude, conjugate(a.rotation.delta)), multiply(b.attitude, conjugate(b.rotation.delta)), k);
+  return multiply(base, rotateFor(a.rotation.delta, a.rotation.rates, k * (b.t - a.t)));
+}
+
 /** Keep the active ascent body's path on both sides of every impulse inside a physics tick.
  * The vehicle supplies its own samples so its centre, drawing datum and attitude stay together. */
 export function keepContact<S extends State & { t: number; q: Quat; w: Vec3 }>(
@@ -220,13 +228,15 @@ export function keepContact<S extends State & { t: number; q: Quat; w: Vec3 }>(
   kept: number,
   before: S,
   free: S,
-  hits: readonly { t: number; dv: Vec3 }[],
+  hits: readonly { t: number; dv: Vec3; dw: Vec3 }[],
   sample: (state: S) => LiveSample,
 ): number {
   samples.length = kept;
   if (samples.at(-1)!.t < before.t) samples.push(sample(before));
   let dr: Vec3 = [0, 0, 0];
   let dv: Vec3 = [0, 0, 0];
+  let dw: Vec3 = [0, 0, 0];
+  let rotation = IDENTITY;
   let previous = before.t;
   // The contact solver sweeps linearly between tick endpoints.
   for (const hit of [...hits].sort((a, b) => a.t - b.t)) {
@@ -235,11 +245,15 @@ export function keepContact<S extends State & { t: number; q: Quat; w: Vec3 }>(
     dr = add(dr, scale(dv, t - previous));
     const r = add(add(before.r, scale(sub(free.r, before.r), k)), dr);
     const v = add(add(before.v, scale(sub(free.v, before.v), k)), dv);
-    const state = { ...free, t, r, v, q: nlerp(before.q, free.q, k), w: add(before.w, scale(sub(free.w, before.w), k)) };
+    rotation = rotateFor(rotation, dw, t - previous);
+    const q = multiply(nlerp(before.q, free.q, k), rotation);
+    const w = add(add(before.w, scale(sub(free.w, before.w), k)), dw);
+    const state = { ...free, t, r, v, q, w };
     const incoming = sample(state);
     if (samples.at(-1)!.t < t) samples.push(incoming);
     dv = add(dv, hit.dv);
-    samples.push(sample({ ...state, v: add(v, hit.dv) }));
+    dw = add(dw, hit.dw);
+    samples.push(sample({ ...state, v: add(v, hit.dv), w: add(w, hit.dw) }));
     previous = t;
   }
   return samples.length;
@@ -251,11 +265,16 @@ export function keepContact<S extends State & { t: number; q: Quat; w: Vec3 }>(
 export function orbitalRelease(plan: FlightPlan, def: ShedBody, samples: readonly LiveSample[], t: number, thrust?: number, mass?: number) {
   if (!def.mass || !def.centre || !def.gyration) return null;
   const [a, b, k] = either(samples, t);
-  const q = nlerp(a.attitude, b.attitude, k);
+  const q = attitudeBetween(a, b, k);
   const axis = turn(q, [1, 0, 0]);
   const w = add(scale(a.rates, 1 - k), scale(b.rates, k));
   const { r, v } = between(samples, t);
   const station = def.centre.value;
+  // A riding sample's velocity is the stack base's. In coast it belongs to the capsule COM,
+  // while the model datum swings about that COM with the attitude.
+  const coasting = !a.riding && length(w) > 0;
+  const arm = coasting ? station - dot(sub(a.centre, a.r), a.axis) : station;
+  const point = coasting ? between(samples, t, (s) => (s as LiveSample).centre).r : r;
   const m = mass ?? def.mass.value;
   const push = plan.craft[0]!.joints.find((j) => j.id === def.on)?.push ?? def.push;
   return apart(
@@ -263,8 +282,8 @@ export function orbitalRelease(plan: FlightPlan, def: ShedBody, samples: readonl
     {
       on: def.on,
       t,
-      r: add(r, scale(axis, station)),
-      v: add(add(v, turn(q, cross(w, [station, 0, 0]))), scale(axis, (def.forward ? 1 : -1) * (push?.value ?? 0))),
+      r: add(point, scale(axis, arm)),
+      v: add(add(v, turn(q, cross(w, [arm, 0, 0]))), scale(axis, (def.forward ? 1 : -1) * (push?.value ?? 0))),
       q,
       w,
       mass: m,
@@ -287,8 +306,24 @@ export function coastContacts(
   dropped: number[],
   previous: Sheds | undefined,
   centre: number,
+  startRates?: Vec3,
 ) {
   const sheds = new Sheds(plan, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) });
+  if (previous && previous.activeBrokenAt <= start) sheds.activeBrokenAt = previous.activeBrokenAt;
+  const turns: (CoastRotation & { t: number })[] = [];
+  if (startRates && length(startRates)) turns.push({ t: start, delta: IDENTITY, rates: startRates });
+  function rotation(t: number, incoming = false): CoastRotation | undefined {
+    let lo = 0,
+      hi = turns.length;
+    while (lo < hi) {
+      const mid = (lo + hi) >> 1;
+      const when = turns[mid]!.t;
+      if (when < t || (!incoming && when === t)) lo = mid + 1;
+      else hi = mid;
+    }
+    const last = turns[lo - 1];
+    return last && { delta: rotateFor(last.delta, last.rates, t - last.t), rates: last.rates };
+  }
   const pending: { def: ShedBody; t: number }[] = [];
   const near = new Set<string>();
   const flying = new Set<string>();
@@ -310,14 +345,25 @@ export function coastContacts(
   const offset = scale(outgoing.axis, centre);
   const pose = (state: State, t: number) => {
     const [a, b, k] = either(samples, t);
-    const q = nlerp(a.attitude, b.attitude, k);
-    return { ...state, r: add(state.r, offset), t, q, station: centre, w: [0, 0, 0] as Vec3, mass: a.mass };
+    const drift = rotation(t);
+    const base = nlerp(a.attitude, b.attitude, k);
+    const q = drift ? multiply(base, drift.delta) : base;
+    return { ...state, r: add(state.r, offset), t, q, station: centre, centre, w: drift?.rates ?? ([0, 0, 0] as Vec3), mass: a.mass };
   };
   function release(t: number, state: State) {
     while (pending.length && pending[0]!.t <= t + 1e-8) {
       const { def, t: when } = pending.shift()!;
       const p = pose(state, t);
-      const sample = { ...either(samples, when)[0], t: when, r: sub(p.r, turn(p.q, [centre, 0, 0])), v: p.v, attitude: p.q, rates: p.w };
+      const sample = {
+        ...either(samples, when)[0],
+        t: when,
+        centre: p.r,
+        r: sub(p.r, turn(p.q, [centre, 0, 0])),
+        v: p.v,
+        attitude: p.q,
+        axis: turn(p.q, [1, 0, 0]),
+        rates: p.w,
+      };
       const out = orbitalRelease(plan, def, [sample], when);
       if (out) {
         sheds.add(out);
@@ -327,9 +373,13 @@ export function coastContacts(
     }
   }
   const contacts: CoastContacts = {
+    rotation,
     limit(t) {
       const next = pending.find((p) => p.t > t + 1e-8);
-      return Math.min(next ? next.t - t : Infinity, near.size || (pending[0] && pending[0].t <= t + 1e-8) ? 0.1 : Infinity);
+      const latest = turns.at(-1);
+      const angularStep = latest ? Math.PI / (2 * length(latest.rates)) : Infinity;
+      const local = near.size || (pending[0] && pending[0].t <= t + 1e-8);
+      return Math.min(next ? next.t - t : Infinity, local ? Math.min(0.1, angularStep) : Infinity);
     },
     advance(before, from, after, to, impulse) {
       release(from, before);
@@ -337,6 +387,7 @@ export function coastContacts(
       const a = pose(before, from);
       let b = pose(after, to);
       let changed = false;
+      const torques: { t: number; dw: Vec3 }[] = [];
       for (const on of flying) {
         const run = sheds.get(on)!;
         const last = run.at(to)!;
@@ -361,11 +412,16 @@ export function coastContacts(
         const met = sheds.meet(a, b, centre, on);
         if (met.hits.length) impulse?.(met.hits[0]!.t, met.hits[0]!.dv);
         changed ||= met.r !== b.r;
-        b = { ...b, r: met.r, v: met.v };
+        b = { ...b, r: met.r, v: met.v, q: met.q, w: met.w };
+        for (const h of met.hits) if (length(h.dw)) torques.push(h);
         for (const h of met.hits) {
           const prev = hits.at(-1);
-          if (!prev || prev.on !== on || h.t - prev.t > 0.5) hits.push(h);
+          if (h.activeBroken || h.broken?.length || !prev || prev.on !== on || h.t - prev.t > 0.5) hits.push(h);
         }
+      }
+      for (const h of torques.sort((a, b) => a.t - b.t)) {
+        const was = rotation(h.t);
+        turns.push({ t: h.t, delta: was?.delta ?? IDENTITY, rates: was ? add(was.rates, h.dw) : h.dw });
       }
       hits.push(...sheds.siblings(from, to, flying));
       return !changed ? after : { r: sub(b.r, offset), v: b.v };

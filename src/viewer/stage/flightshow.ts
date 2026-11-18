@@ -7,6 +7,7 @@ import { P0 } from '../../world/bodies.ts';
 import type { Clock } from '../../world/clock.ts';
 import type { Run } from '../../sim/run.ts';
 import { Ascent } from '../ascent.ts';
+import { BreakupFragment, fragmentPieces, type FragmentPiece, separableBranches } from '../breakup.ts';
 import { Flooding } from '../flooding.ts';
 import type { LineState, Recovery } from '../recovery.ts';
 import { siteFrame, type Vec3 } from '../../world/frames.ts';
@@ -161,6 +162,7 @@ export class FlightShow {
 
   /** Take up another flight: its run, nothing shed, its fires hung afresh (the last flight's parachutes and jets taken away). */
   load(flight: FlightData): void {
+    this.restoreFragments();
     this.followed = null;
     this.shedCraft = null;
     this.crafted = null;
@@ -427,6 +429,7 @@ export class FlightShow {
    * has it at the clock's instant, and does what follows from its having moved.
    */
   stand(): void {
+    this.restoreFragments();
     const s = this.flier;
     const def = this.h.defs().find((m) => m.id === this.ascent?.model);
     if (!s || !def) return;
@@ -511,7 +514,9 @@ export class FlightShow {
       this.h.renderer.shadowMap.needsUpdate = true;
       this.lifted.shrank = flying;
     }
+    this.restoreFragments((f) => !flying || t < f.at || f.at !== ascent.brokenAt(f.source));
     this.fall(ascent, s, pad, t, flying);
+    if (flying) this.breakup(ascent, s, def, pad, t);
     this.hang(ascent, s, pad, t, flying);
     this.burnFires(ascent, t); // (their flicker is the clock's: the same instant is the same fire)
     this.layTrail(ascent, pad, t, flying);
@@ -731,6 +736,95 @@ export class FlightShow {
     // what the view was following is no longer there (the clock put back before it left, the flight begun again): back to the vehicle
     const followed = this.followed;
     if (followed !== null && !this.debris.some((d) => d.drop === followed && d.holder.visible)) this.followShed(null);
+  }
+
+  private readonly fragments: BreakupFragment[] = [];
+
+  private restoreFragments(when: (f: BreakupFragment) => boolean = () => true) {
+    for (let i = this.fragments.length - 1; i >= 0; i--) {
+      const f = this.fragments[i]!;
+      if (!when(f)) continue;
+      f.restore();
+      this.fragments.splice(i, 1);
+      this.h.oweShadows();
+    }
+  }
+
+  private breakup(ascent: Ascent, s: Staged, def: ModelDef, pad: THREE.Quaternion, t: number) {
+    const root = this.h.root();
+    if (!root) return;
+    const drops = this.flightData?.flies?.drops ?? [];
+    const add = (source: number | 'active', at: number, pieces: FragmentPiece[]) => {
+      for (const [i, piece] of pieces.entries()) {
+        // A fixed local drift opens a visible gap, including for a part centred on the long axis.
+        const outward = new THREE.Vector3(piece.centre.x, 0.4, piece.centre.z);
+        if (outward.lengthSq() < 0.25) outward.set(i % 2 ? -1 : 1, 0.3, 0.5);
+        const motion = ascent.fragmentMotion(source, at, pad, piece.centre, outward.normalize());
+        if (motion) this.fragments.push(new BreakupFragment(source, at, piece, motion, root));
+      }
+      if (pieces.length) this.h.oweShadows();
+    };
+    const activeAt = ascent.brokenAt('active');
+    if (!ascent.activeReleased && t >= activeAt && !this.fragments.some((f) => f.source === 'active')) {
+      const scheduled = new Set(drops.flatMap((d) => d.nodes));
+      const external = def.parts
+        .filter((p) => !p.inside && !scheduled.has(p.node))
+        .flatMap((p) => {
+          const node = s.full.getObjectByName(p.node);
+          // Keep scheduled releases and their descendants in the ordinary staging path.
+          for (let a = node; a; a = a.parent ?? undefined) if (scheduled.has(a.name)) return [];
+          if (!node || [...scheduled].some((name) => node.getObjectByName(name))) return [];
+          return [node];
+        });
+      const pieces = fragmentPieces(external, s.group, 1);
+      if (pieces[0] && pieces[0].size > 2) {
+        const finer = fragmentPieces(separableBranches(pieces[0].node), s.group, 1);
+        if (finer.length) pieces.splice(0, 1, ...finer);
+      }
+      add('active', activeAt, pieces);
+    }
+    for (const drop of new Set(this.debris.map((d) => d.drop))) {
+      const at = ascent.brokenAt(drop);
+      if (!(t >= at) || this.fragments.some((f) => f.source === drop)) continue;
+      const sources = this.debris.filter((d) => d.drop === drop);
+      const pieces = sources.flatMap((d) => {
+        const branches = separableBranches(d.node);
+        return fragmentPieces(branches, d.holder, Math.min(2, branches.length - 1), d.rel);
+      });
+      // A stack joined from separate single-mesh parts still has whole parts to shed.
+      if (!pieces.length && sources.length > 1) {
+        const d = sources[0]!;
+        pieces.push(...fragmentPieces([d.node], d.holder, 1, d.rel));
+      }
+      add(drop, at, pieces.slice(0, 3));
+    }
+    for (const f of this.fragments) {
+      if (f.source === 'active') f.hideLowerLevels(s.group, s.full);
+      f.place(t);
+    }
+  }
+
+  /** Where the visible breakup pieces actually are in the scene, in the site's metre coordinates. */
+  breakupReport(): { source: string; name: string; at: number; position: number[]; physical: boolean }[] {
+    const drops = this.flightData?.flies?.drops ?? [];
+    const out = this.fragments.map((f) => ({
+      source: f.source === 'active' ? 'active' : (drops[f.source]?.on ?? String(f.source)),
+      name: f.piece.node.name,
+      at: f.at,
+      position: f.position.toArray() as number[],
+      physical: false,
+    }));
+    const released = this.ascent?.activeReleased;
+    const at = this.ascent?.brokenAt('active') ?? Infinity;
+    if (released && this.lifted.t >= at) {
+      const d = this.debris.find((d) => drops[d.drop]?.on === released && d.holder.visible);
+      if (d) {
+        const central = fragmentPieces([d.node], d.holder, 1)[0]?.centre;
+        if (central)
+          out.push({ source: 'active', name: d.node.name, at, position: central.applyMatrix4(d.holder.matrix).toArray(), physical: true });
+      }
+    }
+    return out;
   }
 
   /** What drop `i` rides a descent on, as `fall` measured it (its first node's), for `Ascent.hangerAt`. */

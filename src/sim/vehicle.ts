@@ -105,6 +105,7 @@ import { ENTRY_G, loadsOf, type Strain, strain, tearOf, UNSTRAINED } from './loa
 import type { Action, ChuteDef, FlightPlan } from './plan.ts';
 import {
   aboutAxis,
+  type CoastRotation,
   euler,
   fixedAndFluid,
   fromAxes,
@@ -236,6 +237,7 @@ export interface Tear {
 
 /** A sample as fly.ts gives them, and how the body lies. */
 export interface LiveSample extends Sample {
+  rotation?: CoastRotation;
   /** The parachute now out, as the state has it: what looks ahead (predict.ts) starts from it, filling or torn as it is. */
   chute: { full: number; was: number; at: number; fills: number };
   /** The long axis in the frame that does not turn, and the whole attitude (body to frame). */
@@ -253,6 +255,8 @@ export interface LiveSample extends Sample {
   tanks: { oxidizer: number; fuel: number } | null;
   /** The centre of mass, where `r` is the point fly.ts flies (see `Vehicle.sample`); once the spacecraft has left, its own, tower or no tower. */
   centre: Vec3;
+  /** Physical centre of mass when the drawing reference is the capsule alone. */
+  massCentre?: Vec3;
   /** The stack's bending load as a fraction of its limit (sim/loads.ts), and the load across the long axis, g. */
   strain: number;
   lateral: number;
@@ -275,6 +279,8 @@ export interface Vehicle {
   start(): VehicleState;
   /** One tick. */
   tick(state: VehicleState, controls: Controls | Pilot): VehicleState;
+  /** Release an external pack from a free capsule after a hard contact, if still attached. */
+  impactRelease(state: VehicleState): VehicleState;
   /** A frame of `dt` seconds: as many whole ticks as it and the last frame's remainder hold. A pilot is asked afresh every tick. */
   step(state: VehicleState, controls: Controls | Pilot, dt: number): VehicleState;
   /**
@@ -1203,6 +1209,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
       rates: s.w,
       alpha: f.airspeed > 1e-6 ? angleBetween(axis, f.wind) / DEG : 0,
       centre,
+      ...(centre !== s.r ? { massCentre: s.r } : {}),
       chute: s.chute,
       strain: hasLeft(s.craft, roles.booster.id) ? 0 : s.strain.load,
       lateral: s.held ? 0 : loadsOf(unturn(s.q, f.force), s.mass, f.q, 0).lateral,
@@ -1242,6 +1249,12 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     programme,
     start,
     tick,
+    impactRelease(state) {
+      if (!state.separation || !pack || hasLeft(state.craft, roles.pack)) return state;
+      const next = { ...state };
+      dropPack(next);
+      return next;
+    },
     step(state, controls, dt) {
       let s = state;
       // Whole ticks, counted: the time owed since the tick the last frame ended on, by the same sum however it was cut up
