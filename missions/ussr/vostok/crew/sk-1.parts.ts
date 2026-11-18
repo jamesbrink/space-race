@@ -47,6 +47,7 @@ export interface Suit {
   mirror: Worn<boolean>;
   /** What the figure in the model is, where it is not built to the wearer's own measure: said in the torso's text. */
   standsIn?: string;
+  bootCovers?: Worn<boolean>;
 }
 
 const crewParts = (helmet: PartWords, suit: Suit): Part[] => {
@@ -123,8 +124,12 @@ const crewParts = (helmet: PartWords, suit: Suit): Part[] => {
     {
       node: 'Boots',
       name: 'Boots',
-      summary: 'Black laced leather, worn over the suit’s feet.',
-      detail: 'Ordinary-looking high boots, laced on hooks, pulled on over the feet of the pressure suit.',
+      summary: suit.bootCovers?.value
+        ? 'Loose white cloth overshoes for the walk to the pad.'
+        : 'Black laced leather, worn over the suit’s feet.',
+      detail: suit.bootCovers?.value
+        ? suit.bootCovers.source
+        : 'Ordinary-looking high boots, laced on hooks, pulled on over the feet of the pressure suit.',
       explode: [0, 0, 0],
       order: 0,
     },

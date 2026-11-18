@@ -22,7 +22,7 @@ from srlib import CM, run  # noqa: E402
 
 def build() -> str:
     sk_1.wear(sk_1.TERESHKOVA)
-    height = sk_1.build()
+    height = sk_1.build(covered_boots=True)
     return f"standing height {height:.3f} m in helmet and boots, pilot {sk_1.STATURE * CM:.3f} m, helmet {2 * sk_1.HELMET_R * CM:.3f} m across"
 
 
