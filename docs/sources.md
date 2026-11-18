@@ -1600,3 +1600,17 @@ none is copied: the shapes are drawn anew from these.
 The Soviet programmes (Vostok, Voskhod, Soyuz) had no patch: their emblems are this site's own line drawings of the spacecraft
 (the sphere on its instrument module; the same with the Voskhod's reserve retro-rocket on top; Soyuz's three modules and its
 two wings), and say so wherever they are shown.
+
+## Soyuz 1 gallery
+
+| Source | What it fixes | Limit |
+| --- | --- | --- |
+| [Gagarin Cosmonaut Training Center, 7K-OK](https://www.gctc.ru/main.php?id=299), including its [labelled cutaway](https://www.gctc.ru/media/images/education/spacecraft/tk_7k-ok.jpg) | Body length, diameters, descent module length, orbital hull and side hatch, green glass cloth, active/passive docking, equipment and folded wing | Type description covering several ships. Its infrared vertical sensor first flew on No. 7 |
+| [RKK Energia, corporate history 1946–1996](https://testpilot.ru/espace/bibl/energia-50/05.php), pp. 157–195 | Approximate length, living-compartment diameter, maximum diameter, solar-cell area | Published length differs from GCTC's body-length figure. The points measured are unresolved |
+| [Komarov's recorded ground exchanges, Historical Archive 2 (2002)](https://imwerden.de/pdf/istorichesky_archiv_2002_2__ocr.pdf), pp. 32, 35 | Pilot sees the right wing unfold and reports on both wings and antennas | Identifies deployment state, with no deployed panel drawing |
+| [Moscow Museum of Cosmonautics, Galina Balashova collection](https://kosmo-museum.ru/news/sovetskiy-kosmicheskiy-arhitektor-galina-balashova-peredala-v-fondy-muzeya-kollektsiyu-svoih-rabot) | Original orbital compartment's bench and sideboard conception | Design record, no installation survey of No. 4 |
+| [TASS launch communiqué, NASA translation ST-PR-10595](https://ntrs.nasa.gov/citations/19670017082) | Announced launch time and preliminary orbit | Preliminary figures |
+| [RKK Energia 11A511 dimensioned section reproduced by Drew LePage](https://www.drewexmachina.com/2017/04/26/soyuz-1-tragedy/) | Original launcher and shroud proportions | Fine details of serial hardware are unresolved |
+| [RKK Energia training photograph, Earth and Universe 2020 no. 4, p. 99](https://epizodyspace.ru/bibl/zemlya_i_vselennaya/2020/4/94-108.pdf) and RGANTD portrait no. 0-151 ЦВ, printed p. 34 of the transcript above | Komarov's early Soyuz training environment and headset | Training photograph and portrait, neither is an inventory of clothing flown |
+| [Sven Grahn, Soyuz Radio Systems](https://planet4589.org/space/archive/sven/histind/Soyuz1Land/SoyRadio.htm) | Early 7K-OK wingtip telemetry loop and long forward shortwave antenna, illustrated. Grahn also inspected the Soyuz 4/5 exhibition hardware | Type configuration. Exact dimensions and deployment of No. 4’s individual aerial elements are estimated |
+| [Yuri Tyapchenko, Sirius technical history](https://www.cosmoworld.ru/spaceencyclopedia/publications/soyuz7.pdf), pp. 11–13, 16–18, 21, 29–32 | Early 7K-OK front-board and KSU command panels, their instruments and arrangement, the 84 × 84 mm active CRT area | Type illustrations and photographs. Board positions, legends and readings on No. 4 are reconstructed |

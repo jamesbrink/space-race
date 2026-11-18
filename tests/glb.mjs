@@ -1,6 +1,7 @@
 // What a GLB says of itself, read from its JSON chunk alone (no geometry is decoded): shared by the tests that hold a
 // flight's data to its built models (flights.test.mjs) and a flight's own (apollo-7.test.mjs).
 import { readFileSync } from 'node:fs';
+import { Group } from 'three';
 
 /** The names of the materials of the meshes under a node of a GLB (the first of that name), or null if it has none such. */
 export function materialsUnder(file, name) {
@@ -74,4 +75,26 @@ export function framesOf(file) {
       return { lo, hi };
     },
   };
+}
+
+/** Scene graph with the exported transforms, for exercising gallery part motions without decoding the meshes. */
+export function hierarchy(gltf) {
+  function read(index) {
+    const node = gltf.nodes[index];
+    const frame = new Group();
+    frame.name = node.name;
+    if (node.matrix) {
+      frame.matrix.fromArray(node.matrix).decompose(frame.position, frame.quaternion, frame.scale);
+    } else {
+      if (node.translation) frame.position.fromArray(node.translation);
+      if (node.rotation) frame.quaternion.fromArray(node.rotation);
+      if (node.scale) frame.scale.fromArray(node.scale);
+    }
+    frame.userData.mesh = node.mesh;
+    for (const child of node.children ?? []) frame.add(read(child));
+    return frame;
+  }
+  const scene = new Group();
+  for (const index of gltf.scenes[gltf.scene ?? 0].nodes) scene.add(read(index));
+  return scene;
 }

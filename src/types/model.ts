@@ -599,6 +599,8 @@ export interface MechanismDef {
 
 /** One thing a flight lets you look at: its vehicle, its pad, its pilot. */
 export interface ModelDef {
+  /** The complete spacecraft stands inside an opaque fairing on the assembled launch vehicle. */
+  enclosedSpacecraft?: boolean;
   /**
    * A second spacecraft of the same flight, shown in the gallery as an exhibit of its own (its own cabin, cutaway,
    * views and slider): what its button there says. Its address is `#<flight>/gallery/<id>` (gallery.md).

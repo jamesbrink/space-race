@@ -124,14 +124,14 @@ def build_aft_section(X: Matrix, M: dict) -> None:
         hang(wall.build(f"AftSection_{i + 1}_Wall", M["wall"], None, sharp_angle=30), node)
 
 
-def build_block_i(X: Matrix, M: dict) -> None:
+def build_block_i(X: Matrix, M: dict, adapter: float = ADAPTER, engine: str = "RD0108") -> None:
     """The third stage: the kerosene tank over the oxygen tank, each two domes and a cylinder, an instrument bay between
     them, the four-chamber engine under a cone on the lower tank, and above them the adapter the spacecraft's frame
     rests on."""
     g = group("BlockI")
     skin, frost, wall, ribs, fit, base, bell, liner, steel, bolts = (Local(X) for _ in range(10))
     r = BLOCK_I_R
-    top = BLOCK_I_TOP
+    top = S(BLOCK_I + adapter)
     lox0, lox1 = LOX[1], LOX[3]  # (the frost is drawn to the tank's upper pole: its upper dome stands inside the skin)
     # the oxygen tank's wall is the stage's skin and is white with frost; the rest is painted
     frost_foot(skin, frost, lambda _h: r, S(lox0), 1.9)
@@ -142,7 +142,7 @@ def build_block_i(X: Matrix, M: dict) -> None:
     wall.lathe([(r - WALL, S(AFT_TOP)), (r - WALL, top - 40), (r - 130, top - 40), (r - 130, top - 6)], 96, flip=True)
     band(frost, lox0 + FROST_EDGE + 60, 16, 6)
     band(frost, lox1 - 50, 20, 6)
-    for s, half, proud in ((lox1 + 50, 20, 6), (FUEL[1] - 40, 20, 6), (FUEL[2] + 40, 20, 6), (BLOCK_I - 30, 30, 9), (BLOCK_I + ADAPTER - 60, 34, 10)):
+    for s, half, proud in ((lox1 + 50, 20, 6), (FUEL[1] - 40, 20, 6), (FUEL[2] + 40, 20, 6), (BLOCK_I - 30, 30, 9), (BLOCK_I + adapter - 60, 34, 10)):
         band(skin, s, half, proud)
     band(skin, AFT_TOP + 45, 26, 8)
     # the instrument bay between the tanks: six hatches, and a seventh for the oxygen tank's valve
@@ -167,11 +167,11 @@ def build_block_i(X: Matrix, M: dict) -> None:
     # the adapter: stringers up its length, and four spring pushers on the ledge
     for i in range(60):
         a = TAU * (i + 0.5) / 60
-        ribs.box((22, ADAPTER - 330, 30), frame(V(r * math.cos(a), r * math.sin(a), S(BLOCK_I + ADAPTER / 2 - 15)), (math.cos(a), math.sin(a), 0)))
+        ribs.box((22, adapter - 330, 30), frame(V(r * math.cos(a), r * math.sin(a), S(BLOCK_I + adapter / 2 - 15)), (math.cos(a), math.sin(a), 0)))
     for i in range(4):
         a = TAU * i / 4 + deg(22.5)
         fit.box((90, 120, 150), at((r - 60) * math.cos(a), (r - 60) * math.sin(a), top - 90) @ Matrix.Rotation(a, 4, "Z"))
-    for s in (AFT_TOP + 45, BLOCK_I - 30, BLOCK_I + ADAPTER - 60):
+    for s in (AFT_TOP + 45, BLOCK_I - 30, BLOCK_I + adapter - 60):
         for i in range(72):
             a = TAU * (i + 0.5) / 72
             bolts.disc(((r + 9) * math.cos(a), (r + 9) * math.sin(a), S(s)), (math.cos(a), math.sin(a), 0), 9, 5)
@@ -220,9 +220,9 @@ def build_block_i(X: Matrix, M: dict) -> None:
     fit.build("BlockI_Fittings", M["lacquer"], g, smooth=False)
     bolts.build("BlockI_Fasteners", M["bolt"], g)
     base.build("BlockI_Base", M["dark"], g, sharp_angle=None)
-    bell.build("RD0108_Bells", M["bell"], g, sharp_angle=35)
-    liner.build("RD0108_Liners", M["liner"], g, sharp_angle=35)
-    steel.build("RD0108_Steering", M["steel"], g, sharp_angle=35)
+    bell.build(f"{engine}_Bells", M["bell"], g, sharp_angle=35)
+    liner.build(f"{engine}_Liners", M["liner"], g, sharp_angle=35)
+    steel.build(f"{engine}_Steering", M["steel"], g, sharp_angle=35)
     if interior():
         tanks, gear, pump, cone = (Local(X) for _ in range(4))
         for lo, a, b, hi in (LOX, FUEL):
@@ -248,10 +248,13 @@ def build_block_i(X: Matrix, M: dict) -> None:
             gear.ball((880 * math.cos(a), 880 * math.sin(a), S((LOX[3] + FUEL[0]) / 2)), 250, 20, 10)
         for i in range(10):
             a = TAU * i / 10 + deg(30)
-            gear.box((200, 300, 280 + 60 * (i % 2)), at(1140 * math.cos(a), 1140 * math.sin(a), S(BLOCK_I + 420)) @ Matrix.Rotation(a, 4, "Z"))
+            gear.box(
+                (200, 300, 280 + 60 * (i % 2)),
+                at(1140 * math.cos(a), 1140 * math.sin(a), S(BLOCK_I + min(420, adapter - 220))) @ Matrix.Rotation(a, 4, "Z"),
+            )
         tanks.build("BlockI_Tanks", M["tank"], g, sharp_angle=None)
         cone.build("BlockI_EngineCone", M["inner"], g, sharp_angle=30)
-        pump.build("RD0108_Turbopump", M["engine"], g, sharp_angle=35)
+        pump.build(f"{engine}_Turbopump", M["engine"], g, sharp_angle=35)
         gear.build("BlockI_Instruments", M["equipment"], g, sharp_angle=35)
 
 

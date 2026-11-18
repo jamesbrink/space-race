@@ -49,6 +49,7 @@ from .common import (
 
 SHELL_PARTS = ("Skin", "Frost", "Shield", "InnerWall", "Fittings", "Fasteners", "Rudder", "SteeringFairings")
 CONE = math.atan2(BOOSTER_R, BOOSTER_LENGTH - BOOSTER_CYL)  # the cone's half angle, 5.63 degrees
+RUDDER_FOOT = 130.0  # lower outer corner, where the tilted rudder reaches furthest from the core
 NOSE = 19050.0  # where the cone ends in the neck that carries the ball
 STEER_AT = (1500.0, 24.0)  # each steering chamber: from the block's axis, and degrees either side of the rudder
 TAIL_SHIELD = 2700.0  # the polished steel on the side toward the core reaches this far up
@@ -173,7 +174,7 @@ def vent(X: Matrix, name: str, M: dict, skin_name: str) -> bpy.types.Object:
     return spout(f"{name}_Vent", None, F, noz.build(f"{name}_Vent_Nozzle", M["steel"], None, sharp_angle=35))
 
 
-def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
+def build(base_z: float, M: dict, letter: str, az_deg: float, *, rudder_span: float = RUDDER_SPAN) -> None:
     X = booster_frame(base_z, az_deg)
     name = f"Booster_{letter}"
     node = pivot(name, None, X @ V(0, 0, BOOSTER_LENGTH))
@@ -258,8 +259,8 @@ def build(base_z: float, M: dict, letter: str, az_deg: float) -> None:
             a = TAU * (i + 0.5) / 84
             bolts.disc(((BOOSTER_R + 5) * math.cos(a), (BOOSTER_R + 5) * math.sin(a), s), (math.cos(a), math.sin(a), 0), 9, 5)
     # the air rudder: one triangle on the outer side, which steers while the air is thick enough to bite
-    tip = BOOSTER_R + RUDDER_SPAN
-    fin(rudder, [(BOOSTER_R + 26, 130), (tip, 130), (tip, 330), (BOOSTER_R + 26, 1650)], 86, 26, BOOSTER_R, tip, Matrix.Identity(4))
+    tip = BOOSTER_R + rudder_span
+    fin(rudder, [(BOOSTER_R + 26, RUDDER_FOOT), (tip, RUDDER_FOOT), (tip, 330), (BOOSTER_R + 26, 1650)], 86, 26, BOOSTER_R, tip, Matrix.Identity(4))
     fin(
         fit,
         [(BOOSTER_R - 60, 90), (BOOSTER_R + 150, 90), (BOOSTER_R + 150, 700), (BOOSTER_R - 60, 1150)],

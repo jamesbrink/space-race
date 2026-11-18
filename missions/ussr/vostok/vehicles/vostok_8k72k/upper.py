@@ -68,12 +68,12 @@ OPENING_R = 575.0  # the round opening over hatch No. 1
 OGIVE = 14  # straight pieces in the nose's arc
 
 
-def build_interstage(X: Matrix, M: dict, top: float = TRUSS_TOP) -> None:
+def build_interstage(X: Matrix, M: dict, top: float = TRUSS_TOP, *, foot: float = CORE_TOP) -> None:
     """The lattice: Block E lights while the core is still burning, and its fire leaves between the struts.
     `top` is the station it ends at: the 11A57's, under a larger third stage, is its own (the Voskhod programme's)."""
     g = group("Interstage")
     truss, cone = Local(X), Local(X)
-    z0, z1 = CORE_TOP, top
+    z0, z1 = foot, top
     r = CORE_R_TOP - 40
     for z in (z0 + 30, z1 - 30):  # a ring at each end
         truss.lathe([(r - 45, z - 30), (r + 40, z - 30), (r + 40, z + 30), (r - 45, z + 30), (r - 45, z - 30)], 72)
