@@ -36,9 +36,19 @@ station's velocity and the stack's rotation.
 On a hand-flown flight, `sim/contact.ts` sweeps rounded collision shapes between physics samples.
 `Sheds.meet` resolves a detached part against the assembly still aboard; `Sheds.siblings` resolves
 detached parts against each other. Each impact changes both outgoing trajectories. The flight deck
-reports closing speed and the kinetic energy absorbed. The response assumes frictionless, perfectly
-inelastic normal contact. The rounded shapes approximate the hardware. Local dents, structural
-fracture, the impulse's effect on spin and crew injury are outside this model.
+reports closing speed and absorbed kinetic energy. The contact impulse acts at the point of impact.
+An off-centre impulse can exchange spin and translation. A centred impulse on bodies initially
+without spin leaves them without spin. The response assumes frictionless, perfectly inelastic normal
+contact. The rounded shapes and the moments of inertia inferred from them approximate the hardware.
+
+A sufficiently hard impact can release visible parts. The breakup threshold is a game estimate
+shared by all missions. A struck Mercury-Redstone capsule carrying its retropack can lose it through
+the same joint as a commanded jettison. Its mass and centre of mass change, and the pack flies and
+can collide as a separate body. Other visible fragments are pieces of the model on independent
+gravity trajectories. These visual pieces neither transfer simulated mass nor produce secondary
+contact impulses. The simulation does not predict material failure or crew injury.
+`pnpm test:impact` flies a controlled glancing encounter and a hard encounter through the live
+deck and checks the rendered flight going forward and back over the impact.
 
 An orbital replan carries the history up to separation and rebuilds later releases on the new coast.
 Nearby bodies use shorter steps. The broad phase also sweeps distant bodies, so a later return can

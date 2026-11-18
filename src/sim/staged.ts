@@ -67,7 +67,7 @@ import {
   publishedOf,
   shipOf,
 } from './orbital.ts';
-import { fromAxes, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
+import { fromAxes, multiply, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { nozzleThrust } from './thrust.ts';
@@ -936,9 +936,31 @@ export function recordSamples(
     ...whole.coast.samples
       // Keep both sides of the handover: the published coast can start with a different velocity.
       .filter((s) => s.t >= parted.t)
-      .map((s) => ({ t: s.t, r: s.r, v: s.v, g: s.g, q: s.q, mach: s.mach, down: false, entering: s.phase === 'entry', drawn: s.r })),
+      .map((s) => ({
+        t: s.t,
+        r: s.r,
+        v: s.v,
+        g: s.g,
+        q: s.q,
+        mach: s.mach,
+        down: false,
+        entering: s.phase === 'entry',
+        drawn: s.r,
+        rotation: s.rotation,
+      })),
     // (come through the entry, as the descent's bodies have)
-    ...descent.map((s) => ({ t: s.t, r: s.r, v: s.v, g: 1, q: 0, mach: 0, down: true, entering: true, drawn: s.drawn })),
+    ...descent.map((s) => ({
+      t: s.t,
+      r: s.r,
+      v: s.v,
+      g: 1,
+      q: 0,
+      mach: 0,
+      down: true,
+      entering: true,
+      drawn: s.drawn,
+      rotation: undefined,
+    })),
   ];
   // (heat shield first along the motion through the air; a lifting body banked is drawn at its trim, its long axis tipped
   // from there toward its lift: orbital.ts `liftOf`)
@@ -969,6 +991,7 @@ export function recordSamples(
     else if (s.t <= ship.off) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / turning));
     else if (s.t < parts) q = aimed;
     else q = toward(aimed, length(wind) > 1 ? lie(trimmed(s, wind)) : aimed, Math.min(1, (s.t - parts) / 30));
+    if (s.rotation) q = multiply(q, s.rotation.delta);
     const axis = turnQ(q, [1, 0, 0]);
     const here = frame.place(s.r, s.t);
     const at = add(s.drawn, offset);
@@ -994,6 +1017,7 @@ export function recordSamples(
       v: s.v,
       axis,
       attitude: q,
+      ...(s.rotation && { rotation: s.rotation, rates: s.rotation.rates }),
       alpha: 0,
       burning: [
         ...(s.t >= ship.on && s.t < ship.off && braking ? [{ engine: braking, thrust: 0 }] : []),

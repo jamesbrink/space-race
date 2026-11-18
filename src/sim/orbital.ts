@@ -46,6 +46,7 @@ import {
   type Hold,
 } from './plan.ts';
 import { along } from './fly.ts';
+import type { CoastRotation } from './rigid.ts';
 import { ENTRY_G } from './loads.ts';
 
 /**
@@ -482,6 +483,7 @@ export type OrbitPhase = 'orbit' | 'braking' | 'descent' | 'entry' | 'down';
 
 /** The coast at one instant. */
 export interface OrbitSample {
+  rotation?: CoastRotation;
   /** Seconds from liftoff. */
   t: number;
   phase: OrbitPhase;
@@ -966,6 +968,7 @@ export interface Coast {
 /** Local rigid-body encounters on a hand-flown coast. The scene gets the same corrected
  * position and velocity that the next integration step starts from. */
 export interface CoastContacts {
+  rotation?(t: number, incoming?: boolean): CoastRotation | undefined;
   limit(t: number): number;
   advance(before: State, from: number, after: State, to: number, impulse?: (t: number, dv: Vec3) => void): State;
 }
@@ -1046,7 +1049,8 @@ export function flyOrbit(
     at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= ENTRY_G ? 'entry' : 'descent';
 
   let phase: OrbitPhase = 'orbit';
-  const sample = (s = state, at = t): OrbitSample => {
+  const sample = (s = state, at = t, incoming = false): OrbitSample => {
+    const rotation = contacts?.rotation?.(at, incoming);
     const air = airOf(s, at);
     const here = frame.place(s.r, at);
     return {
@@ -1058,6 +1062,7 @@ export function flyOrbit(
       speed: length(s.v),
       groundSpeed: air.airspeed,
       g: length(push(s, at)) / G0,
+      ...(rotation && { rotation }),
       q: air.q,
       mach: air.mach,
       sunlit: sunlit(s.r, sunAt(at)),
@@ -1183,7 +1188,7 @@ export function flyOrbit(
         const incoming = at === as ? last : at === t ? free : step(last, as, at - as, (s, when) => pushAs(s, when, as));
         dr = add(dr, scale(dv, at - previous));
         const r = add(incoming.r, dr);
-        if (samples.at(-1)!.t < at) samples.push(sample({ r, v: add(incoming.v, dv) }, at));
+        if (samples.at(-1)!.t < at) samples.push(sample({ r, v: add(incoming.v, dv) }, at, true));
         dv = add(dv, hit.dv);
         samples.push(sample({ r, v: add(incoming.v, dv) }, at));
         previous = at;

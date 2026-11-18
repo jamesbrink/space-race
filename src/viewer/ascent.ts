@@ -4,7 +4,7 @@ import { airAt, skyOf } from '../sim/air.ts';
 import { along, axisOf, ballisticOf, type Sample } from '../sim/fly.ts';
 import { type LooseFlown, looseAt } from '../sim/loose.ts';
 import { nlerp, normalize, type Quat, spin, turn, unturn } from '../sim/rigid.ts';
-import { bearingOf, between, chuteOf, either, endOf, type Run, recordOf } from '../sim/run.ts';
+import { attitudeBetween, bearingOf, between, chuteOf, either, endOf, type Run, recordOf } from '../sim/run.ts';
 import { surfaceAt, type Wave, wavesOf } from '../sim/sea.ts';
 import { recordRelease, type ShedRun, Sheds } from '../sim/shed.ts';
 import { type LiveSample, TICK } from '../sim/vehicle.ts';
@@ -12,6 +12,7 @@ import type { ChuteDef, Flight, SitedFlight } from '../types.ts';
 import { P0 } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import {
+  add,
   cross,
   ecefToEnu,
   ecefToGeodetic,
@@ -26,6 +27,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
+import { FragmentTrack, type FragmentMotion } from './breakup.ts';
 import { fireLevel, litBetween } from './fires.ts';
 
 /**
@@ -584,6 +586,58 @@ export class Ascent {
     return this.descentLabel(i) ?? this.body(i)?.shedder.def.name ?? null;
   }
 
+  get activeReleased(): string | undefined {
+    return this.flown().sheds?.activeReleased;
+  }
+
+  brokenAt(source: number | 'active'): number {
+    const sheds = this.flown().sheds;
+    return (source === 'active' ? sheds?.activeBrokenAt : sheds?.get(this.flight.flies!.drops[source]?.on)?.brokenAt) ?? Infinity;
+  }
+
+  /** Seed a separated visual component from its own point velocity at the impact instant. */
+  fragmentMotion(
+    source: number | 'active',
+    at: number,
+    pad: THREE.Quaternion,
+    centre: THREE.Vector3,
+    outward: THREE.Vector3,
+  ): FragmentMotion | null {
+    const point = new THREE.Vector3(),
+      releaseTurn = new THREE.Quaternion();
+    const placed = source === 'active' ? this.place(at, pad, point, releaseTurn) : this.shed(source, at, pad, point, releaseTurn);
+    if (!placed) return null;
+    point.add(centre.clone().applyQuaternion(releaseTurn));
+    let state: { r: Vec3; v: Vec3; q: Quat; w: Vec3 };
+    let bodyCentre: THREE.Vector3;
+    if (source === 'active') {
+      // either takes the outgoing one of a pair of contact samples, including at the live head.
+      const [a, b, k] = either(this.flown().samples as readonly LiveSample[], at);
+      const com = (s: Sample) => (s as LiveSample).massCentre ?? (s as LiveSample).centre;
+      state = { ...between([a, b], at, com), q: attitudeBetween(a, b, k), w: add(scale(a.rates, 1 - k), scale(b.rates, k)) };
+      bodyCentre = this.where(state.r, at);
+    } else {
+      const body = this.body(source)?.at(at);
+      const held = this.carried[source];
+      if (!body || !held) return null;
+      state = body;
+      bodyCentre = this.where(body.r, at).add(held.centre).sub(held.was);
+    }
+    const earthAxis = toThree(ecefToSiteDirection(this.site, [0, 0, 1]));
+    const earthRate = length(this.frame.spin);
+    const spin = toThree(ecefToSiteDirection(this.site, this.frame.toFixed(turn(state.q, state.w), at)));
+    const v = toThree(ecefToSiteDirection(this.site, this.frame.velocityToFixed(state.r, state.v, at)));
+    v.add(spin.clone().addScaledVector(earthAxis, -earthRate).cross(point.clone().sub(bodyCentre)));
+    v.add(outward.clone().applyQuaternion(releaseTurn).multiplyScalar(3));
+    return {
+      track: new FragmentTrack(this.frame, this.site, this.flight.site.seaLevel.value, at, point, v),
+      releaseTurn,
+      earthAxis,
+      earthRate,
+      rates: spin.applyQuaternion(releaseTurn.clone().invert()),
+    };
+  }
+
   private body(i: number): ShedRun | undefined {
     const run = this.flown();
     const on = this.flight.flies!.drops[i]?.on;
@@ -917,9 +971,13 @@ export class Ascent {
     }
     const first = samples[0]!;
     const stood = this.basis(first, new THREE.Matrix4()).transpose(); // (a rotation's inverse)
-    const qa = new THREE.Quaternion().setFromRotationMatrix(this.basis(a, new THREE.Matrix4()).multiply(stood));
-    const qb = new THREE.Quaternion().setFromRotationMatrix(this.basis(b, new THREE.Matrix4()).multiply(stood));
-    this.arc.copy(qa).slerp(qb, k);
+    const spinning = a.rotation && b.rotation ? attitudeBetween(a, b, k) : undefined;
+    if (spinning) this.arc.setFromRotationMatrix(this.axes(spinning, t, new THREE.Matrix4()).multiply(stood));
+    else {
+      const qa = new THREE.Quaternion().setFromRotationMatrix(this.basis(a, new THREE.Matrix4()).multiply(stood));
+      const qb = new THREE.Quaternion().setFromRotationMatrix(this.basis(b, new THREE.Matrix4()).multiply(stood));
+      this.arc.copy(qa).slerp(qb, k);
+    }
     quaternion.copy(this.arc).multiply(padTurn);
     // (the model's origin from the stack's base, turned as the body is; and what the site stood the base on, while that lasts)
     const offset = this.along.clone().applyQuaternion(this.arc).add(this.stood(t));
@@ -938,7 +996,7 @@ export class Ascent {
     const parted = this.parted;
     const arm = unturn(parted.attitude, sub(parted.r, parted.centre));
     const centre = beyond > 0 ? a.centre : between(samples, t, (s) => (s as LiveSample).centre).r;
-    const now = turn(nlerp(a.attitude, b.attitude, k), arm);
+    const now = turn(spinning ?? nlerp(a.attitude, b.attitude, k), arm);
     const middle = toThree(ecefToSite(this.site, this.frame.toFixed(centre, t)));
     position
       .copy(middle)

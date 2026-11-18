@@ -172,6 +172,7 @@ src/
                                       the one API the page uses (`window.sr.stage`)
   viewer/stage/pipeline.ts            the frame from the scene to the screen: the passes, drawn from the eye, the drawing's resolution, the near plane fitted to what is there
   viewer/stage/cabinview.ts           the view from a seat: which is sat in (the site's on board, the gallery's exhibit), what is looked out of, the lean to it, the way in to a port
+  viewer/breakup.ts                   draws time-addressed fragments from the flight model following a simulated impact
   viewer/stage/flightshow.ts          the flight on show: the vehicle where the run has it at the clock's instant, what it sheds carried off, its descent's figures and parachutes, jets, fires and trail
   viewer/stage/framing.ts             what the camera is sent to frame (a view, a part, a place, a window) in what the controls leave clear; framed again while followed, watched once taken
   viewer/stage/picker.ts              what is under the pointer: a part, another model, a window, a place round the pad, any spot; the hierarchies picks want, made in time to spare
@@ -302,6 +303,7 @@ src/
   sim/thrust.ts                       one law of thrust for every engine: throttle times vacuum thrust, less exit area times the air's pressure
   sim/afloat.ts                       a body afloat: upright on the day's sea, flooding through its openings, hoisted, going down (`floatOn`, `Solid`)
   sim/sea.ts  sim/loose.ts            the day's waves as a function of the instant and the place; a part thrown off with no plan of its own, flown to the sea
+  sim/breakup.ts                     game rule for an impact to release parts
   sim/contact.ts                     swept spacecraft contact and its inelastic impulse
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
@@ -332,6 +334,7 @@ tools/
   lod-measure.mjs                     the measuring behind lod-thresholds.mjs, in a browser: each model and piece, at each level, against distance
   shot.mjs                            one screenshot of the viewer, for looking at a change
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
+  impact-test.mjs                     browser proof of live impact spin and structural breakup, including rewind
   separation-test.mjs                 browser check of the relative motion of released spacecraft parts in the rendered model
   flicker-test.mjs                    browser check for z-fighting
   flights-test.mjs                    browser check of going flight to flight with no reload: the right flight each time, memory and listeners back to their level, Back and Forward
@@ -388,7 +391,8 @@ tools/
                                       the pose; a suit is a garment module on top (crew/mark_iv_suit.py, crew/sk_1.py)
   blender/interiors.py                rooms' insides: what is seen through a site's windows
   blender/vehicles.py                 period road vehicles from parameters, built to be driven
-tests/                                node --test: one file per module or promise; layout.test.mjs holds this list to the tracked files
+tests/                                breakup.test.mjs checks fragment trajectories and restoring detached model nodes
+                                      node --test: one file per module or promise; layout.test.mjs holds this list to the tracked files
 ```
 
 A flight's id is its path: `usa/mercury/mr-3-freedom-7`. The same three segments locate its folder

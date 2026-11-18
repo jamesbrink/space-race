@@ -195,22 +195,32 @@ export abstract class Deck {
   };
 
   private readonly lastImpact = new Map<string, number>();
+  private readonly announcedBreakups = new Set<string>();
   private hardestImpact: Impact | null = null;
+  private breakupSeen = false;
   protected impactSummary(): string {
     const hit = this.hardestImpact;
     return hit
-      ? `<p class="cockpit-why">Largest collision: ${hit.name} at T+${hit.t.toFixed(1)} s, ${hit.speed.toFixed(2)} m/s closing and ${hit.energy.toFixed(1)} J absorbed. Structural damage is unknown.</p>`
+      ? `<p class="cockpit-why">Largest collision: ${hit.name} at T+${hit.t.toFixed(1)} s, ${hit.speed.toFixed(2)} m/s closing and ${hit.energy.toFixed(1)} J absorbed.${this.breakupSeen ? ' Parts broke free during the flight.' : ''}</p>`
       : '';
   }
   protected impact(hit: Impact): void {
     if (hit.speed < 0.005 && hit.energy < 0.05) return; // both round to zero on the deck
+    const breakup = Boolean(hit.activeBroken || hit.broken?.length);
+    if (breakup) {
+      // Replanning can return the same impact at the handover instant.
+      const event = `${hit.on}@${hit.t.toFixed(6)}`;
+      if (this.announcedBreakups.has(event)) return;
+      this.announcedBreakups.add(event);
+    }
+    this.breakupSeen ||= breakup;
     if (!this.hardestImpact || hit.energy > this.hardestImpact.energy) this.hardestImpact = hit;
     const last = this.lastImpact.get(hit.on);
     this.lastImpact.set(hit.on, hit.t);
-    if (last !== undefined && hit.t >= last && hit.t - last < 0.5) return;
+    if (!breakup && last !== undefined && hit.t >= last && hit.t - last < 0.5) return;
     this.host.say?.(
-      'Spacecraft contact',
-      `${hit.name} struck at ${hit.speed.toFixed(2)} m/s. The impact absorbed ${hit.energy.toFixed(1)} J. Structural damage is unknown.`,
+      breakup ? 'Impact breakup' : 'Spacecraft contact',
+      `${hit.name} struck at ${hit.speed.toFixed(2)} m/s. The impact absorbed ${hit.energy.toFixed(1)} J.${hit.activeBroken ? ' Parts broke free from the spacecraft.' : ''}${hit.broken?.length ? ' Detached hardware broke apart.' : ''}`,
     );
   }
 
@@ -535,7 +545,9 @@ export abstract class Deck {
   /** A run begins on the pad (the kind's `fresh`): what is done to it is written down from here, with the switches it began with. */
   protected started(): void {
     this.lastImpact.clear();
+    this.announcedBreakups.clear();
     this.hardestImpact = null;
+    this.breakupSeen = false;
     if (this.replaying) return;
     this.forget(); // (a new run: whatever was kept for this flight is let go, by starting over or by its having ended)
     this.tape = { setup: this.switches(), entries: [] };

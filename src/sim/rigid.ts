@@ -7,7 +7,7 @@
  * `v`, given in the body's axes, in the frame's. Body rates are in the body's axes, rad/s.
  */
 import type { MassPart } from '../types.ts';
-import { cross, type Vec3 } from '../world/frames.ts';
+import { cross, length, scale, type Vec3 } from '../world/frames.ts';
 
 export type Quat = readonly [w: number, x: number, y: number, z: number];
 
@@ -42,6 +42,18 @@ export const unturn = (q: Quat, v: Vec3): Vec3 => turn(conjugate(q), v);
 export function aboutAxis(axis: Vec3, angle: number): Quat {
   const s = Math.sin(angle / 2);
   return [Math.cos(angle / 2), axis[0] * s, axis[1] * s, axis[2] * s];
+}
+
+/** Advance an orientation through a constant body-frame angular velocity, in rad/s. */
+export function rotateFor(q: Quat, w: Vec3, seconds: number): Quat {
+  const rate = length(w);
+  return rate && seconds ? normalize(multiply(q, aboutAxis(scale(w, 1 / rate), rate * seconds))) : q;
+}
+
+/** Additional motion on top of the coast's prescribed or hand-held attitude. */
+export interface CoastRotation {
+  delta: Quat;
+  rates: Vec3;
 }
 
 /** The attitude whose body axes are the three given unit vectors (right-handed, at right angles), in the frame. */

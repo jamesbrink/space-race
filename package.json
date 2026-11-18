@@ -22,6 +22,7 @@
     "test:camera": "node tools/camera-test.mjs",
     "test:studio": "node tools/studio-test.mjs",
     "test:places": "node tools/places-test.mjs",
+    "test:impact": "node tools/impact-test.mjs",
     "test:separation": "node tools/separation-test.mjs",
     "test:fires": "node tools/fires-test.mjs",
     "test:chute": "node tools/chute-test.mjs",

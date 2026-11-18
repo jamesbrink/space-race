@@ -42,12 +42,13 @@ import {
 } from '../world/frames.ts';
 import { gravity } from '../world/orbit.ts';
 import { airAt, skyOf } from './air.ts';
-import { contact, type Impact } from './contact.ts';
+import { isBreakupImpact } from './breakup.ts';
+import { type ContactRotation, contact, type Impact } from './contact.ts';
 import { rk4Body } from './core/rk4.ts';
 import { ballisticOf, MEAN_RADIUS } from './fly.ts';
 import { airForces, floorAt, pieceOf, type Release, type Shape } from './forces.ts';
 import type { FlightPlan } from './plan.ts';
-import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, spin, turn, unturn } from './rigid.ts';
+import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, rotateFor, spin, turn, unturn } from './rigid.ts';
 import { TICK, type Vehicle, type VehicleState } from './vehicle.ts';
 
 /** Under this dynamic pressure, Pa, the air is left out of a coarse step; and how many ticks such a step is. */
@@ -307,6 +308,7 @@ export function shedder(
 /** A body's flight kept for showing: flown as far as it has been asked for, a state every KEEP seconds. */
 export class ShedRun {
   readonly shedder: Shedder;
+  brokenAt = Infinity;
   private state: ShedState;
   private readonly kept: { t: number; r: Vec3; v: Vec3; q: Quat; w: Vec3 }[] = [];
 
@@ -343,15 +345,24 @@ export class ShedRun {
 
   /** Replace the outgoing state after contact. Rendering can already have asked for the next
    * fraction of a tick; invalidate that speculative future and retain the incoming side for replay. */
-  strike(t: number, dr: Vec3, dv: Vec3, impact = t): void {
+  strike(t: number, dr: Vec3, dv: Vec3, impact = t, dw: Vec3 = AXIS_ORIGIN): void {
     const at = this.at(t);
     if (!at || at.down) return;
     const when = Math.max(this.from, Math.min(t, impact));
     const incoming = this.at(when)!;
     while (this.kept.length && this.kept.at(-1)!.t >= when) this.kept.pop();
     this.kept.push({ t: when, r: incoming.r, v: incoming.v, q: incoming.q, w: incoming.w });
-    this.kept.push({ t: when, r: incoming.r, v: add(incoming.v, dv), q: incoming.q, w: incoming.w });
-    this.state = { ...this.state, t, ticks: (t - this.from) / TICK, r: add(at.r, dr), v: add(at.v, dv), q: at.q, w: at.w, landing: null };
+    this.kept.push({ t: when, r: incoming.r, v: add(incoming.v, dv), q: incoming.q, w: add(incoming.w, dw) });
+    this.state = {
+      ...this.state,
+      t,
+      ticks: (t - this.from) / TICK,
+      r: add(at.r, dr),
+      v: add(at.v, dv),
+      q: rotateFor(at.q, dw, t - when),
+      w: add(at.w, dw),
+      landing: null,
+    };
     this.keep();
   }
 
@@ -368,6 +379,7 @@ export class ShedRun {
     }
     next.state =
       this.state.landing && this.state.t <= t ? this.state : { ...this.state, ...at, t, ticks: (t - this.from) / TICK, landing: null };
+    if (this.brokenAt <= t) next.brokenAt = this.brokenAt;
     next.keep();
     return next;
   }
@@ -426,6 +438,9 @@ export interface ContactPose {
   w: Vec3;
   station: number;
   mass: number;
+  /** Physical centre of mass when the flown position is referred to a different station. */
+  centre?: number;
+  inertia?: Vec3;
 }
 
 /** Rounded collision elements follow each component's station range. A hollow separator can
@@ -513,6 +528,22 @@ interface Sweep {
   start: ContactPose;
   end: ContactPose;
   attached: boolean;
+  body: ContactRotation;
+}
+function sweep(start: ContactPose, end: ContactPose, attached: boolean, centre: number, inertia: Vec3): Sweep {
+  return {
+    start,
+    end,
+    attached,
+    body: {
+      start: point(start, start.centre ?? centre),
+      end: point(end, end.centre ?? centre),
+      q0: start.q,
+      q1: end.q,
+      w: end.w,
+      inertia: end.inertia ?? inertia,
+    },
+  };
 }
 function point(p: ContactPose, station: number, offset: Vec3 = AXIS_ORIGIN): Vec3 {
   return add(p.r, turn(p.q, [station - p.station, offset[1], offset[2]]));
@@ -522,6 +553,7 @@ function element(path: Sweep, station: number, radius: number, offset: Vec3 = AX
     before: point(path.start, station, offset),
     after: point(path.end, station, offset),
     radius,
+    body: path.body,
     mass: path.end.mass,
     velocity: path.end.v,
   };
@@ -590,12 +622,21 @@ function trajectory(run: ShedRun, from: number, to: number): Sweep | null {
   const start = run.at(Math.max(run.from, from));
   const end = run.at(to);
   if (!start || !end || start.down || end.down) return null;
-  const { centre: station, mass } = run.shedder.release;
-  return { start: { ...start, station, mass, t: from }, end: { ...end, station, mass, t: to }, attached: false };
+  const { centre: station, mass, roll, across } = run.shedder.release;
+  return sweep({ ...start, station, mass, t: from }, { ...end, station, mass, t: to }, false, station, [roll, across, across]);
+}
+
+function breakAt(hit: { speed: number; energy: number }, t: number, runs: ShedRun[]): string[] | undefined {
+  if (!isBreakupImpact(hit)) return;
+  const broken = runs.filter((run) => t < run.brokenAt);
+  for (const run of broken) run.brokenAt = t;
+  return broken.map((run) => run.shedder.def.on);
 }
 
 /** Everything one flight has let go, each flown: by the event that let it go. */
 export class Sheds {
+  activeBrokenAt = Infinity;
+  activeReleased?: string;
   private readonly runs = new Map<string, ShedRun>();
   private readonly plan: FlightPlan;
   private readonly site: Geodetic;
@@ -640,9 +681,28 @@ export class Sheds {
     for (const release of after.released) this.add(release);
     if (!after.released.length || before.t >= after.t || after.held || after.landing) return { state: after, hits: [], impulses: [] };
     const centre = this.plan.craft[0]!.rigid!.capsule.centre.value;
-    const pose = (s: VehicleState): ContactPose => ({ ...s, station: vehicle.mass(s).centre + (s.separation ? centre : 0) });
-    const { r, v, hits } = this.meet(pose(before), pose(after), centre);
-    return { state: r === after.r ? after : { ...after, r, v }, impulses: hits, hits: [...hits, ...this.siblings(before.t, after.t)] };
+    const pose = (s: VehicleState): ContactPose => {
+      const m = vehicle.mass(s);
+      const station = m.centre + (s.separation ? centre : 0);
+      return { ...s, station, centre: station, inertia: [m.roll, m.across, m.across] };
+    };
+    const { r, v, q, w, hits } = this.meet(pose(before), pose(after), centre);
+    let state = r === after.r ? after : { ...after, r, v, q, w };
+    const hard = hits.find((hit) => hit.activeBroken);
+    if (hard) {
+      const parted = vehicle.impactRelease(state);
+      if (parted !== state) {
+        const out = parted.released.at(-1)!;
+        this.add(out);
+        this.activeReleased = hard.activeReleased = out.on;
+        state = parted;
+      }
+    }
+    return {
+      state,
+      impulses: hits,
+      hits: [...hits, ...this.siblings(before.t, after.t)],
+    };
   }
 
   /** The remaining cabin's collision envelope: its entry reference disc between its fittings.
@@ -662,17 +722,36 @@ export class Sheds {
     return this.crewHull;
   }
 
-  /** Sweep the actual remaining components against each loose body. The impulse acts on the pair's
-   * translation. Spin affects the swept geometry; estimating structural torque would require an
-   * active-vehicle inertia tensor through every stage and the hand-flown coast. */
+  /** Resolve a contact against the components still aboard, including the impulse about each centre of mass. */
   meet(before: ContactPose, after: ContactPose, capsuleStation: number, only?: string) {
     let r = after.r,
-      v = after.v;
-    const hits: (Impact & { dv: Vec3 })[] = [];
+      v = after.v,
+      q = after.q,
+      w = after.w;
+    const hits: (Impact & { dv: Vec3; dw: Vec3 })[] = [];
     const attached = [this.cabin(capsuleStation)];
     for (const [id, h] of this.hulls) {
       const run = this.runs.get(id);
       if (!run || run.from > before.t + 1e-8) attached.push(h.stowed && before.t < h.stowed.until ? h.stowed.hull : h);
+    }
+    // A staged trajectory may only supply the total mass at the stack datum. Approximate its
+    // mass distribution by the volumes of its remaining hulls, using the parallel-axis theorem.
+    let massCentre = after.centre ?? after.station;
+    let inertia = after.inertia;
+    if (!inertia || after.centre === undefined) {
+      const volumes = attached.map((h) => (h.to - h.from) * h.width ** 2);
+      const total = volumes.reduce((a, b) => a + b, 0);
+      const weights = volumes.map((volume) => (total ? volume / total : 0));
+      massCentre = after.centre ?? attached.reduce((x, h, i) => x + (weights[i]! * (h.from + h.to)) / 2, 0);
+      let roll = 0,
+        across = 0;
+      for (const [i, h] of attached.entries()) {
+        const mass = weights[i]! * after.mass,
+          radial = dot(h.offset, h.offset);
+        roll += mass * (h.width ** 2 / 2 + radial);
+        across += mass * ((3 * h.width ** 2 + (h.to - h.from) ** 2) / 12 + ((h.from + h.to) / 2 - massCentre) ** 2 + radial / 2);
+      }
+      inertia ??= [roll, across, across];
     }
     // A conservative sphere round the changing reference point excludes distant releases in one sweep.
     const reach = attached.reduce(
@@ -694,7 +773,7 @@ export class Sheds {
       if ((only && on !== only) || before.t < run.from - 1e-8 || after.t <= before.t) continue;
       const gone = trajectory(run, before.t, after.t);
       if (!gone) continue;
-      const active: Sweep = { start: before, end: { ...after, r, v }, attached: true };
+      const active = sweep(before, { ...after, r, v, q, w }, true, massCentre, inertia);
       const h = this.hulls.get(on)!;
       const span = Math.max(Math.abs(h.from - gone.start.station), Math.abs(h.to - gone.start.station)) + length(h.looseOffset) + h.width;
       if (!withinSweep(before.r, r, gone.start.r, gone.end.r, reach + span)) continue;
@@ -728,16 +807,24 @@ export class Sheds {
       if (!hit) continue;
       r = add(r, hit.a.r);
       v = add(v, hit.a.v);
-      run.strike(after.t, hit.b.r, hit.b.v, before.t + hit.after);
-      if (hit.impulse > 0) hits.push({ on, name: def.name, t: before.t + hit.after, speed: hit.speed, energy: hit.energy, dv: hit.a.v });
+      const t = before.t + hit.after;
+      w = add(w, hit.a.w);
+      q = rotateFor(q, hit.a.w, after.t - t);
+      run.strike(after.t, hit.b.r, hit.b.v, t, hit.b.w);
+      if (hit.impulse > 0) {
+        const broken = breakAt(hit, t, [run]);
+        const activeBroken = isBreakupImpact(hit) && t < this.activeBrokenAt;
+        if (activeBroken) this.activeBrokenAt = t;
+        hits.push({ on, name: def.name, t, speed: hit.speed, energy: hit.energy, dv: hit.a.v, dw: hit.a.w, broken, activeBroken });
+      }
     }
-    return { r, v, hits };
+    return { r, v, q, w, hits };
   }
 
   /** One response per loose pair per step, at its earliest contact. */
   siblings(from: number, to: number, local?: ReadonlySet<string>) {
     const runs = this.all.filter((run) => run.from <= from + 1e-8 && (!local || local.has(run.shedder.def.on)));
-    const hits: { on: string; name: string; t: number; speed: number; energy: number }[] = [];
+    const hits: Impact[] = [];
     const paths = runs.map((run) => trajectory(run, from, to));
     for (let j = 1; j < runs.length; j++)
       for (let i = 0; i < j; i++) {
@@ -750,14 +837,15 @@ export class Sheds {
           db = b.shedder.def;
         const hit = hullContact(p, this.hulls.get(da.on)!, q, this.hulls.get(db.on)!);
         if (!hit) continue;
-        a.strike(to, hit.a.r, hit.a.v, from + hit.after);
-        b.strike(to, hit.b.r, hit.b.v, from + hit.after);
+        a.strike(to, hit.a.r, hit.a.v, from + hit.after, hit.a.w);
+        b.strike(to, hit.b.r, hit.b.v, from + hit.after, hit.b.w);
         paths[i] = trajectory(a, from, to);
         paths[j] = trajectory(b, from, to);
         if (hit.impulse > 0)
           hits.push({
             on: `${da.on}/${db.on}`,
             name: `${da.name} and ${db.name}`,
+            broken: breakAt(hit, from + hit.after, [a, b]),
             t: from + hit.after,
             speed: hit.speed,
             energy: hit.energy,

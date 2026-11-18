@@ -58,6 +58,7 @@ pnpm test:seat        # needs `pnpm dev` running: every seat of every flight sat
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
 pnpm test:wheels      # needs `pnpm dev` running: every slide and drive at each site, each wheel on what it runs on, within 5 mm
 pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through each flight and by scripted hands, seen from each rig and from far out, its line, the line flown and chips checked (four pages at once)
+pnpm test:impact      # needs pnpm dev: a glancing strike spins a capsule and a hard strike releases visible pieces
 pnpm test:separation  # needs `pnpm dev` running: released hardware moves clear in the rendered flight
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:sheet       # needs `pnpm dev` running: a phone's sheet under a finger on the gallery, the site and the Lineup at 390 and 820: every button in its View pane reached by swiping its line, the sheet and the page left still
