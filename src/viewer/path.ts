@@ -613,9 +613,9 @@ export class FlightPath {
   /** The sample on show and the live state's part in it. */
   private sample: PathSample | null = null;
   private live: PathLive | null = null;
-  private job: { run: Predictor; key: string; plan: string; began: number; ready?: boolean } | null = null;
+  private job: { run: Predictor; key: string; plan: string; from: number; began: number; ready?: boolean } | null = null;
   private shown: Shown | null = null;
-  private wantedAt = 0;
+  private wantedAt: number | null = null;
   private doneAt = 0;
   private raf = 0;
   /** What it hangs on the window and the frame (util/scope.ts): let go of with the page it is on. */
@@ -839,6 +839,18 @@ export class FlightPath {
     return this.shown?.result ?? null;
   }
 
+  /** Wall time spent waiting is independent of the simulation clock, which may be paused or accelerated. */
+  get freshness() {
+    const want = this.want();
+    return {
+      current: !!want && this.shown?.key === want.key,
+      sampleTime: this.sample?.t ?? null,
+      displayedFrom: this.shown?.result.from ?? null,
+      jobFrom: this.job?.from ?? null,
+      waitingMs: this.wantedAt === null ? 0 : performance.now() - this.wantedAt,
+    };
+  }
+
   /** The markers on the page now, for whoever asks (`sr.path.laidOut`): each with its label's box when it has one. */
   get laidOut(): MarkOut[] {
     return [...this.laid.values()];
@@ -995,6 +1007,7 @@ export class FlightPath {
     const want = this.want();
     const s = this.sample;
     if (!want || !s) {
+      this.wantedAt = null;
       this.job = null;
       if (this.shown || this.mesh.visible) {
         this.shown = null;
@@ -1007,9 +1020,15 @@ export class FlightPath {
       return; // (asleep until the next sample, or a switch)
     }
     this.raf = this.scope.frame(() => this.tick());
+    // A different choice or a rewind before the start of a result makes that result inapplicable.
+    if (this.shown && (this.shown.plan !== want.plan || this.shown.result.from > s.t)) {
+      this.shown = null;
+      this.sampledFor = '';
+    }
     // (the flight still on the curve on show, with the same plan: that curve is still its future, and nothing is predicted again)
     if (this.shown && this.shown.key !== want.key && this.shown.plan === want.plan && this.holds(this.shown, s)) this.shown.key = want.key;
-    if (this.shown?.key !== want.key && !this.wantedAt) this.wantedAt = performance.now();
+    if (this.shown?.key !== want.key && this.wantedAt === null) this.wantedAt = performance.now();
+    if (this.job && (this.job.plan !== want.plan || this.job.from > s.t || this.shown?.key === want.key)) this.job = null;
     if (!this.job && this.shown?.key !== want.key && performance.now() - this.doneAt >= EVERY) {
       const start = {
         t: s.t,
@@ -1033,7 +1052,7 @@ export class FlightPath {
       if (!run) {
         // (the source has no future to give from here, a vehicle in pieces: the one on show was another flight's, and goes)
         this.doneAt = performance.now();
-        this.wantedAt = 0;
+        this.wantedAt = null;
         if (this.shown) {
           this.shown = null;
           this.sampledFor = '';
@@ -1044,6 +1063,7 @@ export class FlightPath {
       this.job = {
         run,
         key: want.key,
+        from: s.t,
         plan: want.plan,
         began: performance.now(),
       };
@@ -1063,10 +1083,10 @@ export class FlightPath {
         this.build(result, this.job.key, this.job.plan, true);
         this.job = null;
         this.doneAt = performance.now();
-        this.wantedAt = this.shown?.key === want.key ? 0 : this.wantedAt;
+        this.wantedAt = this.shown?.key === want.key ? null : this.wantedAt;
       }
     }
-    if (this.shown?.key === want.key) this.wantedAt = 0;
+    if (this.shown?.key === want.key) this.wantedAt = null;
     this.place();
   }
 
@@ -1406,7 +1426,7 @@ export class FlightPath {
     const mix = this.mixOf(shown);
     if (mix >= 1) shown.was = null;
     // (a prediction is begun five times a second while the flight goes on: the one on show is stale only if none has come for a while)
-    const stale = this.wantedAt > 0 && performance.now() - Math.max(this.wantedAt, this.doneAt) > STALE * 1000;
+    const stale = this.wantedAt !== null && performance.now() - this.wantedAt > STALE * 1000;
     this.lay(shown, mix);
     const opacity = stale ? 0.55 : 0.95;
     if (this.uniforms.uOpacity!.value !== opacity) {
@@ -2012,7 +2032,7 @@ export class FlightPath {
     as.title = !this.on
       ? ''
       : stale
-        ? 'The path on show is more than a second and a half old: a newer one is being worked out'
+        ? 'The display has waited more than 1.5 seconds for an up-to-date path'
         : this.waiting()
           ? this.source.steering.guidance
             ? 'On the pad: the path guidance will fly, the record’s programme to the record’s cutoff, then the sequencer’s events'

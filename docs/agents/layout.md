@@ -431,3 +431,5 @@ where it was left.
 - `src/sim/tether.ts` applies a tensile impulse at the two spacecraft attachment points.
 - `src/viewer/dockjets.ts` binds the orbital RCS mouths and the Agena engine to the shared exhaust renderer.
 - `tools/docking.mjs` flies the Apollo and Gemini decks in Chrome, including a saved joint maneuver.
+
+- `tests/path-display.test.mjs` checks late display jobs with synthetic results and distinguishes wall-time delay from simulation time.
