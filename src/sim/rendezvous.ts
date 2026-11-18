@@ -1,6 +1,6 @@
 /** LM-active rendezvous from terminal phase initiation. Local-vertical components come from the flight report. */
 import type { Flight } from '../types.ts';
-import type { DockPair } from './docking.ts';
+import type { DockBody, DockPair } from './docking.ts';
 import { orbitalFix, terminalApproach } from './approach.ts';
 import { add, cross, dot, length, scale, sub, unit, type Vec3, DEG } from '../world/frames.ts';
 import { aboutAxis, fromAxes, multiply, turn, unturn } from './rigid.ts';
@@ -34,6 +34,13 @@ export function startRendezvous(flight: Flight) {
   pair.t = op.fix.t.value;
   return pair;
 }
+/** The antenna phase-centre stations are not in the mass-property record. Use COM-to-COM line of sight. */
+export function rendezvousRadar(ship: DockBody, target: DockBody) {
+  const line = sub(target.r, ship.r),
+    range = length(line),
+    toward = unit(line);
+  return { range, toward, closing: dot(sub(ship.v, target.v), toward) };
+}
 export function rendezvousInput(run: DockPair, flight: Flight) {
   const op = flight.docking!.rendezvous!,
     [target, ship] = run.bodies;
@@ -58,14 +65,12 @@ export function rendezvousInput(run: DockPair, flight: Flight) {
     const relative = add(sub(target.v, ship.v), scale(axis, finalRate));
     const approach = sub(finish, ship.r);
     let wish = scale(add(scale(approach, 6 / (time * time)), scale(relative, 4 / time)), ship.mass);
-    const range = length(approach) + distance;
+    const { range, toward, closing } = rendezvousRadar(ship, target);
     const gate = op.gates.find((g) => range <= g.range.value);
     if (gate && length(approach) > 5) {
-      const toward = unit(approach),
-        rate = dot(sub(ship.v, target.v), toward);
       // Brake at the recorded range/rate gates. Preserve the trajectory feedback transverse to the line of sight.
       const radial = dot(wish, toward);
-      wish = add(wish, scale(toward, Math.min(0, (gate.speed.value - rate) * ship.mass - radial)));
+      wish = add(wish, scale(toward, Math.min(0, (gate.speed.value - closing) * ship.mass - radial)));
     }
     const authority = 4 * flight.docking!.controls.ahead.value;
     demand = length(wish) > authority ? scale(wish, authority / length(wish)) : wish;
