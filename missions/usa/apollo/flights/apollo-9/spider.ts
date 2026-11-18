@@ -48,7 +48,7 @@ const stageParts: [string, string, string, string, string][] = [
     'EVA porch and foot restraints',
     lower,
     'Schweickart stood on the forward porch during his spacewalk.',
-    'A grated platform projected from the forward outrigger below the cabin hatch. The two golden slippers held his feet while he faced the hatch with his camera.',
+    'A grated platform projected from the forward outrigger below the cabin hatch, a handrail rising on either side of it. The two golden slippers held his feet while he faced the hatch with his camera.',
   ],
   [
     'LMLandingGear',
@@ -125,7 +125,7 @@ const stageParts: [string, string, string, string, string][] = [
     'Attitude thrusters, radar and antennas',
     upper,
     'Sixteen thrusters let Spider turn and translate independently.',
-    'Each cluster stands out on an outrigger at 45° to the axes, with opposed vertical jets and two horizontal jets at right angles. The rendezvous radar tracked Gumdrop. The 26-inch S-band antenna provided a separate link to Earth.',
+    'Each cluster stands out on an outrigger at 45° to the axes, with opposed vertical jets and two horizontal jets at right angles. The rendezvous radar, on the centreline above the forward face, tracked Gumdrop. The flashing tracking light below it worked until staging and then failed. The 26-inch S-band antenna provided a separate link to Earth.',
   ],
   [
     'LMReactionSupply',

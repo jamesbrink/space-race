@@ -107,6 +107,7 @@ const ten = 'NASA Apollo 10 press kit, May 1969';
 export const APOLLO10_THRUST: Motor[] = [
   {
     name: 'F-1',
+    operation: 'Staggered centre and outboard cutoff',
     count: 5,
     thrustN: (7680982 * LBF) / 5,
     propellant: 'RP-1 / liquid oxygen',
@@ -115,6 +116,7 @@ export const APOLLO10_THRUST: Motor[] = [
   },
   {
     name: 'J-2 · second stage',
+    operation: 'Centre engine cut off early',
     count: 5,
     thrustN: (1163854 * LBF) / 5,
     propellant: 'Liquid hydrogen / liquid oxygen',
@@ -123,6 +125,7 @@ export const APOLLO10_THRUST: Motor[] = [
   },
   {
     name: 'J-2 · third stage',
+    operation: 'Restartable engine',
     count: 1,
     thrustN: 203615 * LBF,
     propellant: 'Liquid hydrogen / liquid oxygen',
@@ -131,6 +134,7 @@ export const APOLLO10_THRUST: Motor[] = [
   },
   {
     name: 'Service propulsion engine',
+    operation: 'Multiple burns',
     count: 1,
     thrustN: 20500 * LBF,
     propellant: 'Aerozine 50 / nitrogen tetroxide',
@@ -155,6 +159,7 @@ export const APOLLO10_THRUST: Motor[] = [
   },
   {
     name: 'Descent engine',
+    operation: 'Throttleable burns in lunar orbit',
     count: 1,
     thrustN: 9870 * LBF,
     propellant: 'Aerozine 50 / nitrogen tetroxide',
@@ -163,6 +168,7 @@ export const APOLLO10_THRUST: Motor[] = [
   },
   {
     name: 'Ascent engine',
+    operation: 'Fixed-thrust burns',
     count: 1,
     thrustN: 3500 * LBF,
     propellant: 'Aerozine 50 / nitrogen tetroxide',

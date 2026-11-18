@@ -52,6 +52,13 @@ for (const suffix of ['', '.lod1', '.lod2']) {
         }
       }
     }
+    // On the forward face the radar's dish and the tracking light are on the centreline (AS09-21-3212), in both models.
+    for (const model of [stack, lm]) {
+      for (const name of ['LM3_RendezvousRadar', 'LM_TrackingLampLens']) {
+        const { lo, hi } = model.box(name);
+        measure((lo[2] + hi[2]) / 2, 0, 1.5);
+      }
+    }
     for (const seat of spider.seats) assert.ok(lm.point(seat.node), seat.label);
     for (const part of spider.parts) assert.ok(stack.point(part.node), part.name);
     assert.ok(stack.point('CM104_ProbeExtension'));
