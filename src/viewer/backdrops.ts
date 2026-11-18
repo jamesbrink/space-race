@@ -65,7 +65,7 @@ export interface Setting {
   /** How far away the furthest thing in the place is, metres: the camera sees at least this far. Left out: only the model. */
   horizon?: number;
   /** Where the eye is: a place may draw what is near it in more detail. True if that changed what is drawn. */
-  attend?: (eye: THREE.Vector3) => boolean;
+  attend?: (eye: THREE.Vector3, frozen?: boolean) => boolean;
   /** Something of the place that casts a shadow has arrived since this was last asked (true once): the shadow maps are owed again. */
   arrived?: () => boolean;
   /** The camera as it is about to draw, for a place that leaves out what it cannot see. */
@@ -613,11 +613,11 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     globe,
     air: here.air,
     weather,
-    attend: (eye) => {
+    attend: (eye, frozen) => {
       // the sky's up is the plumb line at the eye
       const was = uniforms.uUp.value.clone();
       const leans = globe.up(eye, uniforms.uUp.value).angleTo(was) > 1e-5;
-      const moved = globe.attend(eye) || leans;
+      const moved = globe.attend(eye, frozen) || leans;
       return here.attend(eye) || moved;
     },
     arrived: here.arrived,

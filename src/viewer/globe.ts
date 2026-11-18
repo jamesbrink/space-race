@@ -1090,7 +1090,7 @@ export class Globe {
   }
 
   /** Where the eye is (the scene's frame): the mesh is made round it. True if what is drawn changed. */
-  attend(eye: THREE.Vector3): boolean {
+  attend(eye: THREE.Vector3, frozen = false): boolean {
     let changed = false;
     if (this.arrived) {
       this.arrived = false;
@@ -1157,14 +1157,17 @@ export class Globe {
     const under = this.eyed(eye).under;
     const made = this.madeAt;
     const h = Math.max(height, 30);
-    // (over the site's own ground the eye may go further before the mesh is made again: what would change is under that ground)
-    if (
-      made &&
-      length(sub(under, made)) < remakeAfter(this.madeHeight, this.inside(eye), this.radius) &&
-      h > 0.8 * this.madeHeight &&
-      h < 1.25 * this.madeHeight
-    )
-      return changed;
+    // A frozen view must have the same horizon regardless of the camera's route to this point. During flight a mesh can
+    // stay in use over a patch; over the site's own ground that patch is wider because the near triangles are under it.
+    if (made) {
+      const moved = length(sub(under, made));
+      if (
+        frozen
+          ? moved === 0 && h === this.madeHeight
+          : moved < remakeAfter(this.madeHeight, this.inside(eye), this.radius) && h > 0.8 * this.madeHeight && h < 1.25 * this.madeHeight
+      )
+        return changed;
+    }
     this.make(under, h);
     return true;
   }

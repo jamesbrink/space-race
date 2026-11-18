@@ -2017,7 +2017,7 @@ export class Stage {
    */
   private attend(): void {
     // (the place first: the sky's plumb line at the eye is set there, and `at` bakes the reflections with it)
-    if (this.setting.attend?.(this.camera.position)) this.dirty = true;
+    if (this.setting.attend?.(this.camera.position, this.frozen)) this.dirty = true;
     if (this.clock) {
       // (over the globe, the height is above the sea under the eye, which downrange is far below the site's level)
       const height = this.setting.globe?.altitude(this.camera.position) ?? this.camera.position.y - this.grade;
