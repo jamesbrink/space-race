@@ -41,7 +41,8 @@ try {
             { timeout: 30000 },
           );
           if (await page.evaluate((at) => window.sr.docking.t >= at, config.brake)) break;
-          await next.click();
+          // A 128× frame can cross into braking between the readiness check and the click.
+          await next.evaluate((button) => button.click());
         }
         await page.waitForFunction(
           (x) => window.sr.docking.phase === 'hard' || (window.sr.docking.limits.blocked && window.sr.docking.t > x + 30),
