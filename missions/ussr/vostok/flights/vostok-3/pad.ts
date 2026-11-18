@@ -1,5 +1,5 @@
 import type { Keyframe } from '../../../../../src/types.ts';
-import { busPart, SUPPORTS_GO, site1Pad, site1Parts } from '../../../places/tyuratam/site-1.parts.ts';
+import { busPart, receptionPart, SUPPORTS_GO, site1Pad, site1Parts } from '../../../places/tyuratam/site-1.parts.ts';
 import { MSK } from './orbital.ts';
 
 /**
@@ -13,9 +13,8 @@ import { MSK } from './orbital.ts';
  * own**, and each is given Vostok 1's interval before its liftoff (09:06:59.7): estimated, and said so. No record of the
  * railway fillers that morning: they are not built.
  *
- * Not built: the people (Smirnov, Korolev, Keldysh, Rudenko, Gagarin and Titov at the bus, "more than a dozen" more; summer
- * dress, which the figures do not have), Korolev's post under its concrete canopy ten metres from the rocket, and the new
- * room by the bunker: listed for a modelling agent (places/tyuratam/site-1.md, "What the model gets wrong or leaves out").
+ * The group at the bus uses Kamanin’s account of 11 August. The next morning’s gathering is assumed from his comparison.
+ * Korolev’s canopy and the new room beside the bunker have no measured or located plan.
  */
 
 const KAMANIN = 'Kamanin’s diary («Скрытый космос», book 1), 12 and 14 August 1962';
@@ -152,6 +151,7 @@ export const pad = site1Pad({
       fillers: false,
     }),
     // in along the road at 09:30; at thirty minutes' readiness (as on 6 August 1961: not recorded), out and away
+    receptionPart(11, MSK(11, 9, 48)),
     busPart(
       'The morning of 11 August 1962',
       {
@@ -161,7 +161,7 @@ export const pad = site1Pad({
           'Korolev, Keldysh and Rudenko kissed him, and more than a dozen others wanted to (Kamanin). That it was the same cream ' +
           'and blue LAZ-695B as the year before is taken: Kamanin had the cosmonauts driven that summer in the «Львов», a LAZ. ' +
           'Where it stood is April 1961’s place, taken; when it left is not recorded (estimated: at thirty minutes’ readiness, as on ' +
-          '6 August 1961). The people round it are not built.',
+          '6 August 1961). The group at the door stands where it can see him.',
         facts: [
           ['Came', '09:30 Moscow time, 11:30 by the range’s clock (Kamanin)'],
           ['Type', 'LAZ-695B, as in 1961 (assumed)'],
@@ -172,5 +172,5 @@ export const pad = site1Pad({
       { in: [MSK(11, 9, 29), MSK(11, 9, 30)], back: [MSK(11, 11, 0), MSK(11, 11, 0, 45)], away: [MSK(11, 11, 0, 50), MSK(11, 11, 3)] },
     ),
   ],
-  views: [{ id: 'bus', label: 'The bus', nodes: ['Bus'], from: [0.55, 0.14, 0.82] }],
+  views: [{ id: 'bus', label: 'The bus', nodes: ['Bus', 'Reception'], from: [0.55, 0.14, 0.82] }],
 });

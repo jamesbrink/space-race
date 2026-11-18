@@ -1,5 +1,5 @@
 import type { Keyframe } from '../../../../../src/types.ts';
-import { busPart, SUPPORTS_GO, site1Pad, site1Parts } from '../../../places/tyuratam/site-1.parts.ts';
+import { busPart, receptionPart, SUPPORTS_GO, site1Pad, site1Parts } from '../../../places/tyuratam/site-1.parts.ts';
 import { MSK } from './orbital.ts';
 
 /**
@@ -11,8 +11,8 @@ import { MSK } from './orbital.ts';
  * of this morning was found**: the bus is put two hours before liftoff, as the day before, and the erector, the trusses and
  * the cable mast at Vostok 1's intervals before its liftoff, each estimated and said so. No record of the fillers: not built.
  *
- * Not built: the people at the bus (summer dress, which the figures do not have), Korolev's post under its canopy ten metres
- * from the rocket and the new room by the bunker (places/tyuratam/site-1.md, "What the model gets wrong or leaves out").
+ * The group at the bus uses Kamanin’s account of 11 August. The next morning’s gathering is assumed from his comparison.
+ * Korolev’s canopy and the new room beside the bunker have no measured or located plan.
  */
 
 const KAMANIN = 'Kamanin’s diary («Скрытый космос», book 1), 14 August 1962';
@@ -147,6 +147,7 @@ export const pad = site1Pad({
       fillers: false,
     }),
     // in about two hours before liftoff, as the day before; at thirty minutes' readiness (not recorded), out and away
+    receptionPart(12, MSK(12, 9, 20)),
     busPart(
       'The morning of 12 August 1962',
       {
@@ -155,7 +156,7 @@ export const pad = site1Pad({
           'Kamanin wrote nothing of this morning but that it differed little from the day before, everyone working to an even ' +
           'tighter clock and more tired. That the bus came is the film of the flight’s («Звёздные братья», 1962); when it came is ' +
           'put two hours before liftoff, as the 11th’s, and is estimated; that it was the same LAZ-695B, and where it stood, are taken ' +
-          'from the day before and from April 1961. The people round it are not built.',
+          'from the day before and from April 1961. The group at the door stands where it can see him.',
         facts: [
           ['Came', 'not recorded (estimated: 09:02, two hours before liftoff)'],
           ['Type', 'LAZ-695B, as in 1961 (assumed)'],
@@ -170,5 +171,5 @@ export const pad = site1Pad({
       },
     ),
   ],
-  views: [{ id: 'bus', label: 'The bus', nodes: ['Bus'], from: [0.55, 0.14, 0.82] }],
+  views: [{ id: 'bus', label: 'The bus', nodes: ['Bus', 'Reception'], from: [0.55, 0.14, 0.82] }],
 });

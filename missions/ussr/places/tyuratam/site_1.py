@@ -50,11 +50,12 @@ def build(date: str | None = None) -> str:
     # the morning itself: the bus, the car and the truck on the apron, and the people (each group is there until it left).
     # (Brought in here and not at the head: they want the programme's crew/ on the path, which a pad's script has and
     # the place's has no use for.)
-    from site1 import august, morning, road_vehicles
+    from site1 import august, morning, reception, road_vehicles
 
     road_vehicles.build(parts)
     morning.build(parts)
     august.build(parts)
+    reception.build(parts)
     parts.build()
     print(sitelib.standing())
     served = f"{service_trusses.summary()}, {cable_mast.summary()}, {erector.summary()}, {tank_cars.summary()}, {road_vehicles.summary()}"

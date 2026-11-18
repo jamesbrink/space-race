@@ -40,8 +40,8 @@ What the record gives of the morning, and so what the launch site shows (the sit
   Siddiqi, p. 355), the bus (that it was the same LAZ-695B is taken: Kamanin had the cosmonauts
   driven that summer in the «Львов»; its place April 1961's). No fillers: neither an account nor
   a photograph of the morning has them.
-- **Not built**: the people at the bus (Smirnov, Korolev, Keldysh, Rudenko, Gagarin and Titov,
-  "more than a dozen" more; summer dress, which the figures do not have); Korolev's post, a small
+- **At the bus**: seventeen summer-clad people represent the four who greeted Nikolayev and the more than a dozen others. Their places and dress are estimates.
+- **Not built**: Korolev's post, a small
   concrete canopy ten metres from the rocket with the means of communication, where Gagarin,
   Smirnov, Barmin, Kirillov and Kamanin stood with him; the new room beside the bunker. Each is
   documented and none is placed or measured: listed for a modelling agent (issue #21).
@@ -68,8 +68,7 @@ decays a little too little or began a little high. The misses are in src/sim/mis
 
 - The ascent's instants but two, its integrator setting, the aiming azimuth and the burn's minute
   are not this flight's (mission.md).
-- The launching structure is 1961's; Korolev's post, the room by the bunker and the morning's
-  people are not built (issue #21).
+- The launching structure is 1961's; Korolev's post and the room by the bunker are unlocated (issue #21).
 - The pilot is the figure built to Gagarin's height in Gagarin's suit; the reserve canopy is not
   drawn, Nikolayev having locked it.
 
