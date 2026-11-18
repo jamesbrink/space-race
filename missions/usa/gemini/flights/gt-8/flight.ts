@@ -1,3 +1,4 @@
+import { doc as dockingReading } from '../../../../../src/measure.ts';
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
@@ -34,6 +35,9 @@ import {
   agenaDimensions,
   agenaMotors,
   agenaParts,
+  dockingProperties,
+  geminiControls,
+  targetFix,
   TARGET_GROUP,
   type TargetWords,
   withTarget,
@@ -635,6 +639,44 @@ const pilot = standing({
 });
 
 export const flight: Flight = {
+  docking: {
+    controls: geminiControls,
+    fault: {
+      at: get(7, 0, 26.7),
+      firstPulse: 4.9,
+      pause: 4,
+      undock: get(7, 15, 12.3),
+      backAway: 6.6,
+      isolate: get(7, 18, 15.7),
+      recovery: get(7, 19, 3.8),
+      force: THRUST.oamsAttitude,
+      axialArm: dockingReading((105.12 - 27) * IN, 'Gemini VIII MR section 3.3, launch CG; SEDR 300 attitude chambers near station 27.'),
+      rollArm: dockingReading(
+        60 * IN * Math.cos((54 * Math.PI) / 180),
+        'SEDR 300 fig. 8-72, tangential chamber on 54° diagonal; 60-inch adapter radius assumed at the chamber.',
+      ),
+    },
+    massProperties: dockingProperties(GVIII, 105.12, 343, 7116),
+    fixes: [
+      targetFix(
+        GVIII + ', table 4.3-V, preliminary tracking solution (altitude above LC-19 radius)',
+        -6059.262,
+        558,
+        28.6,
+        -59.64,
+        980359,
+        25366,
+        0.002,
+        95.13,
+      ),
+    ],
+    closureSpeed: dockingReading(0.75 * 0.3048, 'MSC-G-R-66-4, crew account of docking'),
+    retractTime: dockingReading(6.9, 'MSC-G-R-66-4, docking-system performance'),
+    interface: 'cone',
+    target: 'GATV 5003',
+    targetMass: 'Agena, weight in orbit',
+    at: get(6, 33, 16),
+  },
   id: 'usa/gemini/gt-8',
   nation: 'USA',
   agency: 'NASA',

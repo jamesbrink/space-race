@@ -88,7 +88,7 @@ for (const record of late) {
   test(`Gemini ${n} has its own countdown, weather, and mission record`, () => {
     const flight = forFlight(n);
     assert.equal(flight.launch, launch);
-    assert.deepEqual(entrances(flight), { gallery: true, site: true, fly: false });
+    assert.deepEqual(entrances(flight), { gallery: true, site: true, fly: true });
     const { models, timeline, weather } = flight;
     const pad = models.find((m) => m.id === 'pad');
     const crew = models.filter((m) => m.walker);

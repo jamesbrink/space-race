@@ -1,5 +1,5 @@
 import { flights } from '../../missions/index.ts';
-import { namesFront, namesLineup, where } from './address.ts';
+import { flightFor, namesFront, namesLineup, parseAddress, where } from './address.ts';
 
 /**
  * The way in. The front page (front.ts) is what an address that names nothing shows, and the Lineup (lineup.ts) what
@@ -23,4 +23,6 @@ if (new URLSearchParams(location.search).has('mem')) (await import('./mem.ts')).
 if (namesFront(where())) void import('./front.ts');
 // the Lineup is no flight's either: every vehicle side by side, on a stage of its own (lineup.ts)
 else if (namesLineup(where())) void import('./lineup.ts');
+else if (parseAddress(where()).place === 'fly' && flightFor(flights, where()).docking)
+  void (await import('./dockflight.ts')).openDocking(flightFor(flights, where()));
 else void import('./main.ts');

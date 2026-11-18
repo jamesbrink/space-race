@@ -75,7 +75,12 @@ export interface LineupDebug {
   };
 }
 
-export type Debug = FlightDebug | OnlyDebug | FrontDebug | LineupDebug;
+export interface DockingDebug {
+  flight: Flight;
+  stage: Stage;
+  readonly docking: import('../sim/docking.ts').DockPair;
+}
+export type Debug = FlightDebug | OnlyDebug | FrontDebug | LineupDebug | DockingDebug;
 
 declare global {
   interface Window {

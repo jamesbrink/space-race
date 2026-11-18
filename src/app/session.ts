@@ -809,7 +809,8 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   }
   /** Go to one of the flight's places. `what`: what an address names there; left out, the place is as it was left. */
   function go(place: Place, what?: string): void {
-    if (place === 'gallery') toGallery(what);
+    if (place === 'fly' && flight.docking) goHome(formatAddress(flight.id, place));
+    else if (place === 'gallery') toGallery(what);
     else toSite(what ?? '', place === 'fly');
   }
   /** `what`: the part or the choice of what stands there that an address names ('' for the whole vehicle); left out, the gallery is as it was left. */

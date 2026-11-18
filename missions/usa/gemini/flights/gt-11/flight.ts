@@ -1,8 +1,17 @@
+import { doc } from '../../../../../src/measure.ts';
 import type { Flight } from '../../../../../src/types.ts';
 import { LC19_SPECS } from '../../../places/cape-canaveral/lc-19.parts.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { lateCrew } from '../../crew/late-crew.ts';
-import { agenaDimensions, agenaMotors, TARGET_GROUP } from '../../vehicles/gemini-targets.ts';
+import {
+  agenaDimensions,
+  agenaMotors,
+  dockedBurn,
+  dockingProperties,
+  geminiControls,
+  targetFix,
+  TARGET_GROUP,
+} from '../../vehicles/gemini-targets.ts';
 import { dimensions, LB, NMI, SEDR2, thrusters, titanEngines } from '../../vehicles/gemini-titan.ts';
 import { lateVehicle } from '../../vehicles/late-vehicle.ts';
 import { crewAboard, crewArrives, hatchesShut, pad } from './pad.ts';
@@ -16,6 +25,51 @@ const [crew, pilot] = lateCrew(11, crewAboard);
 const vehicle = lateVehicle(11, [crewAboard, hatchesShut]);
 
 export const flight: Flight = {
+  docking: {
+    jets: [{ body: 1, node: 'AgenaEngine_Extension', radius: 16.5 * 0.0254, main: true, tip: true }],
+    controls: geminiControls,
+    massProperties: dockingProperties(REPORT, 103.87, 343, 7198),
+    tether: {
+      length: doc(100 * 0.3048, REPORT + ', section 3, 100-foot Dacron webbing'),
+      rotation: doc((38 * Math.PI) / (180 * 60), REPORT + ', section 5.1.5.3.2, initial rotation in degrees per minute'),
+      at: get(50, 12, 48),
+      releaseAt: get(52, 58, 36),
+    },
+    burns: [
+      dockedBurn(
+        'Calibration',
+        get(4, 28, 48),
+        110.69,
+        -0.56,
+        -88.73,
+        REPORT + ', table 4.3-VII and section 5.4, measured thrust durations and velocity changes',
+        3.03,
+      ),
+      dockedBurn(
+        'High apogee',
+        get(40, 30, 15),
+        919.6,
+        0,
+        2.16,
+        REPORT + ', table 4.3-VII and section 5.4, measured thrust durations and velocity changes',
+        25.07,
+      ),
+      dockedBurn(
+        'Recircularization',
+        get(43, 52, 55),
+        919.47,
+        0,
+        -178.7,
+        REPORT + ', table 4.3-VII and section 5.4, measured thrust durations and velocity changes',
+        22.47,
+      ),
+    ],
+    fixes: [targetFix(REPORT + ', table 4.3-V, final insertion', -5844.821, 558.7, 28.5, -59.47, 983548, 25360, 0.07, 95.57)],
+    interface: 'cone',
+    target: 'GATV 5006',
+    targetMass: 'Agena weight at orbital insertion',
+    at: get(1, 34, 16),
+  },
   id: 'usa/gemini/gt-11',
   nation: 'USA',
   agency: 'NASA',

@@ -35,7 +35,7 @@ import { Framing } from './stage/framing.ts';
 import { NOTHING, type Picked, Picker, skinless, type Thing } from './stage/picker.ts';
 import { Shadows } from './stage/shadows.ts';
 import { uShadowFade } from './shadows.ts';
-import { wearTexture } from './space.ts';
+import { OrbitBackdrop, wearTexture } from './space.ts';
 import { grain, mark } from './surface.ts';
 import { tier } from './tier.ts';
 import { HandWorks } from './onfoot/handworks.ts';
@@ -1984,6 +1984,7 @@ export class Stage {
 
   /** What stands at the place, for the far shadow map: every model where it stands (not one in flight) and the place round them. */
   private shadowed(): THREE.Box3 | null {
+    if (this.orbitalBox) return this.orbitalBox;
     if (!this.root) return null;
     const box = this.modelsBox(this.lifted.flying ? (this.flier?.group ?? null) : null);
     if (this.surroundings) box.expandByObject(this.surroundings);
@@ -1997,6 +1998,7 @@ export class Stage {
 
   /** The section's model as it stands and fully taken apart, together: what its shadow map is sized for. */
   private sectionBox(): THREE.Box3 | null {
+    if (this.orbitalBox) return this.orbitalBox;
     const own = this.staged[this.current];
     if (!this.root || !own) return null;
     const box = new THREE.Box3().setFromObject(own.group);
@@ -2432,6 +2434,40 @@ export class Stage {
   reset(): void {
     this.applySetting();
     this.shadows.fitShadows();
+  }
+
+  private orbitalBox: THREE.Box3 | null = null;
+
+  /** Fly independent objects drawn on the orbital stage. A cached local sphere encloses each
+   * craft as it turns, so the depth range tracks their actual separation without measuring every mesh again. */
+  orbitalBodies(
+    bodies: THREE.Group[],
+    details: THREE.Object3D[] = [],
+  ): (sun: THREE.Vector3, angularRadius: number, illumination: number) => void {
+    const local = bodies.map((body) => new THREE.Box3().setFromObject(body, true).getBoundingSphere(new THREE.Sphere()));
+    const sphere = new THREE.Sphere();
+    const box = (this.orbitalBox = new THREE.Box3());
+    this.setting.scenery.push(...bodies);
+    for (const body of [...bodies, ...details]) {
+      this.scene.add(body);
+      this.looks.add(body);
+    }
+    return (sun, angularRadius, illumination) => {
+      this.bounds.makeEmpty();
+      bodies.forEach((body, i) => {
+        if (!body.visible) return;
+        body.updateWorldMatrix(true, false);
+        this.bounds.union(sphere.copy(local[i]!).applyMatrix4(body.matrixWorld));
+      });
+      this.bounds.getBoundingBox(box);
+      this.setting.sunDir.copy(sun);
+      if (this.setting.backdrop instanceof OrbitBackdrop) this.setting.backdrop.sunlight(sun, angularRadius);
+      this.shadows.sun.intensity = 4 * illumination;
+      this.shadows.fitShadows();
+      this.shadows.far.refit();
+      this.shadowsOwed = true;
+      this.dirty = true;
+    };
   }
 
   /** Fetch a model that is no part of the flight and dress it as the flight's are (the gallery's figure for scale). Whoever asks puts it somewhere. */

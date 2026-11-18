@@ -1,7 +1,7 @@
 import type { Impact } from '../sim/contact.ts';
 import '../ui/cockpit.css';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
-import type { Command, SitedFlight } from '../types.ts';
+import type { Command, Flight, SitedFlight } from '../types.ts';
 import type { Run } from '../sim/run.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import { type Clock, missionTime } from '../world/clock.ts';
@@ -120,8 +120,8 @@ const pair = (f: Figure) =>
 export const tank = (id: string, label: string, about: string) =>
   `<div class="tank" title="${about}"><span>${label}</span><u class="bar"></u><b data-cell="${id}"></b><i data-cell="${id}-kg"></i></div>`;
 
-export abstract class Deck {
-  protected readonly flight: SitedFlight;
+export abstract class Deck<F extends Flight = SitedFlight> {
+  protected readonly flight: F;
   private readonly pageClock: Clock;
   private readonly pageHost: CockpitHost;
   protected readonly root: HTMLElement;
@@ -224,7 +224,7 @@ export abstract class Deck {
     );
   }
 
-  constructor(parent: HTMLElement, flight: SitedFlight, clock: Clock, host: CockpitHost, spec: DeckSpec) {
+  constructor(parent: HTMLElement, flight: F, clock: Clock, host: CockpitHost, spec: DeckSpec) {
     this.flight = flight;
     this.enterTip = spec.enter;
     this.pageClock = clock;

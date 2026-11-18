@@ -1,0 +1,4 @@
+.dockflight { position:absolute; z-index:2; top:1rem; left:1rem; display:flex; align-items:center; gap:.6rem; color:var(--text); background:var(--glass); padding:.5rem .75rem; border:1px solid var(--line); border-radius:.45rem; }
+.dockflight button { pointer-events:auto; }
+.dockflight small { color:var(--faint); }
+@media(max-width:600px) { .dockflight { top:.5rem; left:.5rem; } .dockflight small { display:none; } }

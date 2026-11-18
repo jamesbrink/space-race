@@ -48,9 +48,9 @@ export function bindDockingProbe(craft: Object3D, port: Extract<DockingPort, { r
     captureHooks.push({ hook, rest: hook.position.clone() });
   }
   const retracted = piston.position.clone();
-  return (state: 'stowed' | 'approach' | 'capture' | 'docked') => {
+  return (state: 'stowed' | 'approach' | 'capture' | 'docked', closure = 0) => {
     piston.position.copy(retracted);
-    if (state === 'approach' || state === 'capture') piston.translateY(port.captureTravel.value);
+    if (state === 'approach' || state === 'capture') piston.translateY(port.captureTravel.value * (1 - closure));
     for (const { hook, rest } of captureHooks) {
       hook.position.copy(rest);
       if (state === 'capture' || state === 'docked') hook.translateX(hookTravel);

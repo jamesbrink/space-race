@@ -1,6 +1,6 @@
-import { measure } from '../../../../src/measure.ts';
+import { measure, doc, derived, assumed } from '../../../../src/measure.ts';
 import type { ModelDef, Motor, Part, Spec } from '../../../../src/types.ts';
-import { IN, LBF } from './gemini-titan.ts';
+import { IN, LB, LBF, THRUST } from './gemini-titan.ts';
 
 /**
  * What a Gemini went up to dock with, as flight data said once: the Gemini Agena Target Vehicle
@@ -556,3 +556,95 @@ const lengthOf = (specs: Spec[], label: string): ReturnType<typeof measure> => {
 export const AGENA_TARGET = { name: 'Agena target vehicle', length: lengthOf(agenaDimensions(), 'Length in orbit, cone run out') };
 /** The ATDA: its length in orbit as it was meant to fly, without the shroud that stayed on it. */
 export const ATDA_TARGET = { name: 'ATDA', length: lengthOf(atdaDimensions(), 'Length in orbit') };
+
+/** Postflight tracking at target insertion. Feet, feet/s and both launch clocks are those printed in the mission report. */
+export function targetFix(
+  report: string,
+  launchOffset: number,
+  elapsed: number,
+  latitude: number,
+  longitude: number,
+  feet: number,
+  speed: number,
+  flightPath: number,
+  heading: number,
+) {
+  const obs = (value: number) => doc(value, report);
+  return {
+    t: derived(launchOffset + elapsed, report + ', target launch offset from crew launch plus insertion time'),
+    latitude: obs(latitude),
+    longitude: obs(longitude),
+    height: obs(feet * 0.3048),
+    speed: obs(speed * 0.3048),
+    flightPath: obs(flightPath),
+    heading: obs(heading),
+  };
+}
+
+/** Documented total impulse maneuver in the docked configuration. The measured change of speed includes the start and stop transients. */
+export function dockedBurn(label: string, at: number, feetPerSecond: number, pitch: number, yaw: number, source: string, seconds?: number) {
+  const main = agenaMotors()[0];
+  return {
+    label,
+    at,
+    deltaV: doc(feetPerSecond * 0.3048, source),
+    pitch: doc(pitch, source),
+    yaw: doc(yaw, source),
+    thrust: doc(main.thrustN!, main.note!),
+    duration: seconds === undefined ? undefined : doc(seconds, source),
+  };
+}
+
+/** The hard contact plane is the forward face Z233.97 of Gemini, 19.53 inches forward of the target's aft face.
+ * The pressurised craft carries its full equipment section. Roll is about simulator +Y. */
+export function dockingProperties(report: string, geminiZ: number, agenaStation: number | null, pounds: number) {
+  const slugFoot2 = 0.45359237 * 9.80665 * 0.3048;
+  const moment = (v: number) =>
+    assumed(
+      v * slugFoot2,
+      'Gemini II mission report, table 9.1-XIII, on-orbit coast with the equipment section. Sister spacecraft; later equipment and propellant differ.',
+    );
+  const ship = {
+    arm: derived((233.97 - geminiZ) * IN, report + ', section 3.3 launch CG and figure 3.0-2 docking datum; applied at docking.'),
+    inertia: [moment(3624.9), moment(1362.4), moment(3568.8)] as const,
+  };
+  if (agenaStation === null) {
+    // Unavailable postlaunch mass properties. Use the actual retained-hardware envelope as a uniform-cylinder surrogate.
+    const m = pounds * LB,
+      r = 30 * IN,
+      h = 241.52 * IN;
+    const inertia = (n: number) =>
+      derived(
+        n,
+        report +
+          ', section 3.7.1, uniform-cylinder approximation of the retained shroud and adapter; longitudinal mass distribution unknown.',
+      );
+    return [
+      [
+        ship,
+        {
+          arm: assumed((26.3 + 19.53) * IN, report + ', section 3.6 launch CG, used with the shroud retained'),
+          inertia: [inertia((m * (3 * r * r + h * h)) / 12), inertia((m * r * r) / 2), inertia((m * (3 * r * r + h * h)) / 12)] as const,
+        },
+      ],
+    ] as const;
+  }
+  const inertia = (v: number) =>
+    assumed(
+      (v * slugFoot2 * pounds) / 1450,
+      'Lockheed Agena D Mission Capabilities and Restraints Catalog, table 11-2, 1450-lb reference stage. Assumes its mass-normalized moments for the fueled docking vehicle.',
+    );
+  return [
+    [
+      ship,
+      {
+        arm: derived(
+          (agenaStation - (229.5 - 19.53)) * IN,
+          report + ', section 3.6 in-orbit CG (Gemini VIII’s station 343 used for XI), and Gemini VIII figure 3.0-2(b) mating stations',
+        ),
+        inertia: [inertia(1951), inertia(136.6), inertia(1926.8)] as const,
+      },
+    ],
+  ] as const;
+}
+export const geminiControls = { ahead: THRUST.oamsAft, astern: THRUST.oamsForward, lateral: THRUST.oamsAft, attitude: THRUST.oamsAttitude };

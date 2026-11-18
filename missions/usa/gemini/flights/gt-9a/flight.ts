@@ -35,6 +35,9 @@ import {
   atdaDimensions,
   atdaMotors,
   atdaParts,
+  dockingProperties,
+  geminiControls,
+  targetFix,
   TARGET_GROUP,
   type TargetWords,
   withTarget,
@@ -627,6 +630,15 @@ const pilot = standing({
 });
 
 export const flight: Flight = {
+  docking: {
+    controls: geminiControls,
+    massProperties: dockingProperties(GIX, 105.12, null, 2006),
+    fixes: [targetFix(GIX + ', table 4.3-V, final insertion', -167970.972, 383.41, 29.03, -69.55, 979526, 25369, -0.01, 89.81)],
+    interface: 'shrouded',
+    target: 'ATDA',
+    targetMass: 'ATDA, weight at launch',
+    at: get(4, 15),
+  },
   id: 'usa/gemini/gt-9a',
   nation: 'USA',
   agency: 'NASA',

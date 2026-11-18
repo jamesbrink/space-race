@@ -233,7 +233,7 @@ export function exhibit(flight: Pick<Flight, 'models' | 'flies'>): ModelDef | nu
   return hardware.find((m) => m.id === flight.flies?.model) ?? hardware[0] ?? null;
 }
 
-type Placed = Pick<Flight, 'models' | 'flies' | 'site' | 'plan'>;
+type Placed = Pick<Flight, 'models' | 'flies' | 'site' | 'plan' | 'docking'>;
 
 /**
  * Why a flight cannot be gone to at a place, or null if it can. It has a gallery when it has a
@@ -246,6 +246,7 @@ export function lacks(flight: Placed, place: Place): string | null {
   const sited = Boolean(flight.site) && flight.models.some((m) => m.backdrop !== 'studio');
   if (place === 'site') return sited ? null : 'Launch site: not built yet';
   // (a ballistic plan needs its rigid body to be steered; an orbital one an ascent on its steering law: sim/plan.ts `flownByHand`)
+  if (flight.docking) return null;
   if (!flownByHand(flight.plan) || !flight.flies) return 'Fly: no trajectory yet';
   return sited ? null : 'Fly: its launch site is not built yet';
 }
