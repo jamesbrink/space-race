@@ -645,10 +645,28 @@ read gives enough of to fly (issue #10).
   stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
   deck's own (a throttle's arrows, a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
   both, Space is the next thing on both.
-- **Leaving the deck with a hand-flown run going on keeps it** (`Deck.leave`, `deck/leaving.ts`; gallery.md has the ways out): the
-  deck's state, run and samples stay as data, the clock is reset for the site and put back where it was on Resume, which
-  waits for a touch. A deck supplies `byHand` (taken over: not "as flown"), `runOver` and `restore`. Ending (`Deck.end`) drops
-  it; `dispose` always does.
+- **A run flown by hand is never lost by leaving it** (`Deck.leave`, `deck/leaving.ts`; gallery.md has the ways out). Within
+  the flight the deck parks it as data (state, run, samples), the clock reset for the site and put back on Resume, which waits
+  for a touch. It is also written to the browser's storage (`app/runs.ts`, one run a flight, a second flight's not putting out
+  the first) as the deck is left, every five seconds while it is flown (in an idle moment), and as the page is hidden or
+  goes: a reload, a closed tab, another flight or the front page loses at most a moment of it. What is written is not the
+  run but what was done to it (`deck/tape.ts`): each call into the deck that can change the flight (a command, a key of the
+  kind's, a cabin's or a part's order, a mechanism, the throttle's slider, a hand going to the controls, the keys and stick
+  held as they change), with the clock's instant, the simulator's tick count and the page's time for the deck's own guards;
+  and, where the kind's flight depends on the frames themselves (`Deck.framed`: the orbital deck's attitude turned by hand,
+  integrated frame by frame), each frame's instant while it does. A few kilobytes, where the run's samples are megabytes.
+  Taken up (Fly, on any later visit) the deck flies it again from the pad through its own code on a clock of its own, with
+  nothing told to the page (`clock`, `host`, `watchers` and `now` are the replay's), in slices so the page keeps drawing,
+  and checks each entry's tick count and, at the end, the state (`print`, `tape.ts` `pack`, every double as it was): one
+  that does not come out the same is not restored at all but said to be unresumable and let go, as is one stamped
+  (`stampOf`: the version of what is written, a hash of the simulator's and decks' code made by the build, and a hash of the
+  flight's plan, site, day, sheds and mechanisms) by another. Nothing in it is per flight: a kind supplies `byHand`,
+  `runOver`, `restore`, `fresh` (which calls `started`), `ticks`, `print`, `switches` and, if its run depends on frames,
+  `framed`; its commands go through `command`, `obey`, `worked`, `extraKey` and `setLever`, which the deck writes down.
+  tests/resume.test.mjs flies Freedom 7 and Vostok 1 by hand, writes them at several instants (powered, coasting, after a
+  staging, the retrorockets or the braking burn, the entry), flies them again from what was written and on beside the run
+  never left, to the last bit, on the same machine; tools/deck-test.mjs does it through the decks in a browser. A run that
+  has ended is not kept (its result is read as before); `end` drops it, `shelve` (the page letting the flight go) keeps it.
 - **The flight can be flown by hand.** Fly it (the button by the clock, or L) takes the flight
   deck (`src/deck/cockpit.ts`): the vehicle on its pad, the clock stopped at liftoff, the view the chase
   camera's, the page out of the way. Space lights the engine and after that sets off the next
