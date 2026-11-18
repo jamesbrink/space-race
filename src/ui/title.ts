@@ -1,11 +1,23 @@
 import './title.css';
-import { type Browse, browseOf, exhibit, listed, programmeName } from '../app/address.ts';
+import { type Browse, browseOf, exhibit, lacks, listed, PLACE_NAME, PLACES, programmeName } from '../app/address.ts';
+import { emblem, flag, icon } from './icons.ts';
 import { logo } from './logo.ts';
 import type { Flight } from '../types.ts';
 import { esc } from '../util/dom.ts';
 
 const date = (iso: string) =>
   new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+
+/**
+ * Which of its three places a flight has, as their icons: lit for each it has, dimmed for one it has not yet (address.ts
+ * `lacks`, in the words the places' switch says when pointed at). Said in words as well, for whoever cannot see them.
+ */
+const placesOf = (f: Flight): string => {
+  const has = PLACES.filter((p) => !lacks(f, p));
+  const says = `Built here: ${has.map((p) => PLACE_NAME[p].toLowerCase()).join(', ')}`;
+  const told = PLACES.map((p) => lacks(f, p) ?? `${PLACE_NAME[p]}: built`).join('\n');
+  return `<span class="has" role="img" aria-label="${esc(says)}" title="${esc(told)}">${PLACES.map((p) => `<i${lacks(f, p) ? ' class="lacks"' : ''}>${icon(p)}</i>`).join('')}</span>`;
+};
 
 /**
  * The front page's words: the mark, the way into the Lineup, and the flights there are to go into, over the page's own
@@ -46,14 +58,14 @@ export class Title {
       <nav class="title-browse" aria-label="Browse the flights">
         <p role="group" aria-label="Nation">
           <button data-nation="" aria-pressed="true">All</button>
-          ${[...nations].map(([key, n]) => `<button data-nation="${esc(key)}" aria-pressed="false">${esc(n.name)}</button>`).join('')}
+          ${[...nations].map(([key, n]) => `<button data-nation="${esc(key)}" aria-pressed="false">${flag(key)}${esc(n.name)}</button>`).join('')}
         </p>
         ${[...nations]
           .map(
             ([key, n]) => `
         <p role="group" aria-label="${esc(n.name)}: programme" data-of="${esc(key)}" hidden>
           <button data-programme="" aria-pressed="true">Every programme</button>
-          ${[...n.programmes].map(([id, name]) => `<button data-programme="${esc(id)}" aria-pressed="false">${esc(name)}</button>`).join('')}
+          ${[...n.programmes].map(([id, name]) => `<button data-programme="${esc(id)}" aria-pressed="false">${emblem(id)}${esc(name)}</button>`).join('')}
         </p>`,
           )
           .join('')}
@@ -64,7 +76,7 @@ export class Title {
           lineup && built > 1
             ? `
           <button class="title-lineup" data-lineup>
-            <svg class="n" viewBox="0 0 26 18" aria-hidden="true"><path d="M1 17h24M4 17V9M9 17V2M14 17V6M19 17V4M23 17v-6" /></svg>
+            <span class="n">${icon('lineup')}</span>
             <span class="what"><b>The Lineup</b><em>All ${built} vehicles side by side, to scale, with their history</em></span>
             <span class="go" aria-hidden="true">Enter</span>
           </button>`
@@ -72,21 +84,24 @@ export class Title {
         }
         ${all
           .map((f, i) => {
-            const n = `<span class="n">${String(i + 1).padStart(2, '0')}</span>`;
+            const { nation, programme } = browseOf(f.id);
+            // (the number, then the programme's emblem: the list reads by programme down its left edge)
+            const n = `<span class="n">${String(i + 1).padStart(2, '0')}</span><span class="mark">${emblem(programme)}</span>`;
+            const day = `<span class="day">${flag(nation)}${esc(f.nation)} · ${date(f.launch)}</span>`;
             // (one that is to come is a line, not a way in: it says what will be here and when it flew)
             if (!('callsign' in f))
               return `
-          <p class="to-come" data-under="${esc(browseOf(f.id).programme)}">
+          <p class="to-come" data-under="${esc(programme)}">
             ${n}
             <span class="what"><b>${esc(f.name)}</b><em>${esc(f.line)}</em></span>
-            <span class="when">${esc(f.nation)} · ${date(f.launch)}</span>
+            <span class="when">${day}</span>
             <span class="go">To come</span>
           </p>`;
             return `
-          <button data-flight="${esc(f.id)}" data-under="${esc(browseOf(f.id).programme)}">
+          <button data-flight="${esc(f.id)}" data-under="${esc(programme)}">
             ${n}
             <span class="what"><b>${esc(f.callsign)}</b><em>${esc(f.designation)} · ${esc(f.crew.join(', '))}</em></span>
-            <span class="when">${esc(f.nation)} · ${date(f.launch)}</span>
+            <span class="when">${day}${placesOf(f)}</span>
             <span class="go" aria-hidden="true">Enter</span>
           </button>`;
           })

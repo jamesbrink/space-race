@@ -2,6 +2,7 @@ import './history.css';
 import type { FlightStory, Person, Programme } from '../../missions/history.ts';
 import type { Confidence } from '../types.ts';
 import { esc } from '../util/dom.ts';
+import { emblemFigure } from './icons.ts';
 import { dot } from './ui.ts';
 
 /**
@@ -10,7 +11,7 @@ import { dot } from './ui.ts';
  * headline, what it was first to do, why it has its name, who flew it (each opens to their own story), its programme,
  * its moments. Each is markup for the page to put where it wants it (history.css is its look, the panels' glass
  * round it is the page's); what is pressed in it is the page's to hear. Nothing here is written but what the
- * history says and the names of its headings.
+ * history says and the names of its headings, but for what a programme's emblem is, which icons.ts says.
  */
 
 /** Text as paragraphs: a blank line parts them (the history's one convention). */
@@ -68,7 +69,7 @@ export function crewMarkup(
 
 /** A programme's words: why it was, how it was done, what it left, and where they are from. */
 export function programmeMarkup(told: Programme): string {
-  return `<h4>Why</h4>${paras(told.why)}<h4>How</h4>${paras(told.how)}<h4>What it left</h4>${paras(told.legacy)}<small>${esc(told.source)}</small>`;
+  return `${emblemFigure(told.id)}<h4>Why</h4>${paras(told.why)}<h4>How</h4>${paras(told.how)}<h4>What it left</h4>${paras(told.legacy)}<small>${esc(told.source)}</small>`;
 }
 
 /** A moment of the race as one row of a list of them (`hist-moments`): its day, its title with how sure it is, `what` under that, its words and their source. */

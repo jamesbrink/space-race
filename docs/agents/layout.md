@@ -151,6 +151,8 @@ src/
   ui/timebar.ts  ui/time.css          the clock's control
   ui/callout.ts  ui/callout.css       the idle show's callouts
   ui/title.ts  ui/logo.ts  ui/title.css  the front page's words (the way into the Lineup, the list of flights) and the mark
+  ui/icons.ts  ui/icons.css           the page's small pictures as inline SVG: the icons (a flight's places, the Lineup, walking, the camera), the
+                                      nations' flags (`FLAGS`, by the nation's word in an id) and the programmes' emblems (`EMBLEMS`, by programme id)
   ui/lineup.ts  ui/lineup.css         the Lineup's page: the card, the programmes, the timeline's strip and its words, and what is written on the picture
   ui/navball.css  ui/cockpit.css      the navball's and the flight deck's looks
   deck/deck.ts                        the flight deck, one for every flight: its three panels, keys and their buttons, the stick and roll, tucking, the card that ends a flight

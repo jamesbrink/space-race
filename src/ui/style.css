@@ -350,7 +350,9 @@ input[type='range']::-moz-range-thumb { width: 3px; height: 19px; border: 0; bor
 .set { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
 .set-items { display: contents; }
 .buttons button { flex: none; display: flex; align-items: center; padding: 8px 10px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); letter-spacing: 0.1em; white-space: nowrap; }
-.buttons [data-camera] svg { margin-right: 8px; }
+/* (a press that goes somewhere or does something, Walk or the camera, has its icon before its word: icons.ts. A switch has its lamp
+   and no icon: the lamp says whether it is on, which a picture cannot, and one mark before a name is enough) */
+.buttons button .icon { margin-right: 8px; }
 /* a switch has a lamp before its name, lit while it is on: so what is a switch is told from what is a press, here and on the flight deck */
 .switch::before { content: ''; flex: none; display: inline-block; width: 7px; height: 7px; margin-right: 8px; border: 1px solid currentColor; border-radius: 1px; opacity: 0.75; }
 .switch[aria-pressed='true']::before { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 6px rgba(255, 196, 107, 0.7); opacity: 1; }

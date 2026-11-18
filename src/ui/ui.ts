@@ -9,6 +9,7 @@ import { RIGS, type RigId } from '../viewer/camera/rig.ts';
 import { functionsOf } from '../viewer/explode.ts';
 import { chooseTier, tier } from '../viewer/tier.ts';
 import { lookoutsOf } from '../viewer/lookouts.ts';
+import { icon } from './icons.ts';
 import { Wheel } from './wheel.ts';
 import { $, esc } from '../util/dom.ts';
 import { capsOf, doesOf, is, isTyping, KEYS, type KeyName, modified, which } from '../util/keys.ts';
@@ -85,8 +86,7 @@ const CAMERA_LABEL: Record<RigId, string> = {
 };
 /** On the button the word "camera" is a picture of one: the rig's own name is what changes. */
 const cameraName = (mode: RigId) => CAMERA_LABEL[mode].replace('Camera · ', '');
-const CAMERA_ICON =
-  '<svg viewBox="0 0 16 12" width="16" height="12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" aria-hidden="true"><rect x="0.7" y="2.2" width="10" height="7.6" rx="1"/><path d="M10.7 5l4.6-2.6v7.2L10.7 7z"/></svg>';
+const CAMERA_ICON = icon('camera');
 /** The class the page takes in each rig: which block of the legend is on show. */
 const CAMERA_CLASS: Partial<Record<RigId, string>> = {
   free: 'flying',
@@ -362,7 +362,7 @@ export class Ui {
         </section>
         <nav class="handle" aria-label="What to look at, and the rest">
           <span class="handle-slot"></span>
-          ${f.models.some((m) => m.walker) ? '<button class="handle-walk" data-press="v" title="Get down and walk the site as the crew (V)">Walk</button>' : ''}
+          ${f.models.some((m) => m.walker) ? `<button class="handle-walk" data-press="v" title="Get down and walk the site as the crew (V)">${icon('walk')}Walk</button>` : ''}
           <button class="handle-open" aria-expanded="false" title="Views, taking it apart, the parts, the figures and the flight: open or put away"><b>More</b><i class="chevron"></i></button>
         </nav>
       </aside>
@@ -782,7 +782,7 @@ export class Ui {
       ]
         .map((v) => `<button data-view="${v.id}" aria-pressed="false" title="View: ${esc(v.label)}">${esc(v.label)}</button>`)
         .join('')}</span></span>` +
-      `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">Walk</button>` : ''}${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (Y)">Cutaway</button>' : ''}` +
+      `<span class="set" role="group" aria-label="Show">${m.walker ? `<button data-walk title="Walk the site as ${esc(m.name)} (or double-click the figure)">${icon('walk')}Walk</button>` : ''}${m.cutaway ? '<button data-cut class="switch" aria-pressed="false" title="Slice the skin open to what is inside (Y)">Cutaway</button>' : ''}` +
       `<button data-camera title="${CAMERA_LABEL[this.cameraMode]}: the next camera (C)">${CAMERA_ICON}<span>${cameraName(this.cameraMode)}</span></button>` +
       `<button data-rotate class="switch" aria-pressed="${rotating}" title="The view drifts round what was last chosen">Auto-orbit</button>` +
       `<button data-cel class="switch" aria-pressed="${prefs.get('cel')}" title="Draw the scene as a cel-shaded drawing (T)">Cel shading</button>` +
