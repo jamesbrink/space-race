@@ -1,4 +1,4 @@
-"""LM-3 Spider. Inches from the deployed footpad plane, forward hatch on +X. See lunar-module.md."""
+"""LM-3 Spider and LM-4 Snoopy. Inches from the deployed footpad plane, forward hatch on +X. See lunar-module.md."""
 
 import math
 
@@ -122,7 +122,7 @@ def engine_shield(mesh, perimeter, profile, *, underside=False):
         edge = ring
 
 
-def descent(parent, foil, amber, dark, alloy):
+def descent(parent, foil, amber, dark, alloy, spacecraft):
     # The octagon encloses the beam cross, four propellant bays and four corner bays.
     wrap = MeshBuilder()
     base, top = octagon(77, 34, 58.30), octagon(80, 34, DECK)
@@ -135,6 +135,11 @@ def descent(parent, foil, amber, dark, alloy):
         side.material_index = (
             1 if ring == 3 or ring == 2 and facet in (0, 1, 2, 4, 6, 7) or ring == 1 and facet in (1, 3, 5) else 2 if facet in (0, 4, 6) else 0
         )
+    if spacecraft == 4:
+        # S69-17807: black corner panels over broad gold-edged blankets.
+        for side in blanket.data.polygons:
+            ring, facet = divmod(side.index, 8)
+            side.material_index = 1 if ring in (1, 2) else 2 if facet % 2 else 0
     mark_shells([blanket.name])
     # The descent engine passes through its base shield. Above it a separate, closed
     # blast deflector receives the ascent plume. Local recess dimensions are estimated.
@@ -164,6 +169,8 @@ def descent(parent, foil, amber, dark, alloy):
         u = Vector((-sign, 1, 0)).normalized()
 
         def decal(dx, dz, depth, sgn=sign, t=u, n=normal):
+            if spacecraft == 4 and sgn < 0:
+                dx += 12  # Flag toward one edge of the MESA bay, estimated.
             return at((58.5, sgn * 58.5, 77)) + at(t * dx + Vector((0, 0, dz)) + n * depth)
 
         vs = [decal(x, z, 0.45) for x, z in ((-12, -6), (12, -6), (12, 6), (-12, 6))]
@@ -174,8 +181,26 @@ def descent(parent, foil, amber, dark, alloy):
                 legend.add([decal(v[0] / IN - 9, v[1] / IN + z, 0.55) for v in verts], faces)
         else:
             flag.add(vs, [(0, 1, 2, 3)], [(0, 0), (1, 0), (1, 1), (0, 1)])
-    mark_shells([badges.build("LM3_CountryPlacard", alloy, parent).name])
-    mark_shells([legend.build("LM3_CountryLetters", dark, parent).name])
+    mark_shells([badges.build("LM3_CountryPlacard", dark if spacecraft == 4 else alloy, parent).name])
+    mark_shells([legend.build("LM3_CountryLetters", alloy if spacecraft == 4 else dark, parent).name])
+    if spacecraft == 4:
+        # S69-17807 shows a tall metallic bay face beside the gold-edged black
+        # closure. These capture its external subdivision, not the ground covers.
+        facing, borders = MeshBuilder(), MeshBuilder()
+        along = Vector((1, 1, 0)).normalized()
+        normal = Vector((1, -1, 0)).normalized()
+
+        def bay(x, height, depth):
+            return at((58.5, -58.5, height)) + at(along * x + normal * depth)
+
+        for left, right, bottom, top in [(-31, -28, 66, 118), (-27.7, -14, 66, 118), (-13.7, -12, 66, 118)]:
+            facing.add([bay(left, bottom, 0.8), bay(right, bottom, 0.8), bay(right, top, 0.8), bay(left, top, 0.8)], [(0, 1, 2, 3)])
+        for h in (68, 113):
+            borders.tube(bay(-31, h, 1.25), bay(-12, h, 1.25), 0.39 * IN, segs=8)
+        for x in (-31.5, -11.5):
+            borders.tube(bay(x, 66, 1), bay(x, 118, 1), 0.45 * IN, segs=8)
+        mark_shells([facing.build("LM4_ForwardBayClosure", alloy, parent).name, borders.build("LM4_BayEdging", amber, parent).name])
+
     import sys
     from pathlib import Path
 
@@ -250,7 +275,7 @@ def check_engine_interfaces(parts):
                 raise ValueError(f"{obj.name} intersects cabin floor or engine cover")
 
 
-def landing_gear(parent, gold, metal, dark, deployed):
+def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
     # Each local assembly is built deployed then folded inward under its outrigger.
     # The viewer rotates it back about that same knee after the adapter opens.
     for i in range(4):
@@ -258,9 +283,16 @@ def landing_gear(parent, gold, metal, dark, deployed):
         hinge = group(f"LM3_GearHinge_{i}", parent)
         hinge.location = at((KNEE * math.cos(az), KNEE * math.sin(az), KNEE_Z))
         hinge.rotation_euler = (Matrix.Rotation(az, 4, "Z") @ Matrix.Rotation(math.radians(0 if deployed else FOLD), 4, "Y")).to_euler()
+        strut, piston, pad = MeshBuilder(), MeshBuilder(), MeshBuilder()
+        if spacecraft == 4:
+            # M-932-69-10 p.45: plume shield added over the deployment mechanism.
+            # A faceted shallow hood represents the envelope; profile estimated.
+            # The inboard lip covers the knee while the outboard edge clears the
+            # fixed SLA panels during extraction, before the leg unfolds.
+            profile = [(-10, 3), (-6, 5), (1, 4), (4, 1)]
+            shell(strut, [[(x, y, z) for x, z in profile] for y in (-7, 7)])
         foot = (TREAD - KNEE, 0, 2 - KNEE_Z)
         joint = tuple(v * 0.64 for v in foot)
-        strut, piston, pad = MeshBuilder(), MeshBuilder(), MeshBuilder()
         tube(strut, (0, 0, 0), joint, 3.7)
         piston.tube(at(joint), at(foot), 2.5 * IN, caps=False)
         for side in (-1, 1):
@@ -276,18 +308,19 @@ def landing_gear(parent, gold, metal, dark, deployed):
         sensor.tube(at((3, 0, -14)), at((3, 0, -67)), 0.55 * IN, caps=False)
         sensor.build(f"LM3_SurfaceProbe_{i}", metal, probe)
         strut.build(f"LM3_GoldStrut_{i}", gold, hinge)
-        piston.build(f"LM3_Piston_{i}", metal, hinge)
         if i == 0:
-            ladder = MeshBuilder()
+            ladder = piston if spacecraft == 4 else MeshBuilder()
             for y in (-7, 7):
                 tube(ladder, (10, y, -5), (50, y, -89), 0.8)
             for rung in range(9):
                 t = (rung + 0.5) / 9
                 tube(ladder, (10 + 40 * t, -7, -5 - 84 * t), (10 + 40 * t, 7, -5 - 84 * t), 0.75)
-            ladder.build("LM3_ForwardLadder", dark, hinge)
+            if spacecraft == 3:
+                ladder.build("LM3_ForwardLadder", dark, hinge)
+        piston.build(f"LM3_Piston_{i}", metal, hinge)
 
 
-def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deployed):
+def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deployed, spacecraft):
     # Front face, irregular tank fairings, midsection and equipment rack follow MSFC fig. 51.
     nose = MeshBuilder()
 
@@ -378,7 +411,39 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
     mark_shells([hatch.build("LM3_ForwardHatch", foil, parent).name])
     framebars.build("LM3_FramesAndHatchHandle", dark, parent)
     porch.build("LM3_EVAPorch", dark, platform)
-    shoes.build("LM3_GoldenSlippers", gold, platform)
+    if spacecraft == 3:
+        shoes.build("LM3_GoldenSlippers", gold, platform)
+    else:
+        # Plate 43a: handholds rise on either side of the porch grating.
+        # AS10-34-5112: fittings and bright-edged thermal cover on the forward hatch.
+        hatch_cover, hatch_fittings, grab = MeshBuilder(), MeshBuilder(), MeshBuilder()
+        box(hatch_cover, (77.32, 0, 156.5), (0.24, 28, 27))
+        for y, z, r in ((-9, 160, 3.8), (8.8, 153, 4.2)):
+            pose = frame(at((77.6, y, z)), (1, 0, 0))
+            hatch_fittings.lathe(prof([(r, -0.1), (r, 0.6), (r * 0.76, 1.1), (r * 0.4, 0.55), (0, 0.7)]), 20, matrix=pose)
+        for y in (-17.6, 17.6):
+            shell(
+                grab,
+                [
+                    [(x + dx, y + dy, z) for dx, dy in ((-0.5, -0.6), (0.5, -0.6), (0.5, 0.6), (-0.5, 0.6))]
+                    for x, z in ((78.6, 141.5), (80.5, 150), (80.5, 165), (78.6, 173))
+                ],
+            )
+        mark_shells([hatch_cover.build("LM4_ForwardHatchCover", dark, parent).name, hatch_fittings.build("LM4_HatchFittings", gold, parent).name])
+        grab.build("LM4_HatchHandholds", alloy, parent)
+        rails = MeshBuilder()
+        for y in (-14, 14):
+            for a, b in zip([(80, y, 134), (81, y, 143), (93, y, 143)], [(81, y, 143), (93, y, 143), (110, y, 134)], strict=True):
+                tube(rails, a, b, 0.65)
+        rails.build("LM4_PorchHandrails", alloy, platform)
+        # Forward face in AS10-34-5112: the circular tracking light below
+        # the rendezvous dish. Keep its static lens unlit in the Gallery.
+        socket, lens = MeshBuilder(), MeshBuilder()
+        mount = frame(at((77.6, 0, 188)), (1, 0, 0))
+        socket.lathe(prof([(4.5, -1.5), (4.5, 0.7), (3.65, 1), (3.55, -0.5)]), 28, matrix=mount)
+        lens.lathe(prof([(3.65, 0.35), (2.8, 0.7), (0, 0.85)]), 28, matrix=mount)
+        socket.build("LM4_TrackingLampBezel", alloy, parent)
+        lens.build("LM4_TrackingLampLens", dark, parent)
     # Four clusters on outriggers at 45 degrees to the pitch and roll axes (NASA TN D-6740, "Installation of the
     # System"), each thruster where R-567 puts it. R-567 numbers them I to IV from the left forward corner round by
     # the rear; +Y here is the commander's side, the LM's -Y. A reference point is taken for the throat. The
@@ -411,15 +476,20 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
     mast = MeshBuilder()
     tube(mast, (0, 0, 0), (4, 0, 43), 1.3)
     mast.build("LM3_SBandBoom", alloy, sb)
-    dish(gear, "LM3_RendezvousRadar", (49, 29, 225), (0.96, 0.18, 0.15), 12, white, dark)
+    # Press kit plate 42b and AS10-34-5112 place the gimbal on the
+    # centreline forward of the docking tunnel.
+    radar = (68, 0, 240) if spacecraft == 4 else (49, 29, 225)
+    dish(gear, "LM3_RendezvousRadar", radar, (0.96, 0.18, 0.15), 12, white, dark)
     masts = MeshBuilder()
-    tube(masts, (46, 20, 211), (49, 29, 225), 1.25)
+    tube(masts, (66, 0, 223) if spacecraft == 4 else (46, 20, 211), radar, 1.25)
     for side in (-1, 1):
         tube(masts, (-15, side * 33, 227), (-23, side * 46, 236), 0.55)
     masts.build("LM3_AntennaMasts", alloy, gear)
 
 
-def build(iu_top=0, *, deployed=False):
+def build(iu_top=0, *, deployed=False, spacecraft=3):
+    if spacecraft not in (3, 4):
+        raise ValueError(f"Unsupported lunar module LM-{spacecraft}")
     foil = material("lm3-blanket-gold", (0.64, 0.29, 0.042), metallic=0.68, roughness=0.43)
     amber = material("lm3-copper-blanket", (0.41, 0.132, 0.029), metallic=0.50, roughness=0.52)
     white = material("lm3-ascent-shield", (0.53, 0.56, 0.55), metallic=0.48, roughness=0.50, double_sided=True)
@@ -458,15 +528,15 @@ def build(iu_top=0, *, deployed=False):
         if not deployed:
             root["lineup_enclosed"] = True
         root.location.z = (0 if deployed else iu_top - 36) * IN
-    descent(parts["LMDescent"], foil, amber, dark, silver)
-    landing_gear(parts["LMLandingGear"], foil, silver, dark, deployed)
-    cabin(parts["LMAscent"], parts["LMEquipment"], parts["LMPorch"], white, white, dark, glass, silver, foil, deployed)
+    descent(parts["LMDescent"], foil, amber, dark, silver, spacecraft)
+    landing_gear(parts["LMLandingGear"], foil, silver, dark, deployed, spacecraft)
+    cabin(parts["LMAscent"], parts["LMEquipment"], parts["LMPorch"], white, white, dark, glass, silver, foil, deployed, spacecraft)
     apollo_docking.lunar(parts["LMDockingPort"], silver, dark)
     lm_propulsion.engine(parts["LMDescentEngine"], False, silver, dark, white, amber)
     lm_propulsion.engine(parts["LMAscentEngine"], True, silver, dark, white, amber)
     lm_propulsion.tanks(parts["LMDPSTanks"], parts["LMAPSTanks"], parts["LMDescentStructure"], silver, ox, fuel, amber)
     lm_propulsion.rcs_tanks(parts["LMReactionSupply"], silver, fuel, ox)
-    lm_systems.build(parts, silver, interior_paint, dark, white)
+    lm_systems.build(parts, silver, interior_paint, dark, white, spacecraft=spacecraft)
     staging_fittings(parts["LMDescent"], parts["LMAscent"], silver, dark)
     lm_cabin.build(parts["LMStations"], parts["LMControlPanels"], silver, interior_paint, dark, ivory, glass)
     check_engine_interfaces(parts)

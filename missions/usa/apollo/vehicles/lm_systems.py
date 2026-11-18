@@ -21,7 +21,7 @@ def batteries(owner, positions, metal, panel, black):
         insulation.build(f"{owner.name}_Terminals_{i}", black, owner)
 
 
-def build(parts, metal, panel, dark, white):
+def build(parts, metal, panel, dark, white, *, spacecraft=3):
     radar = MeshBuilder()
     box(radar, (-59, 0, 53), (25, 21, 7))
     radar.build("LM3_LandingRadarAntenna", panel, parts["LMLandingRadar"])
@@ -32,7 +32,10 @@ def build(parts, metal, panel, dark, white):
     face.build("LM3_LandingRadarFace", dark, parts["LMLandingRadar"])
     if not interior():
         return
-    batteries(parts["LMDescentPower"], [(x, -49, z) for x in (-54, -37) for z in (78, 99)], metal, panel, dark)
+    # MSC-00126 A.2.1: LM-4 divided its four batteries equally between the
+    # two forward quadrants. Exact case stations within each bay are estimated.
+    locations = [(63, y, z) for y in (-37, 37) for z in (72, 106)] if spacecraft == 4 else [(x, -49, z) for x in (-54, -37) for z in (78, 99)]
+    batteries(parts["LMDescentPower"], locations, metal, panel, dark)
     batteries(parts["LMAscentPower"], [(-66, y, 174) for y in (-11, 11)], metal, panel, dark)
     for name, locations in (
         ("LMDescentConsumables", [("Water", 52, -47, 88, 11), ("Oxygen", 42, -59, 107, 7)]),
