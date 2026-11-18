@@ -369,6 +369,33 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
         phase: document.querySelector('[data-cell=phase]')?.textContent ?? '',
       }));
     const ask = (what) => page.evaluate((x) => window.sr.cockpit.ask(x), what);
+    /**
+     * N, a new flight: with a run flown by hand going on it is asked first (deck/leaving.ts, 'again'), and answered Start over
+     * (N), as a visitor starting the next case would. Then it is the flight as flown, on the pad: the clock at nought, nothing
+     * flown, guidance and the sequencer on.
+     */
+    const again = async (what) => {
+      await page.keyboard.press('KeyN');
+      await page.waitForTimeout(300);
+      if (await page.$('.deck-ask [role=alertdialog]')) await page.keyboard.press('KeyN');
+      await page.waitForTimeout(500);
+      const on = await page.evaluate(() => ({
+        t: window.sr.clock.t,
+        asking: Boolean(document.querySelector('.deck-ask [role=alertdialog]')),
+        state: window.sr.cockpit.state ? { t: window.sr.cockpit.state.t, held: window.sr.cockpit.state.held } : null,
+        steering: window.sr.cockpit.steering,
+        mode: document.querySelector('[data-cell=mode]')?.textContent ?? '',
+      }));
+      if (
+        on.asking ||
+        on.t > 0 ||
+        (on.state && on.state.t > 0) ||
+        !on.steering.guidance ||
+        !on.steering.sequence ||
+        /Not the record|Hands only|leaned|Manual|by hand/.test(on.mode)
+      )
+        fail(where, `${what}: N did not stand the flight on the pad as flown: ${JSON.stringify(on)}`);
+    };
     const shot = async (name) => {
       if (process.env.SR_SHOTS) await page.screenshot({ path: `${process.env.SR_SHOTS}/${name}-${w}.png` });
     };
@@ -391,8 +418,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       fail(where, `lit at its moment it did not part clean: core "${r.core}", card "${r.card.slice(0, 80)}"`);
     console.log(`  ${where}: hot staging at 299 s: "${r.notes.slice(0, 90)}…", the core ${r.core}`);
     // a minute early
-    await page.keyboard.press('KeyN');
-    await page.waitForTimeout(500);
+    await again('a minute early');
     await page.keyboard.press('Space');
     await run(240);
     await ask('step:ignite:2');
@@ -403,8 +429,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     await shot('hot-early-card');
     console.log(`  ${where}: lit at 240 s: ${r.phase}; "${r.card.slice(0, 160)}…"`);
     // the fairing at max q, the core early
-    await page.keyboard.press('KeyN');
-    await page.waitForTimeout(500);
+    await again('the fairing at max q');
     await page.keyboard.press('Space');
     await run(60);
     await ask('step:drop:fairing');
@@ -427,8 +452,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       await page.keyboard.press('KeyX');
       await page.waitForTimeout(300);
     };
-    await page.keyboard.press('KeyN');
-    await page.waitForTimeout(500);
+    await again('aborted at 20 s');
     await page.keyboard.press('Space');
     await run(20);
     await abort();
@@ -440,8 +464,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     if (!/Ejected from the launch vehicle/.test(r.card) || !/by the limits taken/.test(r.card))
       fail(where, `aborted at 20 s, no card of the ejection: "${r.card.slice(0, 160)}"`);
     else console.log(`  ${where}: aborted at 20 s: "${r.card.slice(0, 160)}…"`);
-    await page.keyboard.press('KeyN');
-    await page.waitForTimeout(500);
+    await again('aborted at 60 s');
     await page.keyboard.press('Space');
     await run(60);
     await abort();
@@ -450,8 +473,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     if (!/Broke up on the launch vehicle/.test(r.card) || !/where the seat was to take the pilot out/.test(r.card))
       fail(where, `aborted at 60 s, no card of the breakup before 7 km: "${r.card.slice(0, 160)}"`);
     else console.log(`  ${where}: aborted at 60 s: "${r.card.slice(0, 160)}…"`);
-    await page.keyboard.press('KeyN');
-    await page.waitForTimeout(500);
+    await again('aborted at 200 s');
     await page.keyboard.press('Space');
     await run(200);
     await abort();
@@ -493,8 +515,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       fail(where, 'Freedom 7 had not parted after the cutoff');
     console.log(`  ${where}: Freedom 7 let go at 100 s parted after its cutoff`);
     // Freedom 7: the tower let go on the pad, unlit: it goes on its rockets, the clock runs, and the stack stands to be lit
-    await page.keyboard.press('KeyN');
-    await page.waitForTimeout(500);
+    await again("Freedom 7's tower on the pad");
     const padTower = await page.evaluate(() => window.sr.cockpit.can('tower'));
     if (!padTower) fail(where, 'Freedom 7: the tower is not offered on the pad');
     await ask('tower');
@@ -507,8 +528,7 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     if (pad.towerAt === null || !pad.held || !(pad.t > 0.5)) fail(where, `Freedom 7: the tower on the pad: ${JSON.stringify(pad)}`);
     console.log(`  ${where}: Freedom 7's tower let go on the pad, the stack standing at T+${pad.t.toFixed(1)} s`);
     // Freedom 7: retrofire with the spacecraft still on its booster, after the cutoff: fired, and said
-    await page.keyboard.press('KeyN');
-    await page.waitForTimeout(500);
+    await again("Freedom 7's retrofire on the booster");
     await page.keyboard.press('Space');
     await run(145);
     await ask('retro');
