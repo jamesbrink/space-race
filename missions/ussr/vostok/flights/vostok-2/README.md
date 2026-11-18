@@ -17,7 +17,7 @@ oblast. Backup: Andriyan Nikolayev.
 | Launch site (Site 1 as it stood on 6 August 1961) | **built**: [model/pad.py](model/pad.py) and the place [1961-08.py](../../../places/tyuratam/site1/model/1961-08.py), the site's modules at that date; the morning in [pad.ts](pad.ts). What changed since April, and what of this morning is built and what not, below ("The morning at the pad") |
 | Crew to be walked as | **built**: [model/crew.py](model/crew.py), the SK-1 figure as Gagarin's (Titov's height not found) |
 | The flight as data, flown | **written**: [orbital.ts](orbital.ts), [mission.md](mission.md): the orbit determined, the two periods by hand, the burn (its instant derived), the descent. The ascent is the type's on Vostok 1's instants (none of this flight's was found). Fly is lit: the record as flown by default, everything a hand can do on Vostok 1, and Titov's two periods by hand as the record has them |
-| The cabin | the plain stand-in board of Vostoks 2 to 6 ([vostok-3ka.md](../../vehicles/vostok-3ka.md)): the seat's view, the two lamps and their tumbler, the portholes. No instrument reads the flight: this ship's own board, its Globus, its Vzor and the hand controller are not built (listed for a modelling agent) |
+| The cabin | Vostok 2’s board carries the Globus, the receiver clock and the Vizir alongside it. Its three cabin lamps follow Titov’s account. The [hardware notes](../../vehicles/vostok-3ka.md) distinguish the flight’s readings from estimated instrument and switch positions. |
 
 ## The morning at the pad
 

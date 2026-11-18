@@ -1,12 +1,12 @@
 import type { CabinDef, ModelDef } from '../../../../src/types.ts';
+import { boardClock } from '../../vostok/vehicles/cabin.ts';
 
 /**
  * A Voskhod's couches and its cabin as somewhere to sit (types.ts: ModelDef.seats, CabinDef; viewer/cabin.ts), from the
  * nodes vehicles/voskhod.py builds. Each couch has an eye point, `Seat_<Left|Centre|Right>`, at the eyes of the man the
  * flight lays in it and turned as his own head is (voskhod.py `seat_view`); the couches are named by where they lie,
- * as their nodes and their men are (`CouchLeft`, `Crew_Left_…`), and each flight says whose each was. The cabin is the
- * plain one of the Vostoks after the first (../../vostok/vehicles/cabin.ts): a board, the Globus and the Vzor as shapes,
- * lit as indoors by its one lamp, with the hull's two portholes to look out of. What it lacks is in voskhod.md.
+ * as their nodes and their men are (`CouchLeft`, `Crew_Left_…`). Their shared SIS-3-3KV board carries the powered Globus
+ * and IVK clock. The 3KD fit is assumed from Voskhod 1 (voskhod.md).
  */
 
 export type Couch = 'Left' | 'Centre' | 'Right';
@@ -33,13 +33,19 @@ export function voskhodSeat(couch: Couch, whose: string, helmet: string[], open:
  */
 export function voskhodCabin(couches: string[]): CabinDef {
   return {
+    instruments: boardClock,
+    globe: {
+      node: 'Globus_Globe',
+      name: 'Orbital position indicator',
+      about:
+        'The globe turns to the spacecraft’s position over the Earth. The face follows Tyapchenko’s photograph of this instrument family. Its size is estimated.',
+    },
     within: ['Cabin', ...couches],
     // the top of the crew's heads: along the couches toward hatch No. 2 and the parachute container, raised 24° as
     // the Vostok seat's rails were (voskhod.py `couch_frame`: +Y)
     overhead: [0.646, 0.4067, -0.646],
     // the Vostok seat's (estimated): a head on a couch's rest turns as far as one in a helmet fixed to its suit
     head: { side: 1.4, up: 0.7, down: 0.5 },
-    instruments: [],
     lighting: {
       name: 'Cabin lighting',
       about:

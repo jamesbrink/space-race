@@ -7,6 +7,8 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { attitudeOf, drumAt, ratesOf, scaleAt, signalsAt } from '../src/viewer/gauges.ts';
+import { dot, sub } from '../src/world/frames.ts';
+import { framesOf } from './glb.mjs';
 
 /** The ids of a flight's record's events, as its plan keeps them: each the record of an event of the plan's, or one of its marks. */
 const recordIds = (flight) =>
@@ -143,6 +145,12 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
     test(`${flight.id}: ${model.id}'s cabin matches its GLB`, () => {
       const nodes = nodesOf(join(root, 'public', model.url));
       const cabin = model.cabin;
+      if (/^ussr\/vostok\/vostok-[3-6]$/.test(flight.id)) {
+        // Tyapchenko's figure 2 as the pilot reads it: the globe sits above the clock.
+        const frame = framesOf(join(root, 'public', model.url));
+        const up = sub(frame.point('Seat_Pilot', [0, 1, 0]), frame.point('Seat_Pilot'));
+        assert.ok(dot(up, sub(frame.point('Globus_Globe'), frame.point('Gauge_ClockHour'))) > 0);
+      }
       for (const name of cabin.within) assert.ok(nodes.has(name), `within: no node ${name}`);
       const seen = new Set();
       for (const i of cabin.instruments) {

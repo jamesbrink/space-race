@@ -4,8 +4,7 @@ import type { CabinDef, ModelDef } from '../../../../src/types.ts';
  * The ejection seat of every Vostok, and the cabin of Vostoks 3 to 6, as somewhere to sit (types.ts: ModelDef.seats,
  * CabinDef; viewer/cabin.ts), from the nodes their models already have. Vostoks 1 and 2 have their own, fuller
  * (sis1.ts, from their flight.ts): their cabins are the fit of 1961 (vehicles/vostok_cabin.py), with every needle, lamp
- * and control named and the Vzor. These cabins are the simpler fit vehicles/vostok_3ka.py builds (panels, instruments and the Globus as
- * shapes), so what they give is the seat's eye point (`Seat_Pilot`, at the seated figure's eyes), the pilot's own
+ * and control named and the Vzor. These cabins are the simpler fit vehicles/vostok_3ka.py builds (the later instrument board and orbital position indicator), so what they give is the seat's eye point (`Seat_Pilot`, at the seated figure's eyes), the pilot's own
  * helmet and head not drawn from inside them, the cabin lit as indoors by its two lamps, their tumbler on the control
  * panel to throw, and the two portholes of the hull. The lamps and the tumbler are Vostok 1's, built by the same code
  * (`vostok_3ka.build(lighting=True)`); what of them the record of these ships supports, and what is carried over as an
@@ -65,15 +64,29 @@ export function vostokSeat(open: [number, number], more: string[] = []): NonNull
   };
 }
 
+/** The three hands of the IVK dial share the site's local time; their different periods are in the GLB. */
+export const boardClock: NonNullable<CabinDef['instruments']> = ['Hour', 'Minute', 'Second'].map((hand) => ({
+  node: `Gauge_Clock${hand}`,
+  name: 'Clock',
+  about: 'Moscow time. The shape and scale of this dial are taken from the earlier IVK.',
+  reads: 'timeOfDay',
+}));
+
 /** The cabin, with its two lamps (`vostokLights()`, which the flight gives as the model's `lights`). */
 export function vostokCabin(): CabinDef {
   return {
+    instruments: boardClock,
+    globe: {
+      node: 'Globus_Globe',
+      name: 'Orbital position indicator',
+      about:
+        'The globe turns to the spacecraft’s position over the Earth. The face follows Tyapchenko’s photograph of this instrument family. Its size is estimated.',
+    },
     within: ['Cabin', 'EjectionSeat'],
     // the top of the pilot's head: up the seat's rails, toward hatch No. 1 (vehicles/vostok_3ka.py `seat_node`)
     overhead: [-0.646, 0.407, -0.646],
     // Vostok 1's (estimated: a head in a helmet fixed to the suit)
     head: { side: 1.4, up: 0.7, down: 0.5 },
-    instruments: [],
     // The lamps' tumbler (`Ctl_Lighting`, built at working) and the fittings that glow (`Lamp_1`, `Lamp_2`). That these
     // ships had a working light and a duty one, switched by the pilot, is documented for Vostok 2 (Titov's report) and,
     // as "the cabin's lighting is good", for Vostok 6; the tumbler, its three positions and the two fittings are
