@@ -851,9 +851,14 @@ export class FlightPath {
     };
   }
 
+  /** A moving sample can continuously request another path while fresh completions keep arriving. */
+  private get stale(): boolean {
+    return this.wantedAt !== null && performance.now() - Math.max(this.wantedAt, this.doneAt) > STALE * 1000;
+  }
+
   /** The markers on the page now, for whoever asks (`sr.path.laidOut`): each with its label's box when it has one. */
   get laidOut(): MarkOut[] {
-    return [...this.laid.values()];
+    return this.marksEl.hidden ? [] : [...this.laid.values()];
   }
 
   /** Draw the path, or put it away. Remembered. */
@@ -1426,7 +1431,7 @@ export class FlightPath {
     const mix = this.mixOf(shown);
     if (mix >= 1) shown.was = null;
     // (a prediction is begun five times a second while the flight goes on: the one on show is stale only if none has come for a while)
-    const stale = this.wantedAt !== null && performance.now() - this.wantedAt > STALE * 1000;
+    const stale = this.stale;
     this.lay(shown, mix);
     const opacity = stale ? 0.55 : 0.95;
     if (this.uniforms.uOpacity!.value !== opacity) {
@@ -2032,7 +2037,7 @@ export class FlightPath {
     as.title = !this.on
       ? ''
       : stale
-        ? 'The display has waited more than 1.5 seconds for an up-to-date path'
+        ? 'The display is waiting for an updated path and has received none in the last 1.5 seconds'
         : this.waiting()
           ? this.source.steering.guidance
             ? 'On the pad: the path guidance will fly, the record’s programme to the record’s cutoff, then the sequencer’s events'

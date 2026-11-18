@@ -63,3 +63,48 @@ test('a queued UI job is superseded when the existing display is valid again', (
   assert.equal(path.freshness.current, true);
   assert.equal(path.freshness.waitingMs, 0);
 });
+
+test('an advancing clock can be waiting continuously while recently completed updates stay bright', () => {
+  const path = pausedDisplay(11, 'manual');
+  path.wantedAt = performance.now() - 8000;
+  path.doneAt = performance.now() - 7000;
+  path.shown.key = '10|manual';
+  path.holds = () => false;
+  assert.equal(path.stale, true);
+  path.tick();
+  assert.equal(path.shown.key, '11|manual');
+  assert.equal(path.freshness.current, false);
+  assert.ok(path.freshness.waitingMs >= 8000);
+  assert.equal(path.stale, false);
+});
+
+test('changing the selection hides the old meshes, marker layer and readout while waiting for a new result', () => {
+  const path = pausedDisplay(12, 'obsolete');
+  path.shown.plan = 'obsolete';
+  let readout = 'old';
+  let redrawn = false;
+  Object.assign(path, {
+    mesh: { visible: true },
+    flownMesh: { visible: true },
+    ringMesh: { visible: true },
+    marksEl: { hidden: false, classList: { toggle() {} } },
+    marks: [],
+    host: {
+      overlay() {
+        redrawn = true;
+      },
+    },
+    panelsRead: Infinity,
+    doneAt: performance.now(),
+    say(result) {
+      readout = result;
+    },
+    place: FlightPath.prototype.place,
+  });
+  path.tick();
+  assert.equal(path.shown, null);
+  assert.deepEqual([path.mesh.visible, path.flownMesh.visible, path.ringMesh.visible], [false, false, false]);
+  assert.ok(redrawn && path.marksEl.hidden);
+  assert.deepEqual(path.laidOut, []);
+  assert.equal(readout, null);
+});
