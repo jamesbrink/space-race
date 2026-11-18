@@ -2255,8 +2255,9 @@ export class Stage {
     this.clock?.advance(dt);
     this.follow(dt);
     this.show.lift();
-    if (this.clock) this.cabin?.step(dt, this.clock.t, this.clock.jdUT);
-    else if (this.exhibit) this.cabin?.step(dt, 0, Number.NaN); // (no clock: it stands as built)
+    const cabinDt = this.frozen ? 0 : dt;
+    if (this.clock) this.cabin?.step(cabinDt, this.clock.t, this.clock.jdUT);
+    else if (this.exhibit) this.cabin?.step(cabinDt, 0, Number.NaN); // (no clock: it stands as built)
     this.settle(dt);
     this.onFoot.runWorks(dt);
     this.onFoot.runDriven();

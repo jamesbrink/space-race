@@ -257,6 +257,25 @@ async function run(flight) {
     );
 
   let failed = 0;
+  if (flight === 'ussr/vostok/vostok-1') {
+    const angle = await page.evaluate(async () => {
+      const { stage, clock } = window.sr;
+      const needle = stage.staged[stage.current].full.getObjectByName('Gauge_ClockHour');
+      clock.seek(-9000);
+      await window.grab();
+      const before = needle.quaternion.clone();
+      clock.seek(-1800);
+      await window.grab();
+      const turn = before.angleTo(needle.quaternion);
+      clock.seek(0);
+      return turn;
+    });
+    const correct = Math.abs(angle - Math.PI / 3) < 1e-5;
+    console.log(
+      `${correct ? 'ok' : 'FAIL'} frozen cabin clock advances two hours in one frame: ${((angle * 180) / Math.PI).toFixed(5)} degrees`,
+    );
+    if (!correct) failed++;
+  }
   for (const look of ['real', 'cel']) {
     await page.evaluate((look) => window.sr.stage.setLook(look), look);
     if (!(await page.evaluate(() => window.quiet()))) console.log(`     (${look}: the page had not come to rest)`);
