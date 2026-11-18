@@ -40,6 +40,67 @@ const CHOSEN = 0xffc46b;
  */
 const COST_GUESS = [9, 3.2, 1] as const;
 
+/** The row's floor plates use the same circle and shader, with a transform and tint per stand. */
+export function floorPlates(count: number) {
+  const geometry = new THREE.CircleGeometry(1, 64);
+  geometry.setAttribute('aTint', new THREE.InstancedBufferAttribute(new Float32Array(count * 4), 4).setUsage(THREE.DynamicDrawUsage));
+  const material = new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    vertexShader: /* glsl */ `
+      attribute vec4 aTint;
+      varying vec2 vAt;
+      varying vec4 vTint;
+      void main() {
+        vAt = position.xy;
+        vTint = aTint;
+        gl_Position = projectionMatrix * modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      varying vec2 vAt;
+      varying vec4 vTint;
+      void main() {
+        float r = length(vAt);
+        // a wash of the tint, and a ring at its edge that says where the plate ends
+        float ring = smoothstep(0.9, 0.94, r) * (1.0 - smoothstep(0.975, 1.0, r));
+        gl_FragColor = vec4(vTint.rgb, vTint.a * (1.0 - smoothstep(0.985, 1.0, r)) + 3.2 * vTint.a * ring);
+      }`,
+  });
+  const plates = new THREE.InstancedMesh(geometry, material, count);
+  plates.renderOrder = -4;
+  plates.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+  plates.frustumCulled = false; // each plate is culled before it is put in the draw
+  plates.count = 0;
+  return plates;
+}
+
+/** Fill the draw with the plates in view, in back-to-front order where the transparent circles overlap. */
+export function showPlates(
+  plates: ReturnType<typeof floorPlates>,
+  stands: readonly Stand[],
+  camera: THREE.Camera,
+  frustum: THREE.Frustum,
+): void {
+  const ball = new THREE.Sphere();
+  const visible = stands.flatMap((stand) => {
+    if (!stand.standing) return [];
+    ball.center.setFromMatrixPosition(stand.plate.matrixWorld);
+    ball.radius = stand.plate.scale.x;
+    if (!frustum.intersectsSphere(ball)) return [];
+    return [{ stand, depth: ball.center.applyMatrix4(camera.matrixWorldInverse).z }];
+  });
+  visible.sort((a, b) => a.depth - b.depth);
+  const tint = plates.geometry.getAttribute('aTint') as THREE.InstancedBufferAttribute;
+  visible.forEach(({ stand }, i) => {
+    plates.setMatrixAt(i, stand.plate.matrixWorld);
+    const { r, g, b } = stand.plateColour;
+    tint.setXYZW(i, r, g, b, stand.plateStrength);
+  });
+  plates.count = visible.length;
+  plates.instanceMatrix.needsUpdate = true;
+  tint.needsUpdate = true;
+}
+
 /** Glass, as the row sees it: a pane has almost no colour of its own (the stage's window glass, without its glazing pass). */
 function pane(own: THREE.Material): THREE.Material {
   const visor = own.name.startsWith('glass-visor');
@@ -204,9 +265,9 @@ export class Stand {
 
   private readonly holder = new THREE.Group();
   private readonly fade = new Crossfade();
-  private readonly plate: THREE.Mesh;
-  private readonly plateColour = { value: new THREE.Color() };
-  private readonly plateStrength = { value: 0.1 };
+  readonly plate = new THREE.Object3D();
+  readonly plateColour = new THREE.Color();
+  plateStrength = 0.1;
   private readonly person: THREE.Group;
   private shadow: { mesh: THREE.Mesh; target: THREE.WebGLRenderTarget } | null = null;
   private row: LineupRow = 'vehicles';
@@ -219,28 +280,8 @@ export class Stand {
     this.craft = entry.craft;
     this.shade = shade;
     this.group.name = entry.flight.id;
-    this.plate = new THREE.Mesh(
-      new THREE.CircleGeometry(1, 64),
-      new THREE.ShaderMaterial({
-        uniforms: { uColour: this.plateColour, uStrength: this.plateStrength },
-        transparent: true,
-        depthWrite: false,
-        vertexShader: /* glsl */ `
-          varying vec2 vAt;
-          void main() { vAt = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
-        fragmentShader: /* glsl */ `
-          uniform vec3 uColour; uniform float uStrength; varying vec2 vAt;
-          void main() {
-            float r = length(vAt);
-            // a wash of the tint, and a ring at its edge that says where the plate ends
-            float ring = smoothstep(0.9, 0.94, r) * (1.0 - smoothstep(0.975, 1.0, r));
-            gl_FragColor = vec4(uColour, uStrength * (1.0 - smoothstep(0.985, 1.0, r)) + 3.2 * uStrength * ring);
-          }`,
-      }),
-    );
     this.plate.rotation.x = -Math.PI / 2;
     this.plate.position.y = 0.0008;
-    this.plate.renderOrder = -4;
     this.person = outline(figure);
     this.group.add(this.holder, this.plate, this.person);
     this.tint();
@@ -249,9 +290,9 @@ export class Stand {
   /** Its plate's tint: its programme's (row.ts `tintOf`), or the page's amber while it is the one chosen. */
   private tint(): void {
     const [h, s, l] = this.entry.tint;
-    if (this.chosen) this.plateColour.value.set(CHOSEN);
-    else this.plateColour.value.setHSL(h / 360, s, l);
-    this.plateStrength.value = this.chosen ? 0.2 : 0.085;
+    if (this.chosen) this.plateColour.set(CHOSEN);
+    else this.plateColour.setHSL(h / 360, s, l);
+    this.plateStrength = this.chosen ? 0.2 : 0.085;
   }
 
   /** Mark it as the one chosen, or not. True if that changed. */
@@ -502,7 +543,7 @@ export class Stand {
     const stage = new THREE.Scene();
     const silhouette = new THREE.MeshBasicMaterial({ color: 0xffffff, side: THREE.DoubleSide, depthTest: false, toneMapped: false });
     stage.overrideMaterial = silhouette;
-    const [parent, hidden] = [this.group.parent, [this.plate, this.person, this.shadow?.mesh].filter((o) => o?.visible)];
+    const [parent, hidden] = [this.group.parent, [this.person, this.shadow?.mesh].filter((o) => o?.visible)];
     for (const o of hidden) o!.visible = false;
     stage.add(this.group);
     const was = { target: renderer.getRenderTarget(), colour: renderer.getClearColor(new THREE.Color()), alpha: renderer.getClearAlpha() };

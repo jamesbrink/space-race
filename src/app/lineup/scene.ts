@@ -17,7 +17,7 @@ import type { LineupRow } from '../address.ts';
 import { Hall } from './hall.ts';
 import { allot, craftNodes, type Entry, layOutRow } from './row.ts';
 import { Shelf } from './shelf.ts';
-import { dress, fitTo, Stand } from './stand.ts';
+import { dress, fitTo, floorPlates, showPlates, Stand } from './stand.ts';
 
 /**
  * The Lineup's scene: every vehicle the flights have built, standing in one row on one floor at one scale, in the
@@ -139,6 +139,7 @@ export class LineupScene {
   /** Every file fetched once, and shared by every vehicle on it (shelf.ts). */
   private readonly shelf = new Shelf((bytes, url) => this.parse(bytes, url));
   private readonly rowGroup = new THREE.Group();
+  private readonly plates: ReturnType<typeof floorPlates>;
   private readonly timer = new THREE.Timer();
   private readonly raycaster = new THREE.Raycaster();
   private readonly frustum = new THREE.Frustum();
@@ -203,7 +204,8 @@ export class LineupScene {
     this.loader.setDRACOLoader(new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`).preload());
 
     this.hall = new Hall(renderer);
-    this.scene.add(this.hall.group, this.rowGroup);
+    this.plates = floorPlates(entries.length);
+    this.scene.add(this.hall.group, this.rowGroup, this.plates);
     this.looks.add(this.hall.group);
     this.stands = entries.map((entry) => new Stand(entry, this.hall.colours.figure, this.hall.shadow));
     for (const stand of this.stands) this.rowGroup.add(stand.group);
@@ -818,6 +820,7 @@ export class LineupScene {
   private draw(): void {
     this.hall.view(this.camera, this.cam.pivot);
     for (const stand of this.stands) if (stand.standing) stand.face(this.camera);
+    showPlates(this.plates, this.stands, this.camera, this.frustum);
     this.ink.range(this.camera);
     this.renderer.info.reset();
     this.composer.render();

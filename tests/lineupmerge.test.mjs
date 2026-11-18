@@ -6,6 +6,35 @@ import { test } from 'node:test';
 import * as THREE from 'three';
 import { BESIDE, CORNERS, drawn, join, PAINTS, paintMaterial, paintOf } from '../src/app/lineup/merge.ts';
 import { keyOf } from '../src/app/lineup/shelf.ts';
+import { floorPlates, showPlates } from '../src/app/lineup/stand.ts';
+
+test('the shared plate draw keeps each visible stand’s scale, tint and back-to-front order', () => {
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  camera.updateMatrixWorld(true);
+  const frustum = new THREE.Frustum().setFromProjectionMatrix(camera.projectionMatrix);
+  const stand = (x, z, radius, tint, strength, standing = true) => {
+    const plate = new THREE.Object3D();
+    plate.position.set(x, 0, z);
+    plate.scale.setScalar(radius);
+    plate.updateMatrixWorld(true);
+    return { plate, plateColour: new THREE.Color(tint), plateStrength: strength, standing };
+  };
+  const near = stand(0, -4, 2, 0xff0000, 0.2);
+  const far = stand(0, -12, 3, 0x0000ff, 0.085);
+  const outside = stand(90, -4, 2, 0xffffff, 0.085);
+  const away = stand(0, -8, 1, 0xffffff, 0.085, false);
+  const plates = floorPlates(4);
+  showPlates(plates, [near, outside, far, away], camera, frustum);
+  assert.equal(plates.count, 2);
+  const matrix = new THREE.Matrix4();
+  const tints = plates.geometry.getAttribute('aTint');
+  [far, near].forEach((expected, i) => {
+    plates.getMatrixAt(i, matrix);
+    assert.ok(matrix.equals(expected.plate.matrixWorld));
+    assert.deepEqual([tints.getX(i), tints.getY(i), tints.getZ(i)], expected.plateColour.toArray());
+    assert.equal(tints.getW(i), Math.fround(expected.plateStrength));
+  });
+});
 
 const paint = (hex, options = {}) => new THREE.MeshStandardMaterial({ color: hex, roughness: 0.4, metalness: 0.2, ...options });
 
