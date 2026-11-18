@@ -8,7 +8,7 @@ import { EXTENT } from './weather.ts';
 /**
  * The weather map (weather.ts) as the shaders read it: one texture and its placing, shared by
  * reference by the clouds (clouds.ts) and the globe under them (globe.ts), so both see the same
- * weather. They are slots: the place on the stage (its setting's `WeatherMap`) writes its own into them.
+ * weather. Each setting owns its shader slots and the texture they describe.
  * Until a site's map has arrived (and for a day that has none) it is one texel that says
  * the site's cumulus cover everywhere, and with it the high cloud the record has over the site (weather.ts:
  * weatherGlsl), so the sky a station reported whole is whole from the ground.
@@ -16,7 +16,7 @@ import { EXTENT } from './weather.ts';
 const none = new THREE.DataTexture(new Uint8Array([26, 0, 0, 255]), 1, 1, THREE.RGBAFormat);
 none.needsUpdate = true;
 
-export const weatherUniforms = {
+export const weatherSlots = () => ({
   tWeather: { value: none as THREE.Texture },
   tRecovery: { value: none as THREE.Texture },
   uRecovery: { value: 0 },
@@ -27,7 +27,7 @@ export const weatherUniforms = {
   /** The low wind's way and the high wind's, unit vectors in the scene's x and z. */
   uWeatherWind: { value: new THREE.Vector2(1, 0) },
   uWeatherHigh: { value: new THREE.Vector2(1, 0) },
-};
+});
 
 /**
  * A site's weather on a day, as its setting holds it (backdrops.ts `Setting.weather`): its frame's bearing (degrees) and
@@ -38,6 +38,7 @@ export const weatherUniforms = {
  * them: weather.ts, `highOf`.)
  */
 export class WeatherMap {
+  readonly uniforms = weatherSlots();
   /** Ask for the map now (the eye has risen to where the weather is seen). */
   want: () => void = () => {};
   /** Its one texel until the map has come: the record's cover everywhere. */
@@ -54,16 +55,16 @@ export class WeatherMap {
     const wind = day.cumulus?.wind ?? [1, 0];
     this.blank = new THREE.DataTexture(new Uint8Array([Math.round(cover * 255), 0, 0, 255]), 1, 1, THREE.RGBAFormat);
     this.blank.needsUpdate = true;
-    weatherUniforms.tWeather.value = this.blank;
-    weatherUniforms.uWeatherIn.value = 0;
-    weatherUniforms.uRecovery.value = 0;
-    weatherUniforms.tRecovery.value = none;
-    weatherUniforms.uWeather.value.set(Math.sin(b), Math.cos(b), 1 / EXTENT, cover);
+    this.uniforms.tWeather.value = this.blank;
+    this.uniforms.uWeatherIn.value = 0;
+    this.uniforms.uRecovery.value = 0;
+    this.uniforms.tRecovery.value = none;
+    this.uniforms.uWeather.value.set(Math.sin(b), Math.cos(b), 1 / EXTENT, cover);
     const speed = Math.hypot(wind[0], wind[1]) || 1;
-    weatherUniforms.uWeatherWind.value.set(wind[0] / speed, wind[1] / speed);
+    this.uniforms.uWeatherWind.value.set(wind[0] / speed, wind[1] / speed);
     // the high wind's way (day.ts `highToward`), (east, north) to the scene's (x, z): frames.ts, enuToSite
     const h = day.high.toward;
-    weatherUniforms.uWeatherHigh.value.set(
+    this.uniforms.uWeatherHigh.value.set(
       Math.sin(h) * Math.sin(b) + Math.cos(h) * Math.cos(b),
       Math.sin(h) * Math.cos(b) - Math.cos(h) * Math.sin(b),
     );
@@ -80,7 +81,7 @@ export class WeatherMap {
   recover(share: number): void {
     this.recoveryShare = share;
     if (share > 0) this.want();
-    weatherUniforms.uRecovery.value = this.recovery ? share : 0;
+    this.uniforms.uRecovery.value = this.recovery ? share : 0;
   }
 
   /** Call `then` each time more of the map has come in. Returns the way to stop. */
@@ -92,11 +93,11 @@ export class WeatherMap {
   /** Let the map go, and its listeners: the place has left the stage (Settings.drop). */
   dispose(): void {
     this.gone = true;
+    this.uniforms.tWeather.value = none;
+    this.uniforms.uWeatherIn.value = 0;
+    this.uniforms.tRecovery.value = none;
+    this.uniforms.uRecovery.value = 0;
     this.arrived.clear();
-    if (weatherUniforms.tWeather.value === this.blank || weatherUniforms.tWeather.value === this.map) {
-      weatherUniforms.tWeather.value = none;
-      weatherUniforms.uWeatherIn.value = 0;
-    }
     this.blank.dispose();
     if (this.map) {
       this.map.dispose();
@@ -104,10 +105,6 @@ export class WeatherMap {
       this.map = null;
     }
     if (this.recovery) {
-      if (weatherUniforms.tRecovery.value === this.recovery) {
-        weatherUniforms.tRecovery.value = none;
-        weatherUniforms.uRecovery.value = 0;
-      }
       this.recovery.dispose();
       (this.recovery.image as ImageBitmap).close();
       this.recovery = null;
@@ -141,8 +138,8 @@ export class WeatherMap {
         return;
       }
       this.recovery = texture;
-      weatherUniforms.tRecovery.value = texture;
-      weatherUniforms.uRecovery.value = this.recoveryShare;
+      this.uniforms.tRecovery.value = texture;
+      this.uniforms.uRecovery.value = this.recoveryShare;
       for (const then of this.arrived) then();
     });
   }
@@ -154,7 +151,7 @@ export class WeatherMap {
     await queued(() => {
       if (this.gone) return;
       this.map = texture;
-      weatherUniforms.tWeather.value = texture;
+      this.uniforms.tWeather.value = texture;
     });
     if (this.gone) {
       if (this.map !== texture) {
@@ -169,8 +166,8 @@ export class WeatherMap {
     const step = (): void => {
       if (this.gone) return;
       const k = typeof requestAnimationFrame === 'undefined' ? 1 : Math.min(1, Math.ceil(((performance.now() - began) / 1500) * 12) / 12);
-      if (k !== weatherUniforms.uWeatherIn.value) {
-        weatherUniforms.uWeatherIn.value = k;
+      if (k !== this.uniforms.uWeatherIn.value) {
+        this.uniforms.uWeatherIn.value = k;
         for (const then of this.arrived) then();
       }
       if (k < 1) requestAnimationFrame(step);
