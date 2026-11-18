@@ -657,6 +657,7 @@ export class Stage {
     watchRatio();
 
     this.walk = new Walker(canvas, this.camera, {
+      shoulder: this.cam.shoulder,
       solids: () => this.solidRoots(),
       // a setting's floor is one level plane: its height is asked for, not its triangles
       ground: () => this.setting.floor?.position.y ?? null,

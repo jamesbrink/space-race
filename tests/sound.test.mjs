@@ -1,3 +1,4 @@
+import { ShoulderRig } from '../src/viewer/camera/foot.ts';
 // src/sound/model.ts: what the flight sounds like, as numbers. The path is physics (inverse-square, the air's absorption,
 // the delay and Doppler of distance over the speed of sound, nothing airborne in vacuum) and is held to it here; the
 // levels' rules of thumb are only held to behave (finite, continuous, monotonic).
@@ -456,6 +457,7 @@ test('seated at the wheel, the walker makes no footfalls and no breath and says 
   const camera = new THREE.PerspectiveCamera(50, 1.6, 0.1, 1000);
   const canvas = { addEventListener() {}, setPointerCapture() {}, requestPointerLock() {} };
   const walker = new Walker(canvas, camera, {
+    shoulder: new ShoulderRig(),
     solids: () => [root],
     ground: () => -0.45,
     reach: () => 500,

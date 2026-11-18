@@ -29,7 +29,7 @@ const look = new THREE.Matrix4();
 
 /**
  * On foot (walking.md): the camera through the figure's eyes (`eyes`), or over its shoulder (`shoulder`). The walker
- * moves the view as a body moves (stride, weight, landing, the boom back over the shoulder and in to a wall, a lean to
+ * moves the view as a body moves (stride, weight, landing, a lean to
  * a window, a couch's head) and says where it is; the rig puts the camera there. The hands are the walker's while it
  * walks, so the rig takes none of them, and its lens is the walker's own (it eases it: `Walker.lens`).
  *
@@ -154,4 +154,91 @@ export class FootRig implements Rig {
   zoom(): void {}
   twist(): void {}
   home(): void {}
+}
+
+/** Over the shoulder: how far behind the head the camera sits, how far to the right of it and above it, metres. */
+const BOOM = 3.4;
+const SHOULDER = 0.55;
+const OVER = 0.3;
+/** How close to something behind it the camera may come, metres; and nearer the head than this, the figure is not drawn (the camera would be in it). */
+const BOOM_CLEAR = 0.25;
+const BOOM_LEAST = 1.2;
+/** How fast the camera goes back out once what was behind it has gone, m/s; and how far either side of BOOM_LEAST the figure is kept as it was (drawn or not), metres. */
+const BOOM_OUT = 3;
+const BOOM_SLACK = 0.15;
+
+/**
+ * How far out along its boom the camera is a moment later, given how far it was and how far it
+ * is clear to go: in at once (nothing is ever between it and the head), out again at BOOM_OUT.
+ * One ray a frame says how far is clear, and a handrail or a ladder's stile crossing that ray
+ * for a frame would otherwise bring the camera in three metres and let it straight out again.
+ */
+export function boomTo(was: number, clear: number, dt: number): number {
+  return clear <= was ? clear : Math.min(clear, was + BOOM_OUT * dt);
+}
+
+/** Is the camera far enough from the head for the figure to be drawn? It stays as it was within BOOM_SLACK of the line. */
+export function boomOutside(was: boolean, reach: number): boolean {
+  return reach > BOOM_LEAST + (was ? -BOOM_SLACK : BOOM_SLACK);
+}
+
+type Chase = { up: number; back: number };
+interface Obstructions {
+  cast(from: THREE.Vector3, direction: THREE.Vector3, distance: number): { distance: number } | null;
+}
+
+/** Place the shoulder camera against the same solids that the walker can reach. */
+export class ShoulderRig extends FootRig {
+  private readonly direction = new THREE.Vector3();
+  private readonly target = new THREE.Vector3();
+  private reached = Infinity;
+  outside = false;
+  back = 0;
+
+  constructor() {
+    super('shoulder');
+  }
+
+  range(chase?: Chase): number {
+    return chase ? chase.up + chase.back + BOOM_CLEAR : BOOM + 0.5;
+  }
+
+  resetBoom(): void {
+    this.reached = Infinity;
+    this.outside = false;
+    this.back = 0;
+  }
+
+  place(
+    view: FootView,
+    gaze: THREE.Vector3,
+    yaw: number,
+    up: THREE.Vector3,
+    blend: number,
+    chase: Chase | undefined,
+    solids: Obstructions,
+    dt: number,
+  ): boolean {
+    if (blend === 0) {
+      this.resetBoom();
+      return false;
+    }
+    const boom = chase
+      ? this.direction.set(0, chase.up, 0).addScaledVector(gaze, -chase.back)
+      : this.direction.set(Math.cos(yaw) * SHOULDER, OVER, -Math.sin(yaw) * SHOULDER).addScaledVector(gaze, -BOOM);
+    const length = boom.length();
+    boom.normalize();
+    const wall = solids.cast(view.position, boom, length + BOOM_CLEAR);
+    const clear = Math.max(0, Math.min(length, (wall?.distance ?? Infinity) - BOOM_CLEAR));
+    this.reached = boomTo(this.reached, clear, dt);
+    const reach = this.reached * THREE.MathUtils.smoothstep(blend, 0, 1);
+    if (chase) this.target.copy(view.position).addScaledVector(gaze, 6);
+    view.position.addScaledVector(boom, reach);
+    if (chase && reach > 0) view.quaternion.setFromRotationMatrix(look.lookAt(view.position, this.target, up));
+    this.back = length > 0 ? (reach / length) * (chase?.back ?? BOOM) : 0;
+    const outside = boomOutside(this.outside, reach);
+    const changed = this.reached < clear || outside !== this.outside;
+    this.outside = outside;
+    return changed;
+  }
 }
