@@ -560,11 +560,14 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
   if (a.foot.join(' ') !== b.foot.join(' ')) fail(`${w}`, `the key lines differ: "${a.foot.join(' ')}" against "${b.foot.join(' ')}"`);
   console.log(`${w} x ${h}${touch ? ' (touch)' : ''}: checked`);
 }
-// Leaving a flight (src/deck/leaving.ts, ask.ts, app/stake.ts): watched as flown, it asks nothing and nothing is kept. Flown by
-// hand, a way out within the flight (the deck's Leave, the Gallery and Launch site tabs, the flight's crumb) keeps it, parked
-// with the clock stopped, and Fly resumes it to the digit; a way out beyond it (the Space Race crumb, another flight's address)
-// asks first: Keep flying changes nothing, Leave lets it go. The browser's own question is set only while a hand-flown flight
-// would be lost, and the page uses no alert, confirm or prompt of its own.
+// Leaving a flight (src/deck/leaving.ts, tape.ts, ask.ts, app/runs.ts, app/stake.ts): watched as flown, it asks nothing and
+// nothing is kept. Flown by hand, every way out keeps it and asks nothing: within the flight (the deck's Leave, Esc, the
+// Gallery and Launch site tabs, the flight's crumb) it is parked in the page, beyond it (the Space Race crumb, another
+// flight's address) and through a reload it is kept in the browser's storage, and Fly offers it again, to the digit, Resume
+// or Start over. What throws a run away asks first (N with it going on, the mark beside Fly); where the browser will not
+// keep it a way out asks, as it always did; a run kept by another simulator or of changed data is said not to be
+// resumable and let go. The browser's own question is set only while a hand-flown flight would be lost, and the page uses
+// no alert, confirm or prompt of its own.
 {
   const HAND = ['ussr/vostok/vostok-1', 'usa/mercury/mr-3-freedom-7'];
   const read = (page) =>
@@ -587,8 +590,20 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       hash: decodeURIComponent(location.hash),
       length: history.length,
       asking: Boolean(document.querySelector('.deck-ask [role=alertdialog]')),
-      focus: document.activeElement?.dataset?.ask ?? '',
+      question: document.querySelector('.deck-ask [role=alertdialog]')?.textContent ?? '',
+      focus: document.activeElement?.dataset?.ask ?? document.activeElement?.dataset?.do ?? '',
       card: Boolean(document.querySelector('.cockpit-kept:not([hidden])')),
+      said: document.querySelector('.cockpit-kept:not([hidden])')?.textContent.replace(/\s+/g, ' ') ?? '',
+      ready:
+        !document.querySelector('.cockpit-kept [data-do=resume]')?.disabled &&
+        !document.querySelector('.cockpit-kept [data-do=resume]')?.hidden,
+      stored: (() => {
+        try {
+          return Object.keys(JSON.parse(localStorage.getItem('space-race.runs') ?? '{}'));
+        } catch {
+          return null;
+        }
+      })(),
     }));
   const same = (where, a, b, what) => {
     const keys = [...new Set([...Object.keys(a.cells), ...Object.keys(b.cells)])].filter((k) => a.cells[k] !== b.cells[k]);
@@ -621,6 +636,17 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
     await page.waitForFunction(() => window.sr.cockpit.active, null, { timeout: 60000 });
     await page.waitForTimeout(800);
   };
+  /** Fly taken up from the browser's storage: the card up, and the run flown again to where it was left (Resume ready, or refused). */
+  const takenUp = (page) =>
+    page.waitForFunction(
+      () => {
+        const card = document.querySelector('.cockpit-kept:not([hidden])');
+        const resume = card?.querySelector('[data-do=resume]');
+        return window.sr?.cockpit?.active && card && (resume.hidden || !resume.disabled);
+      },
+      null,
+      { timeout: 120000 },
+    );
   const dialogs = [];
   const trap = (page) =>
     page.on('dialog', (d) => {
@@ -642,8 +668,8 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       await page.click('#ui > .cockpit .deck-foot [data-do=leave]');
       await page.waitForTimeout(500);
       r = await read(page);
-      if (r.active || r.keeping || r.asking)
-        fail(where, `watched as flown, leaving: active ${r.active}, kept ${r.keeping}, asking ${r.asking}`);
+      if (r.active || r.keeping || r.asking || r.stored?.length)
+        fail(where, `watched as flown, leaving: active ${r.active}, kept ${r.keeping}, asking ${r.asking}, stored ${r.stored}`);
       if (await page.$('.kept-mark')) fail(where, 'a flight only watched is marked as kept');
       if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
       await ctx.close();
@@ -664,13 +690,14 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       await stop(page);
       const before = await read(page);
       if (!/Not the record|Hands only|leaned/.test(before.mode)) fail(at, `not taken over: "${before.mode}"`);
-      if (!before.warns) fail(at, 'the browser is not set to ask while a flight flown by hand is going on');
+      if (before.warns) fail(at, 'the browser asks before the page goes, though the flight would be kept');
       await out(page);
       await page.waitForTimeout(1200);
       let r = await read(page);
-      if (r.asking) fail(at, 'asked, though the flight is kept within the flight');
+      if (r.asking) fail(at, 'asked, though the flight is kept');
       if (r.active || !r.keeping) fail(at, `not kept: active ${r.active}, kept ${r.keeping}`);
-      if (!r.warns) fail(at, 'a kept flight is lost by closing the page and the browser does not ask');
+      if (!r.stored?.includes(id)) fail(at, `not kept in the browser's storage: ${r.stored}`);
+      if (r.warns) fail(at, 'the browser asks before the page goes, though the flight is kept');
       if (!(await page.$('.places .kept-mark'))) fail(at, 'the Fly tab does not say a flight is kept');
       const note = await page.evaluate(() => document.querySelector('.notes')?.textContent ?? '');
       if (!/kept/i.test(note)) fail(at, `no note that it is kept: "${note}"`);
@@ -678,7 +705,8 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       // back to Fly: the card, the clock stopped where it was, and the figures to the digit
       await toFly(page);
       r = await read(page);
-      if (!r.card) fail(at, 'resumed with no card saying it is kept');
+      if (!r.card || !r.ready) fail(at, 'resumed with no card saying it is kept, or no Resume');
+      if (r.focus !== 'resume') fail(at, `the card's focus is "${r.focus}", not Resume`);
       if (r.running) fail(at, 'the clock runs before the visitor has chosen');
       same(at, before, r, 'resumed');
       // a hand to the stick under the card does nothing
@@ -695,10 +723,32 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
       await ctx.close();
     }
-    // a kept flight ended from the Fly tab's mark is gone; started over from its card it is a new one
+    // what throws a run away asks first: N with it going on, and the mark beside Fly; Start over on the card does not (it is the question)
     {
-      const at = `${where} ended`;
+      const at = `${where} thrown away`;
       const { page, errors, context: ctx } = await fly(id, w, h, false);
+      trap(page);
+      await handFly(page, id);
+      await stop(page);
+      const before = await read(page);
+      await page.keyboard.press('KeyN');
+      await page.waitForTimeout(400);
+      let r = await read(page);
+      if (!r.asking || !/Start over\?/.test(r.question) || r.focus !== 'stay')
+        fail(at, `N flying by hand: "${r.question}", focus ${r.focus}`);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(400);
+      r = await read(page);
+      if (r.asking) fail(at, 'Keep flying: the question is still up');
+      same(at, before, r, 'N, then Keep flying');
+      await page.keyboard.press('KeyN');
+      await page.waitForTimeout(400);
+      await page.keyboard.press('KeyN');
+      await page.waitForTimeout(600);
+      r = await read(page);
+      if (r.asking || r.t > 1 || /Not the record|Hands only|leaned/.test(r.mode) || r.stored?.includes(id))
+        fail(at, `N, then Start over: asking ${r.asking}, t ${r.t}, "${r.mode}", stored ${r.stored}`);
+      // the mark beside Fly asks, and throws it away
       await handFly(page, id);
       await stop(page);
       await page.click('#ui .places [data-place=gallery]');
@@ -706,11 +756,17 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       await page.waitForTimeout(800);
       await page.locator('.kept-mark:visible').first().click();
       await page.waitForTimeout(300);
-      let r = await read(page);
-      if (r.keeping || r.warns || (await page.$('.kept-mark'))) fail(at, `the mark did not end it: kept ${r.keeping}, asks ${r.warns}`);
+      r = await read(page);
+      if (!r.asking || !/Throw your flight away\?/.test(r.question)) fail(at, `the mark: "${r.question}"`);
+      await page.keyboard.press('KeyN');
+      await page.waitForTimeout(400);
+      r = await read(page);
+      if (r.keeping || r.warns || r.stored?.includes(id) || (await page.$('.kept-mark')))
+        fail(at, `the mark did not throw it away: kept ${r.keeping}, stored ${r.stored}`);
       await toFly(page);
       r = await read(page);
-      if (r.card || r.t > 1) fail(at, `ending it left something to resume: card ${r.card}, t ${r.t}`);
+      if (r.card || r.t > 1) fail(at, `thrown away, it left something to resume: card ${r.card}, t ${r.t}`);
+      // Start over on the card
       await handFly(page, id);
       await stop(page);
       await page.click('#ui .places [data-place=site]');
@@ -719,92 +775,142 @@ for (const [w, h, touch] of process.env.SR_ONLY === 'leaving' ? [] : SIZES) {
       await page.click('.cockpit-kept [data-do=again]');
       await page.waitForTimeout(500);
       r = await read(page);
-      if (r.card || r.t > 1 || /Not the record|Hands only|leaned/.test(r.mode))
-        fail(at, `Start over: card ${r.card}, t ${r.t}, "${r.mode}"`);
+      if (r.asking || r.card || r.t > 1 || /Not the record|Hands only|leaned/.test(r.mode) || r.stored?.includes(id))
+        fail(at, `Start over: asking ${r.asking}, card ${r.card}, t ${r.t}, "${r.mode}", stored ${r.stored}`);
       if (r.warns) fail(at, 'after Start over, nothing is flown by hand and the browser still asks');
-      console.log(`  ${at}: the mark ended it; Start over began again from the pad`);
+      console.log(
+        `  ${at}: N asked (Keep flying kept it, Start over began again); the mark asked and threw it away; Start over on the card`,
+      );
       if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
       await ctx.close();
     }
-    // beyond the flight: the Space Race crumb, and another flight's address, ask; Keep flying changes nothing
+    // beyond the flight: the Space Race crumb, another flight's address and a reload keep it in the browser, and ask nothing;
+    // Fly offers it again, to the digit, and Resume flies on
     const other = id === 'usa/mercury/mr-3-freedom-7' ? 'ussr/vostok/vostok-2' : 'usa/mercury/mr-3-freedom-7';
     const beyond = [
       [
         'the Space Race crumb',
         (page) => page.evaluate(() => document.querySelector('#ui .crumbs [data-home]').click()),
         (hash) => !hash.includes(id),
-        0,
       ],
       [
         "another flight's address",
         (page) => page.evaluate((o) => (location.hash = `#${o}/gallery`), other),
         (hash) => hash.includes(other),
-        // (an address typed or followed is an entry the browser has made, which cannot be taken from the history: it stays one Forward on)
-        1,
       ],
+      ['a reload', (page) => page.reload(), (hash) => hash.includes(`${id}/fly`)],
     ];
-    for (const [name, out, gone, left] of beyond) {
+    for (const [name, out, gone] of beyond) {
       const at = `${where} by ${name}`;
       const { page, errors, context: ctx } = await fly(id, w, h, false);
       trap(page);
       await handFly(page, id);
       await stop(page);
       const before = await read(page);
-      await page.evaluate(() => (window.__run = window.sr.cockpit.run));
-      for (const how of ['the button', 'Escape', 'the backdrop', 'Enter']) {
-        await out(page);
-        await page.waitForTimeout(500);
-        let r = await read(page);
-        if (!r.asking) {
-          fail(at, 'did not ask');
-          break;
-        }
-        if (r.focus !== 'stay') fail(at, `the question's focus is "${r.focus}", not Keep flying`);
-        const dlg = await page.evaluate(() => {
-          const d = document.querySelector('.deck-ask [role=alertdialog]');
-          return {
-            label: document.getElementById(d.getAttribute('aria-labelledby'))?.textContent,
-            modal: d.getAttribute('aria-modal'),
-            text: d.textContent,
-          };
-        });
-        if (!/Leave this flight\?/.test(dlg.label) || dlg.modal !== 'true' || !/by hand; it will not be kept/.test(dlg.text))
-          fail(at, `the question: ${JSON.stringify(dlg)}`);
-        // the clock holds and no key of the flight acts under it
-        await page.evaluate(() => window.sr.clock.play(true));
-        await page.keyboard.press('KeyG');
-        await page.keyboard.press('KeyN');
-        await page.waitForTimeout(300);
-        r = await read(page);
-        if (r.running) fail(at, 'the clock runs under the question');
-        same(at, before, r, 'a key under the question');
-        await page.keyboard.press('Tab');
-        const tabbed = await page.evaluate(() => document.activeElement?.dataset?.ask);
-        if (tabbed !== 'leave') fail(at, `Tab went to "${tabbed}"`);
-        await page.keyboard.press('Tab');
-        if (how === 'the button') await page.click('.deck-ask [data-ask=stay]');
-        else if (how === 'Escape') await page.keyboard.press('Escape');
-        else if (how === 'the backdrop') await page.mouse.click(6, 6);
-        else await page.keyboard.press('Enter'); // (Enter is Keep flying, not Leave: the safe answer is the default)
-        await page.waitForTimeout(1200);
-        r = await read(page);
-        if (r.asking) fail(at, `${how}: the question is still up`);
-        if (!r.active || !r.hash.includes('/fly') || !r.hash.includes(id)) fail(at, `${how}: not still in Fly: ${r.hash}`);
-        if (r.length !== before.length + left) fail(at, `${how}: the history was ${before.length} entries and is ${r.length}`);
-        if (!(await page.evaluate(() => window.__run === window.sr.cockpit.run))) fail(at, `${how}: not the same run`);
-        same(at, before, r, how);
-        await stop(page);
-      }
-      // Leave: gone to where it was asked, and the browser does not ask
       await out(page);
+      await page.waitForTimeout(3000);
+      const to = await page.evaluate(() => decodeURIComponent(location.hash));
+      if (!gone(to)) fail(at, `the address is "${to}"`);
+      const asked = await page.evaluate(() => Boolean(document.querySelector('.deck-ask [role=alertdialog]')));
+      if (asked) fail(at, 'asked, though the flight is kept');
+      if (name !== 'a reload') {
+        if (!to.includes(other)) {
+          await page.waitForFunction(() => document.querySelector('#title [data-flight]'), null, { timeout: 60000 });
+          const row = await page.evaluate((id) => document.querySelector(`#title [data-flight="${id}"] .run-mark`)?.textContent ?? '', id);
+          if (!/In flight/.test(row)) fail(at, `the front page's row does not say a flight is in progress: "${row}"`);
+        }
+        await page.goto(`${url}#${id}/fly`);
+      }
+      await takenUp(page);
+      await page.waitForTimeout(600);
+      let r = await read(page);
+      if (!r.card || !r.ready) fail(at, `come back, no Resume offered: ${r.said}`);
+      if (!/left (a moment|\d+ minutes?) ago/.test(r.said)) fail(at, `the card does not say when it was left: "${r.said}"`);
+      if (r.focus !== 'resume') fail(at, `the card's focus is "${r.focus}", not Resume`);
+      same(at, before, r, 'taken up again');
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(200);
+      await page.evaluate(() => window.sr.clock.play(true));
+      await page.waitForTimeout(1500);
+      r = await read(page);
+      if (r.card || !(r.t > before.t)) fail(at, `Resume: card ${r.card}, t ${before.t} to ${r.t}`);
+      console.log(
+        `  ${at}: kept at T${before.t.toFixed(1)}, nothing asked; Fly offered it again to the digit, and Resume flew on (T${r.t.toFixed(1)})`,
+      );
+      if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
+      await ctx.close();
+    }
+    // a run kept by another simulator, or of a flight whose data has changed, is not flown again: said so, and let go
+    {
+      const at = `${where} stale`;
+      const { page, errors, context: ctx } = await fly(id, w, h, false);
+      trap(page);
+      await handFly(page, id);
+      await stop(page);
+      await page.click('#ui .places [data-place=gallery]');
+      await page.waitForTimeout(800);
+      await page.evaluate((id) => {
+        const k = `space-race.run:${id}`;
+        const run = JSON.parse(localStorage.getItem(k));
+        localStorage.setItem(k, JSON.stringify({ ...run, stamp: `${run.stamp}-older` }));
+      }, id);
+      await page.goto(`${url}#${id}/fly`);
+      await page.reload();
+      await takenUp(page);
+      let r = await read(page);
+      if (!/cannot be resumed/.test(r.said) || r.ready) fail(at, `a stale run offered: "${r.said}"`);
+      if (r.stored?.includes(id)) fail(at, 'a stale run is still kept');
+      await page.keyboard.press('KeyN');
+      await page.waitForTimeout(500);
+      r = await read(page);
+      if (r.card || r.t > 1) fail(at, `after it: card ${r.card}, t ${r.t}`);
+      console.log(`  ${at}: said it cannot be resumed, let go; N stood it on the pad`);
+      if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
+      await ctx.close();
+    }
+    // where the browser will not keep it (storage off), a way beyond the flight asks, as it always did: Keep flying changes
+    // nothing, Leave lets it go; the browser's own question is set while it would be lost
+    {
+      const at = `${where} unkept`;
+      const {
+        page,
+        errors,
+        context: ctx,
+      } = await open(browser, `${url}#${id}/fly`, {
+        context: { viewport: { width: w, height: h } },
+        before: (page) =>
+          page.addInitScript(() =>
+            Object.defineProperty(window, 'localStorage', {
+              get() {
+                throw new DOMException('denied', 'SecurityError');
+              },
+            }),
+          ),
+        console: [],
+        wait: () => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active,
+        timeout: 120000,
+      });
+      trap(page);
+      await handFly(page, id);
+      await stop(page);
+      const before = await read(page);
+      if (!before.warns) fail(at, 'the browser is not set to ask while a flight that cannot be kept is flown by hand');
+      await page.evaluate(() => document.querySelector('#ui .crumbs [data-home]').click());
+      await page.waitForTimeout(500);
+      let r = await read(page);
+      if (!r.asking || !/will not keep it/.test(r.question) || r.focus !== 'stay') fail(at, `the crumb: "${r.question}", focus ${r.focus}`);
+      await page.keyboard.press('Escape');
+      await page.waitForTimeout(1200);
+      r = await read(page);
+      if (r.asking || !r.active) fail(at, `Keep flying: asking ${r.asking}, active ${r.active}`);
+      same(at, before, r, 'Keep flying');
+      await page.evaluate(() => document.querySelector('#ui .crumbs [data-home]').click());
       await page.waitForTimeout(500);
       await page.keyboard.press('KeyL');
       await page.waitForTimeout(3000);
       const to = await page.evaluate(() => decodeURIComponent(location.hash));
-      if (!gone(to)) fail(at, `Leave: the address is "${to}"`);
-      console.log(
-        `  ${at}: asked each time; Keep flying by the button, Escape, the backdrop and Enter changed nothing (history ${before.length}); Leave went to "${to}"`,
-      );
+      if (to.includes(id)) fail(at, `Leave: the address is "${to}"`);
+      console.log(`  ${at}: asked (the browser will not keep it); Keep flying changed nothing; Leave went to "${to || 'the front page'}"`);
       if (errors.length) fail(at, errors.slice(0, 2).join(' | '));
       await ctx.close();
     }

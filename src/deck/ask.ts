@@ -1,11 +1,12 @@
 import '../ui/cockpit.css';
 import type { Clock } from '../world/clock.ts';
-import { is, kbd, keyOf } from '../util/keys.ts';
+import { capsOf, is, kbd, type KeyName, keyOf } from '../util/keys.ts';
 
 /**
- * The question asked before a way out that would lose a flight flown by hand (leaving.ts says when): a small panel in the
- * deck's own style over the middle of the page, not a window of the browser's. Two answers, "Keep flying" (the one that is
- * focused, that Escape and a press anywhere else choose, and that Enter takes: the safe answer is the default) and "Leave".
+ * The question asked before an act that would lose a flight flown by hand (leaving.ts says which): a small panel in the
+ * deck's own style over the middle of the page, not a window of the browser's. Two answers, the safe one ("Keep flying":
+ * the one that is focused, that Escape and a press anywhere else choose, and that Enter takes: it is the default) and the
+ * act ("Leave", "Start over", "Throw away"), each with its key.
  *
  * While it is up the clock is held, so nothing is lost while deciding, and no key of the page acts: one listener at the
  * window before any other hears the key (as the curtain's, app/curtain.ts), so nothing that listens for keys has to know of
@@ -15,11 +16,16 @@ export interface Asking {
   /** What the question is put over. */
   parent: HTMLElement;
   clock: Clock;
-  /** Said under the title: what would be lost. */
+  /** The question, and said under it what would be lost. */
+  title: string;
   line: string;
-  /** Leave: the flight is let go (told after the question has gone). */
+  /** The act's answer: its words and its key (`ask.leave`, `ask.again`); and the safe answer's words. */
+  go: string;
+  key: KeyName;
+  stayLabel: string;
+  /** The act: the flight is let go (told after the question has gone). */
   leave(): void;
-  /** Keep flying: the question has gone and the clock runs as it did. */
+  /** The safe answer: the question has gone and the clock runs as it did. */
   stay(): void;
 }
 
@@ -43,11 +49,11 @@ export function ask(o: Asking): void {
   back.className = 'deck-ask';
   back.innerHTML = `
     <section class="deck-ask-box" role="alertdialog" aria-modal="true" aria-labelledby="${id}-t" aria-describedby="${id}-d">
-      <h3 id="${id}-t">Leave this flight?</h3>
+      <h3 id="${id}-t">${o.title}</h3>
       <p id="${id}-d" class="cockpit-why">${o.line}</p>
       <p class="deck-ask-do">
-        <button data-ask="stay" title="Keep flying (Esc)">${kbd('ask.stay')}Keep flying</button>
-        <button data-ask="leave" title="Leave, and lose the flight (L)">${kbd('ask.leave')}Leave</button>
+        <button data-ask="stay" title="${o.stayLabel} (${capsOf('ask.stay').join(' ')})">${kbd('ask.stay')}${o.stayLabel}</button>
+        <button data-ask="leave" title="${o.go}, and lose the flight (${capsOf(o.key).join(' ')})">${kbd(o.key)}${o.go}</button>
       </p>
     </section>`;
   open = back;
@@ -84,7 +90,7 @@ export function ask(o: Asking): void {
     if (is(key, 'ask.stay')) {
       e.preventDefault();
       answer(false);
-    } else if (is(key, 'ask.leave')) {
+    } else if (is(key, o.key)) {
       e.preventDefault();
       answer(true);
     } else if (is(key, 'ask.step')) {

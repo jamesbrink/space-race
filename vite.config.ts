@@ -1,12 +1,30 @@
+import { createHash } from 'node:crypto';
+import { globSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 
 /** This checkout's own .claude folder, whichever checkout this is. */
 const AGENTS = fileURLToPath(new URL('.claude/', import.meta.url));
 
+/**
+ * The simulator's stamp: a hash of the code a run flown by hand is flown again by (the simulator, the world it flies in,
+ * the decks). A run kept by an older build is then not flown again by this one (deck/tape.ts `stampOf`). The dev server
+ * takes it as it starts.
+ */
+const ROOT = fileURLToPath(new URL('./', import.meta.url));
+const SIM_STAMP = (() => {
+  const files = globSync(['src/sim/**/*.ts', 'src/world/**/*.ts', 'src/deck/*.ts', 'src/types.ts', 'src/types/**/*.ts', 'src/measure.ts'], {
+    cwd: ROOT,
+  }).sort();
+  const h = createHash('sha256');
+  for (const f of files) h.update(f).update(readFileSync(ROOT + f));
+  return h.digest('base64url').slice(0, 12);
+})();
+
 // GitHub Pages serves the site from /<repo>/; CI passes that in as BASE_PATH.
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
+  define: { 'import.meta.env.SIM_STAMP': JSON.stringify(SIM_STAMP) },
   // (agents' worktrees live under .claude/ inside the repo: a file changed in one is not this server's, and reloading the
   // page for it broke a browser test half way through and would restart anyone's session. Only this checkout's own
   // .claude is left out: a worktree's whole path lies under the repo's, and a server run there must still see its files)

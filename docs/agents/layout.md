@@ -157,8 +157,11 @@ src/
   ui/navball.css  ui/cockpit.css      the navball's and the flight deck's looks
   deck/deck.ts                        the flight deck, one for every flight: its three panels, keys and their buttons, the stick and roll, tucking, the card that ends a flight
   deck/decks.ts                       which deck flies a flight: one for each kind of plan (`DECKS[plan.kind]`, `deckOf`); the decks' shared settings are deck.ts's
-  deck/leaving.ts  deck/ask.ts        when leaving a flight flown by hand loses it (the pure rule: kept within the flight, asked about beyond it), and the question asked
-  app/stake.ts                        the one guard on every way out that cannot keep a flight flown by hand: `guarded`, called by `goHome` and `main.ts`
+  deck/leaving.ts  deck/ask.ts        what an act does to a flight flown by hand (the pure rule: kept wherever the visitor goes, asked about only where it is lost), and the question asked
+  deck/tape.ts                        a run flown by hand kept as what was done to the deck and when, flown again exactly on its own clock; its stamp
+  app/runs.ts                         the runs flown by hand kept between visits, one a flight, in the browser's storage (and the list the front page marks)
+  ui/runmark.ts  ui/runmark.css       the front page's mark on the row of a flight with a run kept
+  app/stake.ts                        the one guard on every way out of a flight's page: `guarded`, called by `goHome` and `main.ts`, asks only where a run would be lost
   deck/cockpit.ts                     the deck's ballistic kind: a ballistic plan flown by hand, the live simulator stepped by the clock, the instruments
   deck/orbitdeck.ts                   the deck's orbital kind (an orbital plan): the stages, the events and what the hands could reach, from the plan
   deck/flown.ts                       the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it

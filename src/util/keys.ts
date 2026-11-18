@@ -106,6 +106,11 @@ export const KEYS = {
     when: 'the question of leaving a flight flown by hand',
   },
   'ask.leave': { slots: ['l'], does: 'leave, and lose the flight', when: 'the question of leaving a flight flown by hand' },
+  'ask.again': {
+    slots: ['n'],
+    does: 'start over, or throw the kept flight away',
+    when: 'the question before a flight flown by hand is thrown away',
+  },
   'path.show': { slots: ['j'], does: 'path', when: 'the flight deck (M is kept for the map)' },
   'path.choose': { slots: ['k'], does: 'path · to cutoff · cut now', when: 'the flight deck, under guidance with the engine burning' },
   'navball.show': { slots: ['i'], does: 'navball', when: 'the flight deck' },

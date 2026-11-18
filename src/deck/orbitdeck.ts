@@ -63,6 +63,7 @@ import { add, angleBetween, DEG, scale, siteFrame, type Vec3 } from '../world/fr
 import { elementsOf, period } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, type Figure, GUARD, KEEP, MOST, TRIM, TRIM_MOST, tank } from './deck.ts';
+import { pack } from './tape.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (an orbital plan whose ascent is flown on a steering law): the deck
@@ -165,7 +166,7 @@ export class OrbitDeck extends Deck {
   private eventAt = Number.NEGATIVE_INFINITY;
   /** The user's ascent as staged.ts's batch run has its results, once the spacecraft has parted (for the coast and the checks). */
   private ascended: Ascended | null = null;
-  private told = 0;
+  private told = Number.NEGATIVE_INFINITY;
   /**
    * The descent by hand (sim/orbital.ts `DescentHands`): each event a hand gave and when, the automatic sequence's switch as
    * it was thrown, the modules parted by hand; when the descent was taken from the record's flight (null while it is the
@@ -387,7 +388,7 @@ export class OrbitDeck extends Deck {
   travel(_id: string, _t: number): number | null {
     return null;
   }
-  work(_id: string): string | null {
+  protected worked(_id: string): string | null {
     return null;
   }
   headed(_id: string): boolean | null {
@@ -435,7 +436,7 @@ export class OrbitDeck extends Deck {
    * engine's button, the same as Space once the hands are free; the manual orientation's switch (`manual`), which the
    * lock throws: it says whether the hand controller has the attitude.
    */
-  ask(what: string): void {
+  protected obey(what: string): void {
     if (!this.on) return;
     if (what.startsWith('code:')) this.digit(what.slice(5));
     else if (what === 'manual')
@@ -450,7 +451,7 @@ export class OrbitDeck extends Deck {
         this.takeOver();
         this.host.say?.('Taken over', `Not the flight of ${this.day}: ${this.flier} had no say over the launch vehicle`);
       }
-      this.eventAt = performance.now() / 1000;
+      this.eventAt = this.now() / 1000;
       this.asked.push(step);
       if (!this.clock.running) this.clock.play(true);
     } else if (what.startsWith('descent:')) this.give(what.slice(8));
@@ -478,6 +479,45 @@ export class OrbitDeck extends Deck {
   protected restore(): void {
     this.host.fly(this.run);
     this.show();
+  }
+  protected get ticks(): number {
+    return this.state?.ticks ?? 0;
+  }
+  /** The run as it stands (deck/tape.ts): the live vehicle's state, how it is flown, and all that the hands have given since. */
+  protected print(): string {
+    return pack([
+      this.state,
+      this.mine,
+      this.guidance,
+      this.sequence,
+      this.trim,
+      this.asked,
+      this.free,
+      this.typed,
+      this.hand && [this.hand.q, this.hand.t, this.hand.log.length],
+      this.fired,
+      this.moved,
+      this.given,
+      this.switched,
+      this.partedBy,
+      this.aborted && [this.aborted.t, this.aborted.mode.until.value],
+      this.ejected?.at ?? null,
+      this.downMine,
+      this.run && [this.run.samples.length, this.run.duration, this.run.dropped],
+    ]);
+  }
+  protected switches(to?: Record<string, boolean>): Record<string, boolean> {
+    if (to) {
+      this.guidance = to.guidance ?? true;
+      this.sequence = to.sequence ?? true;
+    }
+    return { guidance: this.guidance, sequence: this.sequence };
+  }
+  /** The attitude turned by hand is integrated frame by frame (`turnTo`): while the hands turn it, each frame is part of the run. */
+  protected override get framed(): boolean {
+    if (!this.hand || this.fired !== null || !(this.free || this.byPlan !== null)) return false;
+    const p = this.push();
+    return p.pitch !== 0 || p.yaw !== 0 || p.roll !== 0;
   }
 
   /** When the spacecraft leaves the last stage on the flight on show, s. */
@@ -530,8 +570,9 @@ export class OrbitDeck extends Deck {
   }
 
   /** Back on the pad, the clock stopped at liftoff, the lock shut, the flight the record's. */
-  private fresh(): void {
+  protected fresh(): void {
     this.clock.reset();
+    this.started();
     this.record ??= orbitalRecord(this.flight);
     this.run = this.record;
     this.flown = null;
@@ -545,6 +586,9 @@ export class OrbitDeck extends Deck {
     this.mine = this.guidance && this.sequence ? null : 0;
     this.state = null;
     this.pilot = null;
+    // (nothing of a run before: the law's turn is this run's own, and so is when the deck last spoke of the hands)
+    this.options = { guidance: this.guidance, sequence: this.sequence };
+    this.told = Number.NEGATIVE_INFINITY;
     this.asked = [];
     this.tally = null;
     this.heard = 0;
@@ -601,7 +645,7 @@ export class OrbitDeck extends Deck {
   private abortAsked(): void {
     const why = this.abortWhy();
     if (why) return void this.host.say?.('Abort', why);
-    const now = performance.now() / 1000;
+    const now = this.now() / 1000;
     const mode = abortAt(this.flight.plan!, this.clock.t)!;
     if (now - this.abortArmed > ABORT_ARMED) {
       this.abortArmed = now;
@@ -629,7 +673,7 @@ export class OrbitDeck extends Deck {
     if (e.separate) steps.push({ kind: 'separate', stage: stages.length - 1 });
     this.asked.push(...steps);
     this.aborted = { mode, t: this.clock.t };
-    this.eventAt = performance.now() / 1000;
+    this.eventAt = this.now() / 1000;
     this.host.say?.('Abort', `By the record, ${mode.does}. Not the flight of ${this.day}`);
     if (e.eject && !e.eject.falling) this.eject(v.aboard(s, this.centre));
     if (!this.clock.running) this.clock.play(true);
@@ -669,10 +713,10 @@ export class OrbitDeck extends Deck {
 
   /** A hand went to the controls: on the record's ascent there were none, and the deck says so and how to take over. */
   protected override steered(): void {
-    if (!this.on || performance.now() - this.told < 4000) return;
+    if (!this.on || this.now() - this.told < 4000) return;
     const t = this.clock.t;
     if (this.mine === null && t <= this.parting && (t > 0 || this.clock.running)) {
-      this.told = performance.now();
+      this.told = this.now();
       this.host.say?.('No hand controls going up', `As on ${this.day}: G or B takes the flight over, and it is yours`);
     } else if (!this.free && this.byPlan === null && t > this.parting && this.fired === null) {
       // (a spacecraft whose hand controls had no lock: the hand on them has them, as its pilot's did)
@@ -683,7 +727,7 @@ export class OrbitDeck extends Deck {
         );
         return;
       }
-      this.told = performance.now();
+      this.told = this.now();
       const code = String(this.flight.plan!.record?.manual?.code?.value ?? '');
       this.host.say?.(
         'Hand controls locked',
@@ -717,7 +761,7 @@ export class OrbitDeck extends Deck {
   /** Space: the next thing to do. */
   private next(): void {
     const t = this.clock.t;
-    const now = performance.now() / 1000;
+    const now = this.now() / 1000;
     if (this.state && t < this.state.t - TICK) return void this.clock.play(true); // (looking back: run on)
     if (now - this.eventAt < GUARD) return;
     if (t <= 0 && !this.clock.running) {
@@ -1862,7 +1906,7 @@ export class OrbitDeck extends Deck {
     this.root.querySelector<HTMLButtonElement>('[data-do=next]')!.disabled = !(replay || waiting || step || move || fire || descent);
     const abort = this.root.querySelector<HTMLButtonElement>('[data-do=abort]')!;
     abort.disabled = this.abortWhy() !== null;
-    const armed = !abort.disabled && performance.now() / 1000 - this.abortArmed <= ABORT_ARMED;
+    const armed = !abort.disabled && this.now() / 1000 - this.abortArmed <= ABORT_ARMED;
     abort.classList.toggle('armed', armed);
     set('abort', armed ? 'Press again to abort' : 'Abort');
     this.root.classList.toggle('waiting', waiting);
