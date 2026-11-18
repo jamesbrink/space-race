@@ -64,7 +64,9 @@ for (const suffix of ['', '.lod1', '.lod2']) {
       else assert.ok(contents.length > 0, `${part}: empty full-detail compartment`);
     }
     if (!suffix) {
-      const windows = meshes('CabinWindows');
+      const hatchPanes = meshes('Side_Hatch_Pivot').filter((mesh) => mesh.name.startsWith('CM_Window_hatch_'));
+      assert.equal(hatchPanes.length, 3, 'all three hatch panes ride the moving hatch');
+      const windows = [...meshes('CabinWindows'), ...hatchPanes];
       assert.equal(windows.length, 15);
       for (const pane of windows) {
         const thickness = pane.name.endsWith('thermal')

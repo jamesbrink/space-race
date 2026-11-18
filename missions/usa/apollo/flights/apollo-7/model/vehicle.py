@@ -8,6 +8,8 @@ while not os.path.isdir(os.path.join(_root, "tools", "blender")):
     _root = os.path.dirname(_root)
 sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "apollo", "vehicles"))
+sys.path.insert(0, os.path.join(_root, "missions", "usa", "apollo", "crew"))
+import a7l  # noqa: E402
 import apollo_csm  # noqa: E402
 import launch_escape  # noqa: E402
 import saturn_ib  # noqa: E402
@@ -16,8 +18,9 @@ from srlib import IN, run  # noqa: E402
 
 def build():
     saturn_ib.build()
-    apollo_csm.build(saturn_ib.CSM_OFFSET)
-    launch_escape.build()
+    cabin = apollo_csm.build(saturn_ib.CSM_OFFSET)
+    a7l.seated(cabin["CrewCouches"], apollo_csm.CM_BASE)
+    launch_escape.build(boardable=True)
     return (
         f"SA-205: nominal Q-ball STA{saturn_ib.HEIGHT} in (224 ft), "
         f"{2 * saturn_ib.RADIUS * IN:.4f} m upper-stage diameter; engine contours provisional"

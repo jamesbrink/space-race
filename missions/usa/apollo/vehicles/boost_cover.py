@@ -8,6 +8,7 @@ from mathutils import Vector
 
 import command_module as cm
 import perforated_wall
+import side_hatch
 from cm_reference import survey_cm
 from srlib import CM, IN, MeshBuilder, lathe_obj, mark_shells, material, prof
 
@@ -17,7 +18,7 @@ PORT_RADIUS = 4
 HEIGHT = 132
 
 
-def build(parent, base, white):
+def build(parent, base, white, *, boardable=False):
     data = json.loads((Path(__file__).parent / "reference/apollo-cm-apertures.json").read_text())
     aperture = next(a for a in data["apertures"] if a["id"] == "rendezvous-left")
     points = [Vector(survey_cm(p, data["registration"])) * CM for p in aperture["boundary_cm"]]
@@ -47,7 +48,31 @@ def build(parent, base, white):
     az = [i * math.tau / 64 for i in range(64)]
     edge = [Vector((angle + PORT_RADIUS * math.cos(a) / radius(z), z * IN + PORT_RADIUS * IN * math.sin(a) * math.cos(cm.CONE_ANGLE))) for a in az]
     wall = material("apollo-bpc-fibreglass", (0.88, 0.87, 0.82), roughness=0.63, double_sided=True)
-    perforated_wall.build("BPC_Shell", parent, wall, base, lo, top, radius, normal, [edge], joins=(cm.CONE_Z, join))
+    openings = [edge]
+    if boardable:
+        # The cover has its own leaf (JPL TM 33-425). Its perimeter and hinge
+        # placement use the CM aperture as their reference; cover dimensions were not found.
+        outline = side_hatch.opening()
+        middle = sum(outline, Vector((0, 0))) / len(outline)
+        opening = [middle + 1.05 * (point - middle) for point in outline]
+        cover_leaf = side_hatch.hinge(parent, "Boost_Hatch_Pivot", base, radius, opening)
+        leaf = [middle + 1.03 * (point - middle) for point in outline]
+        perforated_wall.build(
+            "BPC_Hatch",
+            cover_leaf,
+            wall,
+            base,
+            min(point.y for point in leaf) / IN,
+            max(point.y for point in leaf) / IN,
+            radius,
+            normal,
+            [],
+            boundary=leaf,
+        )
+        mark_shells(["BPC_Hatch"])
+        side_hatch.register_leaf(cover_leaf)
+        openings.append(opening)
+    perforated_wall.build("BPC_Shell", parent, wall, base, lo, top, radius, normal, openings, joins=(cm.CONE_Z, join))
     lathe_obj("BPC_Crown", prof([(rtop, base + top), (0, base + top)]), white, parent)
     # A clear inset disc represents the cover glazing. The source dimensions
     # the port diameter, while glazing thickness and surface finish are unknown.

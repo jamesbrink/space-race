@@ -6,13 +6,14 @@ are used for the earlier CM-101 hatch (NASA TN D-7780, p.12). See cabin-fittings
 """
 
 import json
+import math
 from pathlib import Path
 
 from mathutils import Matrix, Vector
 
 import perforated_wall
 from cm_reference import AFT_APEX_XC, survey_cm
-from srlib import CM, IN, MeshBuilder, interior, mark_shells, material
+from srlib import CM, IN, MeshBuilder, group, interior, mark_shells, material
 
 REFERENCE = json.loads((Path(__file__).parent / "reference" / "apollo-side-hatch.json").read_text())
 
@@ -22,6 +23,23 @@ def opening():
     survey = json.loads((Path(__file__).parent / "reference" / "apollo-cm-apertures.json").read_text())
     points = [Vector(survey_cm(p, survey["registration"])) * CM for p in REFERENCE["thermal_opening"]["boundary_cm"]]
     return perforated_wall.convex_boundary(perforated_wall.domain(points))
+
+
+def hinge(parent, name, base, radius, boundary):
+    """Keep the closed modelling coordinates and register a pivot at the outer hinge edge."""
+    a = max(boundary, key=lambda point: point.x)
+    r = radius(a.y / IN) * IN
+    pivot = Vector((r * math.cos(a.x), r * math.sin(a.x), base * IN + a.y))
+    leaf = group(name, parent)
+    leaf.location = pivot
+    return leaf
+
+
+def register_leaf(leaf):
+    """Geometry uses the capsule datum. Make it local to the hinge without moving the closed door."""
+    shift = Matrix.Translation(-leaf.location)
+    for child in leaf.children:
+        child.matrix_local = shift @ child.matrix_local
 
 
 def build(parent, base, radius, normal, project, void):
