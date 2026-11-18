@@ -83,7 +83,7 @@ export class DockDeck extends Deck<Flight> {
     });
     this.root.classList.add('docking-deck');
     this.button.hidden = true;
-    for (const query of ['[data-do="abort"]', '[data-do="path"]', '[data-skin]', '[data-press="m"]'])
+    for (const query of ['[data-do="abort"]', '[data-do="path"]', '[data-skin]'])
       this.root.querySelector<HTMLElement>(query)?.setAttribute('hidden', '');
     const self = this;
     this.ball = new Navball(
