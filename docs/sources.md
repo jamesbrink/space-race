@@ -1570,3 +1570,20 @@ and `fdai.md` for the complete attribution and unfinished details.
 - [North American Rockwell V36-976024, main display console design layout for CM-106](https://www.ibiblio.org/apollo/Documents/V36-976024_Design_Layout_MDC_CM-106.pdf).
 - [Smithsonian, flown CM-106 inner hatch](https://ids.si.edu/ids/deliveryService?id=NASM-A19781415000cp01) and [NASA TN D-7780, p. 12](https://ntrs.nasa.gov/api/citations/19740026226/downloads/19740026226.pdf). Visible relief pockets and the change to the lightweight door.
 - [S69-17807](https://apollojournals.org/alsj/a410/ap10-S69-17807HR.jpg), [AS10-34-5090](https://apollojournals.org/afj/ap10fj/photos/34-m/hr/as10-34-5090.jpg) and [AS10-34-5112](https://apollojournals.org/afj/ap10fj/photos/34-m/hr/as10-34-5112.jpg). Snoopy at stacking, with its legs deployed in lunar orbit, and after staging.
+
+## The page's flags and emblems
+
+What `src/ui/icons.ts` draws from (gallery.md, "Icons, flags and emblems"). Each is drawn simply, at the size of a line of text;
+none is copied: the shapes are drawn anew from these.
+
+| Source | Where | Good for | Watch out for |
+| --- | --- | --- | --- |
+| Executive Order 10834, *Proportions and Sizes of Flags and Position of Stars*, 21 August 1959 (effective 4 July 1960) | [Federal Register text (archives.gov)](https://www.archives.gov/federal-register/codification/executive-order/10834.html) | The 50-star flag: hoist 1, fly 1.9, the union 7/13 deep and 0.76 long, stars 0.0616 across on a grid of 0.054 by 0.063, rows of six and five | The colours are not in the order; Old Glory Red and Blue (#B22234, #3C3B6E) are the usual screen values |
+| The 1955 statute on the State Flag of the USSR (19 August 1955), as quoted in Wikipedia, *Flag of the Soviet Union*, "Design" | [en.wikipedia.org](https://en.wikipedia.org/wiki/Flag_of_the_Soviet_Union) | 1:2; the hammer and sickle in a square a quarter of the hoist, a third of the hoist from it; the star in a circle an eighth of the hoist across, its centre an eighth down, edged in gold | Read in translation, not in the statute. The hammer and sickle's own outline is drawn here by eye, simplified to three strokes (it is under 3 px tall where it is shown); the red is #CC0000 by convention |
+| NASA, Project Mercury insignia, as redrawn in Wikimedia Commons, *Project_Mercury_logo.svg* | [commons.wikimedia.org](https://commons.wikimedia.org/wiki/File:Project_Mercury_logo.svg) | The astronomical sign of Mercury with the numeral 7 over it (Wikipedia's caption: "the Arabic numeral 7 overlaid") | Drawn here as strokes in a light silver; the Commons file is grey |
+| NASA, Gemini programme insignia, as redrawn in Wikimedia Commons, *GeminiPatch.svg* | [commons.wikimedia.org](https://commons.wikimedia.org/wiki/File:GeminiPatch.svg) | The gold Roman numeral II with two white stars on a dark blue disc | NASA and GEMINI lettering left out here |
+| NASA, *Apollo by the Numbers*, SP-2000-4029, "Mission Insignias"; the insignia as redrawn in Wikimedia Commons, *Apollo_program.svg* | [nasa.gov](https://www.nasa.gov/wp-content/uploads/static/history/SP-4029/Apollo_18-18_Mission_Insignias.htm), [commons.wikimedia.org](https://commons.wikimedia.org/wiki/File:Apollo_program.svg) | A disc in a band lettered APOLLO and NASA; a large A with Orion's three central stars for its bar; the Earth to the right and the Moon to the upper left (the Moon's face Apollo's) | The band's lettering and the face on the Moon are left out here. NASA's insignia are not under copyright but their use is restricted (14 CFR 1221): they identify the programme here and imply nothing else |
+
+The Soviet programmes (Vostok, Voskhod, Soyuz) had no patch: their emblems are this site's own line drawings of the spacecraft
+(the sphere on its instrument module; the same with the Voskhod's reserve retro-rocket on top; Soyuz's three modules and its
+two wings), and say so wherever they are shown.

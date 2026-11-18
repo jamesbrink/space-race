@@ -33,6 +33,8 @@
   :is(#gallery, #ui) .places.open > [data-place][aria-disabled='true'] { opacity: 1; color: var(--faint); }
   :is(#gallery, #ui) .places i { display: inline; }
   :is(#gallery, #ui) .places.short i:not(.chevron) { display: none; }
+  /* (and where the top line is short of room the place's button gives up its icon before the flight's name gives up a letter: the menu keeps them) */
+  :is(#gallery, #ui) .places.short .places-now .icon { display: none; }
   :is(#gallery, #ui) .title .places p { display: none; }
 
   /* nothing else stands on the view: the control block is in the sheet (its View pane) */

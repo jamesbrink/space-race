@@ -243,6 +243,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 - A switch looks like one: `class="switch"` with `aria-pressed` puts a lamp before its name, lit while it is on. Passing
   notes (`ui.say`, "Find the vehicle") go in the one stack under the clock (`Ui.notes`), never placed by hand; what is
   drawn on the view (the path's labels) lies under the panels and keeps off them (`Ui.panels`).
+- Icons, flags and emblems are drawn in `ui/icons.ts` alone: an icon beside its words and never instead of them (a switch
+  keeps its lamp and has none), a flag by nation, an emblem by programme, and a Soviet programme's emblem says it is this
+  site's mark, not a patch it had ([gallery.md](docs/agents/gallery.md), "Icons, flags and emblems").
 - The flight deck (`deck.ts`, `cockpit.css`) is one for every flight: three panels, the navball and path in the left corner, the primary
   figures, the G and B switches and the one action (Space) in the middle, the systems as bars and lamps on the right; its keys fold to one
   line. Every key it shows is also a button that does what the key does (`data-do` a command, `data-hold` a key held

@@ -89,6 +89,28 @@ Every flight has the same three places, in the same order, and opens in the firs
 A flight with only a vehicle is complete enough to ship: it is in the gallery, and its site and
 Fly light up as they are built.
 
+## Icons, flags and emblems
+
+Every small picture on the page is drawn by `ui/icons.ts` (inline SVG; no file, font, emoji or request), and sized by the
+text it stands in (`icons.css`).
+
+- **An icon goes beside its words, never instead of them**, in their colour and one stroke weight, `aria-hidden`: the
+  three places wherever they are offered (the switch, a phone's menu and its button, which gives its icon up before the
+  flight's name gives up a letter; a place not built dims with its name), the three again on each front-page row lit for
+  those the flight has (`lacks`), the Lineup wherever it is gone to, Walk, the camera. The panel tabs and the switches
+  have none: a tab row has no room for one at 30 % of the width, and **a switch has its lamp and no icon** (the lamp says
+  whether it is on, which a picture cannot; one mark before a name is enough).
+- **A flag** stands before a nation's name wherever it is named (the front page's rows and its nation switches, the
+  crumbs, the Lineup's key, card and Programmes tab, a gallery's History tab): the flag flown 1961 to 1969, to its
+  statute's proportions (`FLAGS`, by the nation's word in an id: China is an entry). It is decorative, the name is beside it.
+- **An emblem** stands before a programme's name (the front page's programme switches and rows, the crumbs, the Lineup's
+  key, card, section and Programmes tab, a gallery's History tab), by programme id (`EMBLEMS`: the next programme is an
+  entry). An American one is the programme's insignia drawn simply (docs/sources.md, "The page's flags and emblems"). The
+  Soviet programmes had no patch: theirs is a line drawing of the spacecraft in the text's colour, and says it is this
+  site's mark and not the programme's. Each says which it is (`says`: read out, shown when pointed at, and written under
+  it large where the programme is told, `emblemFigure` in `programmeMarkup`). Never draw an invented emblem as a patch,
+  nor call it the programme's.
+
 ## The front page
 
 `front.ts` is the page; `title.ts` its words (the mark, the list); `app/front/scene.ts` its picture, on a canvas and a
