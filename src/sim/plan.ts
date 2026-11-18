@@ -116,6 +116,8 @@ export interface BodyDef {
 
 /** How a body meets the air: coefficients against Mach number on a reference area; lift as a ratio to drag at its trim. */
 export interface AeroDef {
+  /** This body passively rights its offset mass in the airflow after parting. */
+  passiveSphere?: boolean;
   area: Measure;
   drag: Curve;
   /**

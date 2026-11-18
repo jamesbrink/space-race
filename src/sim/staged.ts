@@ -67,7 +67,8 @@ import {
   publishedOf,
   shipOf,
 } from './orbital.ts';
-import { fromAxes, multiply, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
+import { ENTRY_G } from './loads.ts';
+import { aboutAxis, fromAxes, multiply, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import type { LiveSample } from './vehicle.ts';
 import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { nozzleThrust } from './thrust.ts';
@@ -819,6 +820,19 @@ export function published(plan: FlightPlan, site: Geodetic, at: { t: number; r: 
   return { t: at.t, r: at.r, v: s.v };
 }
 
+/** Draw a passively stable sphere from the release attitude. Air drag can tip the heavy side
+ * into the flow but gives no restoring roll about that line. The response between entry and
+ * one g is a visual approximation; the measured pressure-centre offset and damping are unknown. */
+export function passiveSpherePose(released: Quat, wind: Vec3, alignment: number): Quat {
+  if (!alignment || length(wind) < 1) return released;
+  const axis = turnQ(released, [1, 0, 0]),
+    back = scale(unit(wind), -1);
+  const normal = cross(axis, back),
+    sine = length(normal);
+  const angle = Math.atan2(sine, dot(axis, back));
+  return normalizeQ(multiply(aboutAxis(sine > 1e-10 ? scale(normal, 1 / sine) : turnQ(released, [0, 1, 0]), angle * alignment), released));
+}
+
 /**
  * The whole flight as samples the scene can show (viewer/ascent.ts places a run's samples by their own attitude): in
  * the frame it was flown in (world/earthframe.ts), every `LiveSample` field filled. `centre` is the spacecraft's centre of mass, metres up the
@@ -829,7 +843,8 @@ export function published(plan: FlightPlan, site: Geodetic, at: { t: number; r: 
  * How it lies is the law's going up: the long axis (+X) along the thrust, +Y the launch plane's pole (its left, as it
  * stood on the pad), +Z back up range. After separation the record's attitudes are drawn, not flown: held as at
  * separation; turned over a minute to push along the braking burn's line from the solar orientation (the `orientation`
- * event) to the burn's end; held again; and from the modules' separation turned over half a minute to lie along its
+ * event) to the burn's end; held again. A passive sphere keeps its release attitude until aerodynamic entry. Other
+ * spacecraft are turned over half a minute from module separation to lie along their
  * motion through the air. The tumbles of the record (2 to 3 deg/s before orientation, 6 or 30 after the burn) are not.
  */
 export function recordSamples(
@@ -977,6 +992,8 @@ export function recordSamples(
   // there when the period ends; the slow turning that followed is not drawn
   const periods = plan.record?.manual?.periods ?? [];
   let rest = held;
+  let baseAtRelease = held,
+    alignment = 0;
   let left: Quat | null = null;
   for (const s of ending) {
     const wind = sub(s.v, cross(spin, s.r));
@@ -986,11 +1003,16 @@ export function recordSamples(
       rest = left;
       left = null;
     }
-    if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
+    const passive = ship.entry.aero.passiveSphere && s.t >= parts;
+    if (passive) {
+      if (s.t > parts && s.entering) alignment = Math.max(alignment, Math.min(1, Math.max(0, (s.g - ENTRY_G) / (1 - ENTRY_G))));
+      q = passiveSpherePose(baseAtRelease, wind, alignment);
+    } else if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
     else if (s.t < oriented) q = rest;
     else if (s.t <= ship.off) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / turning));
     else if (s.t < parts) q = aimed;
     else q = toward(aimed, length(wind) > 1 ? lie(trimmed(s, wind)) : aimed, Math.min(1, (s.t - parts) / 30));
+    if (!passive) baseAtRelease = q;
     if (s.rotation) q = multiply(q, s.rotation.delta);
     const axis = turnQ(q, [1, 0, 0]);
     const here = frame.place(s.r, s.t);
@@ -1017,10 +1039,11 @@ export function recordSamples(
       v: s.v,
       axis,
       attitude: q,
+      ...(passive && { passive: { wind, alignment } }),
       ...(s.rotation && { rotation: s.rotation, rates: s.rotation.rates }),
       alpha: 0,
       burning: [
-        ...(s.t >= ship.on && s.t < ship.off && braking ? [{ engine: braking, thrust: 0 }] : []),
+        ...(s.t >= ship.on && s.t < Math.min(ship.off, parts) && braking ? [{ engine: braking, thrust: 0 }] : []),
         ...ship.moves.filter((m) => s.t >= m.on && s.t < m.off).map((m) => ({ engine: m.engine, thrust: 0 })),
       ],
       centre: at,

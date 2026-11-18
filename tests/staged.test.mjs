@@ -25,6 +25,7 @@ import {
   integral,
   lawOf,
   published,
+  recordSamples,
   schedule,
   sequenceOf,
   stagesOf,
@@ -691,6 +692,27 @@ for (const f of part(flown)) {
       `  #   the published orbit from where the ascent left it: apogee flown round ${(r.apogee / 1000).toFixed(1)} km; braking over ${r.retroLatitude.toFixed(2)} N ${r.retroLongitude.toFixed(2)} E; 7 km at ${clock(r.ejectionAt)} over ${r.ejectionLatitude.toFixed(3)} N ${r.ejectionLongitude.toFixed(3)} E; ${(r.alongTrack / 1000).toFixed(1)} km along the track and ${(r.crossTrack / 1000).toFixed(1)} km to the right of the record's landing`,
     );
   });
+
+  if (f.id.startsWith('ussr/'))
+    test(`${f.designation}: the sphere keeps its inertial pose when the attitude jets leave`, () => {
+      const ship = shipOf(f.plan),
+        samples = recordSamples(f.plan, shown, where(f)[1], 0, () => [1e11, 0, 0]);
+      const index = samples.findIndex((s) => s.passive);
+      assert.ok(index > 0);
+      const before = samples[index - 1],
+        after = samples[index];
+      assert.deepEqual(after.attitude, before.attitude);
+      assert.equal(after.passive.alignment, 0);
+      for (const sample of samples.slice(index)) {
+        assert.ok(sample.t >= ship.parted);
+        assert.equal(sample.burning.length, 0);
+        if (!sample.passive.alignment) assert.deepEqual(sample.attitude, after.attitude);
+      }
+      assert.ok(
+        samples.some((s) => s.passive?.alignment > 0),
+        'the air rights the sphere on entry',
+      );
+    });
 
   test(`${f.designation}: the law's level is square to the plumb line, and its axis a unit vector at every instant`, () => {
     // (the turn's tilt is measured between the plumb line in the plane and the level square to it: until November 2026 the
