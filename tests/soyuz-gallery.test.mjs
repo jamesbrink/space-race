@@ -8,6 +8,7 @@ import { flight as soyuz1 } from '../missions/ussr/soyuz/flights/soyuz-1/flight.
 import { flight as soyuz3 } from '../missions/ussr/soyuz/flights/soyuz-3/flight.ts';
 import { flight as soyuz4 } from '../missions/ussr/soyuz/flights/soyuz-4/flight.ts';
 import { flight as soyuz10 } from '../missions/ussr/soyuz/flights/soyuz-10/flight.ts';
+import { flight as soyuz12 } from '../missions/ussr/soyuz/flights/soyuz-12/flight.ts';
 import { plinths } from '../src/app/address.ts';
 import { Exploder } from '../src/viewer/explode.ts';
 import { framesOf, hierarchy } from './glb.mjs';
@@ -229,3 +230,70 @@ test('Soyuz 10 places its three crew in separate couches under the station docki
   assert.deepEqual(dock.nodes, ['OrbitalModule', 'DockingCollar', 'DockingProbe']);
   assert.ok(dock.isolate);
 });
+
+for (const suffix of ['', '.lod1', '.lod2']) {
+  test(`Soyuz 12${suffix}: the wingless ferry keeps its whips, suit supplies and docking unit with their modules`, () => {
+    const model = soyuz12.models[0];
+    const file = new URL(`../public/${model.url.replace('.glb', `${suffix}.glb`)}`, import.meta.url);
+    const bytes = readFileSync(file);
+    const gltf = JSON.parse(bytes.subarray(20, 20 + bytes.readUInt32LE(12)));
+    const root = hierarchy(gltf);
+    const slider = new Exploder(root, model.parts);
+    const position = (name) => root.getObjectByName(name).getWorldPosition(new Vector3());
+    for (const side of ['Left', 'Right']) assert.equal(root.getObjectByName(`Solar${side}`), undefined);
+
+    const fittings = [
+      ['WhipAntennaLeft', 'ServiceModule'],
+      ['WhipAntennaRight', 'ServiceModule'],
+      ['DockingCollar', 'OrbitalModule'],
+      ['DockingProbe', 'OrbitalModule'],
+      ['SuitSupply', 'DescentModule'],
+      ['LksaCamera', 'OrbitalModule'],
+    ];
+    const offset = (node, parent) => position(node).sub(position(parent));
+    const home = fittings.map(([node, parent]) => offset(node, parent));
+    const masts = ['WhipLeftMast', 'WhipRightMast'].map((name) => root.getObjectByName(name));
+    const stowed = masts.map((mast) => mast.quaternion.clone());
+    const joined = offset('DockingProbe', 'ServiceModule');
+    const length = framesOf(file);
+    assert.ok(Math.abs(length.box('DockingProbe').hi[1] - length.box('ServiceModule').lo[1] - 7.5) < 0.002);
+    for (let tick = 0; tick <= 100; tick++) {
+      slider.set(tick / 100);
+      if (tick <= 27 || tick === 50) {
+        const angle = tick === 50 ? Math.PI / 2 : 0;
+        for (const [i, mast] of masts.entries()) assert.ok(Math.abs(mast.quaternion.angleTo(stowed[i]) - angle) < 0.001);
+        assert.ok(offset('DockingProbe', 'ServiceModule').distanceTo(joined) < 0.001);
+      }
+      for (const [index, [node, parent]] of fittings.entries()) {
+        assert.ok(offset(node, parent).distanceTo(home[index]) < 0.001, `${node} moves with ${parent} at ${tick}%`);
+      }
+    }
+
+    slider.set(0);
+    for (const [i, mast] of masts.entries()) assert.ok(mast.quaternion.angleTo(stowed[i]) < 0.001);
+
+    if (!suffix) {
+      const camera = model.views.find((view) => view.id === 'lksa-camera');
+      assert.deepEqual(camera.nodes, ['LksaCamera']);
+      assert.ok(camera.isolate && root.getObjectByName('LksaCamera').children.length > 0);
+      const couches = root.getObjectByName('Couches');
+      assert.deepEqual(
+        model.seats.map((seat) => seat.node),
+        ['Seat_Commander', 'Seat_Port'],
+      );
+      assert.deepEqual(
+        couches.children
+          .filter((child) => child.name.startsWith('Crew_'))
+          .map((child) => child.name)
+          .sort(),
+        ['Crew_Lazarev', 'Crew_Makarov'],
+      );
+      assert.equal(couches.getObjectByName('Seat_Starboard'), undefined);
+      assert.ok(root.getObjectByName('SuitSupply').children.length > 0);
+      for (const seat of model.seats) {
+        assert.ok(couches.getObjectByName(seat.node));
+        assert.ok(seat.hide.length && seat.hide.every((name) => couches.getObjectByName(name)));
+      }
+    }
+  });
+}

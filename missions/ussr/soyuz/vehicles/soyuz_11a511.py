@@ -138,25 +138,36 @@ def build_fairing(X, M, hatch_az: float, hatch_z: float) -> None:
         stabilizers(X, M, node, az, side)
 
 
-def build_tower(X, M) -> None:
+def build_tower(X, M, *, exposed=False) -> None:
     """External silhouette of the original SAS, including the broad shrouded lower body."""
     node = group("EscapeTower")
     cover, metal, cap = Local(X), Local(X), Local(X)
     z = FAIRING_TIP
-    cover.lathe(
-        [
-            (315, z + 4),
-            (325, z + 100),
-            (520, z + 420),
-            (575, z + 730),
-            (570, z + 980),
-            (350, z + 1310),
-            (180, z + 1600),
-            (147, z + 1950),
-            (147, z + 3580),
-        ],
-        64,
-    )
+    enclosed_profile = [
+        (315, z + 4),
+        (325, z + 100),
+        (520, z + 420),
+        (575, z + 730),
+        (570, z + 980),
+        (350, z + 1310),
+        (180, z + 1600),
+        (147, z + 1950),
+        (147, z + 3580),
+    ]
+    # Narimanov's 1976 survey shows the lower aerodynamic casing removed from Soyuz 12.
+    # The shoulders, exposed support and finishes are estimates from the exterior drawing.
+    exposed_profile = [
+        (315, z + 4),
+        (260, z + 90),
+        (215, z + 440),
+        (225, z + 600),
+        (226, z + 950),
+        (193, z + 1200),
+        (174, z + 1480),
+        (147, z + 1950),
+        (147, z + 3580),
+    ]
+    cover.lathe(exposed_profile if exposed else enclosed_profile, 64)
     cap.lathe(
         [
             (146, z + 3584),
@@ -170,16 +181,23 @@ def build_tower(X, M) -> None:
         64,
     )
     # The shroud's openings read as a dark ring beneath the rounded cover. Only the exterior is represented.
-    metal.lathe([(342, z + 140), (410, z + 248), (438, z + 375), (448, z + 450)], 48)
-    for k in range(6):
-        a = TAU * k / 6
-        u, v = math.cos(a), math.sin(a)
-        metal.tube((384 * u, 384 * v, z + 465), (505 * u, 505 * v, z + 287), 57, 12, caps=False)
+    if exposed:
+        metal.lathe([(223, z + 484), (253, z + 501), (253, z + 540), (228, z + 565)], 48)
+        for k in range(6):
+            a = TAU * k / 6
+            u, v = math.cos(a), math.sin(a)
+            metal.tube((237 * u, 237 * v, z + 765), (468 * u, 468 * v, z + 412), 60, 16)
+    else:
+        metal.lathe([(342, z + 140), (410, z + 248), (438, z + 375), (448, z + 450)], 48)
+        for k in range(6):
+            a = TAU * k / 6
+            u, v = math.cos(a), math.sin(a)
+            metal.tube((384 * u, 384 * v, z + 465), (505 * u, 505 * v, z + 287), 57, 12, caps=False)
     for mesh, name, mat in ((cover, "Skin", "pale"), (metal, "Fittings", "steel"), (cap, "Cap", "lacquer")):
         mesh.build(f"EscapeTower_{name}", M[mat], node, sharp_angle=32)
 
 
-def build(hatch_az: float, hatch_z: float) -> str:
+def build(hatch_az: float, hatch_z: float, *, exposed_tower=False) -> str:
     M = reuse(materials())
     core.build(BASE_Z, M, web_foot=244.0, top=CORE_TOP)
     for letter, az in BOOSTER_AZ.items():
@@ -190,6 +208,6 @@ def build(hatch_az: float, hatch_z: float) -> str:
     voskhod_upper.build_aft_section(block_frame, M)
     voskhod_upper.build_block_i(block_frame, M, adapter=ADAPTER, engine="RD0110")
     build_fairing(X, M, hatch_az, hatch_z)
-    build_tower(X, M)
+    build_tower(X, M, exposed=exposed_tower)
     mark_shells(SHELLS)
     return f"{LENGTH * MM:.3f} m on the pad, {SPAN * MM:.3f} m over the rudders"

@@ -9,7 +9,7 @@ const towerTravel: [number, number, number] = [0, 18, 0];
 const portTilt = (12 * Math.PI) / 180;
 export const service: [number, number, number] = [0, 7, 0];
 // The first half shows the flight configuration with the modules still joined. The second takes the exhibit apart.
-const moduleTravel = (by: [number, number, number], order: number) => ({
+export const moduleTravel = (by: [number, number, number], order: number) => ({
   kind: 'slide' as const,
   by,
   from: 0.53 + order * 0.012,
