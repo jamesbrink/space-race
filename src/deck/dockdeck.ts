@@ -1,14 +1,15 @@
-import type { Flight } from '../types.ts';
-import { terminalApproach, startDockedBurn, startTether, transpositionInput, faultInput } from '../sim/approach.ts';
-import { startRendezvous, rendezvousInput } from '../sim/rendezvous.ts';
-import { startVisit, stationKeep, flybyInput } from '../sim/flyby.ts';
+import { faultInput, startDockedBurn, startTether, terminalApproach, transpositionInput } from '../sim/approach.ts';
 import { portGap } from '../sim/docking.ts';
-import { elementsOf } from '../world/orbit.ts';
-import { WGS84_A } from '../world/bodies.ts';
-import { add, sub, scale, type Vec3 } from '../world/frames.ts';
-import { Clock, missionTime } from '../world/clock.ts';
+import { flybyInput, startVisit, stationKeep } from '../sim/flyby.ts';
+import { rendezvousInput, startRendezvous } from '../sim/rendezvous.ts';
+import { nextTransfer, startTransfer, transferInput } from '../sim/transfer.ts';
+import type { Flight } from '../types.ts';
 import { is, which } from '../util/keys.ts';
-import { Deck, type CockpitHost } from './deck.ts';
+import { WGS84_A } from '../world/bodies.ts';
+import { type Clock, missionTime } from '../world/clock.ts';
+import { add, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { elementsOf } from '../world/orbit.ts';
+import { type CockpitHost, Deck } from './deck.ts';
 import { pack } from './tape.ts';
 import '../ui/navball.css';
 import { Navball, type NavSample } from './navball.ts';
@@ -39,6 +40,7 @@ export class DockDeck extends Deck<Flight> {
   }
   redock = false;
   transpose = false;
+  transfer = false;
   rendezvous = false;
   visit = false;
   eva = false;
@@ -60,8 +62,13 @@ export class DockDeck extends Deck<Flight> {
   constructor(parent: HTMLElement, flight: Flight, clock: Clock, host: CockpitHost) {
     super(parent, flight, clock, host, {
       figures: [
-        timeline('gap', 'Range', 'm', 'Axial port gap during docking, centre-to-centre distance on a passive rendezvous'),
-        timeline('closing', 'Closing', 'm/s', 'Relative port velocity along the docking axis'),
+        timeline('gap', 'Range', 'm', 'Axial port gap during docking, centre-to-centre distance during orbital rendezvous'),
+        timeline(
+          'closing',
+          'Closing',
+          'm/s',
+          'Closing rate along the line of sight during rendezvous, along the mating axis during docking',
+        ),
         timeline('offset', 'Offset', 'm', 'Sideways miss between the mating rings'),
       ],
       readings: [
@@ -81,6 +88,9 @@ export class DockDeck extends Deck<Flight> {
           .join('') +
         (flight.docking?.interface === 'probe' ? '<button data-do="change-craft">Switch pilot</button>' : '') +
         (flight.docking?.fault ? '<button data-do="oams-failure">Thruster No. 8</button>' : '') +
+        (flight.docking?.transfer
+          ? '<button data-do="orbital-transfer">Orbital rendezvous</button><button data-do="next-translation">Coast to maneuver</button>'
+          : '') +
         (flight.docking?.visit
           ? '<button data-do="second-target">Visit old Agena</button><button data-do="eva-target">EVA station keeping</button>'
           : '') +
@@ -133,6 +143,7 @@ export class DockDeck extends Deck<Flight> {
       this.pilot,
       this.redock,
       this.rendezvous,
+      this.transfer,
       this.visit,
       this.eva,
       this.flybyAuto,
@@ -156,9 +167,17 @@ export class DockDeck extends Deck<Flight> {
       this.guided = to.guidance ?? true;
       this.redock = to.redock ?? false;
       this.rendezvous = to.rendezvous ?? false;
+      this.transfer = to.transfer ?? false;
       this.transpose = to.transpose ?? false;
     }
-    return { sequence: this.automatic, guidance: this.guided, redock: this.redock, rendezvous: this.rendezvous, transpose: this.transpose };
+    return {
+      sequence: this.automatic,
+      guidance: this.guided,
+      redock: this.redock,
+      rendezvous: this.rendezvous,
+      transfer: this.transfer,
+      transpose: this.transpose,
+    };
   }
   protected restore() {
     this.follow();
@@ -191,7 +210,11 @@ export class DockDeck extends Deck<Flight> {
   protected fresh() {
     this.clock.pause();
     this.clock.setRate(1);
-    this.run = this.rendezvous ? startRendezvous(this.flight) : terminalApproach(this.flight, this.redock, this.transpose);
+    this.run = this.transfer
+      ? startTransfer(this.flight)
+      : this.rendezvous
+        ? startRendezvous(this.flight)
+        : terminalApproach(this.flight, this.redock, this.transpose);
     this.pilot = this.redock ? 1 : 0;
     this.firedForce = [
       [0, 0, 0],
@@ -222,7 +245,8 @@ export class DockDeck extends Deck<Flight> {
       this.leave();
       return;
     }
-    if (what === 'again' || what === 'second' || what === 'rendezvous' || what === 'transpose') {
+    if (what === 'again' || what === 'orbital-transfer' || what === 'second' || what === 'rendezvous' || what === 'transpose') {
+      this.transfer = what === 'orbital-transfer';
       this.rendezvous = what === 'rendezvous';
       this.redock = what === 'second' || this.rendezvous;
       this.transpose = what === 'transpose';
@@ -231,6 +255,10 @@ export class DockDeck extends Deck<Flight> {
     }
     if (what === 'navball') {
       this.ball.tuck(this.root.querySelector('[data-do="navball"]')?.getAttribute('aria-pressed') === 'true');
+      return;
+    }
+    if (what === 'next-translation' && this.transfer) {
+      if (nextTransfer(this.run, this.flight)) this.clock.seek(this.run.t);
       return;
     }
     this.hand = true;
@@ -356,6 +384,7 @@ export class DockDeck extends Deck<Flight> {
         if (this.pilot === 0 && this.faultEnabled && this.run.phase === 'free' && this.run.t < fault.recovery)
           torque = torqueAxis.map((u) => u * authority) as unknown as Vec3;
       }
+      if (this.transfer && !this.hand && this.automatic && this.run.phase === 'free') forces[0] = transferInput(this.run, this.flight);
       if (this.rendezvous && !this.hand && this.automatic && this.run.phase === 'free') forces[1] = rendezvousInput(this.run, this.flight);
       if (this.visit && this.flybyAuto && this.automatic)
         forces[0] = flybyInput(this.run, this.flight.docking!.visit!, 2 * controls.ahead.value);
@@ -403,11 +432,20 @@ export class DockDeck extends Deck<Flight> {
     this.put(
       'mode',
       (this.pilot ? this.flight.docking!.target : this.flight.docking!.interface === 'probe' ? 'Gumdrop' : 'Gemini') +
-        (this.hand ? ' · By hand' : ' · Terminal approach'),
+        (this.hand
+          ? ' · By hand'
+          : this.transfer || this.rendezvous || this.visit
+            ? ' · Rendezvous'
+            : this.transpose
+              ? ' · Transposition'
+              : ' · Terminal approach'),
     );
     this.put('next', phase === 'hard' ? (this.run.mounted ? 'Extract' : 'Undock') : phase === 'capture' ? 'Retracting' : 'Capture');
-    this.put('gap', (this.visit ? Math.hypot(...sub(this.run.bodies[0].r, this.run.bodies[1].r)) : d.gap).toFixed(2));
-    this.put('closing', d.closing.toFixed(2));
+    const [first, otherBody] = this.run.bodies,
+      separation = sub(first.r, otherBody.r);
+    const measuringRange = (this.transfer || this.rendezvous || this.visit) && phase === 'free';
+    this.put('gap', (measuringRange ? length(separation) : d.gap).toFixed(2));
+    this.put('closing', (measuringRange ? -dot(unit(separation), sub(first.v, otherBody.v)) : d.closing).toFixed(2));
     this.put('offset', d.offset.toFixed(2));
     this.put('tilt', ((d.tilt * 180) / Math.PI).toFixed(1));
     this.put('roll', ((d.roll * 180) / Math.PI).toFixed(1));
@@ -426,6 +464,16 @@ export class DockDeck extends Deck<Flight> {
       failure.disabled = running
         ? this.run.t >= this.flight.docking!.fault.isolate
         : phase !== 'hard' || this.run.t > this.flight.docking!.fault.at;
+    }
+    const maneuver = this.root.querySelector<HTMLButtonElement>('[data-do="next-translation"]');
+    const record = this.flight.docking!.transfer;
+    if (maneuver && record) {
+      maneuver.disabled =
+        !this.transfer ||
+        this.hand ||
+        this.run.phase !== 'free' ||
+        this.run.t >= record.brake ||
+        record.burns.some((b) => this.run.t >= b.at && this.run.t < b.at + b.duration.value);
     }
     const second = this.root.querySelector<HTMLButtonElement>('[data-do="second-target"]');
     if (second) second.disabled = this.visit || phase !== 'hard' || !!this.powered || this.burnIndex !== this.flight.docking!.burns!.length;

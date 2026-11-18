@@ -1,4 +1,4 @@
-import { measure, doc, derived, assumed } from '../../../../src/measure.ts';
+import { assumed, derived, doc, type Measure, measure } from '../../../../src/measure.ts';
 import type { ModelDef, Motor, Part, Spec } from '../../../../src/types.ts';
 import { IN, LB, LBF, THRUST } from './gemini-titan.ts';
 
@@ -648,3 +648,36 @@ export function dockingProperties(report: string, geminiZ: number, agenaStation:
   ] as const;
 }
 export const geminiControls = { ahead: THRUST.oamsAft, astern: THRUST.oamsForward, lateral: THRUST.oamsAft, attitude: THRUST.oamsAttitude };
+
+/** Measured local-vertical impulse components in ft/s, standardized to forward / down / left.
+ * The maneuver tables include IVI zeroing in several elapsed durations. The engine applies
+ * the integrated impulse over that interval; this is not a reconstructed valve sequence. */
+export function crewTransfer(
+  report: string,
+  fix: ReturnType<typeof targetFix>,
+  rows: readonly (readonly [number, number, number, number, number | Measure])[],
+  brake: number,
+  station: number,
+  feet: number,
+  radar?: readonly [number, number, number],
+) {
+  const burns = rows.map(([at, x, y, z, seconds]) => ({
+    at,
+    dv: derived(Math.hypot(x, y, z) * 0.3048, report + ' resultant of the three measured components'),
+    pitch: derived((Math.atan2(-y, Math.hypot(x, z)) * 180) / Math.PI, report + ' local vertical components'),
+    yaw: derived((Math.atan2(-z, x) * 180) / Math.PI, report + ' local vertical components; positive yaw to the right'),
+    duration: typeof seconds === 'number' ? doc(seconds, report + ' reported elapsed maneuver interval') : seconds,
+  }));
+  return {
+    radar: radar && {
+      at: radar[0],
+      range: doc(radar[1] * 1852, report + ' first terminal range'),
+      elevation: doc(radar[2], report + ' first terminal elevation'),
+    },
+    fix,
+    burns,
+    brake,
+    station,
+    hold: doc(feet * 0.3048, report + ' reported station-keeping range, approximate'),
+  };
+}

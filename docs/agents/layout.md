@@ -422,6 +422,8 @@ where it was left.
 
 - `src/sim/docking.ts` propagates independently flying spacecraft, their keyed docking ports, the coupled pair and an optional carrier released during extraction. `tests/orbital-docking.test.mjs` checks capture limits, momentum, combined propulsion and extraction.
 
+- `src/sim/transfer.ts` advances Gemini orbital rendezvous from the crew and target navigation fixes.
+- `src/sim/dockplan.ts` constructs independent orbital craft from the flight plan schema and measured masses.
 - `src/sim/rendezvous.ts` reconstructs the LM terminal phase from radar geometry and RCS maneuvers.
 - `src/sim/flyby.ts` propagates the three vehicles during a second target visit.
 - `src/sim/tether.ts` applies a tensile impulse at the two spacecraft attachment points.

@@ -2,9 +2,9 @@
  * The ring offset is from the centre of mass. Positions, velocities and angular momenta use the
  * same inertial frame throughout, including when the active pilot changes seats. */
 import { add, cross, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { coast, type State, step } from '../world/orbit.ts';
+import { aboutAxis, conjugate, fromAxes, multiply, nlerp, type Quat, rotateFor, turn, unturn } from './rigid.ts';
 import { tetherImpulse } from './tether.ts';
-import { coast, step, type State } from '../world/orbit.ts';
-import { aboutAxis, conjugate, fromAxes, multiply, nlerp, rotateFor, turn, unturn, type Quat } from './rigid.ts';
 
 const Y: Vec3 = [0, 1, 0],
   Z: Vec3 = [0, 0, 1],
@@ -80,6 +80,7 @@ export function portGap(a: DockBody, b: DockBody) {
 }
 
 export class DockPair {
+  plan?: Pick<import('./plan.ts').FlightPlan, 'craft'>;
   readonly bodies: [DockBody, DockBody];
   readonly limits: CaptureLimits;
   /** The lunar module is initially bolted to a carrier. Both inherit the same rigid motion until extraction. */

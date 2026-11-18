@@ -3,6 +3,7 @@ import test from 'node:test';
 import { DockPair, portGap } from '../src/sim/docking.ts';
 import { aboutAxis, IDENTITY, turn, unturn } from '../src/sim/rigid.ts';
 import { add, cross, length, scale, sub } from '../src/world/frames.ts';
+
 const limits = { stroke: 0.25, radius: 0.1, tilt: 0.1, roll: 0.1, closing: 0.3, sideways: 0.1, angular: 0.1, retract: 4 };
 function pair(overrides = {}, geometry = {}) {
   const b = { r: [6700000, 0, 0], v: [0, 0, 7700], q: IDENTITY, w: [0, 0, 0], port: 2, mass: 1200, inertia: [500, 400, 600] };
@@ -284,4 +285,33 @@ test('an off-axis radar gate measures current range and range rate along the spa
   assert.ok(Math.abs(seen.closing - 8) < 1e-8);
   const gate = flight.docking.rendezvous.gates.find((g) => seen.range < g.range.value + 1e-7);
   assert.equal(gate.speed.value, 5 * 0.3048);
+});
+
+test('all five Gemini rendezvous runs fly their measured orbital translations before parking or docking', async () => {
+  const { startTransfer, nextTransfer, transferInput } = await import('../src/sim/transfer.ts');
+  for (const n of ['8', '9a', '10', '11', '12']) {
+    const { flight } = await import('../missions/usa/gemini/flights/gt-' + n + '/flight.ts'),
+      op = flight.docking.transfer;
+    const run = startTransfer(flight);
+    assert.equal(run.plan.craft.length, 2);
+    assert.ok(run.plan.craft.every((c, i) => c.mass.value === run.bodies[i].mass && c.bodies[0].nodes.length));
+    assert.ok(length(sub(...run.bodies.map((b) => b.r))) > 200 * 1852);
+    let burns = 0,
+      previous = false;
+    while (run.t < Math.max(op.station + 120, flight.docking.at + 15) && run.phase !== 'hard') {
+      if (nextTransfer(run, flight)) {
+        previous = false;
+        continue;
+      }
+      const f = transferInput(run, flight),
+        on = run.t < op.brake && length(f) > 0;
+      if (on && !previous) burns++;
+      previous = on;
+      run.advance(0.25, 0, f);
+      run.attempt();
+    }
+    assert.equal(burns, op.burns.length);
+    assert.equal(run.phase, n === '9a' ? 'free' : 'hard');
+    if (n === '9a') assert.ok(Math.abs(portGap(...run.bodies).gap - op.hold.value) < 0.1);
+  }
 });

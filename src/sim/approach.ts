@@ -1,10 +1,11 @@
-import type { Flight } from '../types.ts';
-import { type Vec3, DEG, add, cross, length, scale, sub, unit, geodeticToEcef, ecefToInertial } from '../world/frames.ts';
-import { coast } from '../world/orbit.ts';
-import { julianDate, greenwichSiderealTime } from '../world/time.ts';
 import type { OrbitalFix } from '../types/flight.ts';
-import { aboutAxis, conjugate, multiply, IDENTITY, turn, unturn } from './rigid.ts';
-import { DockPair, type DockBody } from './docking.ts';
+import type { Flight } from '../types.ts';
+import { add, cross, DEG, ecefToInertial, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { coast } from '../world/orbit.ts';
+import { greenwichSiderealTime, julianDate } from '../world/time.ts';
+import { type DockBody, DockPair } from './docking.ts';
+import { dockPlan } from './dockplan.ts';
+import { aboutAxis, conjugate, IDENTITY, multiply, turn, unturn } from './rigid.ts';
 
 /** Space-fixed heading and flight-path angle are defined relative to the geocentric
  * horizontal, even though the reported latitude and height are geodetic (Apollo 9 MR, table 7-I). */
@@ -37,15 +38,9 @@ export function terminalApproach(flight: Flight, redock = false, transpose = fal
     for (const child of Object.values(input)) check(child);
   }
   check(mission);
-  const value = (...names: string[]) => {
-    const spec = flight.specs.find((s) => names.includes(s.label));
-    if (!spec) throw Error('Missing flight specification: ' + names.join(' / '));
-    check(spec);
-    return spec.value;
-  };
   const apollo = mission.interface === 'probe';
-  const mass0 = value(redock ? 'CSM mass at LM-active docking' : apollo ? 'Mass in orbit at transposition (CSM)' : 'Weight at launch');
-  const mass1 = value(redock ? 'Ascent stage mass at docking' : mission.targetMass);
+  const plan = dockPlan(flight, redock);
+  const [mass0, mass1] = plan.craft.map((c) => c.mass.value);
   const stroke = apollo ? flight.models[0].dockingPorts?.find((p) => p.role === 'probe')?.captureTravel.value : 6 * 0.0254;
   if (!stroke) throw Error('Missing probe stroke');
   const range = mission.interface === 'shrouded' ? 60 * 0.3048 : 2;
@@ -105,6 +100,7 @@ export function terminalApproach(flight: Flight, redock = false, transpose = fal
     },
     start,
   );
+  run.plan = plan;
   if (mission.carrier && !redock) {
     const { mass, arm, inertia } = mission.carrier;
     run.mountTarget(mass.value, arm.value, [inertia[0].value, inertia[1].value, inertia[2].value]);

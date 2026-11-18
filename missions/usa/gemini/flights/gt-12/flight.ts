@@ -2,7 +2,15 @@ import type { Flight } from '../../../../../src/types.ts';
 import { LC19_SPECS } from '../../../places/cape-canaveral/lc-19.parts.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { lateCrew } from '../../crew/late-crew.ts';
-import { agenaDimensions, agenaMotors, dockingProperties, geminiControls, targetFix, TARGET_GROUP } from '../../vehicles/gemini-targets.ts';
+import {
+  agenaDimensions,
+  agenaMotors,
+  crewTransfer,
+  dockingProperties,
+  geminiControls,
+  TARGET_GROUP,
+  targetFix,
+} from '../../vehicles/gemini-targets.ts';
 import { dimensions, LB, NMI, SEDR2, thrusters, titanEngines } from '../../vehicles/gemini-titan.ts';
 import { lateVehicle } from '../../vehicles/late-vehicle.ts';
 import { crewAboard, crewArrives, hatchesShut, pad } from './pad.ts';
@@ -23,6 +31,25 @@ export const flight: Flight = {
     fixes: [targetFix(REPORT + ', table 4.3-V, final insertion', -5914.731, 556.05, 28.52, -59.63, 981195, 25365, 0.04, 95.54)],
     interface: 'cone',
     target: 'GATV 5001',
+    transfer: crewTransfer(
+      REPORT + ', tables 4.3-I and 4.3-IV.',
+      targetFix(REPORT + ', spacecraft tracking after separation or insertion.', 0, 439.8, 25.5, -65.09, 525630, 25742, 0.07, 104.31),
+      [
+        [2980, 66.7, -0.3, 0.2, 88.6],
+        [4462, -0.2, 0.3, -8.4, 36],
+        [6472, 7.4, -3.9, -1, 17],
+        [8575, 49.5, -6.4, -0.2, 60],
+        [11147, 19.4, -10.1, 0.5, 29],
+        [11474, -0.1, -1.7, 0.1, 6],
+        [11827, -1.4, -2.8, -0.1, 8],
+        [12226, 0.3, 0.5, 1.2, 3],
+        [12545, 1.1, 4.8, -0.2, 6],
+      ],
+      12756,
+      13560,
+      50,
+    ),
+    spacecraft: { id: 'gt-12', mass: 'Weight at launch' },
     targetMass: 'Agena weight at orbital insertion',
     at: get(4, 13, 52),
   },

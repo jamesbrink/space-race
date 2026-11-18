@@ -1,48 +1,51 @@
+import { derived } from '../../../../../src/measure.ts';
 import type { Flight } from '../../../../../src/types.ts';
-import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
+import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { g4cParts, standing } from '../../crew/g4c-suit.parts.ts';
-import {
-  BASE,
-  CHRONOLOGY,
-  GIX,
-  IN,
-  LB,
-  LEFT_AZ,
-  NMI,
-  SEDR2,
-  SP149,
-  TITANS,
-  TOP_AZ,
-  along,
-  cabin,
-  dimensions,
-  hingeAxis,
-  outOfAdapter,
-  seats,
-  thrusters,
-  type PartWords,
-  geminiTitanStack,
-  titanEngines,
-  lb,
-  THRUST,
-} from '../../vehicles/gemini-titan.ts';
-import { pad } from './pad.ts';
-import { WEATHER } from './weather.ts';
 import {
   ATDA,
   ATDA_TARGET,
   atdaDimensions,
   atdaMotors,
   atdaParts,
+  crewTransfer,
   dockingProperties,
   geminiControls,
-  targetFix,
   TARGET_GROUP,
   type TargetWords,
+  targetFix,
   withTarget,
 } from '../../vehicles/gemini-targets.ts';
+import {
+  along,
+  BASE,
+  CHRONOLOGY,
+  cabin,
+  dimensions,
+  GIX,
+  geminiTitanStack,
+  hingeAxis,
+  IN,
+  LB,
+  LEFT_AZ,
+  lb,
+  NMI,
+  outOfAdapter,
+  type PartWords,
+  SEDR2,
+  SP149,
+  seats,
+  THRUST,
+  TITANS,
+  TOP_AZ,
+  thrusters,
+  titanEngines,
+} from '../../vehicles/gemini-titan.ts';
+import { pad } from './pad.ts';
+import { WEATHER } from './weather.ts';
 
+const grossLb = 8268;
 const DEG = Math.PI / 180;
 /** Hours, minutes and seconds of ground elapsed time, as seconds from liftoff. */
 const get = (h: number, m: number, s = 0) => h * 3600 + m * 60 + s;
@@ -632,10 +635,38 @@ const pilot = standing({
 export const flight: Flight = {
   docking: {
     controls: geminiControls,
-    massProperties: dockingProperties(GIX, 105.12, null, 2006),
+    massProperties: dockingProperties(GIX, 104.84, null, 2006),
     fixes: [targetFix(GIX + ', table 4.3-V, final insertion', -167970.972, 383.41, 29.03, -69.55, 979526, 25369, -0.01, 89.81)],
     interface: 'shrouded',
     target: 'ATDA',
+    transfer: crewTransfer(
+      GIX + ', tables 4.3-I, 4.3-III and 5.1.5-VI.',
+      targetFix(GIX + ', spacecraft tracking after separation or insertion.', 0, 366.8, 28.98, -69.8, 526806, 25707, -0.11, 87.86),
+      [
+        [
+          366.8,
+          29.5,
+          -1,
+          1.5,
+          derived(
+            (grossLb * LB * 0.3048 * Math.hypot(29.5, 1, 1.5)) / (2 * THRUST.oamsAft.value),
+            GIX +
+              ', equivalent rectangular impulse duration from gross mass (§3.3), separation Δv (table 5.1.5-VI) and two rated OAMS jets. Starts at the tracking fix 0.7 s after ignition.',
+          ),
+        ],
+        [2943.3, 74.8, -0.2, 0.2, 94.6],
+        [6917.4, 4.1, -10.3, 9.8, 20.3],
+        [8691.7, 40.6, 34.7, 2.1, 70],
+        [12962.2, 24.1, -15, -1.1, 37],
+        [13715.4, -3.6, 0.7, -1.8, 8],
+        [14426.8, 2.8, -2.8, 0, 7],
+      ],
+      14768.2,
+      15300,
+      100,
+      [12962.2, 25.2, 27.2],
+    ),
+    spacecraft: { id: 'gt-9a', mass: 'Weight at launch' },
     targetMass: 'ATDA, weight at launch',
     at: get(4, 15),
   },
@@ -737,7 +768,7 @@ export const flight: Flight = {
     {
       group: 'Spacecraft',
       label: 'Weight at launch',
-      value: 8268 * LB,
+      value: grossLb * LB,
       unit: 'kg',
       confidence: 'documented',
       note: `8,268 lb, "Launch, gross weight" (${GIX}, 3.3, p. 3-32)`,
