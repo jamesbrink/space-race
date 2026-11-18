@@ -39,7 +39,8 @@ body.titled #ui { visibility: hidden; }
 /* pointed at, a row is lit where it stands (its amber edge thickens inside it): one that moved would slide to and fro under a still pointer as the list scrolled past it */
 .title-flights button:is(:hover, :focus-visible) { background: rgba(28, 24, 16, 0.9); border-color: rgba(255, 196, 107, 0.6); box-shadow: inset 3px 0 0 var(--amber); }
 .title-flights .n { font: 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--faint); }
-.title-flights .what { display: grid; gap: 3px; min-width: 0; }
+.title-flights .what { display: grid; gap: 3px; min-width: 0; grid-column: 3; }
+.title-flights .title-lineup .what { grid-column: 2; }
 .title-flights .what b { font: 600 20px/1.15 var(--sans); color: var(--ink); letter-spacing: 0.01em; }
 .title-flights .what em { font-style: normal; font-size: 13px; color: var(--dim); }
 /* (the programme's emblem beside the number, a little apart from it, at the height of the name) */
