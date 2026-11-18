@@ -43,3 +43,5 @@ Launch-area readings come from [the mission report](https://ntrs.nasa.gov/citati
 [the NWS Spaceflight Meteorology Group history](https://www.weather.gov/smg/gemini).
 The surrounding cloud cover is estimated. The hour-by-hour surface weather and vertical profile
 come from ECMWF ERA5 interpolated to the pad.
+
+The walking figures start on the concrete approach to the erector ramp. The command pilot starts at site X/Z 15/−7 m and the pilot at 21/−7 m, facing the vehicle. These standing marks are estimated from the model’s open ground. The ramp leads to the erector elevator.

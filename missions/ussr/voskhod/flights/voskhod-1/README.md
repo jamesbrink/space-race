@@ -234,3 +234,5 @@ In order of weight; full entries in [docs/sources.md](../../../../../docs/source
 7. McDowell's launch log: the launch vehicle's number.
 
 The instrument board follows the PD-3-3KV photographed in Tyapchenko’s figure 3. Its outline, dial spacing and 400 mm width are estimated. The orbital position indicator follows the simulated spacecraft. The other readings are illustrative.
+
+The walking figure starts on the west side of the launch deck, on the approach to the erector stair. The standing mark (site X/Z −19.5/6.5 m) and heading toward the rocket are estimated.

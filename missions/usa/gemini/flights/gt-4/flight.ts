@@ -451,7 +451,7 @@ const crew = standing({
   scale: 'James A. McDivitt · 1.80 m, 1.85 m suited · to scale',
   parts: g4cParts('McDivitt'),
   height: 1.851,
-  at: [9.6, 0, -2.5],
+  at: [15, 0, -7],
   boarding: ARRIVED,
 });
 const pilot = standing({
@@ -467,7 +467,7 @@ const pilot = standing({
     },
   }),
   height: 1.874,
-  at: [10.6, 0, -3.5],
+  at: [21, 0, -7],
   boarding: ARRIVED,
 });
 

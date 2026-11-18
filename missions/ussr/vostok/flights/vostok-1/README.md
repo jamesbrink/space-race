@@ -169,3 +169,5 @@ In order of weight; full entries in [docs/sources.md](../../../../../docs/source
 4. Siddiqi, "Declassified documents offer a new perspective on Yuri Gagarin's flight", The Space
    Review, 2015: what the documents changed.
 5. RussianSpaceWeb (Zak) on the flight, for the valve and the shortfall.
+
+The walking figure starts on the west side of the launch deck, on the approach to the erector stair. The standing mark (site X/Z −19.5/6.5 m) and heading toward the rocket are estimated.

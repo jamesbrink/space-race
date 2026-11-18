@@ -258,3 +258,5 @@ and Vostok 6".
 7. Zak, RussianSpaceWeb, "Missions of Vostok-5 and Vostok-6": the diary and Chertok read together,
    and the photographs and television frames the figure's suit is read from.
 8. The flown descent module at the Tsiolkovsky museum, Kaluga, in photographs: the lining.
+
+The walking figure starts on the west side of the launch deck, on the approach to the erector stair. The standing mark (site X/Z −19.5/6.5 m) and heading toward the rocket are estimated.

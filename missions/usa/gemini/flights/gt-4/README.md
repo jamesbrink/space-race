@@ -22,7 +22,7 @@ spacecraft up to another object in orbit, which failed and taught why.
 they left the pad can be turned, taken apart as they staged, and cut open; the slider opens the
 pilot's hatch and brings out what White went outside with. At Complex 19 it stands on the thrust
 mount on the morning of the flight: the erector raised while the crew go up, stopping twice on
-its way down and laid down at last after the hold, McDivitt and White at the foot of the ramp in
+its way down and laid down at last after the hold, McDivitt and White on the approach to the ramp in
 their G4C suits, each a figure to walk the site as, under that morning's clear sky. The flight
 itself is not built: see "What is not built" below.
 
@@ -192,7 +192,7 @@ each with its confidence; the air aloft is ERA5's (`aloft.ts`).
   the morning but the two who flew; the crew's van; the ventilator each man carried and his yellow
   overshoes. When the erector stopped and how long each try took are estimated: only the order of
   them and the hold's length are recorded.
-- **The crew in their seats.** McDivitt and White stand at the foot of the ramp in the G4C suit
+- **The crew in their seats.** McDivitt and White stand on the approach to the ramp in the G4C suit
   ([g4c-suit.md](../../crew/g4c-suit.md)), White's let out over its cover for going outside; his
   overvisor and thermal gloves are not built. The seats are empty: the suit is not built seated.
 - **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
@@ -232,3 +232,5 @@ read, and the flown ship has not been compared with the model.
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md), "Gemini-Titan 4".
+
+The walking figures start on the concrete approach to the erector ramp. The command pilot starts at site X/Z 15/−7 m and the pilot at 21/−7 m, facing the vehicle. These standing marks are estimated from the model’s open ground. The ramp leads to the erector elevator.

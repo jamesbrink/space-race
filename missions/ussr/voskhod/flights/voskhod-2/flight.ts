@@ -1,4 +1,4 @@
-import type { Flight, Move } from '../../../../../src/types.ts';
+import type { Flight, ModelDef, Move } from '../../../../../src/types.ts';
 import { SITE1_SPECS, site1Vehicle } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { vostokPlan } from '../../../vostok/vehicles/vostok-plan.ts';
@@ -524,7 +524,7 @@ const COUCHES = ['CouchLeft', 'CouchRight'];
 // helmet and the head in it are not drawn (crew/berkut.py: every `Helmet_` mesh), and the man beside him is. The
 // commander's is first: the one an on-board view takes. Both were aboard by about 07:30 Moscow time, Leonov first
 // (README.md: the crew's report, its times faint in the copy read); the span is a quarter of an hour before that:
-// estimated. There is no launch site to board them at yet.
+// estimated. The seated figures follow this span.
 const HELMET = [
   'Shell',
   'Liner',
@@ -587,6 +587,39 @@ const vehicle = site1Vehicle(
   BASE,
 );
 
+/** The standing suits use the same wearers as the couches. The places on the approach to the lift are estimated. */
+function crewman(id: string, name: string, stature: number, position: [number, number, number]): ModelDef {
+  const rotationY = Math.atan2(-position[0], -position[2]);
+  return {
+    id,
+    name,
+    url: `models/ussr/voskhod/voskhod-2/${id}.glb`,
+    scale: `${name} · ${stature} m without the suit (Kamanin, 19 January 1965)`,
+    backdrop: 'ground',
+    position,
+    rotationY,
+    wide: false,
+    walker: { eyes: 'Helmet_Eyes', forward: [0, 1] },
+    home: 'figure',
+    views: [{ id: 'figure', label: 'Cosmonaut', centreY: 0.9, span: 2.4, from: [Math.sin(rotationY), 0.05, Math.cos(rotationY)] }],
+    parts: [
+      ['Helmet', 'Pressure helmet', 'The white shell carries the wide visor and the red СССР marking above it.'],
+      ['Torso', 'Berkut suit', 'Both men wore Berkut pressure suits. Leonov put on his separate life-support pack in orbit.'],
+      ['Arms', 'Sleeves', 'The white outer cover follows the arms to the gloves.'],
+      ['Gloves', 'Gloves', 'The gloves close the pressure suit at the wrists.'],
+      ['Legs', 'Suit legs', 'The white outer cover runs down to the tops of the boots.'],
+      ['Boots', 'Boots', 'White laced boots cover the feet and lower legs.'],
+    ].map(([node, name, summary]) => ({
+      node: node!,
+      name: name!,
+      summary: summary!,
+      detail: 'The shape is estimated from photographs of the crew and surviving Berkut suits.',
+      explode: [0, 0, 0],
+      order: 0,
+    })),
+  };
+}
+
 export const flight: Flight = {
   id: 'ussr/voskhod/voskhod-2',
   nation: 'USSR',
@@ -601,7 +634,7 @@ export const flight: Flight = {
   launch: '1965-03-18T07:00:00Z',
   launchSite: SITE1.name,
   site: SITE1,
-  // The launch site opens as the crew are aboard, about 07:30: no bus and no people of this morning are built (pad.ts)
+  // The launch site opens as the crew are aboard, about 07:30: the bus and the send-off crowd are unmodelled (pad.ts)
   opens: { at: MSK(18, 7, 30), model: 'pad', view: 'tulip' },
   weather: WEATHER,
   crew: ['Pavel I. Belyayev', 'Aleksey A. Leonov'],
@@ -884,7 +917,7 @@ export const flight: Flight = {
     'The airlock is let out and shot off at the record’s times, and the braking burn is the one fired by hand at 11:36:29 on 19 March, aimed by eye (mission.md).',
   // the flight in the scene: the stack off the pad, what leaves it (the airlock among it) and the descent's bodies (vehicles/voskhod-flies.ts)
   flies: voskhodFlies(orbital, CHUTES, [{ id: 'airlock', nodes: ['Airlock'] }]),
-  models: [vehicle, pad],
+  models: [vehicle, pad, crewman('crew', 'Pavel Belyayev', 1.7, [-21, 0, 6]), crewman('pilot', 'Aleksey Leonov', 1.72, [-23, 0, 8])],
   // the place round the pad: as modelled for August 1961, nothing modelled being known to have changed (places/tyuratam/site-1.md)
   surroundings: 'models/ussr/places/tyuratam/site1/1961-08.glb',
 };

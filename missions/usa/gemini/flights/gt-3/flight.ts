@@ -593,7 +593,7 @@ const man = (id: string, name: string, who: string, scale: string, at: [number, 
   backdrop: 'ground',
   parts: suitParts(who),
   position: at,
-  rotationY: -Math.PI / 2,
+  rotationY: Math.atan2(-at[0], -at[2]),
   walker: { eyes: 'Helmet_Eyes', forward: [0, 1] },
   wide: false,
   specGroups: ['Pressure suit'],
@@ -606,8 +606,8 @@ const man = (id: string, name: string, who: string, scale: string, at: [number, 
   // as they went up: the erector standing, its platforms down
   with: [{ model: 'pad', at: BOARDING[0] }],
 });
-const crew = man('crew', 'Command pilot', 'Grissom', 'Virgil I. Grissom · 1.70 m, 1.76 m suited · to scale', [9.6, 0, -2.5]);
-const pilot = man('pilot', 'Pilot', 'Young', 'John W. Young · 1.75 m, 1.81 m suited · to scale', [10.6, 0, -3.5]);
+const crew = man('crew', 'Command pilot', 'Grissom', 'Virgil I. Grissom · 1.70 m, 1.76 m suited · to scale', [15, 0, -7]);
+const pilot = man('pilot', 'Pilot', 'Young', 'John W. Young · 1.75 m, 1.81 m suited · to scale', [21, 0, -7]);
 
 export const flight: Flight = {
   id: 'usa/gemini/gt-3',

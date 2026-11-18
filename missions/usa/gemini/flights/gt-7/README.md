@@ -24,7 +24,7 @@ be turned, taken apart as they staged, and cut open: the transponder's antenna o
 the last ship had a radar, the fuel cells and their tanks in the adapter, the third water tank,
 the reserve fuel tank, the two lights at its foot, the four on its Titan. At Complex 19 it stands
 on the thrust mount on the afternoon of the flight: the erector raised while the crew go up and
-laid down at T−35, Borman and Lovell at the foot of the ramp in their G5C suits with the soft hoods
+laid down at T−35, Borman and Lovell on the approach to the ramp in their G5C suits with the soft hoods
 zipped on, each a figure to walk the site as, under that afternoon's sky. The flight itself is not
 built: see "What is not built" below.
 
@@ -240,7 +240,7 @@ ERA5's (`aloft.ts`).
   the afternoon but the two who flew; the crew's van; the ventilator each man carried and his yellow
   overshoes. The afternoon's times are the plan's but one, and how long each motion took is
   estimated.
-- **The crew in their seats.** Borman and Lovell stand at the foot of the ramp in the G5C, the soft
+- **The crew in their seats.** Borman and Lovell stand on the approach to the ramp in the G5C, the soft
   hood zipped on ([g5c-suit.md](../../crew/g5c-suit.md)); the seats are empty.
 - **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
   built and the lamps are dark. Gemini VI-A does not come.
@@ -291,3 +291,5 @@ read, and the flown ship has not been compared with the model.
 ## Sources
 
 [docs/sources.md](../../../../../docs/sources.md), "Gemini-Titan 7 and Gemini-Titan 6A".
+
+The walking figures start on the concrete approach to the erector ramp. The command pilot starts at site X/Z 15/−7 m and the pilot at 21/−7 m, facing the vehicle. These standing marks are estimated from the model’s open ground. The ramp leads to the erector elevator.

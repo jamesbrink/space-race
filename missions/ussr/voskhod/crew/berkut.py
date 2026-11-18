@@ -8,7 +8,7 @@ The body is figurelib's man, carried to each man's stature; the suit is the garm
 cover that is what the photographs show (its orange stripe down each limb is not built), the white helmet
 with its wide visor and "СССР" on the brow, a metal ring at the neck, gloves and white laced boots.
 
-It is built only seated, for a cabin (`build_seated`): every mesh a child of the caller's node, carried
+In a cabin (`build_seated`), it is built seated: every mesh a child of the caller's node, carried
 to the pose of a Voskhod couch, visor down. Mesh names begin Helmet_, Torso_, Arms_, Gloves_, Legs_
 and Boots_, which is how figurelib knows which joints carry each. The pack Leonov wore outside was put
 on in orbit and is not part of the figure: `build_pack` builds it by itself, as it was stowed.
@@ -141,7 +141,8 @@ def build_helmet(M: dict) -> None:
     shell, padding, visor, rim, fit, collar, knit, red = (MeshBuilder() for _ in range(8))
     half, mid, tall = VISOR
     low = math.asin((HELMET_RIM + 1.4 - HELMET_AT.z) / HELMET_R)  # where the ball gives way to the ring
-    n = fl.sides(64)
+    # Keep enough meridians for the shell cutout and its lip to meet at the coarsest level.
+    n = max(40, fl.sides(64))
     phis = [TAU * i / n for i in range(n)]
     lifts = [low + (math.pi / 2 - 0.02 - low) * j / 28 for j in range(29)]
 
@@ -181,7 +182,7 @@ def build_helmet(M: dict) -> None:
     line = [ball(*edge(psi, 1.07), 1.2) for psi in psis]
     Tube([*line, line[0]], [(0.6, 0.45)] * (n + 1), resample=2).add(rim, 10)
     for sx in (1, -1):  # the pivot's disc at each temple
-        fit.lathe([(2.6, 0.0), (2.6, 1.6), (2.1, 2.0), (0.0, 2.0)], 24, matrix=frame(ball(sx * TAU / 4, 0.05, -0.2), (sx, 0, 0)))
+        fit.lathe([(2.6, 0.0), (2.6, 1.6), (2.1, 2.0), (0.0, 2.0)], 24, matrix=frame(ball(sx * math.radians(98), 0.05, -0.2), (sx, 0, 0)))
     # "СССР" in red on the brow, over the opening
     font = srlib.load_font()
     verts, faces = text_mesh(LETTERS, 1.0, font, cuts=2)
@@ -413,6 +414,15 @@ def build_figure() -> None:
     build_gloves(M, arms)
     build_legs(M, torso)
     build_boots(M)
+
+
+def standing(who: Wearer) -> str:
+    """The same wearer as in the couch, standing in his suit with no EVA pack."""
+    wear(who)
+    fl.start()
+    build_figure()
+    fl.rig_standing()
+    return f"{who.name}, stature {who.stature:g} cm without the suit"
 
 
 def seated_rig() -> Rig:

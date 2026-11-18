@@ -208,3 +208,5 @@ In order of weight; full entries in [docs/sources.md](../../../../../docs/source
    1961 at second hand, minute by minute.
 6. Pervushin, «Тяжёлый рейс», 2021: quotations from the same report in Russian.
 7. Kamanin's diary for 1961, by way of Siddiqi (p. 294, citing *Skrytyi kosmos* p. 84) for the two fans: the diary itself has no entries from 25 May to 14 September 1961 (he was abroad with Gagarin).
+
+The walking figure starts on the west side of the launch deck, on the approach to the erector stair. The standing mark (site X/Z −19.5/6.5 m) and heading toward the rocket are estimated.

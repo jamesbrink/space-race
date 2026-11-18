@@ -444,7 +444,7 @@ const crew = standing({
   scale: 'L. Gordon Cooper Jr. · 1.73 m, 1.79 m suited · to scale',
   parts: g4cParts('Cooper'),
   height: 1.785,
-  at: [9.6, 0, -2.5],
+  at: [15, 0, -7],
   boarding: ARRIVED,
 });
 const pilot = standing({
@@ -454,7 +454,7 @@ const pilot = standing({
   scale: 'Charles Conrad Jr. · 1.68 m, 1.74 m suited · to scale',
   parts: g4cParts('Conrad'),
   height: 1.74,
-  at: [10.6, 0, -3.5],
+  at: [21, 0, -7],
   boarding: ARRIVED,
 });
 

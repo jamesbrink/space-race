@@ -50,7 +50,7 @@ export function lateCrew(flight: keyof typeof people, boarding: number): [ModelD
           : {}),
       }),
       height: who.height,
-      at: command ? [9.6, 0, -2.5] : [10.6, 0, -3.5],
+      at: command ? [15, 0, -7] : [21, 0, -7],
       boarding,
     });
     return { ...figure, galleryCraft: who.name, galleryFrom: figure.views[0]?.from, motorNames: [] };

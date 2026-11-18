@@ -309,7 +309,7 @@ const PAD_TURN = launcherTurn(AZIMUTH) * (Math.PI / 180);
  * 1.6 m and more from anything standing on the pad, and 4 m to one side of where the capsule's cable
  * mast comes down (it falls along 170 degrees round from +X: he stood under it until November 2026).
  */
-const PILOT_FACING = -Math.PI / 2; // toward -X, the sunlit side that morning, his back to the vehicle
+const PILOT_FACING = Math.atan2(9.4, -3.2); // from his starting point toward the vehicle
 const PILOT = { position: [-9.4, 0, 3.2] as [number, number, number], rotationY: PILOT_FACING };
 /** A direction to look at the pilot from: in front of him, turned `aside` radians, `lift` up. */
 const facingPilot = (lift: number, aside = 0.12): [number, number, number] => [

@@ -62,6 +62,7 @@ pnpm test:impact      # needs pnpm dev: a glancing strike spins a capsule and a 
 pnpm test:separation  # needs `pnpm dev` running: released hardware moves clear in the rendered flight
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:sheet       # needs `pnpm dev` running: a phone's sheet under a finger on the gallery, the site and the Lineup at 390 and 820: every button in its View pane reached by swiping its line, the sheet and the page left still
+pnpm test:crew-start   # needs the dev server: each crew member at every built site has clear ground, a view of the vehicle and a walkable approach
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone, and the first Escape freeing the mouse without ending the walk (walking.md)
 pnpm test:operate     # needs `pnpm dev` running: something worked by hand on foot at each site, in view and read out, through the eyes and over the shoulder, at 1280 and 390
 pnpm test:sound       # needs `pnpm dev` running: what is heard driving a car, working a machine by hand and on the clock, read off sr.sound.voices

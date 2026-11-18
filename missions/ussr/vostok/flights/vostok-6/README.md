@@ -228,3 +228,5 @@ and Vostok 6".
 7. The flown descent module, RKK Energia's, as photographed at the Science Museum in 2015 and 2016:
    the lining.
 8. The later accounts: *Kommersant*, 2 March 2007; Kogutenko in *Novaya Gazeta*, 18 September 2013.
+
+The walking figure starts on the west side of the launch deck, on the approach to the erector stair. The standing mark (site X/Z −19.5/6.5 m) and heading toward the rocket are estimated.

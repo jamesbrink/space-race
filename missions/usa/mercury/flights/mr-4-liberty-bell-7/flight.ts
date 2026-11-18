@@ -392,7 +392,7 @@ const CAPSULE = ['AntennaCanister', 'RecoveryCompartment', 'Hatch', 'Window', 'A
  * at his left hand): the place read off it, to a couple of metres. Open concrete: 2.6 m from the shower, 2 m from the
  * launcher's cable, 4.5 m from the van's steps. The crew model spreads it (`...PILOT`), as Freedom 7's does.
  */
-export const PILOT = { position: [7.92, 0, 1.83] as [number, number, number], rotationY: -2.618 };
+export const PILOT = { position: [7.92, 0, 1.83] as [number, number, number], rotationY: Math.atan2(-7.92, -1.83) };
 /** A direction to look at the pilot from: in front of him (or, with `behind`, at his back), turned `aside` radians, `lift` up. */
 const facingPilot = (lift: number, aside = 0.12, behind = false): [number, number, number] => [
   Math.sin(PILOT.rotationY + aside + (behind ? Math.PI : 0)),
