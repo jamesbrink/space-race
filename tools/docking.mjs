@@ -57,6 +57,7 @@ try {
     await button('next-burn').click();
     await page.waitForFunction(() => window.sr.docking.t > 40 * 3600 + 30 * 60 + 16);
     await page.keyboard.press('p');
+    assert.equal(await page.locator('[data-do="change-craft"]').count(), 0);
     const saved = await page.evaluate(() => window.sr.docking.t);
     await page.reload();
     await page.waitForFunction(ready, null, { timeout: 120000 });
@@ -67,6 +68,18 @@ try {
     await fast();
     await page.waitForFunction(() => !document.querySelector('[data-do="next-burn"]').disabled);
     assert.match(await page.locator('[data-cell="apogee"]').innerText(), /1,?3\d\d/);
+  });
+  await trial('gemini/gt-8', async ({ page, button, wait, fast }) => {
+    await fast();
+    await wait('hard');
+    await button('keys').click();
+    await button('oams-failure').click();
+    assert.equal(await page.locator('[data-do="change-craft"]').count(), 0);
+    await page.waitForFunction(() => window.sr.docking.bodies[0].w.some((v) => Math.abs(v) > 0.001));
+    await button('next').click();
+    await wait('free');
+    const agenaSpin = await page.evaluate(() => Math.hypot(...window.sr.docking.bodies[1].w));
+    await page.waitForFunction((n) => Math.hypot(...window.sr.docking.bodies[0].w) > n + 0.04, agenaSpin);
   });
   await trial('gemini/gt-9a', async ({ page, button }) => {
     await button('next').click();
