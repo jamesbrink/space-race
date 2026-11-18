@@ -1038,6 +1038,12 @@ export class OrbitDeck extends Deck {
       s = v.tick(s, caught);
       tally.note(was, s);
     }
+    if (this.flight.plan!.record?.coastFixes?.length && !s.broke && !s.parted) {
+      // The ticks reconstruct stage and engine state. Hand over the trajectory and attitude actually on screen.
+      const samples = this.record!.samples as readonly LiveSample[];
+      const [a, b, k] = either(samples, s.t);
+      s = { ...s, ...between(samples, s.t), q: attitudeBetween(a, b, k) };
+    }
     s = { ...s, controls: { pitch: 0, yaw: 0, roll: 0 } };
     this.begin(s, t, tally);
     this.say();
