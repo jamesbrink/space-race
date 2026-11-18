@@ -1271,18 +1271,22 @@ class Run {
       while (performance.now() - began < 8000) {
         await new Promise((r) => requestAnimationFrame(r));
         // (one made from this instant, or one the flight has kept to since: path.ts `holds`, which gives it this instant's key)
-        if (p.shown && !p.job && p.prediction && Number(p.shown.key.split('|')[0]) === p.sample?.t) break;
+        if (p.freshness.current) break;
       }
+      const display = p.freshness;
+      if (!display.current)
+        throw Error(
+          'Path display timed out after ' + Math.round(performance.now() - began) + ' ms of wall time: ' + JSON.stringify(display),
+        );
       const r = p.prediction;
       // (its points kept, for where it has the flight at an instant: `predictedAt`)
       window.__predicted = r ? r.points.map((x) => ({ t: x.t, r: [...x.r], v: [...x.v] })) : null;
-      const held = p.shown && Number(p.shown.key.split('|')[0]) === p.sample?.t;
-      if (!r?.impact) return r ? { outcome: r.outcome, from: held ? sr.clock.t : r.from } : null;
+      if (!r?.impact) return r ? { outcome: r.outcome, from: display.sampleTime } : null;
       const w = 7.292115e-5 * r.impact.t;
       const i = r.impact.r;
       return {
         outcome: r.outcome,
-        from: held ? sr.clock.t : r.from,
+        from: display.sampleTime,
         t: r.impact.t,
         ecef: [i[0] * Math.cos(w) + i[1] * Math.sin(w), -i[0] * Math.sin(w) + i[1] * Math.cos(w), i[2]],
         altitude: r.impact.altitude,
