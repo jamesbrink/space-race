@@ -157,6 +157,8 @@ export class Pipeline {
   /** Frames drawn one after another, and the share of full resolution the canvas is at now. */
   private run = 0;
   private pixelScale = 1;
+  private nextScale = 1;
+  private resized = true;
   private frameAt = 0;
   /** What the stars were last sized for: a pixel ratio, in a sky (their points are sized in the drawing's pixels). */
   private starsFor: { ratio: number; sky: THREE.Scene | null } = { ratio: 0, sky: null };
@@ -280,7 +282,12 @@ export class Pipeline {
    * The drawing's pixels for the canvas as it is: the screen's own, up to two a CSS pixel, times what the net under the
    * frame rate allows (quality.ts: 1 on a machine that keeps up). The canvas keeps its place and size on the page.
    */
-  fitPixels(scale = this.pixelScale): void {
+  resize(): void {
+    this.resized = true;
+    this.h.redraw();
+  }
+
+  private fitPixels(scale: number): void {
     const canvas = this.renderer.domElement;
     const w = canvas.clientWidth,
       h = canvas.clientHeight;
@@ -346,17 +353,23 @@ export class Pipeline {
     if (!drew) {
       this.run = 0;
       this.quality.idle();
-      if (this.pixelScale < 1) this.fitPixels(1);
+      this.nextScale = 1;
     } else {
       if (this.run > 0 && this.quality.frame(began - this.frameAt, began)) this.run = Math.min(this.run, 3); // (taken up below)
       this.run++;
-      if (this.run > 3 && this.pixelScale !== this.quality.scale) this.fitPixels(this.quality.scale);
+      if (this.run > 3) this.nextScale = this.quality.scale;
     }
+    if (this.nextScale !== this.pixelScale) this.h.redraw();
     this.frameAt = began;
   }
 
   /** A frame is to be drawn: the ink's depth range taken from the camera, and the renderer's counts begun again. */
   begin(): void {
+    // Resizing clears the WebGL canvas. Do it only when a replacement picture will be drawn in this callback.
+    if (this.resized || this.nextScale !== this.pixelScale) {
+      this.resized = false;
+      this.fitPixels(this.nextScale);
+    }
     this.ink.range(this.camera);
     this.renderer.info.reset();
     this.drawn++;

@@ -17,6 +17,7 @@
     "check": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test",
     "model": "node tools/build-model.mjs",
     "models": "node tools/build-model.mjs --all",
+    "test:flight-pixels": "node tools/flight-pixels.mjs",
     "test:flicker": "node tools/flicker-test.mjs",
     "test:frozen": "node tools/frozen-test.mjs",
     "test:camera": "node tools/camera-test.mjs",

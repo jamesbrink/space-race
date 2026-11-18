@@ -611,6 +611,10 @@ What has been found, so it is not found again:
   and left alone four minutes. The diagnostics line shows a lamp while it is acting. It is never a way to make a
   scene affordable on a capable machine: a slow frame there is that scene's fault and is to be fixed there. `pnpm bench`
   switches it off while it drives frames and its soak reports the least resolution drawn at.
+  Changing the canvas size clears its WebGL buffer. Both viewport and adaptive resolution changes take effect
+  at the start of the next draw. `pnpm test:flight-pixels` samples the presented canvas through both changes in
+  the Vostok 1 and Gemini 3 chase and onboard views.
+
 - **A pass over the multisampled frame is the dear thing, not what it draws.** The frame is 4x multisampled half
   floats; a full-screen quad blended into it reads every sample back, writes every sample and has the whole frame
   resolved again. The glow did that to add itself (three's UnrealBloomPass ends by blending over the frame), as the
