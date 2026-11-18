@@ -12,7 +12,7 @@ from mathutils import Matrix, Vector
 from srlib import IN, MeshBuilder, group, prof
 
 CM_PLANE = 110.25  # CM station on fig. A-13.
-LM_PLANE = 238.65  # Apollo 9 Mission Report fig. A.2-2, from deployed pad plane.
+LM_PLANE = 238.65  # Apollo 9 Mission Report fig. A.2-2: pad plane to the top of the ascent stage, assumed to be the docking plane.
 DROGUE_RADIUS = 31.454 / 2  # mounting lugs, not the cone's mouth
 MOUTH_SETBACK = 3.35  # scaled from fig. A-13, face to cone rim
 CONE_DEPTH = 13.01  # fig. A-13, cone rim to centre opening

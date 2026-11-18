@@ -27,7 +27,7 @@ export const APOLLO9_THRUST: Motor[] = [
     thrustN: (7700000 * LBF) / 5,
     propellant: 'RP-1 / liquid oxygen',
     confidence: 'derived',
-    note: nine + ', 7.7 million lbf per stage',
+    note: nine + ', p. 48, 7,700,000 lb for the stage (p. 8: 7,720,174 lb at first motion)',
   },
   {
     name: 'J-2 · second stage',
@@ -36,7 +36,7 @@ export const APOLLO9_THRUST: Motor[] = [
     thrustN: 230000 * LBF,
     propellant: 'Liquid hydrogen / liquid oxygen',
     confidence: 'documented',
-    note: nine + ', maximum rated thrust',
+    note: nine + ', p. 9, maximum vacuum thrust raised from 225,000 lb',
   },
   {
     name: 'J-2 · third stage',
@@ -45,7 +45,9 @@ export const APOLLO9_THRUST: Motor[] = [
     thrustN: 230000 * LBF,
     propellant: 'Liquid hydrogen / liquid oxygen',
     confidence: 'documented',
-    note: nine + ', S-IVB',
+    note:
+      nine +
+      ', p. 49: 230,000 lb for the third stage at operating altitude (its SA-504 fact sheet gives 232,000 lb for the first burn and 211,000 lb for the second)',
   },
   {
     name: 'Service propulsion engine',
@@ -54,7 +56,7 @@ export const APOLLO9_THRUST: Motor[] = [
     thrustN: 20500 * LBF,
     propellant: 'Aerozine 50 / nitrogen tetroxide',
     confidence: 'documented',
-    note: nine,
+    note: nine + ', p. 39',
   },
   {
     name: 'SM attitude thruster',
@@ -62,7 +64,7 @@ export const APOLLO9_THRUST: Motor[] = [
     thrustN: 100 * LBF,
     propellant: 'MMH / nitrogen tetroxide',
     confidence: 'documented',
-    note: nine,
+    note: nine + ', p. 39, four to a quad',
   },
   {
     name: 'CM attitude thruster',
@@ -70,7 +72,7 @@ export const APOLLO9_THRUST: Motor[] = [
     thrustN: 94 * LBF,
     propellant: 'MMH / nitrogen tetroxide',
     confidence: 'documented',
-    note: nine,
+    note: nine + ', p. 40, six to each of two subsystems',
   },
   {
     name: 'Descent engine',
@@ -79,7 +81,7 @@ export const APOLLO9_THRUST: Motor[] = [
     thrustN: 9870 * LBF,
     propellant: 'Aerozine 50 / nitrogen tetroxide',
     confidence: 'documented',
-    note: nine + ', maximum rated thrust',
+    note: nine + ', p. 47, maximum rated thrust',
   },
   {
     name: 'Ascent engine',
@@ -88,7 +90,7 @@ export const APOLLO9_THRUST: Motor[] = [
     thrustN: 3500 * LBF,
     propellant: 'Aerozine 50 / nitrogen tetroxide',
     confidence: 'documented',
-    note: nine,
+    note: nine + ', p. 47',
   },
   {
     name: 'LM attitude thruster',
@@ -96,6 +98,6 @@ export const APOLLO9_THRUST: Motor[] = [
     thrustN: 100 * LBF,
     propellant: 'Aerozine 50 / nitrogen tetroxide',
     confidence: 'documented',
-    note: nine,
+    note: nine + ', pp. 46–47',
   },
 ];

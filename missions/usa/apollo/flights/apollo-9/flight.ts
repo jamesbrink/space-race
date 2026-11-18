@@ -7,7 +7,8 @@ import { APOLLO9_THRUST } from '../../vehicles/propulsion.ts';
 const inch = 0.0254;
 const lb = 0.45359237;
 const kit = 'NASA Apollo 9 press kit, February 1969';
-const time = 'NASA SP-4029, Apollo 9 timeline and ascent phase';
+const time = 'NASA SP-4029, Apollo 9 timeline';
+const orbit = 'NASA SP-4029, Apollo 9, Earth Orbit Phase table and p. 56';
 const lm = 'Lunar module · Spider';
 const ship = 'Spacecraft';
 const gumdropPort = {
@@ -306,7 +307,7 @@ const launcher = [
     10,
     12,
     'The first lightweight S-II carried five uprated engines.',
-    'Its reinforced thrust structure supported five J-2s rated at 230,000 lbf each.',
+    'Its skirts, tanks and thrust structure were lightened, and each of its five J-2s was rated at 230,000 lbf.',
   ),
   part(
     'SecondStageTankStructure',
@@ -416,7 +417,7 @@ export const flight: Flight = {
     { label: 'Recovery', value: 'Atlantic Ocean · 13 March 1969' },
   ],
   timeline: [
-    { t: 0, event: 'Liftoff from Pad 39A' },
+    { t: 0, event: 'Range zero, with liftoff from Pad 39A 0.7 s after it' },
     { t: 674.66, event: 'Earth orbit insertion' },
     { t: 2 * 3600 + 41 * 60 + 16, event: 'Gumdrop separates and turns to face Spider' },
     { t: 3 * 3600 + 60 + 59.3, event: 'First docking' },
@@ -425,7 +426,7 @@ export const flight: Flight = {
     { t: 72 * 3600 + 53 * 60, event: 'Spider’s forward hatch opens for EVA' },
     { t: 73 * 3600 + 49 * 60, event: 'Spider’s forward hatch closes' },
     { t: 92 * 3600 + 39 * 60 + 36, event: 'Spider undocks from Gumdrop' },
-    { t: 93 * 3600 + 2 * 60 + 54, event: 'Spider performs its separation manoeuvre' },
+    { t: 93 * 3600 + 2 * 60 + 54, event: 'Gumdrop moves off from Spider on its service-module thrusters' },
     { t: 96 * 3600 + 58 * 60 + 15, event: 'First ascent-engine firing in rendezvous' },
     { t: 99 * 3600 + 2 * 60 + 26, event: 'Spider’s ascent stage redocks with Gumdrop' },
     { t: 101 * 3600 + 22 * 60 + 45, event: 'Ascent stage jettison' },
@@ -468,10 +469,10 @@ export const flight: Flight = {
       ...specification(lm, 'Deployed tread radius', 167.57 * inch, 'm', 'NASA TN D-6850, p. 6, type dimension applied to LM-3'),
       confidence: 'assumed',
     },
-    specification('Mission', 'Apogee at insertion', 100.74 * 1852, 'm', time + ', nautical miles'),
-    specification('Mission', 'Perigee at insertion', 99.68 * 1852, 'm', time + ', nautical miles'),
-    specification('Mission', 'Inclination at insertion', 32.552, 'deg', time),
-    specification('Mission', 'Period at insertion', 88.2 * 60, 's', time),
+    specification('Mission', 'Apogee at insertion', 100.74 * 1852, 'm', orbit + ', nautical miles'),
+    specification('Mission', 'Perigee at insertion', 99.68 * 1852, 'm', orbit + ', nautical miles'),
+    specification('Mission', 'Inclination at insertion', 32.552, 'deg', orbit),
+    specification('Mission', 'Period at insertion', 88.2 * 60, 's', orbit),
     specification('Mission', 'Duration of flight', 241 * 3600 + 54, 's', time),
   ],
   motors: APOLLO9_THRUST,
