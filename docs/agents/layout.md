@@ -415,3 +415,5 @@ held and moved is "The camera", below.
 a window, looks in; on something in the place round the pad (`Flight.surroundings`: a blockhouse, a
 road), flies over and turns about it (`Framing.visit`). A figure that has been walked somewhere stays
 where it was left.
+
+- `src/sim/docking.ts` propagates independently flying spacecraft, their keyed docking ports, the coupled pair and an optional carrier released during extraction. `tests/orbital-docking.test.mjs` checks capture limits, momentum, combined propulsion and extraction.
