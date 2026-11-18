@@ -63,6 +63,15 @@ class Console(InchPanel):
 
 
 def _layout(spacecraft):
+    if spacecraft == 106:
+        # CM-106 coordinates are rectified to the CM-104 crop. Only the recorded
+        # differences replace the common controls. Each call loads fresh data.
+        layout = _layout(104)
+        variant = json.loads((FOLDER / "apollo-console-layout-106.json").read_text())
+        layout.update({key: variant[key] for key in ("source", "registration", "thumbwheels")})
+        rows = {row["id"]: row for row in variant["toggle_rows"]}
+        layout["toggle_rows"] = [rows.get(row["id"], row) for row in layout["toggle_rows"]]
+        return layout
     file = {101: "apollo-console-layout.json", 103: "apollo-console-layout-103.json", 104: "apollo-console-layout-104.json"}[spacecraft]
     return json.loads((FOLDER / file).read_text())
 
@@ -291,6 +300,15 @@ def equipment(parent, base, *, spacecraft=101):
         c.lathe("SelectorKnobs", "panel", u, v, [(0, -0.15), (0.85, -0.15), (0.85, 0.19), (0.42, 0.4), (0.42, 0.7), (0, 0.7)], segs=32)
         c.line("SelectorIndices", "black", (u, v), (u, v + 0.35), 0.055, 0.7 + PRINT)
         c.text(item["label"], u, v + 1.10, 0.09)
+
+    for item in layout.get("thumbwheels", []):
+        u, v = c.xy(*item["at"])
+        c.box("SquelchBody", "panel", u, v, 0.94, 1.62, -0.20, 0.16)
+        c.box("SquelchWindow", "black", u, v, 0.52, 1.04, 0.14, 0.23)
+        c.box("SquelchWheel", "white", u, v, 0.18, 0.92, 0.21, 0.30)
+        for j in range(-3, 4):
+            c.line("SquelchRibs", "ink", (u - 0.09, v + j * 0.12), (u, v + j * 0.12), 0.018, 0.30 + PRINT)
+        c.text(item["label"], u, v + 0.89, 0.085)
 
     # Forty-eight physical lenses, including the blank positions shown in the
     # CM101 drawing. No warning light or instrument reading is claimed active.

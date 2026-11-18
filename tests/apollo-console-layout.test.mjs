@@ -111,3 +111,23 @@ test('Apollo 8 uses CM-103’s panel 2, including the lunar antenna controls and
       `unsupported CM-103 control at ${p}`,
     );
 });
+
+test('CM-106 equipment registers to the shared console and records the squelch thumbwheels beside the two radio rows', () => {
+  const variant = JSON.parse(readFileSync(new URL('apollo-console-layout-106.json', folder)));
+  const { point } = registrationOf(variant);
+  const actual = dsky.registration.origin_cm.map(
+    (x, i) => x + 2.54 * (3.45 * dsky.registration.basis_columns[0][i] + 4 * dsky.registration.basis_columns[1][i]),
+  );
+  const residual = Math.hypot(...subtract(point(variant.registration.holdout.image_px), actual));
+  assert.ok(Math.abs(residual - variant.registration.holdout.residual_cm) < 1e-8 && residual < 0.8);
+  const wheels = variant.thumbwheels;
+  assert.deepEqual(
+    wheels.map((w) => w.label),
+    ['SQUELCH A', 'SQUELCH B'],
+  );
+  for (const [i, rowId] of ['vhf', 'telemetry'].entries()) {
+    const row = variant.toggle_rows.find((r) => r.id === rowId);
+    const [x, y] = wheels[i].at;
+    assert.ok(Math.abs(y - row.y) < 2 && row.xs[1] < x && x < row.xs[2]);
+  }
+});
