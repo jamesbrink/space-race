@@ -104,8 +104,18 @@ const FAN_LANES = 120;
 const FAN_NEAR: [number, number] = [220, 520];
 
 const ways = TYURATAM_WORKS.filter((w) => w.line && w.frames === 'both');
+/** Distance to the nearest point of a closed segment. The mapped ways and the local road surfaces use the same rule. */
+export function segmentDistance(s: readonly [number, number, number, number, ...number[]], x: number, y: number): number {
+  const [ax, ay, bx, by] = s;
+  const dx = bx - ax,
+    dy = by - ay;
+  const squared = dx * dx + dy * dy;
+  const t = squared ? Math.max(0, Math.min(1, ((x - ax) * dx + (y - ay) * dy) / squared)) : 0;
+  return Math.hypot(x - ax - t * dx, y - ay - t * dy);
+}
+
 const WAYS = (() => {
-  const segs: number[][] = [];
+  const segs: [number, number, number, number, number, number, number, number][] = [];
   ways.forEach((w, n) => {
     const line = w.line!;
     let along = 0;
@@ -118,7 +128,7 @@ const WAYS = (() => {
   });
   const half = H.half;
   const cell = (2 * half) / WAYS_GRID;
-  const cells: number[][] = [];
+  const cells: [number, number][] = [];
   const list: number[] = [];
   for (let gy = 0; gy < WAYS_GRID; gy++)
     for (let gx = 0; gx < WAYS_GRID; gx++) {
@@ -127,12 +137,7 @@ const WAYS = (() => {
       const start = list.length;
       segs.forEach((s, k) => {
         // the segment's distance from the cell's middle, against the cell's half diagonal and the way's reach
-        const [ax, ay, bx, by, , hw] = s as [number, number, number, number, number, number];
-        const dx = bx - ax,
-          dy = by - ay;
-        const t = Math.max(0, Math.min(1, ((cx - ax) * dx + (cy - ay) * dy) / (dx * dx + dy * dy)));
-        const d = Math.hypot(cx - ax - t * dx, cy - ay - t * dy);
-        if (d <= cell * Math.SQRT1_2 + hw + WAYS_REACH) list.push(k);
+        if (segmentDistance(s, cx, cy) <= cell * Math.SQRT1_2 + s[5] + WAYS_REACH) list.push(k);
       });
       cells.push([start, list.length - start]);
     }
@@ -152,8 +157,24 @@ const WAYS = (() => {
   list.forEach((v, j) => put(at.list, j, [v]));
   const texture = new THREE.DataTexture(data, WIDE, at.height, THREE.RGBAFormat, THREE.FloatType);
   texture.needsUpdate = true;
-  return { at, texture, half, cell, count: segs.length };
+  return { at, texture, half, cell, count: segs.length, segs, cells, list };
 })();
+
+/** The mapped way under a tyre in metres east and north, using the terrain shader's segment index and paint order. */
+export function waySurface(x: number, y: number): 'ballast' | 'packed-earth' | null {
+  const gx = Math.floor((x + WAYS.half) / WAYS.cell);
+  const gy = Math.floor((y + WAYS.half) / WAYS.cell);
+  if (gx < 0 || gy < 0 || gx >= WAYS_GRID || gy >= WAYS_GRID) return null;
+  const [start, count] = WAYS.cells[gy * WAYS_GRID + gx]!;
+  let surface: 'packed-earth' | null = null;
+  for (let i = start; i < start + count; i++) {
+    const s = WAYS.segs[WAYS.list[i]!]!;
+    if (segmentDistance(s, x, y) > s[5]) continue;
+    if (s[4] === WAY.rail) return 'ballast';
+    surface = 'packed-earth';
+  }
+  return surface;
+}
 
 /**
  * GLSL both the cover's bake and the terrain's shader use (after HEIGHTS_GLSL, which declares uWorks): `void waysAt(vec2 q, out vec4 way[4])`, for each kind of way

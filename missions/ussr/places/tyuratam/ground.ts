@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import type { SiteAround } from '../../../../src/types.ts';
 import { smoothstep } from '../../../../src/util/math.ts';
 import { buildAround } from '../../../../src/viewer/around.ts';
-import { fbm2 } from '../../../../src/viewer/field.ts';
+import { fbm2, noise2 } from '../../../../src/viewer/field.ts';
 import { vec3 } from '../../../../src/viewer/glsl.ts';
 import type { LandSpec } from '../../../../src/viewer/land.ts';
 import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
@@ -23,7 +23,7 @@ import {
 } from './steppe.ts';
 import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './relief.ts';
 import { TYURATAM_GROUND as MAPPED } from './tyuratam-ground.ts';
-import { HEIGHTS_GLSL, heightsAt, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, worksUniforms } from './works.ts';
+import { HEIGHTS_GLSL, heightsAt, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, worksUniforms, waySurface, segmentDistance } from './works.ts';
 
 /**
  * The steppe round Site 1 at Tyuratam, April 1961, as scenery: the ground the platform stands on,
@@ -902,25 +902,30 @@ export function standsInSite1(compass: Compass, land: { heightAt(x: number, z: n
 /** How far (x, z) is from the nearest of `segments` ([x0, z0, x1, z1] in Site 1's frame), metres: the shader's `segment`. */
 function nearest(segments: readonly [number, number, number, number][], x: number, z: number): number {
   let best = Number.POSITIVE_INFINITY;
-  for (const [x0, z0, x1, z1] of segments) {
-    const dx = x1 - x0;
-    const dz = z1 - z0;
-    const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
-    best = Math.min(best, Math.hypot(x - x0 - dx * t, z - z0 - dz * t));
-  }
+  for (const s of segments) best = Math.min(best, segmentDistance(s, x, z));
   return best;
 }
 
 /**
- * What the land is painted as at (x, z) in Site 1's frame, as `paint` draws it: the apron's slabs, a road, a track's bed
- * of ballast (its 1.85 m either side of the track's middle), or null for the steppe's own ground.
+ * The painted surface at (x, z) in Site 1's frame. On graded roads, dirt tracks and worn ruts the tread meets packed earth.
+ * Unpainted steppe returns null so the site's seasonal ground supplies the tread.
  */
-export function paintedInSite1(x: number, z: number): 'apron' | 'road' | 'ballast' | null {
+export function paintedInSite1(x: number, z: number): 'apron' | 'road' | 'ballast' | 'packed-earth' | null {
   const north = -z;
   if (x <= SLABS.east && x >= SLABS.west && north <= SLABS.north && north >= SLABS.south) return 'apron';
   if (x > -1880 && x < 270 && z > -280 && z < 800 && nearest(ROAD_SEGMENTS, x, z) < ROAD_HALF) return 'road';
   if (nearest(SEGMENTS, x, z) < 1.85) return 'ballast';
-  return null;
+  const way = waySurface(x, -z);
+  if (way) return way;
+  // The audible strip is the visibly worn part of the rutted band; both paints use the same strength and two noise fields.
+  let wear = 0;
+  for (const rut of RUT_SEGMENTS) {
+    const d = segmentDistance(rut.s, x, z);
+    wear = Math.max(wear, (1 - smoothstep(0.25, 1, d / rut.half)) * rut.worn);
+  }
+  if (!wear) return null;
+  const braided = smoothstep(0.3, 0.6, noise2(x * 0.012, z * 0.012, 36) + 0.25 * noise2(x * 0.05, z * 0.05, 37));
+  return wear * braided > 0.35 ? 'packed-earth' : null;
 }
 
 /**
@@ -945,7 +950,7 @@ export const TYURATAM_GROUND: GroundSpec = {
     return { objects: far.map((a) => a.group), levels: far, arrived: () => far.map((a) => a.arrived()).some(Boolean) };
   },
   // a tyre on what the land is painted as (the shader's `apron`, `road` and the tracks' beds, inside their edges), by the
-  // names place.ts's `tread.painted` hears them as; the ways further out (works.ts) are not asked, and are heard as the steppe
+  // names place.ts’s `tread.painted` hears them as, including the mapped ways beyond the pad and its worn wheel tracks
   painted: (x, z, compass) => {
     const at = site1In(compass);
     return paintedInSite1(x - at.x, z - at.z);
