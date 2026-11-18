@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FootRig, type FootView } from './foot.ts';
+import { FootRig, type FootView, ShoulderRig } from './foot.ts';
 import { FreeRig } from './free.ts';
 import { type Hands, listen } from './input.ts';
 import { anchorOk, blendPose, fitDistance, nudgeIntoFrame } from './maths.ts';
@@ -75,7 +75,7 @@ export class Cameras {
   readonly free: FreeRig;
   /** On foot: the walker's view, through the eyes or over the shoulder (foot.ts). Never offered by C: the walker's C is its own. */
   readonly eyes = new FootRig('eyes');
-  readonly shoulder = new FootRig('shoulder');
+  readonly shoulder = new ShoulderRig();
   /** The rig that had the camera when the walk began: it takes the view up again when the walk ends. */
   private beforeFoot: Rig | null = null;
   /** Keys being held down, lower case, and whether Shift is. */

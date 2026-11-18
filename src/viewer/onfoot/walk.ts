@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { type ExtendedTriangle, MeshBVH } from 'three-mesh-bvh';
 // (with its extension: the tests run this file under Node, which adds none)
 import { type Driving, type Sounds, silent, type Underfoot } from '../../sound/audio.ts';
+import type { ShoulderRig } from '../camera/foot.ts';
 import { Head, type Limits, type Lookout } from '../camera/head.ts';
 import { type Holder, onEscape } from './escape.ts';
 import { Gait, type Stir, type Terrain, view } from './gait.ts';
@@ -1029,6 +1030,7 @@ export interface Seat {
 
 /** What the walker needs from the stage it walks on. */
 export interface WalkHost {
+  readonly shoulder: ShoulderRig;
   /** Everything solid, as shown now. */
   solids(): THREE.Object3D[];
   /** The level of the open ground, or null where there is none. */
@@ -1067,16 +1069,6 @@ const WIND_UP = 0.09;
 /** How far a fall must be to be caught in a deep crouch and a stagger, and how far to knock the figure off its feet altogether, metres. */
 export const STAGGER_FALL = 1.5;
 export const LIMP_FALL = 3;
-/** Over the shoulder: how far behind the head the camera sits, how far to the right of it and above it, metres. */
-const BOOM = 3.4;
-const SHOULDER = 0.55;
-const OVER = 0.3;
-/** How close to something behind it the camera may come, metres; and nearer the head than this, the figure is not drawn (the camera would be in it). */
-const BOOM_CLEAR = 0.25;
-const BOOM_LEAST = 1.2;
-/** How fast the camera goes back out once what was behind it has gone, m/s; and how far either side of BOOM_LEAST the figure is kept as it was (drawn or not), metres. */
-const BOOM_OUT = 3;
-const BOOM_SLACK = 0.15;
 /** How long the eyes and the figure take to follow a body that has been put somewhere at once (on to a ladder, off its top), seconds. */
 const HOP_SECONDS = 0.25;
 
@@ -1086,20 +1078,6 @@ export function hopLeft(t: number): number {
   return 1 - u * u * (3 - 2 * u);
 }
 
-/**
- * How far out along its boom the camera is a moment later, given how far it was and how far it
- * is clear to go: in at once (nothing is ever between it and the head), out again at BOOM_OUT.
- * One ray a frame says how far is clear, and a handrail or a ladder's stile crossing that ray
- * for a frame would otherwise bring the camera in three metres and let it straight out again.
- */
-export function boomTo(was: number, clear: number, dt: number): number {
-  return clear <= was ? clear : Math.min(clear, was + BOOM_OUT * dt);
-}
-
-/** Is the camera far enough from the head for the figure to be drawn? It stays as it was within BOOM_SLACK of the line. */
-export function boomOutside(was: boolean, reach: number): boolean {
-  return reach > BOOM_LEAST + (was ? -BOOM_SLACK : BOOM_SLACK);
-}
 /** How long the camera takes to pull back over the shoulder and to come in again, seconds. */
 const VIEW_SECONDS = 0.3;
 /**
@@ -1145,7 +1123,9 @@ export class Walker {
   stepped = 0;
   pace = 0;
   /** The camera is far enough from the head for the figure to be drawn. */
-  outside = false;
+  get outside(): boolean {
+    return this.host.shoulder.outside;
+  }
   /** The figure's stride: the limbs seen from outside and the motion of the view from inside are both read off it (gait.ts). */
   readonly gait = new Gait();
   /** What hears the walk (audio.ts): footfalls and breath, as events off the gait. Nothing plays until something that does is put here. */
@@ -1206,9 +1186,6 @@ export class Walker {
   private kick = 0;
   /** How far over the shoulder the camera has pulled back, 0 (the eyes) to 1. */
   private viewK = 0;
-  private readonly boom = new THREE.Vector3();
-  /** How far out along its boom the camera is, metres (boomTo). */
-  private reached = Number.POSITIVE_INFINITY;
   /**
    * Where the eyes and the figure are from where the body is, metres: taking hold of a ladder or
    * stepping off one puts the body somewhere at once, and they follow over HOP_SECONDS.
@@ -1221,13 +1198,11 @@ export class Walker {
   readonly stands = new THREE.Vector3();
   private wasOn = false;
   private readonly lastAt = new THREE.Vector3();
-  private readonly pivot = new THREE.Vector3();
   /**
    * Where the walker's view is from and how it is turned, worked out each frame (`update`): the eyes, carried by the
    * stride, or over the shoulder. The camera is put there by the camera's rigs for being on foot (camera/foot.ts).
    */
   readonly view = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), motion: 1 };
-  private readonly aim = new THREE.Matrix4();
   private readonly canvas: HTMLCanvasElement;
   private readonly camera: THREE.PerspectiveCamera;
   private readonly host: WalkHost;
@@ -1386,8 +1361,7 @@ export class Walker {
     this.yaw = this.heading = Math.atan2(-(toward.x - at.x), -(toward.z - at.z));
     this.pitch = 0;
     this.viewK = 0; // the camera starts at the eyes and pulls back from there
-    this.outside = false;
-    this.reached = Number.POSITIVE_INFINITY;
+    this.host.shoulder.resetBoom();
     this.hop.set(0, 0, 0);
     this.wasOn = false;
     this.lastAt.copy(this.body.position);
@@ -1942,40 +1916,15 @@ export class Walker {
     }
     const gaze = this.gaze.set(0, 0, -1).applyQuaternion(sight.quaternion);
     // what the body could touch was gathered for its move; what the eyes, the hand and the camera can reach is gathered now
-    const far = REACH + BOOM + 0.5;
-    this.solids.gather(sight.position, far, far);
-    // Over the shoulder: back along the line of sight, to the right and up a little. If there is
-    // a wall between the head and there, the camera comes in to just short of it.
     const pulled = this.viewK;
     this.viewK = THREE.MathUtils.clamp(pulled + (this.third || this.down ? dt : -dt) / VIEW_SECONDS, 0, 1);
     if (this.viewK !== pulled) this.moved = true;
-    let back = 0;
-    if (this.viewK > 0) {
-      const ease = this.viewK * this.viewK * (3 - 2 * this.viewK);
-      // seated in something, the view from outside is its chase view: behind the whole of it and over its roof
-      const chase = this.seat?.chase?.();
-      const boom = chase
-        ? this.boom.set(0, chase.up, 0).addScaledVector(gaze, -chase.back)
-        : this.boom.set(cos * SHOULDER, OVER, -sin * SHOULDER).addScaledVector(gaze, -BOOM);
-      const length = boom.length();
-      const wall = this.solids.cast(sight.position, boom.divideScalar(length), length + BOOM_CLEAR);
-      // (in at once to whatever is behind the head, out again by degrees: boomTo)
-      const clear = Math.max(0, Math.min(length, (wall?.distance ?? Infinity) - BOOM_CLEAR));
-      this.reached = boomTo(this.reached, clear, dt);
-      if (this.reached < clear) this.moved = true; // still going out
-      const reach = this.reached * ease;
-      // (a chase view looks at the vehicle, a little ahead of the driver's eyes, not level over its roof)
-      if (chase) this.pivot.copy(sight.position).addScaledVector(gaze, 6);
-      sight.position.addScaledVector(boom, reach);
-      if (chase && reach > 0) sight.quaternion.setFromRotationMatrix(this.aim.lookAt(sight.position, this.pivot, camera.up));
-      back = (reach / length) * (chase?.back ?? BOOM);
-      const outside = boomOutside(this.outside, reach);
-      if (outside !== this.outside) this.moved = true;
-      this.outside = outside;
-    } else {
-      this.outside = false;
-      this.reached = Number.POSITIVE_INFINITY;
-    }
+    const shoulder = this.host.shoulder;
+    const chase = this.viewK > 0 ? this.seat?.chase?.() : undefined;
+    const far = REACH + shoulder.range(chase);
+    this.solids.gather(sight.position, far, far);
+    if (shoulder.place(sight, gaze, this.yaw, camera.up, this.viewK, chase, this.solids, dt)) this.moved = true;
+    let back = shoulder.back;
     if (this.peekK > 0 && this.peekTo) {
       sight.position.lerp(this.peekTo, this.peekK * this.peekK * (3 - 2 * this.peekK));
       back *= 1 - this.peekK;

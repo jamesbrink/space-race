@@ -1,3 +1,4 @@
+import { ShoulderRig } from '../src/viewer/camera/foot.ts';
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
@@ -28,6 +29,7 @@ function site(more = () => {}) {
   const camera = new THREE.PerspectiveCamera(50, 1.6, 0.1, 1000);
   const canvas = { addEventListener() {}, setPointerCapture() {}, requestPointerLock() {} };
   const walker = new Walker(canvas, camera, {
+    shoulder: new ShoulderRig(),
     solids: () => [root],
     ground: () => -0.45,
     reach: () => 500,
@@ -118,7 +120,7 @@ test('over the shoulder, something thin crossing behind the head brings the came
 });
 
 test('whether the figure is drawn does not flicker as the camera comes to the line', async () => {
-  const { boomOutside, boomTo } = await import('../src/viewer/onfoot/walk.ts');
+  const { boomOutside, boomTo } = await import('../src/viewer/camera/foot.ts');
   assert.equal(boomTo(3.4, 1.0, DT), 1.0, 'in at once');
   assert.ok(boomTo(1.0, 3.4, DT) - 1.0 < 0.06 && boomTo(1.0, 3.4, DT) > 1.0, 'out by degrees');
   assert.equal(boomTo(3.39, 3.4, DT), 3.4, 'and no further than is clear');
