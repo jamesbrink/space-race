@@ -134,6 +134,24 @@ export function targetSiteModels(id: string, record: Launch): ModelDef[] {
   else
     parts.push(
       exterior(
+        'AgenaAftSection',
+        'Agena aft rack',
+        'The open frame round the engine rode inside the dark adapter.',
+        'It is out of sight on the pad. It left the adapter with the Agena when the two retrorockets on the adapter pulled the Atlas back.',
+      ),
+      exterior(
+        'AgenaSecondaryPropulsion',
+        'Secondary propulsion modules',
+        'Two small engines on the rack settled the propellants before the main engine started.',
+        'They fired for twenty seconds before the main engine on each ascent.',
+      ),
+      exterior(
+        'AgenaEngine',
+        'Agena main engine',
+        'The engine that put the Agena in orbit, hidden in the adapter at launch.',
+        'It was started about seventy seconds after the Agena left the Atlas and burned for three minutes.',
+      ),
+      exterior(
         target[0]!,
         'Agena tank section',
         'The slender body of the Agena stands above the Atlas adapter.',
