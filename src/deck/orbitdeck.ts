@@ -1,6 +1,6 @@
 import type { Impact } from '../sim/contact.ts';
 import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
-import { apparentBy, guided, spacecraft, stack } from '../sim/fliers.ts';
+import { apparentBy, type Descend, guided, spacecraft } from '../sim/fliers.ts';
 import { along, MEAN_RADIUS } from '../sim/fly.ts';
 import {
   type EscapeState,
@@ -354,7 +354,7 @@ export class OrbitDeck extends Deck {
     const options = points ? { points } : {};
     if (this.state?.broke && start.t >= this.state.broke.t - 1e-9) return null; // (in pieces: nothing to predict)
     const plan = this.planned ?? (this.free && this.fired === null ? this.givenUp() : this.flight.plan!);
-    if (start.t < this.parting && underGuidance && this.guidable) {
+    if (start.t < this.parting) {
       const v = this.vehicleOf();
       const flown = orbitalFlown(this.flight).ascent;
       const live = this.mine !== null && this.state ? this.state : null;
@@ -376,23 +376,34 @@ export class OrbitDeck extends Deck {
       };
       const state = live ? live : { ...stood, apparent: apparentBy(record, v, stood, start.t) };
       const turned = start.t > guidanceOf(record).turn.value;
+      const sequence = live ? this.sequence : true;
+      const law = {
+        vehicle: v,
+        solved: flown.solved,
+        state,
+        sequence,
+        ...(live ? { live: true, trim: this.trim, fired: live.craft.fired } : {}),
+        thetaTurn: live ? (this.options.memo?.thetaTurn ?? null) : turned ? flown.thetaTurn : null,
+      };
+      if (underGuidance && this.guidable) return propagate(guided(record, site, sea, start, { ...law, plan }), start, where, options);
+      // if cut now: every engine stopped here, and what the vehicle then does by itself (sim/fliers.ts `guided`, stopped):
+      // what has been let go parts, the sequencer (while it is on) lets go what it lets go at its instants, and from the
+      // parting the spacecraft as the deck then flies it (`parted`: the timer's burn given up for the hands, with what the
+      // hands gave the descent)
+      const after = this.planned ?? this.givenUp();
+      const descent = this.descendOf(after, false);
       return propagate(
-        guided(this.flight.plan!, site, sea, start, {
-          vehicle: v,
-          solved: flown.solved,
-          state,
-          sequence: live ? this.sequence : true,
-          ...(live ? { live: true, trim: this.trim } : {}),
-          thetaTurn: live ? (this.options.memo?.thetaTurn ?? null) : turned ? flown.thetaTurn : null,
-          plan,
+        guided(record, site, sea, start, {
+          ...law,
+          plan: after,
+          stopped: { axis: live ? turn(live.q, [1, 0, 0]) : null },
+          alone: (x) => spacecraft(after, this.frame, site, sea, x, descent),
         }),
         start,
         where,
         options,
       );
     }
-    if (start.t < this.parting)
-      return propagate(stack(this.flight.plan!, site, sea, start.mass, this.goneAt(start.t), this.frame), start, where, options);
     // (begun within the burn, the burn in progress: the line it was fixed on as it lit, from the run's own state then)
     const ship = shipOf(plan);
     const on = ship.on;
@@ -403,12 +414,18 @@ export class OrbitDeck extends Deck {
     const lit = was ? { lit: { r: was.centre ?? was.r, v: was.v } } : {};
     // (and on from the height the pilot leaves at, the descent module the run on show follows, with what the hands gave,
     // to its landing: begun part-way down, from the run's own state of it)
+    return propagate(spacecraft(plan, this.frame, site, sea, start, { ...lit, ...this.descendOf(plan, true) }), start, where, options);
+  }
+  /**
+   * How the spacecraft of `plan` goes on down from the height the pilot leaves at (sim/fliers.ts `descending`): the descent
+   * module the run on show follows, with what the hands gave; `begun`, from the run's own state of it (a prediction made
+   * part-way down), not one still to come.
+   */
+  private descendOf(plan: FlightPlan, begun: boolean): { descend?: Descend } {
     const first = downOf(plan)?.bodies[0];
-    const down = (this.flown ?? orbitalFlown(this.flight)).down;
-    const descend = first
-      ? { descend: { follow: first.id, hands: { given: this.given, switched: this.switched }, ...(down ? { from: down } : {}) } }
-      : {};
-    return propagate(spacecraft(plan, this.frame, site, sea, start, { ...lit, ...descend }), start, where, options);
+    if (!first) return {};
+    const down = begun ? (this.flown ?? orbitalFlown(this.flight)).down : null;
+    return { descend: { follow: first.id, hands: { given: this.given, switched: this.switched }, ...(down ? { from: down } : {}) } };
   }
   /** The run's line flown (sim/run.ts `Run.track`): the predicted path draws the line flown from it (viewer/path.ts `PathSource.track`). */
   track(): readonly LiveSample[] {
@@ -442,17 +459,6 @@ export class OrbitDeck extends Deck {
       long: `The coast from here with the braking burn ${this.fired !== null ? 'the hand fired' : 'the timer has set'}, the modules parting after it, down to where ${landsOf(this.flight.plan!).ship} lands`,
     };
   }
-  /** The shape the stack flies at `t` on the flight on show (StagedVehicle.shape): the latest record separation among the stages let go by then. */
-  private goneAt(t: number): number {
-    const s = this.mine !== null ? this.state : null;
-    let at = 0;
-    recordStages(this.flight.plan!, orbitalFlown(this.flight).ascent.stops).forEach((st, i) => {
-      const gone = s ? s.stages[i]!.gone : st.sep;
-      if (gone <= t) at = Math.max(at, Number.isFinite(st.sep) ? st.sep : st.cut);
-    });
-    return at;
-  }
-
   get steering(): { guidance: boolean; sequence: boolean; trim: { pitch: number; yaw: number } } {
     return { guidance: this.guidance && !this.free, sequence: this.sequence && !this.free, trim: this.trim };
   }

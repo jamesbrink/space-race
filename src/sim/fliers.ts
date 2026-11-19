@@ -14,6 +14,9 @@
  *               height its pilot left at, as flyOrbit does.
  *   stack       an orbital flight's staged launch vehicle with its engines stopped now: what it carries, on the drag of
  *               the shape it has (staged.ts `stackOf`, which the batch ascent and the live staged vehicle fly on).
+ *   guided      a staged launch vehicle flown on by its guidance and the record's steps, to the parting and on as the
+ *               spacecraft; or, `stopped`, with every engine cut now and what it then does by itself (the deck's path
+ *               "if cut now"): what was let go parting, the sequencer's steps that light nothing at their instants.
  *
  * What differs between them is the vehicles', not the predictor's: each is a point mass at its centre of mass whose
  * forces are its own simulator's, with the attitude those forces need prescribed (along the programme, against the
@@ -522,6 +525,34 @@ export interface GuidedNow {
   thetaTurn?: number | null;
   /** The plan the spacecraft flies once parted (its braking burn). */
   plan: FlightPlan;
+  /**
+   * The engines stopped at the start and none lit again (the path "if cut now", and a stack with nothing lit): of the
+   * sequence only what lights nothing is flown, each at the instant its triggers give (`instantOf`), and what has been let
+   * go but is still on parts at once, nothing pressing it on (stagedlive.ts `settle`). The parting pushes along `axis`, the
+   * one the stack has, which nothing turns once no engine burns (null: the law's at the start).
+   */
+  stopped?: { axis: Vec3 | null };
+  /** What has happened of the plan's events, and when (stagedlive.ts `craft.fired`): an `after` trigger counts from it. */
+  fired?: Readonly<Record<string, number>>;
+  /** How the spacecraft flies once parted, from the parting's state: left out, `spacecraft` on `plan`. */
+  alone?: (start: { t: number; r: Vec3; v: Vec3 }) => Flier;
+}
+
+/**
+ * The instant a plan event is set off on the clock alone (craft.ts `holds`): the latest of its `time` triggers and of its
+ * `after`s counted from what has fired (`fired`); Infinity where one has not fired or where it waits on anything but the
+ * clock (a height, a speed, a command), or where it waits to be armed.
+ */
+export function instantOf(plan: FlightPlan, id: string, fired: Readonly<Record<string, number>> = {}): number {
+  const e = plan.events.find((x) => x.id === id);
+  if (!e || e.armed === false) return Number.POSITIVE_INFINITY;
+  let at = Number.NEGATIVE_INFINITY;
+  for (const w of e.when) {
+    if ('time' in w) at = Math.max(at, w.time);
+    else if ('after' in w && fired[w.after] !== undefined) at = Math.max(at, fired[w.after]! + (w.wait ?? 0));
+    else return Number.POSITIVE_INFINITY;
+  }
+  return at;
 }
 
 /**
@@ -552,6 +583,8 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
     drops: { ...now.state.drops },
     apparent: [...now.state.apparent],
   };
+  // (stopped: each stage burning is cut at the start, what it had not burned kept aboard)
+  if (now.stopped) cur.stages = cur.stages.map((x, i) => (v.burning(cur, i, start.t) ? { ...x, to: start.t } : x));
   const doneIn = (k: Step, s: StagedState): boolean =>
     k.kind === 'drop'
       ? Number.isFinite(s.drops[k.id] ?? Infinity)
@@ -607,9 +640,10 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
   /** The speed `faster` last gave: what the step was flown back to. */
   let asked = Number.POSITIVE_INFINITY;
   /** The steps cut on a space-fixed speed still ahead, while the sequence is on. */
-  const spaced: Step[] = now.sequence
-    ? v.sequence.filter((k) => !doneIn(k.step, cur) && k.step.kind === 'cut' && speedOf(k.step.stage) !== null).map((k) => k.step)
-    : [];
+  const spaced: Step[] =
+    now.sequence && !now.stopped
+      ? v.sequence.filter((k) => !doneIn(k.step, cur) && k.step.kind === 'cut' && speedOf(k.step.stage) !== null).map((k) => k.step)
+      : [];
   // A stage let go so long after its own stop, where its cut is not the clock's (staged.ts `sequenceOf`: `wait`): placed
   // when the stage stops, cut or dry.
   const following: { step: Step; stage: number; wait: number }[] = [];
@@ -636,7 +670,19 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
   };
   /** One more piece of the sweep ahead; false when there is no more. */
   let sweepOn: () => boolean = () => false;
-  if (now.sequence) {
+  if (now.stopped) {
+    // what is let go and not gone parts at once (nothing pushes it on); then, while the sequencer is on, each of its steps
+    // that lights nothing (a stage or a drop let go) at the instant its triggers give: a cut is moot, a lighting is not had
+    cur.stages.forEach((x, i) => {
+      if (Number.isFinite(x.loose) && !Number.isFinite(x.gone)) plan.push({ at: start.t, step: { kind: 'separate', stage: i } });
+    });
+    if (now.sequence)
+      for (const k of v.sequence) {
+        if ((k.step.kind !== 'separate' && k.step.kind !== 'drop') || doneIn(k.step, cur)) continue;
+        const at = instantOf(fp, k.event, now.fired);
+        if (Number.isFinite(at)) plan.push({ at: Math.max(at, start.t), step: k.step });
+      }
+  } else if (now.sequence) {
     const setting = (i: number): number | null => {
       const speed = seq.stages[i]!.speed;
       return speed?.apparent ? speed.value : null;
@@ -715,6 +761,8 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
     return axis;
   };
   const lit = (): boolean => stages.some((_, i) => v.burning(cur, i, since));
+  // (stopped, nothing turns the stack: its steering is its engines' (stagedlive.ts), so it parts on the axis it had)
+  const held = now.stopped ? (now.stopped.axis ?? axisAt(start.r, start.v, start.t)) : null;
   return {
     get kind() {
       return lastCut !== null || spaced.some((k) => (k as { stage: number }).stage === last) ? 'guided' : 'coast';
@@ -798,8 +846,9 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
           since = t;
           const kept = v.mass(cur, t);
           const speed = v.separationSpeed(kept, before - kept);
-          const outgoing = speed ? add(u, scale(axisAt(r, u, t), speed)) : u;
-          alone = spacecraft(now.plan, v.frame, site, seaLevel, { t, r, v: outgoing });
+          const outgoing = speed ? add(u, scale(held ?? axisAt(r, u, t), speed)) : u;
+          const from = { t, r, v: outgoing };
+          alone = now.alone ? now.alone(from) : spacecraft(now.plan, v.frame, site, seaLevel, from);
           const then = alone.arrive(t, r, outgoing, altitude, 'time');
           return { ...then, v: then.v ?? outgoing, events: [...events, ...(then.events ?? [])] };
         }
