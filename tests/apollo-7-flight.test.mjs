@@ -3,7 +3,9 @@ import { test } from 'node:test';
 import { flight } from '../missions/usa/apollo/flights/apollo-7/flight.ts';
 import { afloatAt, floatOn } from '../src/sim/afloat.ts';
 import { targetAt } from '../src/sim/orbital-target.ts';
-import { between, recordOf } from '../src/sim/run.ts';
+import { shipOf } from '../src/sim/orbital.ts';
+import { between, orbitalFlown, recordOf } from '../src/sim/run.ts';
+import { sequenceOf } from '../src/sim/staged.ts';
 import { wavesOf } from '../src/sim/sea.ts';
 import { ecefToSite, ecefToSiteDirection, length, siteFrame, sub } from '../src/world/frames.ts';
 
@@ -93,4 +95,95 @@ test('the detached S-IVB and the CSM have distinct positions and preserve the ob
   );
   assert.equal(targetAt(flight, run, first.at - 1), undefined);
   assert.equal(targetAt(flight, run, config.until.value + 1), undefined);
+});
+
+// Issue #112: the run is one state, and these are the four places it used to be moved without a force: the staging, the
+// coast across each tracking timestamp, each finite SPS firing, and the entry. Across every one the place is continuous
+// and the velocity changes by gravity and by the engine or the air named there, and by nothing else.
+test('Apollo 7 is one state through its staging, every tracking timestamp, each SPS firing and the entry', () => {
+  const whole = orbitalFlown(flight);
+  const plan = flight.plan;
+  const ship = shipOf(plan);
+  const GM = 3.986004418e14;
+  const gravity = (r) => r.map((x) => (-GM * x) / length(r) ** 3);
+  /** What gravity does not explain of the change in velocity from `a` to `b`, m/s, and of the change in place, m. */
+  const unexplained = (samples, a, b) => {
+    const [p, q] = [between(samples, a), between(samples, b)];
+    const dt = b - a;
+    const free = gravity(p.r).map((g, i) => ((g + gravity(q.r)[i]) / 2) * dt);
+    return {
+      dv: length(sub(sub(q.v, p.v), free)),
+      dr: length(
+        sub(
+          sub(q.r, p.r),
+          p.v.map((v, i) => ((v + q.v[i]) / 2) * dt),
+        ),
+      ),
+    };
+  };
+  // the staging: the first stage let go, the J-2 lit, the J-2 cut by the guidance. Each is flown through by thrust alone
+  // (four g at the most over the second about it)
+  const seq = sequenceOf(plan);
+  for (const [what, t] of [
+    ['the S-IB let go', seq.stages[0].sep],
+    ['the J-2 lit', seq.stages.at(-1).from],
+    ['the J-2 cut', whole.ascent.stops.at(-1)],
+  ]) {
+    const x = unexplained(whole.ascent.samples, t - 0.5, t + 0.5);
+    assert.ok(x.dv < 45, `${what}, T+${t.toFixed(2)}: ${x.dv.toFixed(2)} m/s in a second, where four g is 39`);
+    assert.ok(x.dr < 25, `${what}: the place steps ${x.dr.toFixed(2)} m`);
+  }
+  // every tracking timestamp: the run coasts through it (or burns through it, where the record took it at an ignition or a
+  // cutoff), and the tracked state moves nothing
+  const burns = [
+    ...ship.moves.map((m) => ({ on: m.on, off: m.off, accel: m.accel })),
+    { on: ship.on, off: ship.off, accel: ship.flown / (ship.off - ship.on) },
+  ];
+  let coasted = 0;
+  for (const fix of plan.record.coastFixes) {
+    const t = fix.at.value;
+    // (on the S-IVB after its cutoff, or alone: not within two seconds of an end of either run)
+    const parted = whole.ascent.separation.t;
+    if (t < whole.ascent.stops.at(-1) + 20 || Math.abs(t - parted) < 2 || t >= whole.coast.samples.at(-1).t - 2) continue;
+    const burning = burns.filter((b) => t + 1 > b.on && t - 1 < b.off);
+    const x = unexplained(t < parted ? whole.ascent.samples : whole.coast.samples, t - 1, t + 1);
+    const push = burning.reduce((sum, b) => sum + b.accel, 0) * 2;
+    // (0.15 m/s over the two seconds: the Earth's flattening is 0.03 of it, the air and the cubic between samples the rest;
+    // a state joined there was tens of metres a second)
+    assert.ok(
+      x.dv <= push + 0.15,
+      `across the tracking at T+${t}: ${x.dv.toFixed(3)} m/s unexplained, where what burns there gives ${push.toFixed(2)}`,
+    );
+    assert.ok(x.dr < 5, `across the tracking at T+${t}: the place steps ${x.dr.toFixed(2)} m`);
+    if (!burning.length) coasted++;
+  }
+  assert.ok(coasted >= 2, `${coasted} tracking timestamps coasted through`);
+  // each SPS firing gives the impulse the record gives it, over its own length, and nothing more
+  const sps = ship.moves.filter((m) => m.engine === 'sps');
+  assert.equal(sps.length, 7, 'seven firings before the deorbit');
+  for (const b of [...sps, { on: ship.on, off: ship.off, accel: ship.flown / (ship.off - ship.on) }]) {
+    const x = unexplained(whole.coast.samples, b.on - 1, b.off + 1);
+    const want = b.accel * (b.off - b.on);
+    assert.ok(
+      Math.abs(x.dv - want) < 0.02 * want + 0.3,
+      `the firing at T+${b.on}: ${x.dv.toFixed(2)} m/s, where the record's impulse is ${want.toFixed(2)}`,
+    );
+  }
+  // the entry: from the modules' parting to the drogues, what the air does is what the samples say it does, second by second
+  const entry = whole.coast.samples.filter((s) => s.t >= ship.parted);
+  let most = 0;
+  for (let i = 1; i < entry.length; i++) {
+    const [a, b] = [entry[i - 1], entry[i]];
+    const dt = b.t - a.t;
+    if (dt < 1e-9) continue;
+    const free = gravity(a.r).map((g, k) => ((g + gravity(b.r)[k]) / 2) * dt);
+    const dv = length(sub(sub(b.v, a.v), free));
+    const allowed = (1.5 * Math.max(a.g, b.g, entry[i - 2]?.g ?? 0, entry[i + 1]?.g ?? 0) * 9.80665 + 0.3) * dt + 0.02;
+    assert.ok(dv <= allowed, `in the entry at T+${b.t}: ${dv.toFixed(2)} m/s, where the load read allows ${allowed.toFixed(2)}`);
+    most = Math.max(most, b.g);
+  }
+  assert.ok(most > 3 && most < 4.5, `the entry's greatest load is ${most.toFixed(2)} g`);
+  // and the descent begins where the coast ends
+  const track = Object.values(whole.down.tracks)[0];
+  assert.ok(length(sub(track[0].r, whole.coast.samples.at(-1).r)) < 1e-6, 'the descent begins where the coast ends');
 });
