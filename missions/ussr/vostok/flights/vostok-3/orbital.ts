@@ -429,6 +429,11 @@ export const orbital: VostokRecord = {
     ],
   },
   landing: {
+    aimed: {
+      confidence: 'assumed',
+      source:
+        "The descent cycle was begun on the ground's command, its instant worked for the landing in the planned region, as on every flight of the type; this flight's own figures for the planned place are not in anything read, so the place it came down is taken for the place its burn was timed for",
+    },
     latitude: estimated(
       48 + 2 / 60,
       `Russian Wikipedia, «Восток-3»: 48°02′ N, a published figure of unknown origin (spacefacts.de, also unsourced: 48°03′32″). ${BSE}: «в районе г. Каркаралинск Карагандинской области»; the landing was planned «в районе Караганды» (${KAMANIN}, 14 August)`,

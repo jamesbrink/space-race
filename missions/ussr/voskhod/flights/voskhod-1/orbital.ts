@@ -403,6 +403,11 @@ export const orbital: VostokRecord = {
     ],
   },
   landing: {
+    aimed: {
+      confidence: 'assumed',
+      source:
+        "The descent cycle was begun on the ground's command, its instant worked for the landing in the planned region, as on every flight of the type; this flight's own figures for the planned place are not in anything read, so the place it came down is taken for the place its burn was timed for",
+    },
     latitude: estimated(
       54 + 2 / 60,
       `${SPACEFACTS}: no survey is stated, and the point is 311 km from Kustanay on a bearing of 71°, so it may be worked from the distance`,

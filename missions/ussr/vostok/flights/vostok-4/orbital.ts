@@ -362,6 +362,11 @@ export const orbital: VostokRecord = {
     ],
   },
   landing: {
+    aimed: {
+      confidence: 'assumed',
+      source:
+        "The descent cycle was begun on the ground's command, its instant worked for the landing in the planned region, as on every flight of the type; this flight's own figures for the planned place are not in anything read, so the place it came down is taken for the place its burn was timed for",
+    },
     latitude: estimated(
       48 + 9 / 60,
       `Russian Wikipedia, «Восток-4»: 48°09′ N, a published figure of unknown origin (spacefacts.de, also unsourced: 48°10′00″, "193 km south-west of Karaganda"). ${BSE}: «в районе посёлка Атасу Карагандинской области»`,

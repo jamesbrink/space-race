@@ -442,6 +442,11 @@ export const orbital: VostokRecord = {
     ],
   },
   landing: {
+    aimed: {
+      confidence: 'assumed',
+      source:
+        "The descent cycle was begun on the ground's command, its instant worked for the landing in the planned region, as on every flight of the type; this flight's own figures for the planned place are not in anything read, so the place it came down is taken for the place its burn was timed for",
+    },
     latitude: doc(
       53 + 16 / 60 + 18 / 3600,
       'spacefacts.de and RussianSpaceWeb: 53°16′18″ N; McDowell to a hundredth of a degree. No survey is stated',

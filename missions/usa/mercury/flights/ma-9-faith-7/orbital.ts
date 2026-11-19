@@ -324,6 +324,11 @@ export const orbital: MercuryAtlasRecord = {
   },
   lands: { on: 'sea', ship: 'the capsule' },
   landing: {
+    aimed: {
+      confidence: 'assumed',
+      source:
+        "The retrofire's instant was worked by the ground's computers for the planned landing area and counted down to the pilot, as on every Mercury orbital flight; the capsule came down within a few miles of it, so the place it came down is taken for the place its burn was timed for. Cooper fired the rockets by hand on that count",
+    },
     latitude: doc(
       27 + 22.6 / 60,
       `${SP45}, Table 8-III, p. 135: where the capsule was picked up, 27°22.6′ N 176°35.3′ W; predicted after retrofire 27°22′ N 176°29′ W`,

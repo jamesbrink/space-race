@@ -469,6 +469,11 @@ export const orbital: VostokRecord = {
     ],
   },
   landing: {
+    aimed: {
+      confidence: 'assumed',
+      source:
+        "The descent cycle was begun on the ground's command, its instant worked for the landing in the planned region, as on every flight of the type; this flight's own figures for the planned place are not in anything read, so the place it came down is taken for the place its burn was timed for",
+    },
     latitude: doc(50 + 51 / 60, `${FAI}, p. 222: «50°51′ сев. широты». The memorial: 50°51′10″ N`),
     longitude: doc(47 + 1.5 / 60, `${FAI}, p. 222: «47°01,5′ вост. долготы»`),
     at: doc(MSK(34, 18), `${FAI}, p. 222: ship and pilot both 07:18 UTC`),

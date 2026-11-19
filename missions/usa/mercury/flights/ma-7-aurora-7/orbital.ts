@@ -320,6 +320,8 @@ export const orbital: MercuryAtlasRecord = {
     ],
   },
   lands: { on: 'sea', ship: 'the capsule' },
+  // (not `aimed`: the retrofire was 3 s late and 25 degrees off in yaw, and the capsule came down 250 miles beyond the planned
+  // place, which is not in this record: its burn is flown at the recorded instant in the recorded attitude)
   landing: {
     latitude: doc(
       19 + 30 / 60,
