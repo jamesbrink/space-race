@@ -10,3 +10,9 @@ Schirra, Eisele and Cunningham wore the A7L in its Earth-orbital configuration. 
 ## Simplifications
 
 The fits, helmet curvature, small connectors, boot lacing and seated poses are photographic estimates. Faces use shared human geometry. Soft-goods folds, individual stitching, portable ventilators and detailed insignia are omitted. The seated figures depict the launch configuration throughout the exhibit.
+
+## Apollo 16 launch garments
+
+Young and Duke wore the A7LB-EV with a side-entry closure and the flexible waist needed to sit on the rover. Mattingly wore the rear-entry A7LB-CMP, which he later used with an umbilical to retrieve film from Casper. The white launch garments, clear pressure helmets, dark gloves and Young’s red identification bands follow the suit-up photographs from April 16. The worn heights are reconstructed from the individual statures in the flight press kit. Young was 69 inches tall, Mattingly 70 and Duke 71½. The helmet and boot add to each figure’s unsuited height. [Apollo 16 Press Kit, pp. 126, 147, 150 and 152](https://science.nasa.gov/wp-content/uploads/2023/09/Apollo_16.pdf) · [NASA launch-day photographs, including 72-HC-305 and KSC-72PC-0170](https://www.nasa.gov/history/apollo-16-launches-to-the-moon/)
+
+The flight emblem on the left breast follows Duke’s garment in the White Room photograph. The texture is a reduced copy of NASA’s mission insignia, S71-56246. Its diameter of about 8.4 cm and its placement are estimates. The figures share the same facial geometry. Stitching, the portable ventilators used on the way to the pad and the small sleeve insignia are omitted. [NASA S71-56246](https://www.nasa.gov/wp-content/uploads/2022/04/apollo_16_launch_2_patch_s71-56246.jpg)
