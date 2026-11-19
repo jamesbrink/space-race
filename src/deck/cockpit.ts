@@ -520,7 +520,7 @@ export class Cockpit extends Deck {
     const left = new Set(this.flight.flies!.drops.filter((d) => d.on !== undefined && released.has(d.on)).flatMap((d) => d.nodes));
     const met = site.meet(pose(before), pose(state), (node) => left.has(node));
     let next = met.r === state.r ? state : { ...state, r: met.r, v: met.v, q: met.q, w: met.w };
-    // the first blow hard enough breaks parts free, as one from something shed does (sim/shed.ts `ballistic`)
+    // the first blow hard enough breaks parts free, as one from something shed does (sim/shed.ts `Sheds.broke`)
     const sheds = this.run.sheds!;
     for (const hit of met.hits) {
       if (!hit.activeBroken) continue;
