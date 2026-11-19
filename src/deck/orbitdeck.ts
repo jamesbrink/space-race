@@ -2636,7 +2636,7 @@ export class OrbitDeck extends Deck {
     set(
       'mode',
       this.mine !== null
-        ? `Not the record’s${alone ? '' : !this.guidance ? ': hands only' : leans ? `: law leaned${leans}` : ''}`
+        ? `Not the record’s${alone ? '' : !this.guidance ? (this.hold ? (s.powered ? ': hold' : ': hold, nothing to steer with') : ': hands only') : leans ? `: law leaned${leans}` : ''}`
         : this.downMine !== null
           ? `Not the record’s: the descent by hand`
           : this.free
