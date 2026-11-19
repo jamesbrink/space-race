@@ -1,7 +1,8 @@
-// src/sim/lever.ts: the flight deck's throttle lever, driven against a vehicle that throttles. Freedom 7's A-7 is
-// fixed thrust, so its deck hides the lever; the fixture is its plan with an engine that has a range and two
-// starts (not a real engine, and it says so). What is held: the lever's figure is the engine's throttle the tick
-// after it is moved, through the same autopilot and `blend` the cockpit flies by.
+// src/sim/lever.ts: the flight deck's throttle lever, driven against a vehicle that throttles. The fixture is Freedom 7's
+// plan with an engine that has a documented range and two starts (not a real engine, and it says so); Freedom 7's own
+// A-7 ran at one thrust, and has the game's range (`handRange`, estimated), which the last tests fly. What is held: the
+// lever's figure is the engine's throttle the tick after it is moved, through the same autopilot and `blend` the cockpit
+// flies by.
 import assert from 'node:assert/strict';
 import { natured } from './ballistic.mjs';
 import { ballisticOf } from '../src/sim/fly.ts';
@@ -9,7 +10,7 @@ import { test } from 'node:test';
 import { flight } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { autopilot, blend } from '../src/sim/autopilot.ts';
 import { G0 } from '../src/world/bodies.ts';
-import { Lever, NOTCH } from '../src/sim/lever.ts';
+import { HAND_LEAST, handRange, Lever, NOTCH } from '../src/sim/lever.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { skyOf } from '../src/sim/air.ts';
@@ -114,4 +115,39 @@ test('the sequencer’s cutoff is not undone by a lever left where it was; with 
   hand.lit = true;
   s = until(v.start(), deck(hand, false), at + 2);
   assert.ok(!s.cutoff, 'nobody cut it: it burns on');
+});
+
+test('every liquid engine has a lever: its own range, or the game’s where it ran at one thrust; a solid has none', () => {
+  assert.deepEqual([handRange(engine).least, handRange(engine).most, handRange(engine).real], [0.4, 1, true], 'the fixture’s own range');
+  const own = handRange(ballisticOf(flight.plan).engine);
+  assert.ok(own && !own.real && own.confidence === 'estimated', 'the A-7 ran at one thrust: the range is the game’s, and says so');
+  assert.equal(own.least, HAND_LEAST);
+  assert.match(own.source, /one thrust/);
+  assert.ok(own.fixed, 'no setting of it on record');
+  assert.equal(
+    handRange({ kind: 'liquid', throttle: { curve: {} } }).fixed,
+    false,
+    'throttled by its programme: not fixed, the range still the game’s',
+  );
+  assert.equal(handRange({ kind: 'solid' }), null, 'a solid: no lever');
+});
+
+test('Freedom 7’s own engine follows the lever over the game’s range, and under it is cut and cannot start again', () => {
+  const real = vehicle(flight.plan, SITE, SEA);
+  const lever = new Lever(handRange(ballisticOf(flight.plan).engine));
+  lever.lit = true;
+  const auto = autopilot(real, { launch: false, sequence: true });
+  const pilot = (s) => blend(auto(s), { throttle: lever.asks() });
+  let s = real.start();
+  while (s.t < 10) s = real.tick(s, pilot);
+  assert.equal(s.throttle, 1, 'full: as flown');
+  lever.move(0.7);
+  s = real.tick(s, pilot);
+  assert.equal(s.throttle, 0.7, 'seven tenths, which the real engine could not do');
+  lever.move(HAND_LEAST - 0.05);
+  s = real.tick(s, pilot);
+  assert.ok(s.cutoff && s.throttle === 0, 'under the least: cut');
+  lever.move(1);
+  for (let i = 0; i < 10; i++) s = real.tick(s, pilot);
+  assert.ok(s.cutoff && s.starts === 1, 'it starts once');
 });
