@@ -989,7 +989,7 @@ export class FlightShow {
     const upTo = flying ? Math.min(t, ascent.cutoff) : -1;
     const at = new THREE.Vector3();
     const turn = new THREE.Quaternion();
-    while ((trail.laid + 1) * TRAIL_STEP <= upTo) {
+    while (!trail.full && (trail.laid + 1) * TRAIL_STEP <= upTo) {
       const born = (trail.laid + 1) * TRAIL_STEP;
       if (!ascent.place(born, pad, at, turn)) break;
       at.add(nozzle.clone().applyQuaternion(turn));

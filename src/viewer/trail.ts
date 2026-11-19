@@ -255,6 +255,11 @@ export class Trail implements Smoke {
     return this.count;
   }
 
+  /** Whether it holds as many points as it can: a flight that stays low under power or falling for minutes lays no more, and its laying must stop. */
+  get full(): boolean {
+    return this.count >= MOST;
+  }
+
   /**
    * Put the trail's live end at the nozzle now, after the last point laid: points are half a
    * second apart, which at speed is hundreds of metres, and the trail must leave the fire itself.
