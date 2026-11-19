@@ -1,5 +1,6 @@
 /** A model and its parts: what each is, how it moves, its views, its cabin and its mechanisms. */
 import type { Confidence, Measure } from '../measure.ts';
+import type { RoverSite } from '../world/lunar-terrain.ts';
 import type { Burns } from './sim.ts';
 
 /** A hard-dock interface. The frame is at the mating plane, +Y outward, +Z along the clocking datum. Lengths are in metres. Each ring hinge closes about local +Z. Each nose hook extends along local +X. */
@@ -606,7 +607,7 @@ export interface ModelDef {
   /** A separate gallery configuration of hardware that has another model at the launch site. */
   galleryOnly?: boolean;
   /** The deployed lunar rover's surface, and its seated EVA crew shown while driving. */
-  lunarRover?: { site: 'hadley' | 'descartes'; riders?: string };
+  lunarRover?: { site: RoverSite; riders?: string };
   /** The complete spacecraft stands inside an opaque fairing on the assembled launch vehicle. */
   enclosedSpacecraft?: boolean;
   /**

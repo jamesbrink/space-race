@@ -6,13 +6,34 @@
       "mission": 15,
       "landing": [26.13239, 3.6333],
       "sunAt": "1971-08-01T11:48:48Z",
-      "lander": "models/usa/apollo/apollo-15/falcon.glb"
+      "lander": "models/usa/apollo/apollo-15/falcon.glb",
+      "label": "Hadley–Apennine"
     },
     "descartes": {
       "mission": 16,
       "landing": [-8.9734, 15.5011],
       "sunAt": "1972-04-22T16:33:35Z",
-      "lander": "models/usa/apollo/apollo-16/orion.glb"
+      "lander": "models/usa/apollo/apollo-16/orion.glb",
+      "label": "Descartes Highlands"
+    },
+    "taurus-littrow": {
+      "mission": 17,
+      "stereo": ["APOLLO17", "APOLLO17_1"],
+      "landerBearing": 270,
+      "unloaded": [
+        "LMTraverseGravimeter",
+        "LMSEP",
+        "LMSeismicCargo",
+        "LMCosmicRayDetector",
+        "LM12_QuadIIIBlanket",
+        "LM12_RoverThermalCover",
+        "LM12_EnlargedMESACover",
+        "LMSurfaceEquipment"
+      ],
+      "label": "Taurus–Littrow",
+      "landing": [20.1911, 30.7723],
+      "sunAt": "1972-12-13T00:17:02Z",
+      "lander": "models/usa/apollo/apollo-17/challenger.glb"
     }
   }
 }

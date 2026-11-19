@@ -145,8 +145,17 @@ export async function lunarDrivingGround(site: RoverSite, signal?: AbortSignal):
     const nx = terrain.height(lx - span, 0) - terrain.height(lx + span, 0);
     const nz = terrain.height(lx, -span) - terrain.height(lx, span);
     lander.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(nx, span * 2, nz).normalize());
+    // The mesh's +X points through the forward hatch; the local terrain's +X is east.
+    if ('landerBearing' in def) lander.rotateY((90 - def.landerBearing) * DEG);
     lander.position.set(lx, terrain.height(lx, 0), 0);
-    const unloaded = new Set(['LMRover', 'LMRoverPallet', 'LMRetroreflector', 'LMFarUV', 'LMScienceBay']);
+    const unloaded = new Set([
+      'LMRover',
+      'LMRoverPallet',
+      'LMRetroreflector',
+      'LMFarUV',
+      'LMScienceBay',
+      ...('unloaded' in def ? def.unloaded : []),
+    ]);
     lander.traverse((node) => {
       if (unloaded.has(node.name) || node.name.includes('ProbeHinge')) node.visible = false;
       if ((node as THREE.Mesh).isMesh) node.castShadow = node.receiveShadow = true;
