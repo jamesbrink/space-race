@@ -34,7 +34,7 @@ def build(parts, metal, panel, dark, white, *, spacecraft=3):
         return
     # MSC-00126 A.2.1: LM-4 divided its four batteries equally between the
     # two forward quadrants. Exact case stations within each bay are estimated.
-    locations = [(63, y, z) for y in (-37, 37) for z in (72, 106)] if spacecraft == 4 else [(x, -49, z) for x in (-54, -37) for z in (78, 99)]
+    locations = [(63, y, z) for y in (-37, 37) for z in (72, 106)] if spacecraft >= 4 else [(x, -49, z) for x in (-54, -37) for z in (78, 99)]
     batteries(parts["LMDescentPower"], locations, metal, panel, dark)
     batteries(parts["LMAscentPower"], [(-66, y, 174) for y in (-11, 11)], metal, panel, dark)
     for name, locations in (

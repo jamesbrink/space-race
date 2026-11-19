@@ -52,6 +52,7 @@ export function lunarGallery(
   seats: ModelDef['seats'],
   stageParts: [string, string, string, string, string][],
   facts: Record<string, Part['facts']>,
+  forwardProbe = true,
 ) {
   const deployedParts: Part[] = [...stageParts]
     .sort((a, b) => Number(a[2] === upper) - Number(b[2] === upper))
@@ -78,7 +79,7 @@ export function lunarGallery(
       travel,
       { kind: 'slide', by: [0, 5, 0], from: 0.65, to: 0.88 },
       ...(p.group === upper ? [stage] : []),
-      ...(p.node === 'LMLandingGear' ? [...gear, ...probes] : []),
+      ...(p.node === 'LMLandingGear' ? [...gear, ...(forwardProbe ? probes : probes.slice(1))] : []),
       ...(p.node === 'LMEquipment'
         ? [
             {

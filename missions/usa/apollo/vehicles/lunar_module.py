@@ -135,7 +135,7 @@ def descent(parent, foil, amber, dark, alloy, spacecraft):
         side.material_index = (
             1 if ring == 3 or ring == 2 and facet in (0, 1, 2, 4, 6, 7) or ring == 1 and facet in (1, 3, 5) else 2 if facet in (0, 4, 6) else 0
         )
-    if spacecraft == 4:
+    if spacecraft >= 4:
         # S69-17807: black corner panels over broad gold-edged blankets.
         for side in blanket.data.polygons:
             ring, facet = divmod(side.index, 8)
@@ -169,7 +169,7 @@ def descent(parent, foil, amber, dark, alloy, spacecraft):
         u = Vector((-sign, 1, 0)).normalized()
 
         def decal(dx, dz, depth, sgn=sign, t=u, n=normal):
-            if spacecraft == 4 and sgn < 0:
+            if spacecraft >= 4 and sgn < 0:
                 dx += 12  # Flag toward one edge of the MESA bay, estimated.
             return at((58.5, sgn * 58.5, 77)) + at(t * dx + Vector((0, 0, dz)) + n * depth)
 
@@ -181,8 +181,8 @@ def descent(parent, foil, amber, dark, alloy, spacecraft):
                 legend.add([decal(v[0] / IN - 9, v[1] / IN + z, 0.55) for v in verts], faces)
         else:
             flag.add(vs, [(0, 1, 2, 3)], [(0, 0), (1, 0), (1, 1), (0, 1)])
-    mark_shells([badges.build("LM3_CountryPlacard", dark if spacecraft == 4 else alloy, parent).name])
-    mark_shells([legend.build("LM3_CountryLetters", alloy if spacecraft == 4 else dark, parent).name])
+    mark_shells([badges.build("LM3_CountryPlacard", dark if spacecraft >= 4 else alloy, parent).name])
+    mark_shells([legend.build("LM3_CountryLetters", alloy if spacecraft >= 4 else dark, parent).name])
     if spacecraft == 4:
         # S69-17807 shows a tall metallic bay face beside the gold-edged black
         # closure. These capture its external subdivision, not the ground covers.
@@ -284,7 +284,7 @@ def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
         hinge.location = at((KNEE * math.cos(az), KNEE * math.sin(az), KNEE_Z))
         hinge.rotation_euler = (Matrix.Rotation(az, 4, "Z") @ Matrix.Rotation(math.radians(0 if deployed else FOLD), 4, "Y")).to_euler()
         strut, piston, pad = MeshBuilder(), MeshBuilder(), MeshBuilder()
-        if spacecraft == 4:
+        if spacecraft >= 4:
             # M-932-69-10 p.45: plume shield added over the deployment mechanism.
             # A faceted shallow hood represents the envelope; profile estimated.
             # The inboard lip covers the knee while the outboard edge clears the
@@ -300,16 +300,17 @@ def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
             tube(piston, (-2, side * 3, -5), (-10, side * 22, -28), 1.15)
         pad.lathe(prof([(0, -2), (10, -2), (PAD_RADIUS, 2.1), (PAD_RADIUS, 3.4), (10, 0.5), (2, 1), (0, 2)]), 40, matrix=Matrix.Translation(at(foot)))
         pad.build(f"LM3_Footpad_{i}", metal, hinge)["diameter_in"] = 2 * PAD_RADIUS
-        probe = group(f"LM3_ProbeHinge_{i}", hinge)
-        probe.location = at((foot[0] + 11, 0, foot[2] + 1))
-        probe.rotation_euler.y = math.radians(0 if deployed else 158)
-        sensor = MeshBuilder()
-        sensor.tube(at((0, 0, 0)), at((3, 0, -14)), 0.7 * IN, caps=False)
-        sensor.tube(at((3, 0, -14)), at((3, 0, -67)), 0.55 * IN, caps=False)
-        sensor.build(f"LM3_SurfaceProbe_{i}", metal, probe)
+        if spacecraft != 5 or i != 0:
+            probe = group(f"LM3_ProbeHinge_{i}", hinge)
+            probe.location = at((foot[0] + 11, 0, foot[2] + 1))
+            probe.rotation_euler.y = math.radians(0 if deployed else 158)
+            sensor = MeshBuilder()
+            sensor.tube(at((0, 0, 0)), at((3, 0, -14)), 0.7 * IN, caps=False)
+            sensor.tube(at((3, 0, -14)), at((3, 0, -67)), 0.55 * IN, caps=False)
+            sensor.build(f"LM3_SurfaceProbe_{i}", metal, probe)
         strut.build(f"LM3_GoldStrut_{i}", gold, hinge)
         if i == 0:
-            ladder = piston if spacecraft == 4 else MeshBuilder()
+            ladder = piston if spacecraft >= 4 else MeshBuilder()
             for y in (-7, 7):
                 tube(ladder, (10, y, -5), (50, y, -89), 0.8)
             for rung in range(9):
@@ -490,7 +491,7 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
 
 
 def build(iu_top=0, *, deployed=False, spacecraft=3):
-    if spacecraft not in (3, 4):
+    if spacecraft not in (3, 4, 5):
         raise ValueError(f"Unsupported lunar module LM-{spacecraft}")
     foil = material("lm3-blanket-gold", (0.64, 0.29, 0.042), metallic=0.68, roughness=0.43)
     amber = material("lm3-copper-blanket", (0.41, 0.132, 0.029), metallic=0.50, roughness=0.52)
