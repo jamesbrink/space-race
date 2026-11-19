@@ -56,6 +56,12 @@ pub fn run(options: Options) -> AppExit {
     let window = Window {
         title: format!("Space Race · {}", flight.name),
         resolution: WindowResolution::new(options.size.0, options.size.1),
+        // (a frame for a file is drawn only while the window is shown: keep it in front)
+        window_level: if options.shot.is_some() {
+            bevy::window::WindowLevel::AlwaysOnTop
+        } else {
+            bevy::window::WindowLevel::Normal
+        },
         ..default()
     };
     App::new()
