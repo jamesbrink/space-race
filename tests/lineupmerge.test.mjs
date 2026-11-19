@@ -98,13 +98,37 @@ function triangles(root, only = () => true) {
   return out;
 }
 
-test('a material that is only paint is paint; one with a picture, glass, a glow or see-through keeps itself', () => {
-  assert.deepEqual(paintOf(paint(0xff0000, { side: THREE.DoubleSide })), { colour: [1, 0, 0], roughness: 0.4, metalness: 0.2, both: true });
+test('a material that is only paint is paint; one with a picture, glass or see-through keeps itself', () => {
+  assert.deepEqual(paintOf(paint(0xff0000, { side: THREE.DoubleSide })), {
+    colour: [1, 0, 0],
+    emission: [0, 0, 0],
+    roughness: 0.4,
+    metalness: 0.2,
+    both: true,
+  });
   assert.equal(paintOf(paint(0xffffff, { map: new THREE.Texture() })), null);
   const glass = paint(0xffffff);
   glass.name = 'glass-visor';
   assert.equal(paintOf(glass), null);
-  assert.equal(paintOf(paint(0xffffff, { emissive: 0x330000 })), null);
+  const target = paint(0xffffff, { emissive: 0x330000, emissiveIntensity: 0.55 });
+  const pair = new THREE.Group();
+  const tile = new THREE.PlaneGeometry(1, 1);
+  pair.add(new THREE.Mesh(tile, paint(0xffffff)), new THREE.Mesh(tile, target));
+  const joined = join(pair, []);
+  assert.equal(joined.pieces.length, 1);
+  assert.deepEqual(
+    joined.pieces[0].paints.map((p) => p.emission[0]),
+    [0, target.emissive.r * 0.55],
+  );
+  const bright = paintOf(target);
+  assert.deepEqual(bright.emission, [target.emissive.r * 0.55, 0, 0]);
+  for (const name of ['physical', 'toon']) {
+    const shader = { ...THREE.ShaderLib[name], uniforms: {} };
+    paintMaterial([bright]).onBeforeCompile(shader);
+    assert.equal(shader.uniforms.uEmission.value[0], Math.fround(bright.emission[0]));
+    assert.match(shader.fragmentShader, /totalEmissiveRadiance \+= uEmission/);
+  }
+  assert.equal(paintOf(paint(0xffffff, { emissiveMap: new THREE.Texture() })), null);
   assert.equal(paintOf(paint(0xffffff, { transparent: true, opacity: 0.5 })), null);
   assert.equal(paintOf(new THREE.MeshPhysicalMaterial()), null);
   assert.equal(paintOf(new THREE.MeshBasicMaterial()), null);

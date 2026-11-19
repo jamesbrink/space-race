@@ -9,7 +9,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
  *   or both (`paintOf`). Every mesh in one of those is joined into one geometry that carries, at each corner, which of
  *   them it wears (`paint`, a byte), and is drawn in one material that looks the paint up (`paintMaterial`: the
  *   colours and surfaces are uniforms, as exact as the GLB's own figures). A material that is more than paint (a
- *   picture, glass, a glow) keeps itself, and its meshes are joined among themselves.
+ *   picture or glass) keeps itself, and its meshes are joined among themselves.
  * - **Small.** A joined geometry's corners are kept in ten bytes where the GLB's take thirty-two: the position in three
  *   shorts across the piece's own box (to a sixty-five-thousandth of its longest side: under 1.5 mm on a 44 m vehicle,
  *   finer than the Draco compression it arrived in), the normal in three signed bytes, the paint in one. A piece holds
@@ -30,6 +30,7 @@ export const CORNERS = 65535;
 /** A material that is nothing but paint. */
 export interface Paint {
   colour: [number, number, number];
+  emission: [number, number, number];
   roughness: number;
   metalness: number;
   /** Drawn from both sides (the GLB's `doubleSided`); otherwise its back faces are not drawn. */
@@ -43,15 +44,24 @@ export function paintOf(material: THREE.Material): Paint | null {
   const maps = [m.map, m.emissiveMap, m.normalMap, m.bumpMap, m.roughnessMap, m.metalnessMap, m.aoMap, m.alphaMap, m.lightMap];
   if (maps.some(Boolean) || m.displacementMap || m.envMap) return null;
   if (m.transparent || m.alphaTest > 0 || m.opacity < 1 || m.vertexColors || m.flatShading || m.wireframe) return null;
-  if ((m.emissive.r || m.emissive.g || m.emissive.b) && m.emissiveIntensity > 0) return null;
   if (m.envMapIntensity !== 1 || m.side === THREE.BackSide || m.polygonOffset || !m.depthWrite || !m.depthTest || !m.colorWrite)
     return null;
   if (m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile || m.clippingPlanes?.length) return null;
-  return { colour: [m.color.r, m.color.g, m.color.b], roughness: m.roughness, metalness: m.metalness, both: m.side === THREE.DoubleSide };
+  return {
+    colour: [m.color.r, m.color.g, m.color.b],
+    emission: [m.emissive.r * m.emissiveIntensity, m.emissive.g * m.emissiveIntensity, m.emissive.b * m.emissiveIntensity],
+    roughness: m.roughness,
+    metalness: m.metalness,
+    both: m.side === THREE.DoubleSide,
+  };
 }
 
 const samePaint = (a: Paint, b: Paint): boolean =>
-  a.colour.every((c, i) => c === b.colour[i]) && a.roughness === b.roughness && a.metalness === b.metalness && a.both === b.both;
+  a.colour.every((c, i) => c === b.colour[i]) &&
+  a.emission.every((c, i) => c === b.emission[i]) &&
+  a.roughness === b.roughness &&
+  a.metalness === b.metalness &&
+  a.both === b.both;
 
 /**
  * The material a joined piece is drawn in: the stages' own standard material, drawn from both sides, which takes each
@@ -62,7 +72,9 @@ const samePaint = (a: Paint, b: Paint): boolean =>
 export function paintMaterial(paints: readonly Paint[]): THREE.MeshStandardMaterial {
   const colour = new Float32Array(PAINTS * 4);
   const surface = new Float32Array(PAINTS * 4);
+  const emission = new Float32Array(PAINTS * 3);
   paints.forEach((p, i) => {
+    emission.set(p.emission, i * 3);
     colour.set([...p.colour, p.roughness], i * 4);
     surface.set([p.metalness, p.both ? 1 : 0], i * 4);
   });
@@ -75,6 +87,7 @@ export function paintMaterial(paints: readonly Paint[]): THREE.MeshStandardMater
   });
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uPaint = { value: colour };
+    shader.uniforms.uEmission = { value: emission };
     shader.uniforms.uSurface = { value: surface };
     shader.vertexShader = shader.vertexShader
       .replace('#include <common>', 'attribute float paint;\nvarying float vPaint;\n#include <common>')
@@ -82,7 +95,7 @@ export function paintMaterial(paints: readonly Paint[]): THREE.MeshStandardMater
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
-        `uniform vec4 uPaint[${PAINTS}];\nuniform vec4 uSurface[${PAINTS}];\nvarying float vPaint;\n#include <common>`,
+        `uniform vec4 uPaint[${PAINTS}];\nuniform vec4 uSurface[${PAINTS}];\nuniform vec3 uEmission[${PAINTS}];\nvarying float vPaint;\n#include <common>`,
       )
       .replace(
         'vec4 diffuseColor = vec4( diffuse, opacity );',
@@ -93,6 +106,7 @@ export function paintMaterial(paints: readonly Paint[]): THREE.MeshStandardMater
 	if ( paintSurface.y < 0.5 && ! gl_FrontFacing ) discard;
 	vec4 diffuseColor = vec4( diffuse * paintColour.rgb, opacity );`,
       )
+      .replace('#include <emissivemap_fragment>', 'totalEmissiveRadiance += uEmission[ paintAt ];')
       .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = paintColour.a;')
       .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = paintSurface.x;');
   };
