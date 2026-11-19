@@ -52,7 +52,18 @@ the right, level with it, and 19 m/s out. It is left on 228 by 298 km and 89.70 
 where the report has 228 by 285 km and 89.7 min. By the spacecraft's separation at
 02:55:02.4 it is 32 km along, 7 km across and 9 km below the tracked state: the
 S-IVB's venting and propellant dump, which raised the real orbit in those hours, are
-not modeled. On orbit nothing is joined to the venting or separation
+not modeled. What they were worth can be read off the record itself. The tracked
+states, read as mean orbits the way the published one is read (derived), go round
+in 89.53 min at insertion (228.0 by 280.7 km), 89.67 min at 5,669 s and 89.80 min
+at 6,390 s (the two states either side of the oxygen dump), and 89.95 min at the
+spacecraft's separation (235.0 by 315.8 km): 26 s of period gained in two and
+three-quarter hours, some 12 m/s along the motion, of which the dump's twelve
+minutes are 3.5. The run flies none of it. It is cut on the report's 89.7 min,
+which is printed to a tenth of a minute and is 10 s over what the tracked
+insertion gives, so the run begins a little high and ends a little low, and the
+two partly cancel: this is the first thing to fly next, as a force on the
+attached stage, in the run, the live vehicle and the path ahead alike. On orbit
+nothing is joined to the venting or separation
 fixes. [Postflight trajectory, §2 and Tables XI and XIII](https://apollojournals.org/afj/ap07fj/pdf/as205-postflight-traj-rep-19920075302.pdf). The
 attached stack aligns to local horizontal, later pitches nose down and holds
 that inertial attitude before release. The brief crew takeover of the S-IVB
