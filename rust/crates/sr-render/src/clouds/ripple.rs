@@ -10,6 +10,7 @@ use bevy::asset::RenderAssetUsages;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 
+use super::mips;
 use super::volume::repeating;
 use crate::noise::{fbm, worley};
 
@@ -72,14 +73,17 @@ pub fn sheet() -> Image {
     });
     let cloudlets = ranked(&raw.iter().map(|v| v[0]).collect::<Vec<_>>());
     let banks = ranked(&raw.iter().map(|v| v[1]).collect::<Vec<_>>());
-    let data = cloudlets.into_iter().zip(banks).flat_map(|(r, g)| [r, g]).collect();
-    let mut image = Image::new(
+    let level0 = cloudlets.into_iter().zip(banks).flat_map(|(r, g)| [r, g]).collect();
+    // (with its coarser copies: far off, a pixel holds many cloudlets and is their mean)
+    let (data, levels) = mips::chain(level0, side, 2);
+    let mut image = Image::new_uninit(
         Extent3d { width: SIDE, height: SIDE, depth_or_array_layers: 1 },
         TextureDimension::D2,
-        data,
         TextureFormat::Rg8Unorm,
         RenderAssetUsages::RENDER_WORLD,
     );
+    image.texture_descriptor.mip_level_count = levels;
+    image.data = Some(data);
     image.sampler = repeating();
     image
 }

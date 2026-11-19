@@ -48,6 +48,8 @@ pub struct CloudSky {
     pub volume: Handle<Image>,
     /// Where the cumulus stand ([`super::field`]).
     pub field: Handle<Image>,
+    /// How much of the field is cloud, for far off ([`super::cover`]).
+    pub cover: Handle<Image>,
     /// The deck's cloudlets and banks ([`super::ripple`]).
     pub ripple: Handle<Image>,
     /// The day's weather as a map (`crate::air::DayMap`), or a blank one.
@@ -56,8 +58,9 @@ pub struct CloudSky {
     pub targets: [Handle<Image>; 3],
 }
 
+/// The march's pipeline and what it binds.
 #[derive(Resource)]
-struct Pipe {
+pub(super) struct Pipe {
     layout: BindGroupLayoutDescriptor,
     pipeline: CachedRenderPipelineId,
     repeating: Sampler,
@@ -115,6 +118,7 @@ fn lay_pipe(
                 flat(),
                 flat(),
                 flat(),
+                flat(),
                 sampler(SamplerBindingType::Filtering),
                 sampler(SamplerBindingType::Filtering),
             ),
@@ -155,7 +159,7 @@ fn write(
 }
 
 /// The march itself: one triangle over the three targets.
-fn march(
+pub(super) fn march(
     view: ViewQuery<(&ViewPrepassTextures, &ViewUniformOffset), With<CloudView>>,
     sky: Option<Res<CloudSky>>,
     pipe: Res<Pipe>,
@@ -177,8 +181,8 @@ fn march(
     else {
         return;
     };
-    let read = [&sky.volume, &sky.field, &sky.ripple, &sky.day].map(|handle| images.get(handle));
-    let [Some(volume), Some(field), Some(ripple), Some(day)] = read else { return };
+    let read = [&sky.volume, &sky.field, &sky.cover, &sky.ripple, &sky.day].map(|handle| images.get(handle));
+    let [Some(volume), Some(field), Some(cover), Some(ripple), Some(day)] = read else { return };
     let [Some(cloud), Some(haze), Some(reach)] = sky.targets.each_ref().map(|handle| images.get(handle))
     else {
         return;
@@ -193,6 +197,7 @@ fn march(
             depth,
             &volume.texture_view,
             &field.texture_view,
+            &cover.texture_view,
             &ripple.texture_view,
             &day.texture_view,
             &pipe.repeating,

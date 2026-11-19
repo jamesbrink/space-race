@@ -41,11 +41,17 @@ pub struct Plume {
     pub ground: f32,
 }
 
+/// Whether the fires are drawn at all: an A/B switch, for measuring what they cost a frame.
+pub const ON: bool = true;
+
 /// Draws every [`Plume`].
 pub struct PlumePlugin;
 
 impl Plugin for PlumePlugin {
     fn build(&self, app: &mut App) {
+        if !ON {
+            return;
+        }
         app.add_plugins(MaterialPlugin::<PlumeMaterial>::default())
             .add_systems(Update, draw::kindle)
             .add_systems(PostUpdate, (draw::burn, glare::shine).before(Place));

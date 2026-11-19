@@ -23,7 +23,13 @@ pub struct Forms {
     positions: Vec<[f32; 3]>,
     normals: Vec<[f32; 3]>,
     colours: Vec<[f32; 4]>,
+    /// Each vertex's height above its plant's foot (m) and its plant's own number, for the wind
+    /// (`shaders/earth_sway.wesl`).
+    sway: Vec<[f32; 2]>,
     indices: Vec<u32>,
+    /// The foot and own number of the plant being built.
+    foot: Vec3,
+    own: f32,
 }
 
 impl Forms {
@@ -31,7 +37,14 @@ impl Forms {
         self.positions.push(at.to_array());
         self.normals.push(normal.normalize_or(Vec3::Y).to_array());
         self.colours.push(colour.extend(1.0).to_array());
+        self.sway.push([(at.y - self.foot.y).max(0.0), self.own]);
         (self.positions.len() - 1) as u32
+    }
+
+    /// Begins a plant standing at `foot`.
+    fn begin(&mut self, foot: Vec3, own: f32) {
+        self.foot = foot;
+        self.own = own;
     }
 
     /// Whether nothing has been planted.
@@ -40,38 +53,53 @@ impl Forms {
         self.indices.is_empty()
     }
 
-    /// A shrub: a mound `radius` across its widest and `height` high, of seven sides, widest below its middle.
+    /// A shrub: a mound `radius` across its widest and `height` high, widest below its middle, its outline broken
+    /// into lobes (a crown is several clumps of leaves, not one ball) and its sides rounded, not faceted.
     pub fn mound(&mut self, foot: Vec3, radius: f32, height: f32, leaf: Vec3, own: f32) {
-        const SIDES: u32 = 7;
-        const RINGS: [(f32, f32); 3] = [(0.0, 0.8), (0.4, 1.0), (0.8, 0.62)];
-        let heart = foot + Vec3::Y * (0.25 * height);
+        self.begin(foot, own);
+        const SIDES: u32 = 11;
+        const RINGS: [(f32, f32); 5] = [(0.0, 0.78), (0.22, 0.98), (0.48, 1.0), (0.72, 0.82), (0.9, 0.48)];
+        let heart = foot + Vec3::Y * (0.3 * height);
         let first = self.positions.len() as u32;
+        // (three to five lobes round it, each its own size)
+        let lobes = 3.0 + (part(own, 60) * 3.0).floor();
         for (ring, (up, out)) in RINGS.into_iter().enumerate() {
             for side in 0..SIDES {
                 let n = ring as u32 * SIDES + side;
                 let angle = TAU * (side as f32 + 0.5 * ring as f32 + part(own, 0)) / SIDES as f32;
-                let reach = radius * out * (0.78 + 0.44 * part(own, n + 1));
-                let lift = up * height * (0.85 + 0.3 * part(own, n + 20));
+                let lobe = 0.86 + 0.2 * (angle * lobes + part(own, 61) * TAU).sin();
+                let reach = radius * out * lobe * (0.9 + 0.2 * part(own, n + 1));
+                let lift = up * height * (0.9 + 0.2 * part(own, n + 20)) * (0.92 + 0.12 * lobe);
                 let at = foot + Vec3::new(angle.cos() * reach, lift, angle.sin() * reach);
                 // (a crown is leaves, not a ball: its sides take nearly the light its top does)
                 let facing = (at - heart).normalize_or(Vec3::Y) + Vec3::Y * 1.2;
-                self.vertex(at, facing, leaf * (0.7 + 0.5 * up.powf(0.7)) * (0.85 + 0.3 * part(own, n + 40)));
+                self.vertex(
+                    at,
+                    facing,
+                    leaf * (0.7 + 0.5 * up.powf(0.7)) * (0.88 + 0.24 * part(own, n + 40)),
+                );
             }
         }
         let top = self.vertex(foot + Vec3::Y * height, Vec3::Y, leaf * 1.2);
-        for ring in 0..2 {
+        let last = RINGS.len() as u32 - 1;
+        for ring in 0..last {
             for side in 0..SIDES {
                 let (a, b) = (first + ring * SIDES + side, first + ring * SIDES + (side + 1) % SIDES);
                 self.indices.extend([a, a + SIDES, b, b, a + SIDES, b + SIDES]);
             }
         }
         for side in 0..SIDES {
-            self.indices.extend([first + 2 * SIDES + side, top, first + 2 * SIDES + (side + 1) % SIDES]);
+            self.indices.extend([
+                first + last * SIDES + side,
+                top,
+                first + last * SIDES + (side + 1) % SIDES,
+            ]);
         }
     }
 
     /// A saw palmetto: five to seven fans, each a pleated half-disc on the end of its stalk, leaning out.
     pub fn fans(&mut self, foot: Vec3, radius: f32, height: f32, leaf: Vec3, own: f32) {
+        self.begin(foot, own);
         const RIM: u32 = 7;
         let fans = 5 + (part(own, 0) * 3.0) as u32;
         for fan in 0..fans {
@@ -84,6 +112,10 @@ impl Forms {
             let blade = radius * (0.42 + 0.2 * part(own, fan + 31));
             let face = stalk.cross(across) + Vec3::Y * 0.6;
             let tone = leaf * (0.85 + 0.4 * part(own, fan + 41));
+            // (its stalk, a thin blade of its own from the foot)
+            let stem = self.vertex(foot - across * 0.012, face, tone * 0.5);
+            self.vertex(foot + across * 0.012, face, tone * 0.5);
+            self.indices.extend([stem, stem + 1, stem + 2]);
             let centre = self.vertex(hub, face, tone * 0.75);
             for point in 0..RIM {
                 let sweep = (point as f32 / (RIM - 1) as f32 - 0.5) * 3.4;
@@ -99,6 +131,7 @@ impl Forms {
 
     /// A cabbage palm: a straight trunk, and a head of nine fronds arching out and down from its top.
     pub fn palm(&mut self, foot: Vec3, height: f32, leaf: Vec3, own: f32) {
+        self.begin(foot, own);
         const SIDES: u32 = 5;
         let first = self.positions.len() as u32;
         for (up, girth) in [(0.0, 0.2), (height, 0.15)] {
@@ -136,27 +169,51 @@ impl Forms {
         }
     }
 
-    /// A tuft of grass: four blades from one foot, each leaning its own way.
-    pub fn tuft(&mut self, foot: Vec3, radius: f32, height: f32, colour: Vec3, own: f32) {
-        for blade in 0..4 {
-            let angle = TAU * (blade as f32 + part(own, blade)) / 4.0;
+    /// A tuft of grass: `blades` blades from one foot, each leaning its own way and its own height, the taller
+    /// ones bent over at their middle, their tips paler and drier than their bases; now and then a seed stalk
+    /// standing above the rest.
+    pub fn tuft(&mut self, foot: Vec3, radius: f32, height: f32, colour: Vec3, own: f32, blades: u32) {
+        self.begin(foot, own);
+        for blade in 0..blades {
+            let angle = TAU * (blade as f32 + part(own, blade)) / blades as f32;
             let out = Vec3::new(angle.cos(), 0.0, angle.sin());
-            let across = Vec3::new(-angle.sin(), 0.0, angle.cos()) * (0.22 * radius);
-            let tall = height * (0.6 + 0.6 * part(own, blade + 13));
-            let tip = foot + out * (radius * (0.5 + 0.8 * part(own, blade + 5))) + Vec3::Y * tall;
+            let across = Vec3::new(-angle.sin(), 0.0, angle.cos())
+                * (0.2 * radius * (0.7 + 0.6 * part(own, blade + 3)));
+            let stalk = part(own, blade + 30) < 0.08;
+            let tall = height * if stalk { 1.9 } else { 0.5 + 0.8 * part(own, blade + 13) };
+            let lean = radius * (0.4 + 0.9 * part(own, blade + 5)) * if stalk { 0.3 } else { 1.0 };
+            let base = foot + out * (0.2 * radius);
+            // (it rises, then bends over toward its tip: the more, the taller it is)
+            let mid = base + out * (lean * 0.35) + Vec3::Y * (tall * 0.6);
+            let tip = base + out * lean + Vec3::Y * (tall * (0.75 + 0.2 * part(own, blade + 17)));
             // (lit as the ground it stands on is, whichever side is seen: a blade does not flash or go black)
-            let tone = colour * (0.85 + 0.3 * part(own, blade + 9));
-            let a = self.vertex(foot + out * (0.2 * radius) - across, Vec3::Y, tone * 0.8);
-            self.vertex(foot + out * (0.2 * radius) + across, Vec3::Y, tone * 0.8);
-            self.vertex(tip, Vec3::Y, tone * 1.15);
-            self.indices.extend([a, a + 2, a + 1]);
+            let tone = colour * (0.8 + 0.4 * part(own, blade + 9));
+            let dry = tone.lerp(Vec3::new(0.45, 0.42, 0.25), 0.35 + 0.3 * part(own, blade + 21));
+            let a = self.vertex(base - across, Vec3::Y, tone * 0.75);
+            self.vertex(base + across, Vec3::Y, tone * 0.75);
+            self.vertex(mid - across * 0.6, Vec3::Y, tone);
+            self.vertex(mid + across * 0.6, Vec3::Y, tone);
+            self.vertex(tip, Vec3::Y, dry * 1.15);
+            self.indices.extend([a, a + 2, a + 1, a + 1, a + 2, a + 3, a + 2, a + 4, a + 3]);
         }
     }
 
-    /// The mesh of everything planted.
+    /// The mesh of everything planted, in a square whose corner is `corner` (metres east and north of the site),
+    /// `east` and `north` the compass in the site's frame: each vertex carries its own place as its texture
+    /// coordinate, by which the plants' shader finds the clouds' shadows on it.
     #[must_use]
-    pub fn mesh(self) -> Mesh {
+    pub fn mesh(self, corner: Vec2, east: Vec3, north: Vec3) -> Mesh {
+        let places: Vec<[f32; 2]> = self
+            .positions
+            .iter()
+            .map(|p| {
+                (corner + Vec2::new(Vec3::from_array(*p).dot(east), Vec3::from_array(*p).dot(north)))
+                    .to_array()
+            })
+            .collect();
         Mesh::new(PrimitiveTopology::TriangleList, RenderAssetUsages::RENDER_WORLD)
+            .with_inserted_attribute(Mesh::ATTRIBUTE_UV_0, places)
+            .with_inserted_attribute(Mesh::ATTRIBUTE_UV_1, self.sway)
             .with_inserted_attribute(Mesh::ATTRIBUTE_POSITION, self.positions)
             .with_inserted_attribute(Mesh::ATTRIBUTE_NORMAL, self.normals)
             .with_inserted_attribute(Mesh::ATTRIBUTE_COLOR, self.colours)
@@ -175,7 +232,7 @@ mod tests {
         forms.mound(foot, 1.5, 2.0, Vec3::ONE, 0.37);
         forms.fans(foot, 1.2, 1.4, Vec3::ONE, 0.81);
         forms.palm(foot, 6.0, Vec3::ONE, 0.12);
-        forms.tuft(foot, 0.2, 0.3, Vec3::ONE, 0.55);
+        forms.tuft(foot, 0.2, 0.3, Vec3::ONE, 0.55, 5);
         assert_eq!(forms.indices.len() % 3, 0);
         assert!(forms.indices.iter().all(|i| (*i as usize) < forms.positions.len()));
         let lowest = forms.positions.iter().map(|p| p[1]).fold(f32::MAX, f32::min);

@@ -149,9 +149,10 @@ pub const MR3_PAD_AIR: PadAir = PadAir {
         "ISD, Cape Canaveral, 09:00 EST: 5.1 m/s (the flight's own report has 12 knots at liftoff)",
     ),
     dust: Measure::estimated(
-        0.006,
-        "set so the blast leaves a thin whitish-tan haze over the concrete for 15 to 25 m, as the stills of MR-3 \
-         just off the pad have it (NASA S61-01928, 6100884): a swept apron gives up little",
+        0.02,
+        "set so the blast leaves a tan haze over the concrete that is seen through but plainly there for 20 to \
+         40 m round the launcher, as the stills of MR-3 just off the pad have it (NASA S61-01928, 6100884), and \
+         drifts on down the wind as a thin haze for minutes",
     ),
     dust_over: Measure::estimated(
         6.0,
@@ -165,6 +166,16 @@ pub const MR3_PAD_AIR: PadAir = PadAir {
     vapour_lasts: Measure::estimated(
         1.0,
         "s: by liftoff the billow of S61-02407 has gone to the thin haze of S61-01928",
+    ),
+    condenses: Measure::estimated(
+        6.0,
+        "set so the jet's strike keeps a dense white billow rolling round the tail and out over the apron until \
+         the vehicle is well up, as the stills of MR-3 and MR-4 at liftoff have it (NASA S61-02409: knobbed white \
+         cloud standing above the fins and wider than the frame; S61-03121: a grey-white bank across the whole \
+         pad, some 10 to 15 m high). Why it condenses: the A-7 burned 75 per cent ethyl alcohol in water with \
+         liquid oxygen, so its exhaust is about two fifths water by mass and far cooler per kilogram of water \
+         than a kerosene engine's, and its mixing line with a 24 C seaside morning (ERA5 at the ground, \
+         mr3_aloft.rs) can cross saturation (the Schmidt-Appleman reasoning for contrails, not worked here)",
     ),
     vents: &VENTS,
 };

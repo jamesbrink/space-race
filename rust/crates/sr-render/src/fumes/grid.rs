@@ -10,17 +10,20 @@ use bevy::render::render_resource::{Extent3d, ShaderType, TextureDimension, Text
 
 /// A cell of the coarse grid (the velocity, the pressure and the light), m. The dust and vapour are on a grid
 /// [`FINER`] times as fine.
-pub const CELL: f32 = 1.0;
-/// Coarse cells down the wind, up, and across: the box is this many metres each way. Each a multiple of 8.
-pub const CELLS: UVec3 = UVec3::new(96, 24, 64);
+pub const CELL: f32 = 1.25;
+/// Coarse cells down the wind, up, and across: the box is this many cells each way. Each a multiple of 8. Long
+/// enough down the wind that what the blast raised in its first quarter minute is still in it when the box lets
+/// go of the pad and drifts with it (`pace.rs`), and tall enough for the warm cloud to rise in.
+pub const CELLS: UVec3 = UVec3::new(176, 40, 96);
 /// Fine cells to a coarse one, each way.
 pub const FINER: u32 = 2;
 /// Coarse cells to a cell of the volume that says where there is anything at all.
 pub const COARSER: u32 = 4;
 /// The Sun's view of the box is this many cells a side.
 pub const SHADE: u32 = 256;
-/// The pad stands this far in from the box's upwind side, m: the dust drifts the rest of its length.
-pub const UPWIND: f32 = 30.0;
+/// The pad stands this far in from the box's upwind side, m: the blast's sheet runs some forty metres up the wind
+/// before the wind turns it back, and the dust drifts the rest of the box's length.
+pub const UPWIND: f32 = 60.0;
 /// The most sources a step is fed.
 pub const SOURCES: usize = 8;
 
@@ -64,8 +67,13 @@ pub struct Frame {
     pub lamp: Vec4,
     /// Its colour.
     pub lamp_colour: Vec4,
-    /// The dust a metre of fast air raises, the speed it must pass, and where the pad is in the box.
+    /// The dust a metre of fast air raises (1/m a metre) and the speed it must pass (m/s).
     pub ground: Vec4,
+    /// The box's own motion down the wind once it has let go of the pad: its speed (m/s), how fast that is
+    /// changing (m/s^2) and how far it has gone (m).
+    pub drift: Vec4,
+    /// From the world as the eye draws it to the box's frame (metres from its low corner), for the march.
+    pub box_from_world: Mat4,
     /// The sources.
     pub sources: [Fed; SOURCES],
 }
@@ -169,7 +177,23 @@ fn gusts() -> Image {
         }
     }
     let size = Extent3d { width: GUSTS, height: GUSTS, depth_or_array_layers: GUSTS };
-    Image::new(size, TextureDimension::D3, data, TextureFormat::Rgba8Unorm, RenderAssetUsages::RENDER_WORLD)
+    let mut image = Image::new(
+        size,
+        TextureDimension::D3,
+        data,
+        TextureFormat::Rgba8Unorm,
+        RenderAssetUsages::RENDER_WORLD,
+    );
+    // (the picture reads it as it repeats, to bend the fumes' outline)
+    image.sampler = ImageSampler::Descriptor(ImageSamplerDescriptor {
+        address_mode_u: ImageAddressMode::Repeat,
+        address_mode_v: ImageAddressMode::Repeat,
+        address_mode_w: ImageAddressMode::Repeat,
+        mag_filter: ImageFilterMode::Linear,
+        min_filter: ImageFilterMode::Linear,
+        ..default()
+    });
+    image
 }
 
 #[cfg(test)]

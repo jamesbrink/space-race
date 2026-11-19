@@ -10,8 +10,12 @@ use super::draw::lengths;
 
 /// How bright a fire's outline is on the whole, against how bright it is through its heart. Estimated.
 const SPILL: f32 = 0.35;
-/// How much brighter a fire that strikes the ground is for the sheet it throws out. Estimated.
-const STRUCK: f32 = 0.5;
+/// How bright the burning sheet a fire throws along the ground it strikes is, cd/m^2, and how far out it burns,
+/// m (`plume.wesl`, `SHEET_REACH`). Estimated: in the stills of the Redstone leaving the pad (NASA 6100884) its
+/// orange tongues on the launcher are the brightest thing under the tail, a few times sunlit concrete
+/// (some 11,000 cd/m^2).
+const SHEET_GLOW: f32 = 40_000.0;
+const SHEET_REACH: f32 = 3.4;
 /// A fire casts shadows while the ground is no further down it than this, m: beyond, there is nothing near
 /// enough to throw a shadow that could be seen, and another view of the scene is saved.
 const SHADOWS_WITHIN: f32 = 60.0;
@@ -53,7 +57,8 @@ pub fn hang(commands: &mut Commands, plume: Entity) {
     }
 }
 
-/// How strong a fire's light is, cd: its brightness over the outline it shows.
+/// How strong a fire's light is, cd: its brightness over the outline it shows, and the sheet's over its own
+/// where it strikes the ground.
 #[must_use]
 pub fn candela(plume: &Plume) -> f32 {
     let shape = plume.nozzle.shape(plume.ambient);
@@ -61,8 +66,11 @@ pub fn candela(plume: &Plume) -> f32 {
     let lit = ends.min(plume.ground);
     // (swollen in thin air it is dimmer by as much as it is wider)
     let thinned = (plume.nozzle.radius / shape.radius).powi(2).min(1.0);
-    let struck = 1.0 + STRUCK * (1.25 - plume.ground / ends.max(0.01)).clamp(0.0, 1.0);
-    plume.luminance * 2.0 * shape.radius * lit * SPILL * thinned * struck * plume.burning.clamp(0.0, 1.0)
+    let jet = plume.luminance * 2.0 * shape.radius * lit * SPILL * thinned;
+    // (the share of the fire that reaches the ground, as the march has it)
+    let strikes = (1.25 - plume.ground / ends.max(0.01)).clamp(0.0, 1.0);
+    let sheet = SHEET_GLOW * PI * (SHEET_REACH * strikes).powi(2) * SPILL;
+    (jet + sheet) * plume.burning.clamp(0.0, 1.0)
 }
 
 /// Each frame: every fire's light where the fire is brightest, as strong as the fire.
@@ -115,5 +123,7 @@ mod tests {
         let lux = candela(&plume) / 25.0;
         assert!((500.0..5000.0).contains(&lux), "{lux}");
         assert_eq!(candela(&Plume { burning: 0.0, ..plume }), 0.0);
+        // On the pad its sheet outshines it many times over.
+        assert!(candela(&Plume { ground: 1.0, ..plume }) > 10.0 * candela(&plume));
     }
 }

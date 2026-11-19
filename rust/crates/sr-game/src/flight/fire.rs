@@ -1,15 +1,18 @@
 //! The fires: one hung at every nozzle the flight's data names (the engine's, and each solid motor's), burning
 //! while its motor does (by the hand's switches, or the record's clock), in the air the vehicle is in, and
-//! striking what is under it.
+//! striking what is under it. And what the air itself does to the vehicle at speed: the glow of the gas over its
+//! heat shield coming back in, and the collar of vapour at its shoulder near the speed of sound.
 
+use avian3d::prelude::LinearVelocity;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 use sr_missions::types::{Burns, Flame};
 use sr_render::origin::Origin;
 use sr_render::plume::{Nozzle, Plume};
+use sr_render::shock::{Collar, Glow};
 use sr_sim::{Plan, air};
 
-use super::{Hand, Parts, Telemetry};
+use super::{Crewed, Hand, Parts, Telemetry};
 use crate::Showing;
 use crate::clock::Clock;
 
@@ -26,6 +29,22 @@ const DIES: f64 = 3.2;
 /// How fast the fire drawn follows a motor a hand lights, and one that is cut, 1/s. Estimated.
 const CATCHES: f32 = 6.0;
 const FADES: f32 = 1.3;
+
+/// How much of a black body's light the gas over the shield gives through its middle, for each 100 kW/m^2 of
+/// the cold-wall flux at the shield's middle. Estimated, and an upper estimate: no account of a glow seen on a
+/// suborbital Mercury entry was found, and air brought to 2,100 K at a few hundredths of an atmosphere (Freedom
+/// 7 at its peak heating, near 2 km/s and 35 km) gives very little visible light. Set so that at the peak the
+/// layer is just seen against the black sky at the camera's exposure and is lost against the sunlit Earth.
+const GLOW_EMISSIVITY: f64 = 2.0e-3;
+const GLOW_FLUX: f64 = 100_000.0;
+/// The collar: how dense it is at its densest, at what Mach number and over what spread of it, and the height
+/// over which it fades as the air dries and thins, m. Estimated from films of other launches (Saturn I and V,
+/// the Shuttle wore theirs from about Mach 0.9 to 1.05, densest just under 1, in the lowest ten kilometres or so);
+/// no film of a Mercury-Redstone going through the speed of sound was found, nor the humidity aloft that morning.
+const COLLAR: f32 = 0.8;
+const COLLAR_MACH: f64 = 0.98;
+const COLLAR_SPREAD: f64 = 0.05;
+const COLLAR_DRIES: [f64; 2] = [8_000.0, 14_000.0];
 
 /// The booster's engine's fire.
 #[derive(Component, Debug, Clone, Copy)]
@@ -55,10 +74,19 @@ fn plume(flame: &Flame) -> Plume {
     }
 }
 
-/// Hang every fire on its node once the vehicle's parts are known.
+/// Hang every fire on its node once the vehicle's parts are known, and the glow and the collar on the shield.
 pub fn kindle(mut commands: Commands, showing: Res<Showing>, parts: Res<Parts>, alive: Query<()>) {
     let flight = showing.0;
     let node = |name: &str| parts.0.get(name).copied().filter(|&node| alive.contains(node));
+    if let Some(shield) = node(flight.parts.shield) {
+        let nose = flight.plan.heating.nose_radius.value;
+        let rim = (flight.plan.area.value / std::f64::consts::PI).sqrt();
+        let depth = nose - (nose * nose - rim * rim).max(0.0).sqrt();
+        let [rim, depth, nose] = [rim, depth, nose].map(|v| v as f32);
+        let glow = Glow { rim, depth, nose, mach: 1.0, gas: 300.0, emissivity: 0.0 };
+        commands.spawn((glow, ChildOf(shield)));
+        commands.spawn((Collar { radius: rim, density: 0.0 }, ChildOf(shield)));
+    }
     if let Some(engine) = node(flight.flame.node) {
         let at = Transform::from_xyz(0.0, flight.flame.exit_height.value as f32, 0.0);
         commands.spawn((Engine, plume(&flight.flame), at, ChildOf(engine)));
@@ -133,6 +161,9 @@ pub fn stoke(
     origin: Option<Res<Origin>>,
     mut engines: Query<(&mut Plume, &GlobalTransform), With<Engine>>,
     mut motors: Query<(&mut Plume, &Motor), Without<Engine>>,
+    crewed: Query<&LinearVelocity, With<Crewed>>,
+    mut glows: Query<(&mut Glow, &GlobalTransform)>,
+    mut collars: Query<(&mut Collar, &GlobalTransform)>,
 ) {
     let flight = showing.0;
     let ambient = if clock.t > 0.0 { telemetry.pressure } else { air::P0 };
@@ -152,6 +183,39 @@ pub fn stoke(
         plume.burning = follow(plume.burning, wanted, time.delta_secs() * 4.0);
         plume.ambient = ambient as f32;
     }
+    let moving = crewed.single().map_or(Vec3::ZERO, |velocity| velocity.0);
+    for (mut glow, placed) in &mut glows {
+        let blunt_first = placed.rotation() * Vec3::NEG_Y;
+        let (emissivity, gas) = glowing(&telemetry, facing(blunt_first, moving));
+        glow.mach = telemetry.mach as f32;
+        glow.gas = gas;
+        glow.emissivity = emissivity;
+    }
+    for (mut collar, placed) in &mut collars {
+        collar.density =
+            vapour(telemetry.mach, telemetry.height) * facing(placed.rotation() * Vec3::Y, moving);
+    }
+}
+
+/// How squarely a face meets the air a body moving at `moving` m/s goes through: 1 head on, 0 side on or away.
+fn facing(face: Vec3, moving: Vec3) -> f32 {
+    let along = face.dot(moving.normalize_or_zero());
+    ((along - 0.5) / 0.5).clamp(0.0, 1.0)
+}
+
+/// The gas over the shield as the air has it: how much of a black body's light it gives, and how hot it is, K.
+fn glowing(telemetry: &Telemetry, facing: f32) -> (f32, f32) {
+    let flux = telemetry.heat.flux.max(0.0);
+    ((GLOW_EMISSIVITY * flux / GLOW_FLUX) as f32 * facing, telemetry.heat.gas.max(300.0) as f32)
+}
+
+/// How dense the collar of vapour is at a Mach number and a height, 0 to 1.
+#[must_use]
+pub fn vapour(mach: f64, height: f64) -> f32 {
+    let near = (-((mach - COLLAR_MACH) / COLLAR_SPREAD).powi(2)).exp();
+    let [wet, dry] = COLLAR_DRIES;
+    let moist = 1.0 - ((height - wet) / (dry - wet)).clamp(0.0, 1.0);
+    COLLAR * (near * moist) as f32
 }
 
 /// A fire a hand has lit or cut: up at once, down fast to what lingers and then slowly out.
@@ -207,6 +271,15 @@ mod tests {
         hand.tower = Some(40.0);
         assert!(!firing(Burns::Tower(0), &hand, &PLAN, 40.3));
         assert!(firing(Burns::Tower(1), &hand, &PLAN, 40.3));
+    }
+
+    #[test]
+    fn the_collar_is_worn_near_mach_one_low_down_and_nowhere_else() {
+        assert!(vapour(0.98, 7_000.0) > 0.7 * COLLAR);
+        assert!(vapour(0.8, 7_000.0) < 0.01 && vapour(1.2, 7_000.0) < 0.01);
+        assert_eq!(vapour(0.98, 20_000.0), 0.0);
+        assert_eq!(facing(Vec3::Y, Vec3::NEG_Y * 300.0), 0.0);
+        assert_eq!(facing(Vec3::Y, Vec3::Y * 300.0), 1.0);
     }
 
     #[test]

@@ -39,6 +39,10 @@ pub struct FumesMaterial {
     /// The box that holds everything there is.
     #[texture(6, dimension = "3d")]
     pub bounds: Handle<Image>,
+    /// The eddies too small for the grid, read as they repeat.
+    #[texture(7, dimension = "3d")]
+    #[sampler(8)]
+    pub gusts: Handle<Image>,
 }
 
 impl Material for FumesMaterial {
@@ -93,6 +97,7 @@ pub fn make(
         occupied: volumes.occupied.clone(),
         shade: volumes.shade.clone(),
         bounds: volumes.bounds.clone(),
+        gusts: volumes.gusts.clone(),
     });
     commands.insert_resource(volumes);
     commands.spawn((

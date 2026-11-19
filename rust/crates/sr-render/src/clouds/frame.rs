@@ -2,12 +2,13 @@
 //! the day's cloud is and how its cover lays it out; and the size of what it marches into.
 
 use bevy::light::light_consts::lux;
+use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, ShaderType};
 
-use super::material::CloudLay;
+use super::material::{CloudLay, Sheet};
 use super::pass::CloudSky;
-use super::{Blank, Sheet, field, ripple};
+use super::{Blank, field, ripple};
 use crate::air::{Air, DayMap, Layer};
 use crate::earth::Ground;
 use crate::origin::{Eye, Origin};
@@ -53,6 +54,16 @@ pub struct CloudFrame {
     /// The day's map: how many metres it is across (0: there is none), and the height its high cloud is drawn
     /// at, m.
     pub day: Vec4,
+    /// Where what is in the cumulus now was in the last frame's picture, less where it is in this one, m: the eye's
+    /// move less the cloud's drift.
+    pub moved: Vec4,
+}
+
+/// Where the eye was and what the clock said, the frame before.
+#[derive(Default)]
+pub(super) struct Before {
+    origin: Option<DVec3>,
+    clock: f32,
 }
 
 /// The Sun's light as it reaches a cloud through the air in its way, lux in red, green and blue, with the Sun
@@ -81,8 +92,13 @@ pub(super) fn look(
     air: Option<Res<Air>>,
     day: Option<Res<DayMap>>,
     mut marched: ResMut<CloudSky>,
+    mut before: Local<Before>,
 ) {
     let Some(air) = air else { return };
+    let drift = air.cumulus.drift * (air.clock - before.clock);
+    let eye_moved = before.origin.map_or(Vec3::ZERO, |at| (origin.0 - at).as_vec3());
+    let moved = eye_moved - ground.east * drift.x - ground.north * drift.y;
+    *before = Before { origin: Some(origin.0), clock: air.clock };
     let from_centre = origin.0 - sky.centre;
     let height = (from_centre.length() - sky.radius) as f32;
     let up = from_centre.normalize().as_vec3();
@@ -113,6 +129,7 @@ pub(super) fn look(
             air.deck.size * ripple::CLOUDLETS as f32,
         ),
         day: Vec4::new(day.map_or(0.0, |day| day.extent), CIRRUS, 0.0, 0.0),
+        moved: moved.extend(0.0),
     };
 }
 

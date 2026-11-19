@@ -11,27 +11,7 @@
 import bevy_pbr::prepass::io::VertexOutput;
 import bevy_pbr::render::{mesh_functions, mesh_view_bindings::view};
 
-struct Source {
-    at: vec4<f32>,
-    push: vec4<f32>,
-    gives: vec4<f32>,
-}
-
-struct Fume {
-    size: vec4<f32>,
-    cells: vec4<f32>,
-    time: vec4<f32>,
-    // toward the Sun; w: how wide the Sun's view of the box is
-    sun: vec4<f32>,
-    sun_a: vec4<f32>,
-    sun_b: vec4<f32>,
-    sunlight: vec4<f32>,
-    skylight: vec4<f32>,
-    lamp: vec4<f32>,
-    lamp_colour: vec4<f32>,
-    ground: vec4<f32>,
-    sources: array<Source, 8>,
-}
+import super::fumes_frame::{Fume, Source};
 
 @group(constants::MATERIAL_BIND_GROUP) @binding(0) var<uniform> fume: Fume;
 @group(constants::MATERIAL_BIND_GROUP) @binding(1) var stuff: texture_3d<f32>;

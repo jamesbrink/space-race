@@ -132,6 +132,8 @@ pub struct Parts {
     pub retropack: &'static str,
     /// The antenna canister, which leaves with the drogue when the main parachute comes out.
     pub canister: &'static str,
+    /// The heat shield: its node's origin is the middle of its rim, its blunt face toward -Y.
+    pub shield: &'static str,
     /// Where the parachutes' lines meet the capsule, m up its axis from the model's origin.
     pub chute_height: f64,
 }
@@ -261,6 +263,9 @@ pub struct PadAir {
     pub vapour: Measure,
     /// As `vapour`.
     pub vapour_lasts: Measure,
+    /// The vapour the exhaust condenses to as it mixes with the day's air along the ground, while the jet strikes
+    /// it at full strength, each second (1/m a second): an alcohol engine's exhaust is a third water.
+    pub condenses: Measure,
     /// What the vehicle vents into it.
     pub vents: &'static [Vent],
 }

@@ -1,17 +1,25 @@
 // The day's clouds and the haze under them (sr-render/src/clouds), marched from the eye through each layer's
-// shell round the Earth. docs/look.md says where each part of the technique comes from.
+// shell round the Earth, one ray for every four pixels (clouds/pass.rs); clouds_lay.wesl lays the result over the
+// frame. docs/look.md says where each part of the technique comes from.
 //
 // The cumulus are a field of clouds, each a huddle of turrets with one flat base, cut to knobs by a block of
-// noise that rises through them as the clock runs. At every step that finds cloud a second, short march goes
-// toward the Sun, so a cloud shades itself: bright where the Sun strikes it, grey-blue underneath, with the silver
-// lining forward scattering gives. The deck above is a sheet of cloudlets in banks. Last, the haze between the
-// eye and whatever it sees is marched too, in and out of the clouds' shadows, which is what puts light in the
-// air. What stands in front of a cloud is found from the depth already drawn. All lengths are metres and all
-// light is in the engine's physical units (lux, cd/m^2), exposed at the end as everything else is.
+// noise that rises through them as the clock runs; many scraps and a few big ones, in clumps and in streets along
+// the wind (clouds/field.rs, clouds_cover.wesl). At every step that finds cloud a second, short march goes toward
+// the Sun, so a cloud shades itself: bright where the Sun strikes it, grey-blue underneath, with the silver lining
+// forward scattering gives. Far off, where a cloud is a pixel or two, the field is not marched but read as a cover
+// at the pixel's coarseness (clouds/cover.rs), so it is soft and does not sparkle. The deck above is a sheet of
+// cloudlets in banks. Last, the haze between the eye and whatever it sees is marched too, in and out of the
+// clouds' shadows, which is what puts shafts of light in the air. What stands in front of a cloud is found from the
+// depth already drawn. All lengths are metres and all light is in the engine's physical units (lux, cd/m^2),
+// exposed at the end as everything else is.
 
 import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput;
 import bevy_render::view::View;
 import bevy_render::globals::Globals;
+import super::clouds_cover::{
+    CELLS, EDGE, Column, along_wind, column, gather, mirrored, on_sheet, second_laying, sheet_texel, spread_for,
+    sun_shadow,
+};
 
 struct CloudFrame {
     // the vertical at the eye; w: the eye's height above the ground
@@ -37,6 +45,8 @@ struct CloudFrame {
     lay: vec4<f32>,
     // the day's map: how far across it is, m (0: there is none); the height its high cloud is drawn at, m
     day: vec4<f32>,
+    // (for clouds_motion.wesl)
+    moved: vec4<f32>,
 }
 
 // (clouds/pass.rs `lay_pipe`: the order of these is its order)
@@ -46,13 +56,13 @@ struct CloudFrame {
 @group(0) @binding(3) var depth_drawn: texture_depth_2d;
 @group(0) @binding(4) var volume: texture_3d<f32>;
 @group(0) @binding(5) var field: texture_2d<f32>;
-@group(0) @binding(6) var ripple: texture_2d<f32>;
-@group(0) @binding(7) var day_map: texture_2d<f32>;
-@group(0) @binding(8) var repeating: sampler;
-@group(0) @binding(9) var clamped: sampler;
+@group(0) @binding(6) var cover: texture_2d<f32>;
+@group(0) @binding(7) var ripple: texture_2d<f32>;
+@group(0) @binding(8) var day_map: texture_2d<f32>;
+@group(0) @binding(9) var repeating: sampler;
+@group(0) @binding(10) var clamped: sampler;
 
 const PI: f32 = 3.14159265;
-const TAU: f32 = 6.2831853;
 // How much light a metre of cloud takes out of a ray at a cumulus' top: fair-weather cumulus is 0.03 to 0.1 a
 // metre, the more the higher above the base (there is more water in it).
 const EXTINCTION: f32 = 0.075;
@@ -73,11 +83,6 @@ const REACH: f32 = 700000.0;
 const DEEPER_ORDERS: f32 = 2.6;
 // How much of the Sun's light the land and sea under the cloud send back up. Estimated.
 const GROUND_ALBEDO: f32 = 0.2;
-// The field of cumulus (clouds/field.rs): cells to a tile, the narrowest turret's radius in cells, and how far
-// its outlines are pushed about.
-const FIELD_CELLS: f32 = 16.0;
-const NARROWEST: f32 = 0.016;
-const PUSHED: f32 = 0.06;
 // What clean air scatters of each colour in a metre at the ground (Rayleigh), and the height it thins by e over.
 const RAYLEIGH: vec3<f32> = vec3<f32>(5.8e-6, 13.5e-6, 33.1e-6);
 const RAYLEIGH_HEIGHT: f32 = 8000.0;
@@ -96,86 +101,6 @@ fn noise2(p: vec2<f32>) -> f32 {
     let b = mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x);
     return mix(a, b, u.y);
 }
-
-// Clouds gather in one part of the sky and thin in the next: what the day's spread is multiplied by at a place
-// (in cells of the field). Its mean is 1, so the cover is still the record's. earth.wesl's `cover_at` uses the
-// same, and the two must be kept in step.
-fn gather(cells: vec2<f32>) -> f32 {
-    return 0.62 + 0.76 * smoothstep(0.2, 0.8, noise2(cells * 0.21 + 7.3));
-}
-
-// The scramble clouds/field.rs shares: whole numbers in, 32 well-mixed bits out, and two fractions from them.
-fn scramble(x: u32, y: u32, seed: u32) -> u32 {
-    var k = (x * 0x9E3779B1u) ^ (y * 0x85EBCA77u) ^ (seed * 0x27D4EB2Fu);
-    k ^= k >> 15u;
-    k *= 0x2C1B3C6Du;
-    k ^= k >> 12u;
-    k *= 0x297A2D39u;
-    k ^= k >> 15u;
-    return k;
-}
-
-fn low_half(k: u32) -> f32 {
-    return f32(k & 0xFFFFu) / 65536.0;
-}
-
-fn high_half(k: u32) -> f32 {
-    return f32(k >> 16u) / 65536.0;
-}
-
-fn wrapped(v: i32, period: i32) -> u32 {
-    return u32(((v % period) + period) % period);
-}
-
-// Smooth noise on the whole-number lattice, repeating with the field's tile.
-fn lattice(p: vec2<f32>, seed: u32) -> f32 {
-    let corner = vec2<i32>(floor(p));
-    let f = fract(p);
-    let u = f * f * (3.0 - 2.0 * f);
-    let x = vec2(wrapped(corner.x, 32), wrapped(corner.x + 1, 32));
-    let y = vec2(wrapped(corner.y, 32), wrapped(corner.y + 1, 32));
-    let a = mix(low_half(scramble(x.x, y.x, seed)), low_half(scramble(x.y, y.x, seed)), u.x);
-    let b = mix(low_half(scramble(x.x, y.y, seed)), low_half(scramble(x.y, y.y, seed)), u.x);
-    return mix(a, b, u.y);
-}
-
-// Where the cumulus stand, without the texture: how far a place (in cells of the field) is from the nearest
-// turret's middle, in that turret's radii. This is clouds/field.rs `near`, which the texture is baked from,
-// written again: the march reads the texture, and earth.wesl's `cover_at` is this (it has no texture), put
-// through the same spread and the same `gather`. The three must be kept in step; set FROM_FIELD_AT to see the
-// clouds drawn from this one instead, which must leave the picture as it was.
-fn field_at(p: vec2<f32>) -> f32 {
-    let q = p + 0.06 * vec2(lattice(p * 2.0, 11u) - 0.5, lattice(p * 2.0, 13u) - 0.5);
-    let home = vec2<i32>(floor(q));
-    var best = 10.5;
-    for (var dy = -1; dy <= 1; dy++) {
-        for (var dx = -1; dx <= 1; dx++) {
-            let at = home + vec2(dx, dy);
-            let x = wrapped(at.x, 16);
-            let y = wrapped(at.y, 16);
-            let place = scramble(x, y, 1u);
-            let vigour = scramble(x, y, 2u);
-            if high_half(vigour) < 0.3 {
-                continue;
-            }
-            let middle = vec2<f32>(at) + 0.5 + 0.6 * (vec2(low_half(place), high_half(place)) - 0.5);
-            let foot = 0.2 * (0.4 + 0.9 * low_half(vigour) * low_half(vigour));
-            for (var turret = 0u; turret < 8u; turret++) {
-                let a = scramble(x, y, 3u + turret);
-                let b = scramble(x, y, 13u + turret);
-                // (the first stands in the middle and is the widest; the rest huddle round it)
-                let out = select(0.8 * sqrt(high_half(a)), 0.0, turret == 0u);
-                let radius = select(0.2 + 0.26 * low_half(b), 0.5, turret == 0u);
-                let angle = TAU * low_half(a);
-                let stands = middle + foot * out * vec2(cos(angle), sin(angle));
-                best = min(best, distance(q, stands) / (foot * radius));
-            }
-        }
-    }
-    return best;
-}
-
-const FROM_FIELD_AT: bool = false;
 
 struct Slab {
     start: f32,
@@ -228,39 +153,34 @@ fn height_at(h: f32, mu: f32, t: f32) -> f32 {
     return h + (2.0 * radius * mu * t + t * t) / (radius + sqrt(radius * radius + 2.0 * radius * mu * t + t * t));
 }
 
-// What the field says of a column of air.
-struct Column {
-    // how far inside its turret the column stands: 0 on the outline, 1 at the middle, negative outside
-    within: f32,
-    // at least this many metres of level air are clear of any cloud
-    open: f32,
-    // how high that turret's dome stands above the base at its middle
-    top: f32,
-    // how far gone its cloud is, 0 new to 1 old
-    age: f32,
+// Within the first of these distances from the site the cumulus' cover is the record's; by the second it is the
+// day's map's, m (src/viewer/weather.ts NEAR).
+const RECORD_NEAR: vec2<f32> = vec2<f32>(12000.0, 40000.0);
+
+// How far the cumulus' turrets are spread at a place in their drifting frame before they are gathered: as the day's
+// map has the cover there, the record's near the site. It changes slowly.
+fn laid_spread(en: vec2<f32>) -> f32 {
+    var spread = frame.lay.x;
+    if frame.day.x > 0.0 {
+        let ground = en + frame.wind.xy * frame.north.w;
+        let uv = vec2(0.5 + ground.x / frame.day.x, 0.5 - ground.y / frame.day.x);
+        let mapped = spread_for(textureSampleLevel(day_map, clamped, uv, 0.0).r);
+        // (src/viewer/weather.ts NEAR: the record's cover near the site, the map's from further out)
+        spread = mix(spread, mapped, smoothstep(RECORD_NEAR.x, RECORD_NEAR.y, length(ground)));
+    }
+    return spread;
 }
 
-// `en` is a place over the ground in the cumulus' drifting frame; `gathered` is `gather` there (it changes
-// slowly, so one reading does for a step and its march toward the Sun).
-fn column(en: vec2<f32>, gathered: f32) -> Column {
+// And gathered: one reading does for a step and its march toward the Sun.
+fn spread_at(en: vec2<f32>) -> f32 {
+    return laid_spread(en) * gather(on_sheet(en, along_wind(frame.wind.xy), frame.lay.y));
+}
+
+// What the field says of the column of air at a place in the cumulus' drifting frame.
+fn column_at(en: vec2<f32>, spread: f32) -> Column {
     let cell = frame.lay.y;
-    let texel = textureSampleLevel(field, repeating, en / (cell * FIELD_CELLS), 0.0);
-    let spread = frame.lay.x * gathered;
-    var scaled = texel.r;
-    if FROM_FIELD_AT {
-        scaled = field_at(en / cell);
-    }
-    var col: Column;
-    col.within = 1.0 - scaled / spread;
-    // (every turret is at least the narrowest's radius times as far off as the nearest is in its own radii)
-    col.open = (max(scaled - spread, 0.0) * NARROWEST - PUSHED) * cell * 0.8;
-    let radius = texel.g * spread * cell;
-    // The wider a turret the taller, toward the layer's depth, and some are taller than their width would have
-    // them: heaps, and a few towers. Each swells and sinks a little in its own time.
-    let breath = (0.9 + 0.1 * sin(frame.north.w / 160.0 + texel.a * TAU)) * (0.75 + 0.25 * texel.a);
-    col.top = frame.cumulus.z * (1.0 - exp(-radius / (0.16 * frame.cumulus.w))) * breath;
-    col.age = texel.b;
-    return col;
+    let texel = sheet_texel(field, repeating, en, along_wind(frame.wind.xy), cell);
+    return column(texel, spread, cell, frame.cumulus.z, frame.north.w);
 }
 
 struct Cloud {
@@ -282,7 +202,7 @@ fn cumulus(col: Column, en: vec2<f32>, z: f32, coarse: f32, fine: bool) -> Cloud
     // A loaf standing on its flat base, its sides steep: the turret's body before the noise has cut it.
     let lifted = z / col.top;
     let outward = 1.0 - min(col.within, 1.0);
-    if outward * outward * outward + lifted * lifted > 1.7 {
+    if outward * outward * sqrt(outward) + lifted * lifted > 1.7 {
         return cloud;
     }
     let clock = frame.north.w;
@@ -293,7 +213,7 @@ fn cumulus(col: Column, en: vec2<f32>, z: f32, coarse: f32, fine: bool) -> Cloud
     let bulged = max(outward + (0.5 - shape.b) * 0.5 * smoothstep(0.0, 0.25, lifted), 0.0);
     let raised = max(lifted + (0.5 - shape.a) * 0.35, 0.0);
     // (and drawn in a little at the very base: a cumulus stands on its base, it does not spread a skirt)
-    let body = 1.0 - sqrt(bulged * bulged * bulged + raised * raised) - 0.2 * (1.0 - smoothstep(0.0, 0.25, lifted));
+    let body = 1.0 - sqrt(bulged * bulged * sqrt(bulged) + raised * raised) - 0.2 * (1.0 - smoothstep(0.0, 0.25, lifted));
     if body <= 0.0 {
         return cloud;
     }
@@ -319,7 +239,7 @@ fn cumulus(col: Column, en: vec2<f32>, z: f32, coarse: f32, fine: bool) -> Cloud
     // (the water in it grows with the height above the base, and the base itself is not a knife's edge)
     let wet = mix(0.3, 1.0, saturate(z / 280.0)) * smoothstep(0.0, 40.0, z);
     cloud.thick = edge * sqrt(edge) * wet * EXTINCTION;
-    cloud.under = max(col.top * sqrt(max(1.0 - outward * outward * outward, 0.0)) - z, 0.0);
+    cloud.under = max(col.top * sqrt(max(1.0 - outward * outward * sqrt(outward), 0.0)) - z, 0.0);
     return cloud;
 }
 
@@ -360,7 +280,7 @@ fn lean(z: f32) -> vec2<f32> {
 
 // How much cumulus lies between a place and the Sun, as an optical depth. `jitter` moves the places it is read
 // at, so that they do not print the cloud's outline on its own lit side as rings.
-fn cumulus_toward_sun(en: vec2<f32>, z: f32, gathered: f32, coarse: f32, jitter: f32) -> f32 {
+fn cumulus_toward_sun(en: vec2<f32>, z: f32, spread: f32, coarse: f32, jitter: f32) -> f32 {
     let sun = frame.sun.xyz;
     let level = vec2(dot(sun, frame.east.xyz), dot(sun, frame.north.xyz));
     let rise = dot(sun, frame.up.xyz);
@@ -372,7 +292,8 @@ fn cumulus_toward_sun(en: vec2<f32>, z: f32, gathered: f32, coarse: f32, jitter:
         let there = en + level * at;
         let up = z + rise * at;
         // (the nearest readings with the detail in them: that is what shades one knob with the next)
-        depth += cumulus(column(there - lean(up), gathered), there, up, coarse + select(1.0, 0.0, i < 2), i < 2).thick * stride;
+        let col = column_at(there - lean(up), spread);
+        depth += cumulus(col, there, up, coarse + select(1.0, 0.0, i < 2), i < 2).thick * stride;
         gone += stride;
         stride *= 2.1;
     }
@@ -394,32 +315,37 @@ fn stagger(jitter: f32, i: i32) -> f32 {
     return fract(jitter + 0.618034 * f32(i));
 }
 
-// March the cumulus along the ray from the eye and add what is seen to `seen`.
-fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, jitter: f32) -> Seen {
+// Light, as one step of a march sees it, added to what was seen before.
+fn add_seen(seen_in: Seen, glow: vec3<f32>, stopped: f32, t: f32) -> Seen {
+    var seen = seen_in;
+    let shows = seen.through * stopped;
+    seen.light += glow * shows;
+    seen.range += t * shows;
+    seen.weight += shows;
+    seen.through *= 1.0 - stopped;
+    if seen.through < 0.01 {
+        seen.through = 0.0;
+    }
+    return seen;
+}
+
+// March the cumulus along the ray from the eye, from `start` to `end`, and add what is seen to `seen`.
+fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end: f32, jitter: f32) -> Seen {
     var seen = seen_in;
     let layer = frame.cumulus;
-    if layer.x <= 0.0 {
-        return seen;
-    }
-    let slab = inside(h, mu, layer.y, layer.y + layer.z);
-    let start = max(slab.start, 0.0);
-    let end = min(min(slab.end, limit), REACH);
-    if slab.end <= 0.0 || end <= start {
-        return seen;
-    }
     let level = vec2(dot(ray, frame.east.xyz), dot(ray, frame.north.xyz));
     let slope = max(length(level), 0.03);
     let cosine = dot(ray, frame.sun.xyz);
     let sun_high = max(dot(frame.sun.xyz, frame.up.xyz), 0.0);
-    let cell = frame.lay.y;
+    let leaning = length(frame.wind.xy) * LEAN * layer.z;
     // Long strides through clear air; on meeting cloud, back to where the air was last clear and through the
     // cloud in short ones. A cloud's light is in its skin, the first few metres the Sun reaches: strides that
     // land deep inside find only the shade there, and every cloud comes out grey and in bands.
     var t = start + jitter * max(0.004 * start, 8.0);
     var clear_at = t;
     var short_left = 0;
-    for (var i = 0; i < 220; i++) {
-        if t >= end {
+    for (var i = 0; i < 256; i++) {
+        if t >= end || seen.through <= 0.0 {
             break;
         }
         let wobble = 0.7 + 0.6 * stagger(jitter, i);
@@ -429,8 +355,8 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, jit
         let height = height_at(h, mu, t);
         let z = height - layer.y;
         let en = frame.eye_over.xy + level * t;
-        let gathered = gather(en / cell);
-        let col = column(en - lean(z), gathered);
+        let spread = spread_at(en);
+        let col = column_at(en - lean(z), spread);
         var cloud = Cloud(0.0, 0.0, 0.0);
         // (far off, the noise is read from a coarser copy: as coarse as the stride, or as a pixel)
         let coarse = max(log2(max(short_stride * 0.5, t * 0.0006) / (SHAPE_TILE / VOXELS)) + 1.0, 0.0);
@@ -445,7 +371,9 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, jit
             }
             clear_at = t;
             // (outside every outline: as far as the field says is clear, and never less than a few short strides)
-            let long_stride = select(short_stride * 2.5, max(col.open / slope, short_stride * 3.0), col.within <= 0.0);
+            // (less what the lean of the tops can bring nearer as the ray climbs or falls through the layer)
+            let open = col.open - leaning;
+            let long_stride = select(short_stride * 2.5, max(open / slope, short_stride * 3.0), col.within <= 0.0);
             t += long_stride * wobble;
             continue;
         }
@@ -457,25 +385,100 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, jit
         short_left = 5;
         let stride = short_stride * wobble;
         t += stride;
-        let shade = cumulus_toward_sun(en, z, gathered, coarse, stagger(jitter, i + 7));
+        let shaded = cumulus_toward_sun(en, z, spread, coarse, stagger(jitter, i + 7));
         let embedded = mix(0.7, 1.0, smoothstep(0.0, 0.3, cloud.deep));
-        let sunlit = scattered(shade, cosine, embedded, 1.0 - smoothstep(0.0, 0.45, cloud.deep));
-        let lifted = saturate(z / layer.z);
+        let sunlit = scattered(shaded, cosine, embedded, 1.0 - smoothstep(0.0, 0.45, cloud.deep));
         // The sky from above, less the more cloud is overhead, and from round about; and from below the sunlit
         // ground, less the higher into the cloud: that is what a base is lit by.
         let sky = frame.skylight.xyz * (0.3 + 0.7 * exp(-cloud.under / 160.0));
         let ground = frame.sunlight.xyz * (GROUND_ALBEDO / PI) * sun_high * exp(-z / 220.0);
         let glow = frame.sunlight.xyz * sunlit * DEEPER_ORDERS + sky + ground;
-        let stopped = 1.0 - exp(-cloud.thick * stride);
-        let shows = seen.through * stopped;
-        seen.light += glow * shows;
-        seen.range += t * shows;
-        seen.weight += shows;
-        seen.through *= 1.0 - stopped;
-        if seen.through < 0.01 {
-            seen.through = 0.0;
-            break;
-        }
+        seen = add_seen(seen, glow, 1.0 - exp(-cloud.thick * stride), t);
+    }
+    return seen;
+}
+
+// The spreads `cover`'s channels hold the cover for (clouds/cover.rs SPREADS).
+const COVER_SPREADS: vec4<f32> = vec4<f32>(2.0, 4.0, 7.0, 11.0);
+// Texels along a side of the field's sheet (clouds/field.rs SIDE).
+const SHEET_TEXELS: f32 = 1024.0;
+// Where the march gives way to the cover: where a pixel is this much of a cell of the field (about the spacing of
+// the clouds). Chosen by eye: a cloud is then a few pixels across and has no more shape to
+// show than its outline.
+const FAR_AT: f32 = 0.025;
+// The far cover is read this many levels coarser than the pixel: a field of small cumulus seen from high up is a
+// soft white veil with the clumps and streets in it, as photographs from orbit show it, not a scatter of specks.
+// Chosen by eye.
+const FAR_SOFT: f32 = 3.0;
+
+// How much of the sky the cumulus cover about a place, as seen by a pixel `footprint` metres across.
+fn far_cover(en: vec2<f32>, footprint: f32) -> f32 {
+    let cell = frame.lay.y;
+    let k = spread_at(en) * (1.0 - EDGE);
+    let on = on_sheet(en, along_wind(frame.wind.xy), cell);
+    let level = log2(max(footprint * SHEET_TEXELS / (cell * CELLS), 1.0)) + FAR_SOFT;
+    let second = second_laying(en / cell);
+    let c = mix(textureSampleLevel(cover, repeating, on / CELLS, level),
+        textureSampleLevel(cover, repeating, mirrored(on) / CELLS, level), second);
+    let s = COVER_SPREADS;
+    var got = c.r * k / s.x;
+    if k > s.z {
+        got = mix(c.b, c.a, (k - s.z) / (s.w - s.z));
+    } else if k > s.y {
+        got = mix(c.g, c.b, (k - s.y) / (s.z - s.y));
+    } else if k > s.x {
+        got = mix(c.r, c.g, (k - s.x) / (s.y - s.x));
+    }
+    return saturate(got);
+}
+
+// The cumulus from far off, between `start` and `end` along the ray: the cover read once, where the ray is
+// halfway through the layer, at the coarseness of the pixel's footprint on it (longer the more slanting the ray).
+// A ray down through the layer meets cloud as often as the cover says; a ray along it crosses a cloud's breadth at
+// a time, and meets many. Lit as a cloud's sunlit top from above, its shaded base from below and its shadowed side
+// from the side away from the Sun. Estimated, and matched by eye to the march where the two meet.
+fn far_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end: f32, pixel: f32) -> Seen {
+    let layer = frame.cumulus;
+    let level = vec2(dot(ray, frame.east.xyz), dot(ray, frame.north.xyz));
+    let cosine = dot(ray, frame.sun.xyz);
+    let sun_high = max(dot(frame.sun.xyz, frame.up.xyz), 0.0);
+    let steep = abs(mu);
+    // (what the ray sees of a cloud: its top from above, its base from below, its side between; on the side away
+    // from the Sun the side is in its own shadow)
+    let from_below = smoothstep(-0.2, 0.2, mu);
+    let shaded = mix(0.6, 7.0, from_below) + 4.0 * max(cosine, 0.0) * (1.0 - steep);
+    let sunlit = scattered(shaded, cosine, 1.0, 0.0);
+    let sky = frame.skylight.xyz * mix(0.95, 0.45, from_below);
+    let ground = frame.sunlight.xyz * (GROUND_ALBEDO / PI) * sun_high * from_below;
+    let glow = frame.sunlight.xyz * sunlit * DEEPER_ORDERS + sky + ground;
+    let t = 0.5 * (start + end);
+    let footprint = t * pixel / sqrt(max(steep, 0.05));
+    let c = far_cover(frame.eye_over.xy + level * t, footprint);
+    let chord = max(mix(0.5 * layer.w, layer.z, steep), 1.0);
+    let stopped = 1.0 - pow(1.0 - min(c, 0.98), max((end - start) / chord, 1.0));
+    return add_seen(seen_in, glow, stopped, t);
+}
+
+// The cumulus along the ray: marched near, and read as a cover from where a cloud is a few pixels across (a little
+// nearer or further at each pixel and frame, so that the line between the two is never seen).
+fn see_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, pixel: f32, jitter: f32) -> Seen {
+    let layer = frame.cumulus;
+    if layer.x <= 0.0 && frame.day.x <= 0.0 {
+        return seen_in;
+    }
+    let slab = inside(h, mu, layer.y, layer.y + layer.z);
+    let start = max(slab.start, 0.0);
+    let end = min(min(slab.end, limit), REACH);
+    if slab.end <= 0.0 || end <= start {
+        return seen_in;
+    }
+    let split = frame.lay.y * FAR_AT / pixel * (0.8 + 0.4 * jitter);
+    var seen = seen_in;
+    if start < split {
+        seen = march_cumulus(seen, ray, h, mu, start, min(end, split), jitter);
+    }
+    if end > split && seen.through > 0.0 {
+        seen = far_cumulus(seen, ray, h, mu, max(start, split), end, pixel);
     }
     return seen;
 }
@@ -489,8 +492,11 @@ fn bank_push(en: vec2<f32>) -> vec2<f32> {
 
 // How far above the rank at which a bank begins a place is: negative outside every bank, and the more so the
 // further from one.
-fn bank_over(en: vec2<f32>, push: vec2<f32>) -> f32 {
-    return textureSampleLevel(ripple, repeating, (en + push) / (frame.lay.w * 9.0), 0.0).g - frame.lay.z;
+// `coarse` is how many of the banks' texels a pixel covers, as a level of the texture's coarser copies. The edge is
+// torn at the scale of a few cloudlets, so that it is never the texture's own smooth line.
+fn bank_over(en: vec2<f32>, push: vec2<f32>, coarse: f32) -> f32 {
+    let torn = 0.07 * (noise2(en / (frame.deck.w * 2.7) + 21.0) - 0.5) * (1.0 - smoothstep(1.0, 3.0, coarse));
+    return textureSampleLevel(ripple, repeating, (en + push) / (frame.lay.w * 9.0), coarse).g - frame.lay.z + torn;
 }
 
 // What the deck is at a place.
@@ -506,7 +512,10 @@ struct Sheet {
 // far off, where a pixel holds many cloudlets, it is their mean that is drawn and not one of them.
 fn deck(en: vec2<f32>, height: f32, bank: f32, coarse: f32) -> Sheet {
     let layer = frame.deck;
-    let rank = textureSampleLevel(ripple, repeating, en / frame.lay.w, coarse).r;
+    // (two readings of the cloudlets, the second turned and finer: one alone is a lattice from below)
+    let turned = vec2(0.8 * en.x - 0.6 * en.y, 0.6 * en.x + 0.8 * en.y) / (frame.lay.w * 0.71) + 0.37;
+    let rank = 0.62 * textureSampleLevel(ripple, repeating, en / frame.lay.w, coarse).r
+        + 0.38 * textureSampleLevel(ripple, repeating, turned, coarse + 0.5).r;
     // (clouds/ripple.rs: its THICK, and the ramp its test integrates; thinner and thicker from place to place)
     let patchy = noise2(en / (layer.w * 7.0) + 13.0) - 0.5;
     let threshold = 1.0 - 0.7 * pow(bank, 0.7) + 0.5 * patchy;
@@ -529,7 +538,7 @@ fn deck(en: vec2<f32>, height: f32, bank: f32, coarse: f32) -> Sheet {
 }
 
 // March the deck along the ray and add what is seen to `seen`.
-fn march_deck(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, jitter: f32) -> Seen {
+fn march_deck(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, pixel: f32, jitter: f32) -> Seen {
     var seen = seen_in;
     let layer = frame.deck;
     if layer.x <= 0.0 {
@@ -553,15 +562,18 @@ fn march_deck(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, jitter
         let stride = min(max(0.006 * t, 14.0), max((end - start) / 10.0, 14.0)) * wobble;
         let height = height_at(h, mu, t);
         let en = frame.eye_over.zw + level * t;
-        let over = bank_over(en, push);
+        // (as coarse as the stride, or as a pixel's footprint on the deck)
+        let footprint = max(stride * 0.5, t * pixel * 1.5 / sqrt(max(abs(mu), 0.05)));
+        let coarse = max(log2(footprint / (frame.lay.w / 512.0)), 0.0);
+        let banks_coarse = max(coarse - log2(9.0), 0.0);
+        let over = bank_over(en, push, banks_coarse);
         if over <= 0.0 {
             // (clear of every bank: the further below a bank's rank, the further off the nearest one is)
             t += max(stride * 2.0, -over * frame.lay.w * 1.2 * wobble);
             continue;
         }
-        // (clouds/ripple.rs: its FRINGE)
-        let bank = saturate(over / 0.1);
-        let coarse = max(log2(max(stride, t * 0.0006) / (frame.lay.w / 512.0)), 0.0);
+        // (clouds/ripple.rs: its FRINGE, widened as the banks' texels shrink under a pixel)
+        let bank = saturate(over / (0.1 + 0.05 * banks_coarse));
         let sheet = deck(en, height, bank, coarse);
         t += stride;
         if sheet.thick <= 0.0 {
@@ -594,20 +606,44 @@ fn air_along(h: f32, mu: f32, range: f32, scale: f32) -> f32 {
     return sum * range / 6.0;
 }
 
-// How much of the Sun a place in the air under the cumulus has lost to them: what the field says of the column
-// its sunbeam came down through.
+// How much of the Sun a place in the air has lost to the cumulus (clouds_cover.wesl `sun_shadow`, which the
+// ground's shadows are too).
 fn in_shadow(en: vec2<f32>, height: f32) -> f32 {
-    let layer = frame.cumulus;
     let sun = frame.sun.xyz;
-    let rise = dot(sun, frame.up.xyz);
-    let middle = layer.y + 0.3 * layer.z;
-    if layer.x <= 0.0 || rise < 0.05 || height > layer.y + layer.z {
-        return 0.0;
+    let toward = vec3(dot(sun, frame.east.xyz), dot(sun, frame.north.xyz), dot(sun, frame.up.xyz));
+    return sun_shadow(field, repeating, en, height, toward, frame.cumulus.yz, laid_spread(en), frame.wind.xy,
+        frame.lay.y, frame.north.w);
+}
+
+// The moist air under the cumulus and round them, which the record does not give: how much light a metre of it
+// takes out of a ray at the ground. Estimated. With the day's haze it puts how far one can see at the ground near
+// 40 km, which is past the 16 km the station could report; it is what makes the light under and round the clouds
+// a thing that can be seen, as it is on a humid morning by the sea.
+const HUMID: f32 = 5.0e-5;
+// And a little more within a fifth of a turret's breadth of a cloud's edge, inside the layer: the air a cumulus grows from
+// and evaporates into. Estimated.
+const ROUND_CLOUD: f32 = 3.0e-5;
+// The haze throws its light forward: two lobes, a narrow one that makes the glare round the Sun and a broad one
+// that makes the sky round it pale. Estimated, as aerosol phase functions near the sea are measured (asymmetry
+// about 0.7 overall).
+const HAZE_LOBES: vec3<f32> = vec3<f32>(0.85, 0.45, 0.55);
+// Beyond this, m, the haze is not asked whether it is in a cloud's shadow, nor whether it is round a cloud: a shaft
+// so far off is narrower than a pixel. Chosen for what it costs.
+const SHAFT_REACH: f32 = 30000.0;
+
+// How much light a metre of the air takes out of a ray at a height, and where it scatters it.
+fn haze_density(en: vec2<f32>, height: f32, near: bool) -> f32 {
+    let layer = frame.cumulus;
+    // (Koschmieder: one can see as far as the air leaves a fiftieth of the contrast)
+    var density = 3.912 / frame.sun.w * exp(-height / frame.sunlight.w);
+    if layer.x > 0.0 || frame.day.x > 0.0 {
+        density += HUMID * (1.0 - smoothstep(layer.y, layer.y + 0.5 * layer.z, height));
+        if near && height > layer.y && height < layer.y + layer.z {
+            let col = column_at(en - lean(height - layer.y), spread_at(en));
+            density += ROUND_CLOUD * smoothstep(-0.2, 0.0, col.within);
+        }
     }
-    let along = max(middle - height, 0.0) / rise;
-    let there = en + vec2(dot(sun, frame.east.xyz), dot(sun, frame.north.xyz)) * along;
-    let col = column(there, gather(there / frame.lay.y));
-    return 0.9 * smoothstep(0.12, 0.4, col.within) * smoothstep(0.0, 120.0, col.top);
+    return density;
 }
 
 struct Hazed {
@@ -618,52 +654,66 @@ struct Hazed {
     behind: f32,
 }
 
+// Part of a walk through the haze, from `t0` to `t1` in `steps` steps, in or out of the clouds' shadows.
+fn haze_walk(walked: Hazed, ray: vec3<f32>, h: f32, mu: f32, t0: f32, t1: f32, steps: i32, shadowed: bool,
+    range: f32, through: f32, jitter: f32) -> Hazed {
+    var out = walked;
+    if t1 <= t0 {
+        return out;
+    }
+    let level = vec2(dot(ray, frame.east.xyz), dot(ray, frame.north.xyz));
+    let cosine = dot(ray, frame.sun.xyz);
+    let glare = mix(henyey_greenstein(cosine, HAZE_LOBES.x), henyey_greenstein(cosine, HAZE_LOBES.y), HAZE_LOBES.z);
+    let direct = frame.sunlight.xyz * glare;
+    // (the sky's light and the Sun's that the haze has passed about within itself, from all round)
+    let about = frame.skylight.xyz * 1.5 + frame.sunlight.xyz * 0.045;
+    var before = t0;
+    for (var i = 0; i < steps; i++) {
+        // (steps that lengthen with distance: the near air is where a shaft is seen)
+        let f = (f32(i) + jitter) / f32(steps);
+        let t = t0 + (t1 - t0) * f * f;
+        let g = (f32(i) + 1.0) / f32(steps);
+        let next = t0 + (t1 - t0) * g * g;
+        let height = max(height_at(h, mu, t), 0.0);
+        let en = frame.eye_over.xy + level * t;
+        let stopped = 1.0 - exp(-haze_density(en, height, t < SHAFT_REACH) * (next - before));
+        before = next;
+        if stopped < 1.0e-6 {
+            continue;
+        }
+        var shadow = 0.0;
+        if shadowed && t < SHAFT_REACH {
+            shadow = in_shadow(en, height);
+        }
+        let glow = direct * (1.0 - shadow) + about * (1.0 - 0.35 * shadow);
+        let hidden = select(through, 1.0, t < range);
+        out.light += glow * (out.behind * stopped * hidden);
+        if t < range {
+            out.cloud *= 1.0 - stopped;
+        }
+        out.behind *= 1.0 - stopped;
+    }
+    return out;
+}
+
 // The day's haze between the eye and what it sees, marched in and out of the cumulus' shadows: toward the Sun it
 // glows, under a cloud it is dark, and the edge between the two is a shaft of light. `range` is how far off the
-// cloud on this ray is and `through` how much shows past it.
+// cloud on this ray is and `through` how much shows past it. The stretch of the ray below the cumulus' tops, where
+// the shadows are, is walked in short steps; the rest in a few long ones.
 fn haze(ray: vec3<f32>, h: f32, mu: f32, limit: f32, range: f32, through: f32, jitter: f32) -> Hazed {
     var out = Hazed(vec3(0.0), 1.0, 1.0);
-    let scale = frame.sunlight.w;
-    // (Koschmieder: one can see as far as the air leaves a fiftieth of the contrast)
-    let thickness = 3.912 / frame.sun.w;
-    let slab = inside(h, mu, -50.0, 5.0 * scale);
+    let slab = inside(h, mu, -50.0, 5.0 * frame.sunlight.w);
     let start = max(slab.start, 0.0);
     let end = min(min(slab.end, limit), REACH);
     if slab.end <= 0.0 || end <= start {
         return out;
     }
-    let level = vec2(dot(ray, frame.east.xyz), dot(ray, frame.north.xyz));
-    let cosine = dot(ray, frame.sun.xyz);
-    // Haze throws most of its light on forward: a glow round the Sun. The rest is the sky's light and the Sun's
-    // that it has passed about within itself, which comes from all round. Estimated.
-    let glare = mix(henyey_greenstein(cosine, 0.78), henyey_greenstein(cosine, -0.2), 0.12);
-    let direct = frame.sunlight.xyz * glare;
-    let about = frame.skylight.xyz * 1.5 + frame.sunlight.xyz * 0.045;
-    var clear = 1.0;
-    var before = start;
-    // (a step to every few hundred metres at first, and no more than eighteen however far)
-    let steps = clamp(i32((end - start) / 250.0), 3, 18);
-    for (var i = 0; i < steps; i++) {
-        // (steps that lengthen with distance: the near air is where a shaft is seen)
-        let f = (f32(i) + jitter) / f32(steps);
-        let t = start + (end - start) * f * f;
-        let next = start + (end - start) * pow((f32(i) + 1.0) / f32(steps), 2.0);
-        let height = max(height_at(h, mu, t), 0.0);
-        let stopped = 1.0 - exp(-thickness * exp(-height / scale) * (next - before));
-        before = next;
-        if stopped < 1.0e-5 {
-            continue;
-        }
-        let shadow = in_shadow(frame.eye_over.xy + level * t, height);
-        let glow = direct * (1.0 - shadow) + about * (1.0 - 0.35 * shadow);
-        let hidden = select(through, 1.0, t < range);
-        out.light += glow * (clear * stopped * hidden);
-        if t < range {
-            out.cloud *= 1.0 - stopped;
-        }
-        clear *= 1.0 - stopped;
-    }
-    out.behind = clear;
+    let low = inside(h, mu, -50.0, frame.cumulus.y + frame.cumulus.z);
+    let low_start = clamp(low.start, start, end);
+    let low_end = clamp(select(low.end, start, low.end <= 0.0), low_start, end);
+    out = haze_walk(out, ray, h, mu, start, low_start, 6, false, range, through, jitter);
+    out = haze_walk(out, ray, h, mu, low_start, low_end, 24, true, range, through, jitter);
+    out = haze_walk(out, ray, h, mu, low_end, end, 8, false, range, through, jitter);
     return out;
 }
 
@@ -706,6 +756,8 @@ fn fragment(in: FullscreenVertexOutput) -> Marched {
     let ray = normalize(near.xyz / near.w - view.world_position);
     let h = frame.up.w;
     let mu = dot(ray, frame.up.xyz);
+    // (how wide a pixel is at a metre: what is far off is read as coarse as this)
+    let across = 2.0 / (view.clip_from_view[1][1] * f32(size.y));
 
     // How far the ray goes before it meets something solid.
     var limit = REACH;
@@ -719,11 +771,11 @@ fn fragment(in: FullscreenVertexOutput) -> Marched {
     var seen = Seen(vec3(0.0), 1.0, 0.0, 0.0);
     // Nearest layer first: the cumulus from under the deck, the deck from over it.
     if h < frame.deck.y {
-        seen = march_cumulus(seen, ray, h, mu, limit, jitter);
-        seen = march_deck(seen, ray, h, mu, limit, jitter);
+        seen = see_cumulus(seen, ray, h, mu, limit, across, jitter);
+        seen = march_deck(seen, ray, h, mu, limit, across, jitter);
     } else {
-        seen = march_deck(seen, ray, h, mu, limit, jitter);
-        seen = march_cumulus(seen, ray, h, mu, limit, jitter);
+        seen = march_deck(seen, ray, h, mu, limit, across, jitter);
+        seen = see_cumulus(seen, ray, h, mu, limit, across, jitter);
     }
 
     // The clean air between the eye and the cloud: it takes the cloud's blue first and gives back the sky's, so

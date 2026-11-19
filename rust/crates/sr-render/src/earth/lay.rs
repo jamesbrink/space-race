@@ -9,8 +9,9 @@ use bevy::prelude::*;
 use super::maps::{self, Maps};
 use super::marks::Marks;
 use super::material::{EarthFrame, EarthMaterial, EarthSurface};
+use super::relief::Surface;
 use super::{Ground, cube, grain, mesh};
-use crate::air::Air;
+use crate::air::{Air, DayMap};
 use crate::clouds::field;
 use crate::origin::{Origin, WorldPos};
 use crate::sky::Sky;
@@ -50,7 +51,8 @@ pub fn lay(
             wide: blank.clone(),
             region_relief: blank.clone(),
             region_colour: blank.clone(),
-            coast: blank,
+            coast: blank.clone(),
+            day: blank,
             marks: marks.map(|marks| marks.uniform(ground.east, ground.north)).unwrap_or_default(),
             noise: images.add(grain::image()),
             // (the clouds bake the same sheet for their own material, which is theirs to hold: this is a second copy)
@@ -58,9 +60,17 @@ pub fn lay(
         },
     });
     commands.insert_resource(Maps::fetch(&ground, &assets, material.clone(), shore));
-    let surface = mesh::surface(sky.radius, ground.grade, ground.east.as_dvec3(), ground.north.as_dvec3());
+    // (flat until the coast is known: `earth/relief.rs` then raises its near ground)
+    let surface = meshes.add(mesh::surface(
+        sky.radius,
+        ground.grade,
+        ground.east.as_dvec3(),
+        ground.north.as_dvec3(),
+        None,
+    ));
+    commands.insert_resource(Surface(surface.clone()));
     commands.spawn((
-        Mesh3d(meshes.add(surface)),
+        Mesh3d(surface),
         MeshMaterial3d(material),
         WorldPos(DVec3::ZERO),
         NotShadowCaster,
@@ -75,18 +85,23 @@ pub fn light(
     sky: Res<Sky>,
     origin: Res<Origin>,
     air: Option<Res<Air>>,
+    day: Option<Res<DayMap>>,
     mut materials: ResMut<Assets<EarthMaterial>>,
 ) {
     let Some(mut material) = materials.get_mut(&maps.material) else { return };
+    if let Some(day) = day
+        && material.extension.day != day.image
+    {
+        material.extension.day = day.image.clone();
+        material.extension.frame.day = Vec4::new(day.extent, 1.0, 0.0, 0.0);
+    }
     let frame = &mut material.extension.frame;
     let clock = air.as_ref().map_or(0.0, |air| air.clock);
     frame.sun = sky.sun.extend(clock);
     frame.eye.x = ((origin.0 - sky.centre).length() - sky.radius) as f32;
     if let Some(air) = air {
         let c = air.cumulus;
-        // (the cloud shader's shadow in the air takes the sunbeam's crossing three tenths of the way up the layer:
-        // `clouds.wesl` `in_shadow`)
-        frame.cloud = Vec4::new(c.cover, c.size, c.base + 0.3 * c.depth, f32::from(c.cover > 0.0));
+        frame.cloud = Vec4::new(c.cover, c.size, c.base, f32::from(c.cover > 0.0));
         frame.lay = field::lay(c.cover, c.size).extend(c.depth).extend(0.0);
         frame.wind = c.drift.extend(0.0).extend(0.0);
     }

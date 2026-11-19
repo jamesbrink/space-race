@@ -9,40 +9,12 @@
 // the Sun, of the fire and of the sky reaches each cell through the rest (`light`), where there is anything at
 // all (`occupy`), and what the whole of it takes from the Sun as seen from the Sun (`shade`), for its shadow.
 //
-// The box's frame: x down the wind, y up, z across, metres from its low corner. Velocity is m/s, heat is kelvin
-// above the air's, dust and vapour are what a metre of them takes out of a ray (1/m).
+// The box's frame: x down the wind, y up, z across, metres from its low corner. Once the blast has stopped feeding
+// it the box drifts down the wind with what it holds (`drift`), so every velocity here is the air's less the box's,
+// and the box's speeding up is felt as a push back up the wind. Velocity is m/s, heat is kelvin above the air's,
+// dust and vapour are what a metre of them takes out of a ray (1/m).
 
-struct Source {
-    // where, m; w: its radius, m
-    at: vec4<f32>,
-    // the velocity it gives, m/s (a blast: how fast it goes out along the ground, and how thick, m); w: 1 a blast
-    push: vec4<f32>,
-    // what it gives a second: dust and vapour (1/m), heat (K); w: how hard it holds the air to its velocity (1/s)
-    gives: vec4<f32>,
-}
-
-struct Fume {
-    // the box, m; w: a coarse cell, m
-    size: vec4<f32>,
-    // coarse cells each way; w: fine cells to a coarse one
-    cells: vec4<f32>,
-    // a step, s; the clock, s; the wind at 10 m, m/s down +x; how many sources
-    time: vec4<f32>,
-    // toward the Sun; w: how wide the Sun's view of the box is, m
-    sun: vec4<f32>,
-    // the two axes of the Sun's view
-    sun_a: vec4<f32>,
-    sun_b: vec4<f32>,
-    sunlight: vec4<f32>,
-    skylight: vec4<f32>,
-    // the fire's light: where, m; w: how strong, cd
-    lamp: vec4<f32>,
-    lamp_colour: vec4<f32>,
-    // the ground: dust raised by a metre of air passing over it faster than `y` m/s (1/m a metre); where the
-    // pad is down the wind and across, m (z, w)
-    ground: vec4<f32>,
-    sources: array<Source, 8>,
-}
+import super::fumes_frame::{Fume, Source};
 
 @group(0) @binding(0) var<uniform> fume: Fume;
 @group(0) @binding(1) var smooth_sampler: sampler;
@@ -66,11 +38,16 @@ const STIRS: f32 = 2.6;
 const FRAYS: f32 = 0.4;
 // The ground slows the air on it by this much a second. Estimated.
 const DRAGS: f32 = 0.6;
-// Vapour is gone in about this long, s, and dust in this; dust falls at this speed, m/s. Estimated: a puff of
-// steam on a warm morning lasts a few seconds; the dust of a concrete apron hangs for a quarter of a minute.
-const VAPOUR_LASTS: f32 = 1.6;
-const DUST_LASTS: f32 = 16.0;
-const DUST_FALLS: f32 = 0.25;
+// Vapour is gone in about this long, s, and the fine dust and burned gas in this, beyond what mixing with the
+// clean air round them takes; the dust falls at this speed, m/s. All estimated. The condensed exhaust evaporates
+// as the drier air it mixes with takes it up: the white billow of the stills is still dense with the vehicle well
+// up (S61-01908), and drifts off thinning. The tan haze a launch leaves drifts for minutes (it is still on the
+// films as the vehicle goes out of sight): what hangs is the finest of what is raised, dust of some 20 to 30
+// micrometres, which falls at a few centimetres a second (Stokes, for 2,600 kg/m^3 grains in air); the coarse
+// grit is down in seconds and is not drawn.
+const VAPOUR_LASTS: f32 = 25.0;
+const DUST_LASTS: f32 = 120.0;
+const DUST_FALLS: f32 = 0.04;
 // Dust is raised from the lowest this much of the air, m.
 const RAISED_FROM: f32 = 0.6;
 // How far the light's marches go, m: toward the Sun, toward the fire, and up to the sky.
@@ -98,13 +75,14 @@ fn noise3(p: vec3<f32>) -> f32 {
 // The eddies the grid is too coarse to hold, at a place: a velocity of about one in size, from a block of them
 // `across` metres a side that repeats, drifting with the wind and turning over as the clock runs.
 fn gust(at: vec3<f32>, across: f32) -> vec3<f32> {
-    let drifted = at - vec3(0.6 * fume.time.z, 0.07 * across, 0.0) * fume.time.y;
+    let drifted = at + vec3(fume.drift.z, 0.0, 0.0) - vec3(0.6 * fume.time.z, 0.07 * across, 0.0) * fume.time.y;
     return textureSampleLevel(gusts, repeat_sampler, drifted / across, 0.0).xyz * 2.0 - 1.0;
 }
 
-// The wind at a height: the power law of open, level country (a seventh), from its speed at 10 m.
+// The wind at a height, as the box sees it: the power law of open, level country (a seventh), from its speed at
+// 10 m, less the box's own drift.
 fn wind_at(y: f32) -> f32 {
-    return fume.time.z * pow(clamp(y, 0.25, 40.0) / 10.0, 0.143);
+    return fume.time.z * pow(clamp(y, 0.25, 40.0) / 10.0, 0.143) - fume.drift.x;
 }
 
 fn coarse() -> vec3<i32> {
@@ -204,6 +182,8 @@ fn force(@builtin(global_invocation_id) id: vec3<u32>) {
     var u = here.xyz;
     var heat = here.w;
     u.y += dt * G * heat / AIR;
+    // (the box speeding up down the wind)
+    u.x -= dt * fume.drift.y;
 
     let spin = curl(cell);
     let lean = vec3(
@@ -300,7 +280,7 @@ fn carry(@builtin(global_invocation_id) id: vec3<u32>) {
     // Dust off the ground: the faster the air over it against the wind's own, the more, in patches.
     if at.y < RAISED_FROM {
         let scour = length(vec2(mean.x - wind_at(at.y), mean.z));
-        let patchy = 0.4 + 1.2 * noise3(vec3(at.xz * 0.35, 3.0));
+        let patchy = 0.4 + 1.2 * noise3(vec3((at.xz + vec2(fume.drift.z, 0.0)) * 0.35, 3.0));
         stuff.x += fume.ground.x * max(scour - fume.ground.y, 0.0) * patchy * dt;
     }
     // What reaches an open side has left.

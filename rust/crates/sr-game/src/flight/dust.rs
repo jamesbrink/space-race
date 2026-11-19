@@ -29,8 +29,8 @@ const DECAY: f64 = 6.8;
 /// The speed of the sheet along the ground at a distance from the strike, as a multiple of sqrt(J / rho) / r
 /// (a radial wall jet from a round jet's strike keeps about this much: Poreh, Tsuei and Cermak, 1967).
 const SHEET: f64 = 1.1;
-/// The ring the blast is fed to the air from is no smaller than this, m, and no faster than this, m/s: three
-/// cells of the grid, and what a step of it can carry. The real sheet at that ring is several times faster.
+/// The ring the blast is fed to the air from is no smaller than this, m, and no faster than this, m/s: some
+/// two cells of the grid, and what a step of it can carry. The real sheet at that ring is several times faster.
 const RING: f64 = 3.0;
 const FASTEST: f64 = 45.0;
 /// Below this the air at the ground is no blast, m/s.
@@ -40,7 +40,7 @@ const SLOWEST: f64 = 12.0;
 const WIDENS: f64 = 0.12;
 /// The air in the sheet is this much hotter than the day's where it leaves the ring at its fastest, K.
 /// Estimated: the gas is 1,800 K at the nozzle and has mixed with many times its mass of air by there.
-const HOT: f32 = 30.0;
+const HOT: f32 = 20.0;
 
 /// The billow of the engine's first fire: how far from the launcher's middle it is fed to the air and how high
 /// over the hardstand, m, and how fast it is lifted, m/s. Estimated from the still of MR-3's ignition (NASA
@@ -94,17 +94,19 @@ fn still(course: &Course, air: &PadAir) -> Fumes {
     }
 }
 
-/// What the engine's jet feeds the air while it reaches the ground: the sheet thrown out along the hardstand, and
-/// as the engine lights the billow of its first fire, which is mostly vapour, stands round the launcher over the
-/// sheet and is soon gone.
+/// What the engine's jet feeds the air while it reaches the ground: the sheet thrown out along the hardstand,
+/// carrying the exhaust's water as it condenses, and as the engine lights the billow of its first fire, which is
+/// mostly vapour, stands round the launcher over the sheet and is soon gone.
 fn struck(nozzle: DVec3, thrust: f64, burning: f64, since_lit: f64, air: &PadAir, into: &mut Vec<Source>) {
     let Some(blast) = blast(thrust, nozzle.y, burning) else { return };
+    // (the less of the jet reaches the ground, the less of its water is laid along it)
+    let strength = blast.speed / FASTEST as f32;
     into.push(Source {
         at: DVec3::new(nozzle.x, 0.0, nozzle.z),
         radius: blast.ring,
         push: Push::Blast { speed: blast.speed, thick: blast.thick },
         dust: 0.0,
-        vapour: 0.0,
+        vapour: air.condenses.value as f32 * strength,
         heat: HOT * blast.speed / FASTEST as f32 * 30.0,
     });
     let vapour = air.vapour.value * (-since_lit.max(0.0) / air.vapour_lasts.value).exp();

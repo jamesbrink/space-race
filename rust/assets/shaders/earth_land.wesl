@@ -4,7 +4,7 @@
 // cover drawn as a designed surface: sand with its lumps and shell, grass in tufts, scrub as the domes of its
 // crowns. Every colour and density is estimated; rust/docs/terrain.md says from what.
 
-import super::earth_noise::{TAU, lattice, grain, grain_d, billow, nearest, shown};
+import super::earth_noise::{TAU, lattice, lattice3, grain, grain_d, billow, nearest, shown};
 
 // The ground's colours, linear (ground.ts PALETTE: estimated, from period colour photographs of the Cape, each
 // cover one clear tone).
@@ -72,35 +72,49 @@ struct Cover {
     dune: f32,
     marsh: f32,
     swale: f32,
+    // an old burn, grown back; the open strand behind the dune
+    burn: f32,
+    strand: f32,
 }
 
-// What covers the ground (ground.ts COVER, which this follows line for line where it can).
+// What covers the ground (ground.ts COVER, which this follows where it can, made to read as the Cape does from the
+// air: NASA's photograph of Missile Row, 13 November 1964, docs/sources.md). `earth/flora.rs` repeats it line for
+// line, so that what is stood up as plants stands where this paints them: keep the two in step.
 fn cover(s: Site) -> Cover {
     var c: Cover;
     let p = s.p;
     c.zone = 0.75 * saturate(s.shore / 400.0) + 0.25 * (1.0 - smoothstep(150.0, 700.0, s.river));
-    // the scrub: close to continuous, with sandy openings of tens of metres and grassier swales between old
-    // beach ridges, which lie along the shore
-    // (the ridges are not ruled: they wander, part and run out, and not every swale holds water long enough to keep
-    // the scrub out. 110 m from one to the next: ground.ts; Rink and Forrest 2005 have 109 m.)
-    let wander = 7.0 * (billow(p * 0.004, 35u) - 0.5) + 3.0 * (billow(p * 0.013, 46u) - 0.5);
-    // (nor evenly spaced: the older ridges, inland, are closer or wider by a quarter from one tract to the next,
-    // so their lines converge, part and are cut off as the Cape's truncated sets are)
-    let spacing = 0.057 * (0.82 + 0.36 * billow(p * 0.0009, 48u));
-    let ridge = sin(s.shore * spacing + wander) * 0.5 + 0.5;
-    // (a swale holds water in lengths, not from end to end)
-    c.swale = smoothstep(0.62, 0.95, ridge) * smoothstep(0.5, 0.6, billow(p * 0.0035, 36u))
-        * smoothstep(0.38, 0.62, grain(p * 0.011, 49u));
-    // (the openings come in drifts: a few hectares of scrub are full of them and the next few have none, so from
-    // the air they are not one even scatter)
-    let opening = billow(p * 0.009, 31u) + 0.14 * (billow(p * 0.002, 47u) - 0.5) + 0.09 * (grain(p * 0.04, 57u) - 0.5);
-    var woody = 0.93 - 0.75 * smoothstep(0.62, 0.74, opening) - 0.3 * c.swale;
-    woody -= 0.25 * smoothstep(0.55, 0.75, grain(p * 0.07, 33u));
+    // The old beach ridges lie along the shore, 110 m apart (ground.ts; Rink and Forrest 2005 have 109 m), and the
+    // swales between them are what shows: long, curving, broken lines, each its own width and strength, running
+    // out and taken up again, closer or wider from one tract to the next.
+    let wander = 9.0 * (billow(p * 0.0025, 35u) - 0.5) + 3.0 * (billow(p * 0.011, 46u) - 0.5);
+    let spacing = 0.057 * (0.8 + 0.4 * billow(p * 0.0007, 48u));
+    let phase = s.shore * spacing + wander;
+    let ridge = sin(phase) * 0.5 + 0.5;
+    let which = lattice3(vec2<i32>(i32(floor(phase / TAU + 0.25)), 7), 50u);
+    let pieces = smoothstep(0.48, 0.62, grain(p * 0.0026 + which.yz * 40.0, 49u));
+    c.swale = smoothstep(0.78 + 0.16 * which.x, 0.995, ridge) * pieces * which.z * which.z;
+    // The openings: sandy, grassy, of every size from a room to a field, and in drifts: a tract full of them and the
+    // next with few, so that from the air the scrub is mottled at every scale and not one even scatter.
+    let big = billow(p / 330.0, 31u);
+    let mid = billow(p / 85.0, 47u);
+    let small = grain(p / 22.0, 57u);
+    let drift = smoothstep(0.35, 0.65, billow(p / 1300.0, 58u));
+    var opening = smoothstep(0.63, 0.68, big + 0.12 * (mid - 0.5) + 0.06 * (small - 0.5));
+    opening = max(opening, smoothstep(0.65, 0.7, mid + 0.14 * (small - 0.5) + 0.1 * (drift - 0.5)) * (0.4 + 0.6 * drift));
+    opening = max(opening, smoothstep(0.72, 0.78, small + 0.1 * (mid - 0.5)) * drift * 0.8);
+    // Old burns: the scrub is burned every decade or two and comes back lower and paler, in tracts a kilometre and
+    // more across.
+    c.burn = smoothstep(0.6, 0.7, billow(p / 1700.0 + 5.3, 85u) + 0.08 * (big - 0.5));
+    var woody = 0.95 - 0.8 * opening - 0.3 * c.swale - 0.25 * c.burn;
     var herb = 0.2 + 0.7 * (1.0 - woody) * (0.75 + 0.35 * grain(p * 0.04, 34u));
-    // from the sea: beach, then the dune's grasses with patches of sea grape, then the strand thickening inland
+    // from the sea: beach, then the dune's grasses with patches of sea grape, then the strand, open and low, out to a
+    // ragged edge a few hundred metres in, and the scrub
     c.beach = 1.0 - smoothstep(38.0, 48.0, s.shore);
     c.dune = smoothstep(38.0, 48.0, s.shore) * (1.0 - smoothstep(70.0, 95.0, s.shore));
-    woody *= smoothstep(55.0, 110.0, s.shore);
+    let strand_edge = 160.0 + 140.0 * billow(p / 600.0, 59u);
+    c.strand = smoothstep(55.0, 90.0, s.shore) * (1.0 - smoothstep(strand_edge - 40.0, strand_edge + 40.0, s.shore));
+    woody *= smoothstep(55.0, 110.0, s.shore) * (1.0 - 0.35 * c.strand);
     woody = max(woody, c.dune * 0.5 * smoothstep(0.55, 0.7, grain(p * 0.05, 37u)));
     let oats = 0.85 + 0.15 * grain(p * 0.1, 38u) - 0.55 * smoothstep(0.62, 0.75, grain(p * 0.03, 39u));
     herb = mix(herb, oats, c.dune) * (1.0 - c.beach);
@@ -115,16 +129,27 @@ fn cover(s: Site) -> Cover {
     // graded aprons: sand, a little grass coming back
     herb = mix(herb, 0.12 + 0.2 * grain(p * 0.3, 45u), s.graded);
     woody *= 1.0 - s.graded;
-    // the ways: bare, with a grass verge
+    // the ways: bare, with a verge kept cut back ten metres and more, raggedly (the photographs' pale margins
+    // along every road)
     let on_way = 1.0 - smoothstep(-0.5, 1.5, s.way);
-    let verge = 1.0 - smoothstep(1.5, 4.5, s.way);
+    let verge = 1.0 - smoothstep(4.0, 12.0 + 8.0 * grain(p * 0.03, 43u), s.way);
     woody *= 1.0 - verge;
-    herb = mix(herb, 0.35, verge) * (1.0 - on_way);
+    herb = mix(herb, 0.45, verge) * (1.0 - on_way);
     // nothing grows where a model stands, nor in the water
     let dry = (1.0 - s.built) * smoothstep(0.0, 1.5, s.shore) * smoothstep(0.0, 1.5, s.river);
     c.woody = saturate(woody) * dry;
     c.herb = saturate(herb) * dry;
     return c;
+}
+
+// Flecks scattered one to a cell of side `cell` (m): the cell's own number (x), and how much of the point `p` is
+// its fleck (y), a rounded one of its own size and place, softened by the ground a pixel covers, `seen`.
+fn flecks(p: vec2<f32>, cell: f32, seed: u32, seen: f32) -> vec2<f32> {
+    let at = vec2<i32>(floor(p / cell));
+    let own = lattice3(at, seed);
+    let r = 0.18 + 0.22 * own.z * 0.5;
+    let d = length(fract(p / cell) - 0.3 - 0.4 * own.xy) - r;
+    return vec2(fract(own.x * 7.31 + own.y * 3.7), 1.0 - smoothstep(-0.5, 0.5, d * cell / max(seen, 0.002)));
 }
 
 // The sand: its tone, its lumps, the shell in it.
@@ -149,12 +174,14 @@ fn sand(s: Site, c: Cover) -> Soil {
     // shell hash: broken shell a few centimetres across, pale, and darker bits among it; coarser pieces rarer
     let see_hash = shown(0.12, s.seen);
     if see_hash > 0.0 {
-        let bit = lattice(vec2<i32>(floor(p / 0.03)), 8u);
-        let piece = lattice(vec2<i32>(floor(p / 0.11)), 9u);
+        // (each bit a rounded fleck of its own size somewhere in its cell, its edge as soft as a pixel: squares
+        // would show as the texels of a picture)
+        let fine = flecks(p, 0.03, 8u, s.seen);
+        let coarse = flecks(p, 0.11, 9u, s.seen);
         let shelly = 0.04 + 0.1 * c.beach + 0.05 * tone;
-        colour = mix(colour, vec3(0.80, 0.76, 0.66), see_hash * step(1.0 - shelly, bit));
-        colour = mix(colour, colour * 0.55, see_hash * step(bit, 0.035));
-        colour = mix(colour, vec3(0.74, 0.70, 0.62), shown(0.4, s.seen) * step(0.985, piece));
+        colour = mix(colour, vec3(0.80, 0.76, 0.66), see_hash * fine.y * step(1.0 - shelly, fine.x));
+        colour = mix(colour, colour * 0.55, see_hash * fine.y * step(fine.x, 0.035));
+        colour = mix(colour, vec3(0.74, 0.70, 0.62), shown(0.4, s.seen) * coarse.y * step(0.985, coarse.x));
     }
     o.colour = colour;
     o.rough = 0.95;
@@ -208,7 +235,7 @@ fn herbs(s: Site, soil: Soil, c: Cover) -> Soil {
     let see = shown(0.5, s.seen);
     // (from the air an opening is its grass more than its sand, and does not flash pale among the scrub; the
     // change comes on with distance, over four times the range at which the tufts themselves are lost)
-    var cover = saturate(c.herb * mix(0.95, 0.6, shown(2.0, s.seen)));
+    var cover = saturate(c.herb * mix(0.95, 0.8, shown(2.0, s.seen)));
     if see > 0.0 {
         let cell = 0.55;
         let tuft = nearest(s.p / cell, 9u);
@@ -216,10 +243,13 @@ fn herbs(s: Site, soil: Soil, c: Cover) -> Soil {
         let has = step(tuft.z, c.herb * (0.15 + 1.5 * grain(s.p * 0.3, 52u)));
         let size = fract(tuft.z * 17.0);
         let r = 0.14 + 0.38 * size * size;
-        let d = length(tuft.xy);
+        // (its outline ragged)
+        let d = length(tuft.xy) * (0.85 + 0.35 * grain(s.p / 0.09 + tuft.z * 31.0, 58u));
         let body = (1.0 - smoothstep(r * 0.55, r, d)) * has;
         // (its blades: a fan of light and dark round its middle)
-        let blades = 0.8 + 0.35 * sin(atan2(tuft.y, tuft.x) * 9.0 + tuft.z * 40.0) * shown(0.06, s.seen);
+        // (lighter and darker by its own lumps, not a star: a painted tuft is seen from above, where its blades
+        // lie every which way)
+        let blades = 0.85 + 0.3 * (grain(s.p / 0.07 + tuft.z * 50.0, 56u) - 0.5) * shown(0.06, s.seen);
         let own = mix(HERB_DRY, HERB_GREEN, saturate(lush + (fract(tuft.z * 7.0) - 0.5) * 0.7)) * blades * (0.6 + 0.6 * d / r);
         // its shadow on the sand, away from the Sun
         let lee = tuft.xy * cell - s.sunward * (0.5 * r * cell);
@@ -249,8 +279,15 @@ fn scrub(s: Site, soil: Soil, c: Cover) -> Soil {
     // (not one green: stands of different ages and kinds, tens to hundreds of metres across)
     let stand = billow(s.p * 0.0025, 64u);
     let leafy = mix(mix(LEAF_LIT, LEAF_OTHER, grain(s.p * 0.03, 60u)), MANGROVE, c.marsh) * (0.75 + 0.5 * stand);
-    // (from the air the scrub is clumps: dark where the crowns close and throw shade, lighter where they thin)
-    let whole = mix(LEAF, leafy, 0.55 + 0.55 * (billow(s.p / (5.0 * cell), 61u) - 0.5) + 0.3 * (stand - 0.5));
+    // (after a burn it comes back lower, thinner and browner)
+    let young = mix(leafy, HERB_DRY * 0.6, 0.5 * c.burn);
+    // (from the air the scrub is clumps: oak close and dark, palmetto paler between, each clump throwing its shadow
+    // to the side away from the Sun, so that from above the scrub has relief; the photographs' near-black green)
+    let clumps = billow(s.p / 9.0, 61u);
+    let lee = billow((s.p + s.sunward * (0.8 * height)) / 9.0, 61u);
+    let shadowed = smoothstep(0.0, 0.08, lee - clumps);
+    let whole = mix(LEAF * 0.8, young, 0.1 + 0.6 * smoothstep(0.3, 0.7, clumps) + 0.3 * (stand - 0.5))
+        * (1.0 - 0.45 * shadowed);
     // (seen edge-on a painted crown is a stain, not a dome: the scrub is then its one tone)
     let see = shown(cell, s.seen) * smoothstep(0.1, 0.3, s.steep);
     var canopy = c.woody;
@@ -264,7 +301,7 @@ fn scrub(s: Site, soil: Soil, c: Cover) -> Soil {
         let rise = sqrt(max(1.0 - d * d, 0.0));
         // its own green, darker low on its sides, and its leaves: fans, or a mottle of small ones
         let kind = fract(crown.z * 29.0);
-        let fans = 0.85 + 0.3 * sin(atan2(crown.y, crown.x) * 11.0 + crown.z * 50.0) * (1.0 - rise) * shown(0.15, s.seen);
+        let fans = 0.9 + 0.16 * sin(atan2(crown.y, crown.x) * 11.0 + crown.z * 50.0 + 3.0 * grain(s.p / 0.3, 62u)) * (1.0 - rise) * shown(0.15, s.seen);
         let leaves = 0.8 + 0.4 * grain(s.p / 0.22, 63u) * shown(0.4, s.seen);
         let own = mix(LEAF, mix(leafy, LEAF_OTHER, step(0.6, kind)), 0.25 + 0.75 * rise) * mix(fans, leaves, step(0.45, kind));
         // the shadow it throws, and the litter and shade under the scrub

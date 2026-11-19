@@ -16,6 +16,7 @@ pub mod noise;
 pub mod origin;
 pub mod plume;
 pub mod print;
+pub mod shock;
 pub mod sky;
 pub mod smoke;
 
@@ -35,6 +36,7 @@ impl Plugin for RenderPlugins {
             earth::EarthPlugin,
             clouds::CloudsPlugin,
             plume::PlumePlugin,
+            shock::ShockPlugin,
             canopy::CanopyPlugin,
             smoke::SmokePlugin,
             fumes::FumesPlugin,

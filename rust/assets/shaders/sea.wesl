@@ -2,7 +2,7 @@
 // they break, and the colour the water sends back up by its depth. See rust/docs/terrain.md for where each
 // figure is from.
 
-import super::earth_noise::{TAU, lattice, grain, grain_d, billow, shown};
+import super::earth_noise::{TAU, lattice, lattice3, grain, grain_d, billow, shown};
 
 // The open sea off the Cape, linear (src/viewer/globe.ts SEA; src/viewer/earth-surface.ts DEEP: estimated, against
 // photographs from orbit): its own colour seen from the shore, and the deep ocean's seen from above the air.
@@ -13,6 +13,10 @@ const DEEP: vec3<f32> = vec3(0.003, 0.016, 0.045);
 const LAGOON: vec3<f32> = vec3(0.045, 0.1, 0.09);
 // And where it is a foot or two deep along its shores, over sand and grass. Estimated.
 const LAGOON_EDGE: vec3<f32> = vec3(0.13, 0.19, 0.13);
+// The Cape's inshore water: over the bar and in the surf, sand stirred up and lit through; and the turbid green a
+// little further out. Estimated, against the photographs of the Cape from the air (docs/sources.md).
+const SURF_ZONE: vec3<f32> = vec3(0.17, 0.30, 0.26);
+const TURBID: vec3<f32> = vec3(0.055, 0.16, 0.16);
 // Foam (ground.ts PAINT: estimated).
 const FOAM: vec3<f32> = vec3(0.86, 0.88, 0.86);
 
@@ -25,16 +29,52 @@ struct Waves {
     foam: f32,
     // how hard the wind is blowing just here, about a half: it comes in gusts
     gust: f32,
+    // how much of it is a slick, 0 to 1
+    slick: f32,
+}
+
+// Where the swell runs, offshore: toward 250 degrees, east and north (estimated: the Cape's swell is from the east
+// and north-east in May).
+const SWELL_TOWARD: vec2<f32> = vec2(-0.9397, -0.3420);
+// The cell whitecaps are scattered by, m, and a cap's area when it has spread, m^2. Estimated.
+const CAP_CELL: f32 = 12.0;
+const CAP_AREA: f32 = 12.0;
+// How long a cap lasts, s. Estimated.
+const CAP_LIFE: f32 = 6.0;
+
+// Whitecaps as specks: `cover` is the share of the sea white just here.
+fn specks(p: vec2<f32>, toward: vec2<f32>, cover: f32, clock: f32, seen: f32) -> f32 {
+    // (they ride the crests down the wind)
+    // (and the cells are sheared and bent, so that from high up their lattice cannot be seen)
+    let moved = p - toward * (clock * 3.0);
+    let q = (moved + 9.0 * vec2(sin(moved.y / 37.0), sin(moved.x / 41.0))) / CAP_CELL + vec2(0.0, 0.37 * moved.x / CAP_CELL);
+    let c = vec2<i32>(floor(q));
+    let own = lattice3(c, 55u);
+    let t = clock / CAP_LIFE + own.z * 4.0;
+    let born = i32(floor(t));
+    let age = fract(t);
+    let cap = lattice3(c + vec2(born * 31, born * 17), 56u);
+    let there = step(cap.x, cover * CAP_CELL * CAP_CELL / CAP_AREA);
+    // (it breaks, spreads to its full size and fades to lace)
+    let r = sqrt(CAP_AREA / 3.14159) * (0.6 + 0.6 * cap.y) * (0.5 + 0.5 * smoothstep(0.0, 0.3, age));
+    let d = length((fract(q) - 0.15 - 0.7 * vec2(cap.y, fract(cap.z * 3.7))) * CAP_CELL);
+    let lace = mix(1.0, smoothstep(0.3, 0.6, grain(p * 1.3, 57u)), smoothstep(0.1, 0.8, age));
+    let white = there * (1.0 - smoothstep(r - 0.5 * seen, r + 0.5 * seen, d)) * (1.0 - smoothstep(0.4, 1.0, age))
+        * lace * min(1.0, (r * r * 4.0) / (seen * seen));
+    // (and where many fall in a pixel, their mean)
+    let mean = cover * 0.5;
+    return mix(mean, white, shown(CAP_CELL, seen));
 }
 
 // The wind's waves and the swell at a point p (m east and north), for a wind blowing `toward` (unit) at `speed`
-// m/s. `seen` is the ground a pixel covers, m; `calm` is 1 on sheltered water.
+// m/s. `seen` is the ground a pixel covers, m; `calm` is 1 on sheltered water; `offshore` is 0 where the swell has
+// turned to the beach (`surf` has it there), 1 clear of it.
 //
 // Ten trains from 21 m (the peak of a sea raised by 5 m/s: Pierson and Moskowitz 1964, derived) down to 0.3 m,
 // each as steep as the last (a slope of about a twentieth: estimated, so that with the ripples under them their mean
 // square slope is Cox and Munk's 0.003 + 0.00512 U), running within 60 degrees of the wind and coming and going
 // along their crests; and the swell. Crests are sharper than troughs, as a trochoid's are.
-fn waves(p: vec2<f32>, toward: vec2<f32>, speed: f32, clock: f32, seen: f32, calm: f32) -> Waves {
+fn waves(p: vec2<f32>, toward: vec2<f32>, speed: f32, clock: f32, seen: f32, calm: f32, offshore: f32) -> Waves {
     var out: Waves;
     let across = vec2(-toward.y, toward.x);
     // (a wind sea grows as the square of the wind: against the 5 m/s the trains are set for)
@@ -67,11 +107,14 @@ fn waves(p: vec2<f32>, toward: vec2<f32>, speed: f32, clock: f32, seen: f32, cal
     // (0.96 m high and 6.55 s apart, so 67 m from crest to crest in deep water: the day's, as the flight's lead
     // gave it; assumed here until the game hands the day's sea over. Its crests wander and come in sets, and from
     // the air they are the lines on the sea.)
-    let swell_keep = shown(67.0, seen) * (1.0 - calm);
+    // (it runs from the open Atlantic, toward 250 degrees: estimated, as the Cape's prevailing east-north-easterly
+    // swell; within a few hundred metres of a beach it turns to come square ashore, which `surf` draws. Its crests
+    // are long lines, broken where sets come and go, and from the air they are the lines on the sea.)
+    let swell_keep = shown(67.0, seen) * (1.0 - calm) * offshore;
     let swell_k = TAU / 67.0;
-    let swell = dot(p, toward) * swell_k - TAU / 6.55 * clock + 5.0 * grain(p * 0.0022, 41u);
-    let sets = 0.45 + 0.9 * grain(p * 0.0011 + 3.0, 42u);
-    slope += toward * (0.96 * 0.5 * swell_k * sets * cos(swell) / (1.0 - 0.3 * sin(swell)) * swell_keep);
+    let swell = dot(p, SWELL_TOWARD) * swell_k - TAU / 6.55 * clock + 4.0 * grain(p * 0.0012, 41u);
+    let sets = 0.35 + 1.0 * smoothstep(0.25, 0.75, grain(p * 0.0011 + 3.0 - SWELL_TOWARD * (clock * 0.004), 42u));
+    slope += SWELL_TOWARD * (0.96 * 0.5 * swell_k * sets * cos(swell) / (1.0 - 0.3 * sin(swell)) * swell_keep);
     // ripples, under everything: they are what glitters
     for (var j = 0u; j < 3u; j++) {
         let size = 0.3 / exp2(f32(j));
@@ -95,7 +138,17 @@ fn waves(p: vec2<f32>, toward: vec2<f32>, speed: f32, clock: f32, seen: f32, cal
     let paws = billow(vec2(dot(p, toward) / 700.0 - clock * 0.006, dot(p, across) / 190.0), 45u);
     out.gust = 0.4 * smoothstep(0.3, 0.7, paws) + 0.35 * billow(p / 1500.0 - toward * (clock * 0.004), 43u)
         + 0.25 * billow(p / 26000.0, 44u);
-    out.unseen = (unseen + 0.004 * (1.0 - 0.7 * calm)) * (0.4 + 1.2 * out.gust);
+    // And the wind lays the sea in streaks: Langmuir's windrows, slicks tens of metres apart and hundreds long,
+    // lying along the wind, where what floats gathers and damps the ripples. Seen from the air they are the sea's
+    // grain. Their spacing and length are estimated.
+    // (bent by a sum of sines, not by another reading of the noise: a reading used to place a reading has no
+    // derivatives where the sea's edge parts a block of pixels, and the engine then reads garbage)
+    let down = dot(p, toward);
+    let side = dot(p, across);
+    let rows = grain(vec2(down / 260.0, side / 22.0 + 1.3 * sin(down / 900.0 + side / 1700.0) + 0.6 * sin(down / 310.0)), 48u);
+    out.slick = smoothstep(0.66, 0.76, rows) * smoothstep(0.3, 0.6, billow(p / 1800.0, 49u)) * smoothstep(2.5, 4.0, speed) * shown(20.0, seen)
+        + 0.12 * (1.0 - shown(20.0, seen));
+    out.unseen = (unseen + 0.004 * (1.0 - 0.7 * calm)) * (0.4 + 1.2 * out.gust) * (1.0 - 0.5 * out.slick);
     // Whitecaps: a crest breaks where the trains pile up. At 5 m/s a thousandth of the sea is white (Monahan and
     // O'Muircheartaigh 1980: 3.84e-6 U^3.41); where the piling passes the mark is estimated to give about that.
     let cover = 3.84e-6 * pow(max(speed, 0.1), 3.41);
@@ -105,6 +158,11 @@ fn waves(p: vec2<f32>, toward: vec2<f32>, speed: f32, clock: f32, seen: f32, cal
     let torn = smoothstep(0.35, 0.65, grain(p * 2.7 - toward * clock * 0.4, 52u));
     out.foam = smoothstep(mark, mark + 0.35, crests + 0.5 * lace) * mix(0.5, torn, shown(1.5, seen))
         * saturate(cover / 0.004) * (1.0 - calm) * shown(6.0, seen);
+    // From higher up a cap is a speck: each one a few metres across, breaking, spreading and fading over a few
+    // seconds, more of them under a gust (they go as the cube of the wind, and more), none on a slick. Where a speck
+    // is under a pixel the sea has their mean.
+    let gusty = cover * (0.25 + 1.5 * out.gust) * (1.0 - out.slick) * (1.0 - calm);
+    out.foam = max(out.foam, specks(p, toward, gusty, clock, seen) * smoothstep(0.4, 1.5, seen));
     return out;
 }
 
@@ -134,7 +192,7 @@ fn surf(p: vec2<f32>, out_: f32, ashore: vec2<f32>, depth: f32, clock: f32, seen
     let roll = exp(-behind * 30.0) * mix(0.6, smoothstep(0.15, 0.4, lace), fine);
     let trail = exp(-behind * 4.0) * mix(0.45, smoothstep(0.15 + 0.6 * behind, 0.5 + 0.35 * behind, lace), fine);
     // (from where one breaker cannot be told from the next, the surf is its mean: a white band along the beach)
-    var foam = mix(breaking * 0.45, breaking * max(roll, trail), shown(55.0, seen));
+    var foam = mix(breaking * 0.75, breaking * max(roll, trail), shown(55.0, seen));
     // the swash: each wave runs up the beach face and draws back
     s.reach = 4.0 + 3.0 * sin(clock * 0.816 + along * 0.05) + 1.5 * sin(clock * 0.37 + along * 0.013);
     let edge = 1.0 - smoothstep(0.0, 0.6 + seen, abs(out_ + s.reach));

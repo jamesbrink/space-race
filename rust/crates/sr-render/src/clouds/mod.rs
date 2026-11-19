@@ -6,45 +6,56 @@
 //! second march toward the Sun at every step, for one pixel in four ([`pass`]) and laid on at full size
 //! ([`material`]). `docs/look.md` says what each part of the technique is for.
 
+mod cover;
 pub mod field;
 mod frame;
 mod material;
+mod mips;
+mod motion;
 mod pass;
 mod ripple;
 mod volume;
 
 use bevy::asset::RenderAssetUsages;
-use bevy::camera::visibility::NoFrustumCulling;
 use bevy::image::ImageLoaderSettings;
-use bevy::light::NotShadowCaster;
 use bevy::prelude::*;
 use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat};
 
 use crate::air::DayMap;
-use crate::origin::{Eye, Place};
+use crate::origin::Place;
 pub use frame::{skylight, sunlight};
-use material::CloudLay;
-use pass::{CloudSky, CloudView};
+use material::{CloudLay, Sheet};
+use pass::CloudSky;
 
 /// What the day's maps of the weather are across, m (`EXTENT` in `src/viewer/weather.ts`).
 const MAP_ACROSS: f32 = 4_096_000.0;
 
-#[derive(Resource)]
-struct Sheet(Handle<CloudLay>);
-
 /// What stands for the day's map when there is none.
 #[derive(Resource)]
 struct Blank(Handle<Image>);
+
+/// Where the cumulus stand ([`field`]), for the ground's shadows to read through `shaders/clouds_cover.wesl` without
+/// baking a second copy: in the world once [`CloudsMade`] has run at startup.
+#[derive(Resource, Debug, Clone)]
+pub struct CumulusSheet(pub Handle<Image>);
+
+/// The clouds' startup, which makes [`CumulusSheet`].
+#[derive(SystemSet, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct CloudsMade;
 
 /// The clouds. Nothing is drawn until the game puts an [`crate::air::Air`] in the world.
 pub struct CloudsPlugin;
 
 impl Plugin for CloudsPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins((MaterialPlugin::<CloudLay>::default(), pass::CloudPassPlugin))
-            .add_systems(Startup, make)
-            .add_systems(Update, (hang, frame::fit))
-            .add_systems(PostUpdate, frame::look.after(Place));
+        app.add_plugins((
+            MaterialPlugin::<CloudLay>::default(),
+            pass::CloudPassPlugin,
+            motion::CloudMotionPlugin,
+        ))
+        .add_systems(Startup, make.in_set(CloudsMade))
+        .add_systems(Update, (material::hang, frame::fit))
+        .add_systems(PostUpdate, frame::look.after(Place));
     }
 }
 
@@ -71,34 +82,18 @@ fn make(mut commands: Commands, mut images: ResMut<Assets<Image>>, mut materials
         RenderAssetUsages::RENDER_WORLD,
     ));
     let [cloud, haze, reach] = targets.clone();
+    let baked = field::baked();
+    let sheet = images.add(field::texture(&baked));
+    commands.insert_resource(CumulusSheet(sheet.clone()));
     commands.insert_resource(Sheet(materials.add(CloudLay { cloud, haze, reach })));
     commands.insert_resource(CloudSky {
         frame: frame::CloudFrame::default(),
         volume: images.add(volume::block()),
-        field: images.add(field::sheet()),
+        field: sheet.clone(),
+        cover: images.add(cover::texture(&baked)),
         ripple: images.add(ripple::sheet()),
         day: blank.clone(),
         targets,
     });
     commands.insert_resource(Blank(blank));
-}
-
-/// The ball the clouds are laid on goes with the eye, and the eye is the view they are marched for.
-fn hang(
-    mut commands: Commands,
-    new: Query<Entity, Added<Eye>>,
-    sheet: Res<Sheet>,
-    mut meshes: ResMut<Assets<Mesh>>,
-) {
-    for eye in &new {
-        let ball = meshes.add(Sphere::new(1.0).mesh().ico(2).unwrap_or_else(|_| Sphere::new(1.0).into()));
-        commands.entity(eye).insert(CloudView);
-        commands.spawn((
-            Mesh3d(ball),
-            MeshMaterial3d(sheet.0.clone()),
-            NotShadowCaster,
-            NoFrustumCulling,
-            ChildOf(eye),
-        ));
-    }
 }

@@ -11,45 +11,9 @@ import bevy_pbr::render::{
 };
 import super::earth_noise::{TAU, noise_sampler, lattice3, grain, billow, shown};
 import super::earth_land::{Site, Soil, ground};
-import super::sea::{Waves, waves, Surf, surf, water, SEA, DEEP, LAGOON, LAGOON_EDGE, FOAM};
-
-// A regional map's plane (sr-render/src/earth/chart.rs).
-struct Plane {
-    east: vec4<f32>,
-    north: vec4<f32>,
-    middle: vec4<f32>,
-    // west, east, south, north, in units of the sphere's radius
-    bounds: vec4<f32>,
-    // metres to a texel, how far in from its edge it is faded in, and two that each map reads its own way
-    scale: vec4<f32>,
-}
-
-struct EarthFrame {
-    x: vec4<f32>,
-    y: vec4<f32>,
-    z: vec4<f32>,
-    east: vec4<f32>,
-    north: vec4<f32>,
-    // half the shore map's width (m), metres to a texel, texels it keeps a distance over, whether there is one
-    shore: vec4<f32>,
-    // the cloud's shadow: cover, a cloud's size (m), the height it is sunward from (m), whether there is any
-    cloud: vec4<f32>,
-    // how the cover lays the cumulus out: every turret's spread, the metres to a cell of their field, their depth (m)
-    lay: vec4<f32>,
-    // toward the Sun, and the clock (s)
-    sun: vec4<f32>,
-    // the cloud's drift, m/s east and north
-    wind: vec4<f32>,
-    // the eye's height (m); whether the whole Earth's relief has arrived, its shores, and the sorted coast
-    eye: vec4<f32>,
-    // the region's wider shore map: its scale's third is the texels it keeps a distance over, its fourth whether
-    // it has arrived
-    wide: Plane,
-    // the region's relief and colour: its scale's third is whether the colour has arrived, its fourth the relief
-    region: Plane,
-    // banks of pale sand: a direction from the Earth's centre and the cosine of its radius
-    banks: array<vec4<f32>, 6>,
-}
+import super::sea::{Waves, waves, Surf, surf, water, SEA, DEEP, LAGOON, LAGOON_EDGE, FOAM, SURF_ZONE, TURBID};
+import super::earth_glint::{sunlight, to_sun, glint, sun_on_water};
+import super::earth_frame::{Plane, EarthFrame, through_cloud};
 
 // The made ground round the site (sr-render/src/earth/marks.rs).
 struct EarthMarks {
@@ -75,50 +39,19 @@ struct EarthMarks {
 @group(constants::MATERIAL_BIND_GROUP) @binding(115) var coast_map: texture_2d<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(117) var<uniform> marks: EarthMarks;
 @group(constants::MATERIAL_BIND_GROUP) @binding(120) var cumulus_map: texture_2d<f32>;
+@group(constants::MATERIAL_BIND_GROUP) @binding(121) var day_map: texture_2d<f32>;
 
 // Switches for measuring what each part costs (rust/docs/terrain.md, "Measuring"): the near land's material and
-// the sea's waves, foam and depth colour. With one off, that part is a flat tone. Leave both on.
+// the sea's waves, foam and depth colour. With one off, that part is a flat tone. Leave them on.
 const LAND_DETAIL: bool = true;
 const SEA_DETAIL: bool = true;
+// And the Sun's glint on the water (earth_glint.wesl): off, the water has the Sun's light through it and none off it.
+const GLINT: bool = true;
 // The sphere's radius, m, near enough for turning a map's texels into distances over the ground.
 const EARTH: f32 = 6371000.0;
 // The whole Earth's maps: texels along a face, and how many its shores keep a distance over (tools/globe.mjs).
 const FACE: f32 = 2048.0;
 const SPREAD: f32 = 8.0;
-
-fn hash21(p: vec2<f32>) -> f32 {
-    var q = fract(vec3(p.xyx) * 0.1031);
-    q += dot(q, q.yzx + 33.33);
-    return fract((q.x + q.y) * q.z);
-}
-
-fn noise2(p: vec2<f32>) -> f32 {
-    let i = floor(p);
-    let f = fract(p);
-    let u = f * f * (3.0 - 2.0 * f);
-    let a = mix(hash21(i), hash21(i + vec2(1.0, 0.0)), u.x);
-    let b = mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x);
-    return mix(a, b, u.y);
-}
-
-// How much of the Sun a point of the ground has lost to the cumulus: 0 in the open, 0.9 under a cloud. `en` is
-// where the sunbeam to it crossed the layer, in the cumulus' drifting frame. This is clouds.wesl's `in_shadow`
-// (its `gather`, its `column` read from the same sheet, the same edge and strength), and the two must be kept in
-// step, or the shadows part from the clouds that throw them.
-fn cloud_shade(en: vec2<f32>, clock: f32, seen: f32) -> f32 {
-    let cell = earth.lay.y;
-    let cells = en / cell;
-    let gathered = 0.62 + 0.76 * smoothstep(0.2, 0.8, noise2(cells * 0.21 + 7.3));
-    let texel = textureSampleLevel(cumulus_map, noise_sampler, en / (cell * 16.0), 0.0);
-    let spread = earth.lay.x * gathered;
-    let within = 1.0 - texel.r / spread;
-    let radius = texel.g * spread * cell;
-    let breath = (0.9 + 0.1 * sin(clock / 160.0 + texel.a * TAU)) * (0.75 + 0.25 * texel.a);
-    let top = earth.lay.z * (1.0 - exp(-radius / (0.16 * earth.cloud.y))) * breath;
-    let shade = 0.9 * smoothstep(0.12, 0.4, within) * smoothstep(0.0, 120.0, top);
-    // (where a cloud's shadow is under a pixel or two the ground has the field's mean, and does not shimmer)
-    return mix(0.8 * earth.cloud.x, shade, shown(0.25 * cell, seen));
-}
 
 // The height of the solid surface a byte of a relief map stands for, m: the sea's bed is negative
 // (src/world/relief.ts `decodeRelief`: 128 the sea's level, a logarithm below it, a square root above).
@@ -216,6 +149,12 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     let en_y = dpdy(en);
     let seen_square = max(sqrt(abs(en_x.x * en_y.y - en_x.y * en_y.x)), 0.001);
     let fixed = normalize(earth.x.xyz * up.x + earth.y.xyz * up.y + earth.z.xyz * up.z);
+    // The relief raised near the site (sr-render/src/earth/relief.rs): its slope east and north. The mesh's normal
+    // stays the sphere's, by which the maps are read.
+    var relief = vec2(0.0);
+    @if(VERTEX_UVS_B) {
+        relief = in.uv_b;
+    }
 
     // The shore: how far inland this is, m (negative at sea), from the finest map that reaches here: the whole
     // Earth's, the region's wide one over it, the near one over that, each faded in from its edge so that no
@@ -255,8 +194,9 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     // none from where its detail is under a pixel, and the planet's own colours take over.
     let own = on_near * (1.0 - smoothstep(8000.0, 40000.0, range)) * (1.0 - smoothstep(4000.0, 30000.0, height));
 
-    // The swash: the sea comes up the beach and goes back.
-    let open_shore = own * faces_sea * (1.0 - smoothstep(200.0, 280.0, abs(near)));
+    // The surf and the swash: the sea breaks along every open beach the near map has, and comes up the sand and goes
+    // back. (From high up the breakers are their mean, a white band: `surf` fades them by the size of a pixel.)
+    let open_shore = on_near * faces_sea * (1.0 - smoothstep(200.0, 280.0, abs(near)));
     var ashore = vec2(-1.0, 0.0);
     var beach: Surf;
     beach.foam = 0.0;
@@ -339,6 +279,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
             rough = mix(rough, soil.rough, own);
             sky = mix(1.0, soil.sky, own);
         }
+        slope += relief;
     }
 
     // The sea.
@@ -346,6 +287,8 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     var sea_slope = vec2(0.0);
     var sea_rough = 0.3;
     var sea_lean = vec3(0.0);
+    var sea_mss = 0.03;
+    var sea_foam = 0.0;
     if wet > 0.0 && !SEA_DETAIL {
         sea_colour = SEA;
     }
@@ -354,13 +297,13 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
         let speed = length(blown);
         let toward = select(vec2(-1.0, 0.0), blown / max(speed, 0.001), speed > 0.01);
         let lagoon = known * (1.0 - smoothstep(0.0, 200.0, sorted.g));
-        let w = waves(en, toward, max(speed, 1.0), clock, seen, lagoon);
+        let w = waves(en, toward, max(speed, 1.0), clock, seen, lagoon, smoothstep(120.0, 300.0, -near) + (1.0 - on_near * faces_sea));
         // its depth: off an open beach the bed shelves; further out, and wherever else it is known, the relief's
         let bed = -relief_at(fixed);
         // (water over ground the relief has above the sea is a lagoon or a lake, whose bed is not in the relief:
         // taken as shallow, one tone: src/viewer/globe.ts)
         let mapped = select(max(bed, 2.0), 1.5, bed < 0.5);
-        let depth = mix(mapped, shelving, own * faces_sea * (1.0 - smoothstep(150.0, 900.0, -shore)));
+        let depth = mix(mapped, shelving, on_near * faces_sea * (1.0 - smoothstep(150.0, 900.0, -shore)));
         var bank = 0.0;
         for (var i = 0; i < 6; i++) {
             bank = max(bank, smoothstep(earth.banks[i].w - 0.0001, earth.banks[i].w + 0.00005, dot(fixed, earth.banks[i].xyz)));
@@ -373,44 +316,30 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
         var body = water(bank, depth, deep);
         // (off the site's own shore, the Cape's water: green over sand where it is shallow, blue-grey offshore:
         // ground.ts PAINT)
-        let shoal = saturate(depth / 6.0);
-        let cape = mix(vec3(0.16, 0.29, 0.25), mix(vec3(0.045, 0.14, 0.16), deep, smoothstep(0.4, 1.0, shoal)), smoothstep(0.0, 0.35, shoal));
         // (inshore the water is turbid and green, in plumes the tide and the surf stir up; it clears to blue
-        // offshore over a few kilometres, raggedly)
-        let silt = billow(en / 900.0, 92u);
-        body = mix(body, cape, own * (1.0 - smoothstep(3.0 + 6.0 * silt, 8.0 + 14.0 * silt, depth)));
+        // offshore over a kilometre or two, raggedly: from the air a pale green band along every beach, as in the
+        // photographs of 1964 (docs/sources.md))
+        let silt = billow(en / 900.0, 92u) + 0.35 * (billow(en / 260.0, 93u) - 0.5);
+        let cape = mix(SURF_ZONE, mix(TURBID, deep, smoothstep(3.0 + 5.0 * silt, 7.0 + 14.0 * silt, depth)),
+            smoothstep(0.3, 4.0, depth));
+        body = mix(body, cape, on_near * faces_sea * (1.0 - smoothstep(25.0, 40.0, depth)));
+        // (and the open sea is not one tone: water of a little more or less plankton and silt lies in masses
+        // kilometres across, and the light that comes up out of it with them. Estimated.)
+        body *= 0.82 + 0.36 * billow(en / 5200.0 + 3.1, 94u) * (1.0 - lagoon);
         // (a lagoon: still, stained, shallow all over, the sand showing pale through its edges)
         body = mix(body, mix(LAGOON, LAGOON_EDGE, 0.7 * (1.0 - smoothstep(0.0, 90.0, -near))), lagoon);
         // (under a gust the sea is darker, in a lull paler: its roughness changes what of the sky it sends back,
         // and by a little what comes up from within. Estimated.)
-        body *= 0.72 + 0.56 * (1.0 - w.gust);
+        body *= (0.72 + 0.56 * (1.0 - w.gust)) * (1.0 - 0.08 * w.slick);
         let foam = max(w.foam, beach.foam * open_shore);
         sea_colour = mix(body, FOAM, foam);
         sea_slope = (w.slope + beach.slope * open_shore) * (1.0 - foam);
-        // The Sun's glitter. The waves too fine to see are not a blur: each patch of sea a pixel across holds a
-        // few facets, and one of them, tilted just so, flashes the Sun at the eye. So most of the unseen slope is
-        // drawn as one facet to a patch, its tilt taken from the same bell the roughness stands for (Cox and Munk:
-        // slopes spread as a Gaussian of the day's mean square) and held a quarter of a second; the rest stays
-        // roughness. Over many patches and moments the light sent back is what the roughness alone would send, but
-        // near the eye it sparkles. From far enough that a pixel holds thousands of facets (6 m of sea to a pixel:
-        // estimated) it is the smooth patch seen from orbit, and none of this is done.
-        let sparkling = (1.0 - smoothstep(0.7, 6.0, seen_square)) * (1.0 - foam);
-        var hidden = w.unseen;
-        if sparkling > 0.0 {
-            // (a patch is a power of two across, so that it holds still as the eye moves; where one size gives way to
-            // the next is frayed, or the change would show as a line across the sea)
-            let grid = exp2(ceil(log2(seen_square) + grain(en / (seen_square * 48.0), 96u) - 0.5));
-            let facet = vec2<i32>(floor(en / grid));
-            let own = lattice3(facet, 97u);
-            let tick = i32(floor(clock * 4.0 + own.z * 4.0));
-            let drawn = lattice3(facet + vec2(tick * 7919, tick * 104729), 98u);
-            let share = 0.85 * sparkling * w.unseen;
-            sea_slope += sqrt(-log(max(drawn.x, 1.0e-4)) * share) * vec2(cos(TAU * drawn.y), sin(TAU * drawn.y));
-            hidden -= share;
-        }
-        // (the slopes too fine to see are the surface's roughness: a sea whose mean square slope is s scatters
-        // the Sun as a surface of roughness sqrt(s) does, and the engine's is that one's square root)
-        sea_rough = mix(clamp(sqrt(sqrt(hidden)), 0.16, 0.6), 0.7, foam);
+        // (the slopes too fine to see are the surface's roughness: for the sky it sends back, a sea whose mean
+        // square slope is s is a surface of roughness sqrt(s), and the engine's is that one's square root. The
+        // Sun's own light off it is worked apart: earth_glint.wesl)
+        sea_mss = w.unseen;
+        sea_foam = foam;
+        sea_rough = mix(clamp(sqrt(sqrt(w.unseen)), 0.16, 0.6), 0.7, foam);
         // Seen near edge-on, the faces of a rough sea that can be seen at all are the ones tilted toward the eye:
         // the far sea mirrors the sky above the horizon, not the horizon itself, and is the paler for it. The
         // tilt is the waves' own (the root of their mean square slope), by how nearly edge-on. Estimated.
@@ -430,18 +359,22 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
 
     // The cumulus' shadows, moving with the wind: where the Sun's ray to this point passes through cloud. They
     // fall on the sea's glint as on anything the Sun lights.
-    if earth.cloud.w > 0.5 && earth.sun.y > 0.05 {
-        let sunward = earth.sun.xyz / earth.sun.y * earth.cloud.z;
-        // (the clouds are laid out on the site's own level plane, east and north of it as the crow would fly through
-        // the Earth, not over the ground: the two part by half a kilometre 500 km down range)
-        let angle = range / EARTH;
-        let level = en * (1.0 - angle * angle / 6.0) * (1.0 + earth.cloud.z / EARTH);
-        let over = level + vec2(dot(sunward, earth.east.xyz), dot(sunward, earth.north.xyz)) - earth.wind.xy * clock;
-        pbr.directional_shadow_factor = 1.0 - cloud_shade(over, clock, seen);
-    }
+    let cloud_lit = through_cloud(earth, cumulus_map, noise_sampler, day_map, shore_sampler, en);
+    // (on the water the Sun's light is worked here and not by the engine: earth_glint.wesl)
+    pbr.directional_shadow_factor = cloud_lit * (1.0 - wet);
 
     var out: FragmentOutput;
     out.color = apply_pbr_lighting(pbr);
+    if wet > 0.0 {
+        let lit = sunlight(in.world_position, up, in.position.xy, cloud_lit);
+        let l = to_sun();
+        let n = pbr.N;
+        // the water's own colour, lit by the Sun through its surface, and the foam on it
+        let body = pbr.material.base_color.rgb * saturate(dot(n, l)) / 3.14159265
+            * (1.0 - 0.06 * (1.0 - sea_foam));
+        let reflected = select(0.0, glint(n, pbr.V, l, sea_mss, en, seen_square, clock), GLINT) * (1.0 - sea_foam);
+        out.color = vec4(out.color.rgb + wet * (lit * body + sun_on_water(lit, reflected)), out.color.a);
+    }
     out.color = main_pass_post_lighting_processing(pbr, out.color);
     return out;
 }

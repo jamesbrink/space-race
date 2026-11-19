@@ -170,36 +170,50 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
 - **The pilot's standing figure is not shown**: at liftoff he is aboard.
 - **The land near the site is a designed ground** in the repo's palette (`docs/terrain.md`): what grows where
   follows the web build's rules, its roads and clearings are the place's own record, and its scrub stands as
-  plants out to 400 m. It has no relief: the dune and the swales are painted on a sphere, not raised. The far
-  complexes and the lighthouse are not here.
-- **The sea is a sum of wave trains, not a simulation**: their slopes add up to Cox and Munk's for the wind, and
-  the Sun's glitter is drawn from the same statistics. The wind at the surface is taken to be the cumulus's drift
-  and the swell is a constant; lagoon and lake beds are one shallow tone; there is no sea ice.
-- **A fire's shape is worked, its look is judged.** Each motor's fire is a marched volume (`plume/`, `plume.wesl`)
-  whose width, shock cells, core and spread in thin air come from its chamber and exit pressures by
-  one-dimensional isentropic flow (`plume/jet.rs`: Prandtl and Pack's cell, SP-8072's core). How bright it is, its
-  colours, how its streaks run (the gas passes far faster than a frame can follow: what is drawn is a slower beat)
-  and the sheet it throws along the ground are estimates, each named with the still it was judged on. The A-7's
-  fire is drawn as the stills have it, pale and seen through, a third as bright as sunlit white paint: it does not
-  bloom by day. It adds its light to what is behind it and is not dimmed by smoke in front of it. The solid
-  motors' chamber and exit pressures and their fires' colour were not found: estimates. The tower's jettison
-  rocket is one nozzle, as the model has it (it had three). No heat shimmer. The posigrades' fire is drawn; their
-  push is still the plan's single step of speed.
-- **The air round the pad is a fluid on a coarse grid** (`fumes/`, `fumes_solve.wesl`): 96 x 24 x 64 m about the
-  pad, velocity and pressure in 1 m cells, dust and vapour in half-metre ones, sixty steps to a second of the
-  flight's clock. The jet's strike is fed to it from a ring no smaller than 3 m at no more than 45 m/s, where the
-  real sheet is several times faster and a hand's breadth thick; eddies smaller than a cell are a repeating block
-  of curl noise, and the picture cuts the fumes' edges with more noise. Nothing solid stands in the flow but the
-  ground: the launcher, the vehicle and the gantry do not turn it. What reaches the box's sides is gone, so a
-  drifting haze ends some 60 m down the wind. A clock run faster than twice leaves the air behind it. How much
-  dust the apron gives up, the vapour of the engine's first fire and of the oxygen tank's vent, how long each
-  hangs and how hot the sheet is are estimates set against the stills named in `mercury/fires.rs`.
+  plants out to 400 m, taller clumps to 1.6 km. Its relief within 2 km of the site (beach, foredune, ridges and
+  swales) is estimated, not surveyed, and beyond it the ground is a sphere; plants beyond 400 m of the site, the
+  beach's among them, are only painted, and none moves in the wind. The far complexes and the lighthouse are not
+  here.
+- **The sea is a sum of wave trains, not a simulation**: their slopes add up to Cox and Munk's for the wind. The
+  Sun on it is worked apart from the engine's lobe, as Cox and Munk's Gaussian with each pixel's count of flashing
+  facets drawn from it, so it sparkles near the eye and is the smooth glint from orbit; how curved a facet is (so
+  how dense the sparkle) is estimated. The wind at the surface is taken to be the cumulus's drift, the swell is a
+  constant from an assumed bearing, the windrows and the turbid band's width are estimated; lagoon and lake beds
+  are one shallow tone; there is no sea ice.
+- **A fire's shape is worked, its look is judged** (`docs/exhaust.md` reads it all together). Each motor's fire is
+  a marched volume (`plume/`, `plume.wesl`) whose width, shock cells, core and spread in thin air come from its
+  chamber and exit pressures by one-dimensional isentropic flow (`plume/jet.rs`: Prandtl and Pack's cell,
+  SP-8072's core). How bright it is, its colours, its knots, how its streaks run (the gas passes far faster than
+  a frame can follow: what is drawn is a slower beat) and the burning sheet it throws along the launcher are
+  estimates, each named with the still it was judged on. The A-7's body is pale and seen through; its first
+  knot is white and blooms, as on film. It adds its light to what is behind it and is not dimmed by smoke in
+  front of it. The solid motors' chamber and exit pressures and their fires' colour were not found: estimates.
+  The tower's jettison rocket is one nozzle, as the model has it (it had three). No heat shimmer. The
+  posigrades' fire is drawn; their push is still the plan's single step of speed.
+- **The air round the pad is a fluid on a coarse grid** (`fumes/`, `fumes_solve.wesl`): 220 x 50 x 120 m, the
+  pad 60 m in from its upwind side, velocity and pressure in 1.25 m cells, dust and vapour in cells half that,
+  sixty steps to a second of the flight's clock (longer steps when the clock runs fast; past about six times it
+  falls behind). The jet's strike is fed to it from a ring no smaller than 3 m at no more than 45 m/s, where the
+  real sheet is several times faster and a hand's breadth thick; eddies smaller than a cell are a repeating
+  block of curl noise, and the picture cuts the fumes' edges with more noise. Nothing solid stands in the flow
+  but the ground: the launcher, the vehicle and the gantry do not turn it. Once nothing feeds it the box drifts
+  down the wind with what it holds, for five minutes; air near the ground, which the wind moves slower than the
+  box, thins out of its upwind side, and the picture fades the fumes toward the box's sides and ceiling so no
+  wall is seen. How much dust the apron gives up, how much of the exhaust's water condenses, the first fire's
+  billow, the oxygen tank's vent, how long each hangs and how hot the sheet is are estimates set against the
+  stills named in `mercury/fires.rs`.
 - **The fumes' light**: the Sun through the fumes themselves is marched 8 m and no further, the scattering
-  orders after the first are a gain, and the fire lights them as a point. Their shadow is cast by chance, texel
-  by texel, into the Sun's own shadow maps (a stochastic shadow map), with the fumes on each sunbeam taken as
-  even between the first and the last of them; it falls on the ground, the models and the fumes, and is as
-  grainy as the engine's shadow filter leaves it. The fire's light casts shadows only down its jet and only
-  while the ground is within 60 m. The fumes do not shade the clouds' haze nor the fire.
+  orders after the first are a gain, the shaded side keeps three quarters of the sky's light, and the fire and
+  its sheet light them as a point. Their shadow is cast by chance, texel by texel, into the Sun's own shadow
+  maps (a stochastic shadow map), with the fumes on each sunbeam taken as even between the first and the last
+  of them; it falls on the ground, the models and the fumes, and is as grainy as the engine's shadow filter
+  leaves it. The fire's light casts shadows only down its jet and only while the ground is within 60 m. The
+  fumes do not shade the clouds' haze nor the fire.
+- **The glow coming back in and the collar near Mach 1 are estimates on worked figures** (`shock/`): the shock
+  layer's thickness (Billig) and its colour (a black body at the simulator's gas temperature) are worked, how
+  much light the gas gives is an upper estimate (no account of a visible glow on a suborbital Mercury entry was
+  found); the vapour collar's shape, density and the Mach numbers and heights it is worn at are judged from films
+  of other launches. One collar, at the capsule's rim.
 - **A burst booster's cloud is forty puffs** (`smoke.rs`, `puff.wesl`), each a marched ball, thrown the same way
   every time; no fire is drawn in it. Frost shed at liftoff is the vapour only: the flecks of ice in the stills
   are not drawn.

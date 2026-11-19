@@ -15,9 +15,12 @@ const STREAMS: f32 = 9.0;
 /// How the air there is to burn in falls with its pressure: as its 0.35th power (`plume.ts`, `plumeShape`).
 /// Estimated.
 const AIR_POWER: f32 = 0.35;
-/// How strongly a jet's shock cells show for each e-fold its exit pressure is off the air's. Estimated: the
-/// A-7's, a tenth off at the sea, are faint on film.
+/// How strongly a jet's shock cells show for each e-fold its exit pressure is off the air's, and the least they
+/// show in a jet that is nearly matched. Estimated: a real nozzle's cone and its lip throw waves into the jet
+/// even when its pressure is the air's, and the A-7's first cells are a white knot under the bell on film (NASA
+/// 6100884, S61-01928) though its exit pressure is within a tenth of the air's.
 const DIAMONDS: f32 = 0.9;
+const DIAMONDS_LEAST: f32 = 0.5;
 /// No fire is drawn longer than this, m: in thin air it is long, and too faint to see long before its end.
 const LONGEST: f32 = 400.0;
 /// Nor further than this many times the jet's own width.
@@ -67,6 +70,12 @@ pub fn lengths(plume: &Plume) -> [f32; 2] {
     [here.core * grown, (plume.length * here.core / sea.core * grown).min(seen)]
 }
 
+/// How strongly a jet's shock cells show: over 0 where it swells, under 0 where it is squeezed.
+fn diamonds(ratio: f32) -> f32 {
+    let off = ratio.ln() * DIAMONDS;
+    (off.signum() * off.abs().max(DIAMONDS_LEAST)).clamp(-1.0, 1.0)
+}
+
 /// The march's figures for a fire, and the radius and length of the box that holds it, m.
 #[must_use]
 pub fn figures(plume: &Plume, clock: f32) -> (Jet, [f32; 2]) {
@@ -97,7 +106,7 @@ pub fn figures(plume: &Plume, clock: f32) -> (Jet, [f32; 2]) {
             -(1.0 - plume.hides.clamp(0.0, 0.98)).ln() / across,
         ),
         flow: Vec4::new(STREAMS, clock, plume.ground.min(1.0e9), ends.max(0.01)),
-        bounds: Vec4::new((shape.ratio.ln() * DIAMONDS).clamp(-1.0, 1.0), turn, radius, length),
+        bounds: Vec4::new(diamonds(shape.ratio), turn, radius, length),
     };
     (jet, [radius, length])
 }
@@ -153,7 +162,11 @@ mod tests {
         assert!((ends - 13.9).abs() < 1e-3 && core < ends);
         let (jet, [radius, length]) = figures(&plume, 0.0);
         assert!(length == ends && radius > 2.0 * 0.366 && radius < 6.0);
-        assert!(jet.bounds.x < 0.0 && jet.bounds.x > -0.2, "squeezed, a little: {}", jet.bounds.x);
+        assert!(
+            jet.bounds.x == -DIAMONDS_LEAST,
+            "squeezed, a little, and shown as the least: {}",
+            jet.bounds.x
+        );
         assert_eq!(jet.state.w, 0.0);
     }
 

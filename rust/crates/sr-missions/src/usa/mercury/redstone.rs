@@ -194,6 +194,7 @@ pub const PARTS: Parts = Parts {
     ],
     retropack: "Retropack",
     canister: "AntennaCanister",
+    shield: "HeatShield",
     chute_height: 2.08,
 };
 
@@ -305,7 +306,8 @@ pub const FLAME: Flame = Flame {
     exit_height: Measure::derived(
         -18.146,
         "the chamber's lip in vehicle.glb: the lowest ring of Engine_ChamberLiner and Engine_ChamberWall, below the \
-         capsule's widest plane. (Engine_A7's own lowest ring, -17.855, which the web build's note took for the lip, \
+         capsule's widest plane (read off the meshes' vertices, the nodes having no offset of their own: -18.1458 m, \
+         a ring of 0.3937 m). (Engine_A7's own lowest ring, -17.855, which the web build's note took for the lip, \
          is a collar 291 mm up the bell; the carbon vanes hang from -17.907 to -18.181, in the gas)",
     ),
     exit_radius: Measure::derived(
@@ -342,7 +344,8 @@ pub const FLAME: Flame = Flame {
         0.0,
         "an alcohol flame makes no soot: the pad is seen through it in the same stills",
     ),
-    colours: [[1.0, 0.93, 0.78], [1.0, 0.9, 0.62], [1.0, 0.56, 0.15], [1.0, 0.3, 0.05], [0.7, 0.8, 1.0]],
+    // (the body pale peach and the knot white in 6100884 and S61-01928; orange where it burns in the air)
+    colours: [[1.0, 0.93, 0.82], [1.0, 0.82, 0.66], [1.0, 0.56, 0.15], [1.0, 0.3, 0.05], [0.7, 0.8, 1.0]],
 };
 
 /// The main canopy's two colours, linear: orange and natural white gores (`flight.ts`, the canopy: #ee7a30 and

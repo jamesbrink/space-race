@@ -9,13 +9,16 @@
 //! `shaders/fumes_shadow.wesl`; `rust/README.md` says what is not in it.
 
 pub mod grid;
+mod lay;
 mod material;
 mod pace;
+mod pass;
 mod solve;
 
 use bevy::math::DVec3;
 use bevy::prelude::*;
 use bevy::render::extract_resource::ExtractResourcePlugin;
+use bevy::transform::TransformSystems;
 
 use crate::origin::Place;
 
@@ -87,19 +90,29 @@ pub struct Fumes {
     pub lamp: Option<Lamp>,
 }
 
+/// Whether the fumes are worked and drawn at all: an A/B switch, for measuring what they cost a frame.
+pub const ON: bool = true;
+
 /// Works and draws the [`Fumes`].
 pub struct FumesPlugin;
 
 impl Plugin for FumesPlugin {
     fn build(&self, app: &mut App) {
+        if !ON {
+            return;
+        }
         app.add_plugins((
             MaterialPlugin::<material::FumesMaterial>::default(),
+            MaterialPlugin::<lay::FumesLay>::default(),
             ExtractResourcePlugin::<grid::Volumes>::default(),
             ExtractResourcePlugin::<pace::Step>::default(),
         ))
         .init_resource::<pace::Step>()
-        .add_systems(Startup, material::make)
-        .add_systems(PostUpdate, pace::keep.before(Place));
+        .add_systems(Startup, (material::make, lay::make))
+        .add_systems(Update, (lay::hang, lay::fit))
+        .add_systems(PostUpdate, pace::keep.before(Place))
+        .add_systems(PostUpdate, pace::seat.after(TransformSystems::Propagate));
         solve::plug(app);
+        pass::plug(app);
     }
 }

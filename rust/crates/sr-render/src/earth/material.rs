@@ -46,8 +46,8 @@ pub struct EarthFrame {
     /// The shore map: half its width over the ground (m), metres to a texel, how far it keeps a distance (texels),
     /// and whether there is one (1 or 0).
     pub shore: Vec4,
-    /// The cloud's shadow on the ground: cover (0 to 1), a cloud's size (m), the height its shadow is thrown from
-    /// (m), and whether there is any (1 or 0).
+    /// The cumulus, for their shadows on the ground: cover (0 to 1), a cloud's size (m), the layer's base (m), and
+    /// whether there is any (1 or 0).
     pub cloud: Vec4,
     /// How the day's cover lays the cumulus out (`clouds::field::lay`): how far it spreads every turret and the
     /// metres to a cell of the field; then the layer's depth (m).
@@ -56,6 +56,9 @@ pub struct EarthFrame {
     pub sun: Vec4,
     /// The cloud's drift over the ground, m/s east and north.
     pub wind: Vec4,
+    /// The day's map of the cover far from the site (`air::DayMap`): how far across it is (m), and whether there is
+    /// one (1 or 0).
+    pub day: Vec4,
     /// The eye's height above the ground (m); whether the whole Earth's relief has arrived, and its shores; and
     /// whether the open sea has been told from enclosed water (`earth/coast.rs`), each 1 or 0.
     pub eye: Vec4,
@@ -113,6 +116,9 @@ pub struct EarthSurface {
     /// Where the cumulus stand (`clouds::field::sheet`), for their shadows: read through the noise's sampler.
     #[texture(120)]
     pub cumulus: Handle<Image>,
+    /// The day's map of the cover far from the site, read through the shore's sampler.
+    #[texture(121)]
+    pub day: Handle<Image>,
 }
 
 impl MaterialExtension for EarthSurface {
