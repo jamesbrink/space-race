@@ -25,6 +25,7 @@ import service_tanks
 import side_hatch
 import sm110_equipment
 import sm112_equipment
+import sm113_equipment
 import unitized_couch
 import window_glazing
 from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, mark_shells, material, prof
@@ -103,10 +104,11 @@ def bell(name, origin, direction, length, radius, mat, parent):
 
 def build(offset=0, *, spacecraft=101):
     """Build top-level part nodes, translated together by offset inches."""
-    if spacecraft not in (101, 103, 104, 106, 107, 108, 109, 110, 112):
+    if spacecraft not in (101, 103, 104, 106, 107, 108, 109, 110, 112, 113):
         raise ValueError(f"Unmodelled CSM-{spacecraft}")
+    sim_bay = spacecraft in (112, 113)
     lunar = spacecraft != 101
-    probe_installed = spacecraft in (104, 106, 107, 108, 109, 110, 112)
+    probe_installed = spacecraft in (104, 106, 107, 108, 109, 110, 112, 113)
     white = material("apollo-radiator-white", (0.82, 0.84, 0.80), roughness=0.65)
     silver = material("apollo-aluminium", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33)
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
@@ -140,10 +142,20 @@ def build(offset=0, *, spacecraft=101):
 
     fairing_top = SM_TOP + FAIRING_HEIGHT
     door = None
-    if spacecraft == 112:
+    if sim_bay:
         door = groups["SIMDoor"] = group("SIMDoor")
     service_tanks.panels(
-        sm, RADIUS, SM_BOTTOM, SM_TOP, FAIRING_RADIUS, fairing_top, command_module.radius(fairing_top - CM_BASE), white, silver, sim_door=door
+        sm,
+        RADIUS,
+        SM_BOTTOM,
+        SM_TOP,
+        FAIRING_RADIUS,
+        fairing_top,
+        command_module.radius(fairing_top - CM_BASE),
+        white,
+        silver,
+        sim_door=door,
+        spacecraft=spacecraft,
     )
     # These meshes enclose the service-module compartments. Clip both wall
     # faces, the rims, seams and fairing together; leaving an
@@ -156,19 +168,22 @@ def build(offset=0, *, spacecraft=101):
         groups["OxygenShelf"] = group("OxygenShelf")
         groups["OxygenTankTwoCore"] = group("OxygenTankTwoCore")
         service_tanks.odyssey_oxygen(groups["OxygenShelf"], groups["OxygenTankTwoCore"], SPS_EXIT_XA)
-    if spacecraft in (110, 112):
+    if spacecraft in (110, 112, 113):
         for name in ("ReserveOxygen", "ReserveOxygenCore", "AuxiliaryBattery"):
             groups[name] = group(name)
         sm110_equipment.build(
-            groups["ReserveOxygen"], groups["ReserveOxygenCore"], groups["AuxiliaryBattery"], SPS_EXIT_XA, oxygen_xa=973 if spacecraft == 112 else 920
+            groups["ReserveOxygen"], groups["ReserveOxygenCore"], groups["AuxiliaryBattery"], SPS_EXIT_XA, oxygen_xa=973 if sim_bay else 920
         )
-    if spacecraft == 112:
+    if sim_bay:
         for name in ("SIMBay", "SIMCameras", "SIMBooms", "Subsatellite", "ReserveHydrogen"):
             groups[name] = group(name)
-        sm112_equipment.build(groups, SPS_EXIT_XA)
+        sm112_equipment.build(groups, SPS_EXIT_XA, spacecraft=spacecraft)
     service_tanks.power(groups["ServicePower"], SPS_EXIT_XA, separate_oxygen=spacecraft == 109)
     service_tanks.structure(sm, SPS_EXIT_XA)
-    service_tanks.engine(groups["ServiceEngine"], SPS_EXTENSION_LENGTH, SPS_EXIT_RADIUS)
+    if spacecraft == 113:
+        groups["YawActuator"] = group("YawActuator")
+        sm113_equipment.yaw_actuator(groups["YawActuator"], SPS_EXTENSION_LENGTH)
+    service_tanks.engine(groups["ServiceEngine"], SPS_EXTENSION_LENGTH, SPS_EXIT_RADIUS, yaw_parent=groups.get("YawActuator"))
     # Four independent quads; four chambers each: axial pair and tangential pair.
     for i in range(4):
         # The press kit's axis description is schematic. R-547 Table1.3
@@ -202,7 +217,7 @@ def build(offset=0, *, spacecraft=101):
         void,
         docking_ring=probe_installed,
     )
-    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft in (106, 107, 108, 109, 110, 112))
+    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft in (106, 107, 108, 109, 110, 112, 113))
     forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=lunar, hatch_setback=10 if probe_installed else 0)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     window_glazing.build(groups["CabinWindows"], CM_BASE, hatch_parent=hatch_leaf)
@@ -218,7 +233,7 @@ def build(offset=0, *, spacecraft=101):
         forward_compartment.recovery_loop(groups["RecoveryLoop"], CM_BASE)
         groups["TelemetryPower"] = group("TelemetryPower")
         console_equipment.telemetry_power(groups["TelemetryPower"], CM_BASE)
-    if spacecraft in (107, 108, 109, 110, 112):
+    if spacecraft in (107, 108, 109, 110, 112, 113):
         groups["WaterDispenser"] = group("WaterDispenser")
         cabin_bays.water_dispenser(groups["WaterDispenser"], CM_BASE, spacecraft)
     unitized_couch.build(groups["CrewCouches"], CM_BASE, foldable=lunar)
