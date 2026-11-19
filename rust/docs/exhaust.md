@@ -43,8 +43,20 @@ collar 291 mm up the bell. `FLAME.exit_height` is `derived` and says this.
   train fades out with it. Set so the first knot, as in
   6100884, is white on the print and blooms (over the grade's bloom threshold, some 33,000 cd/m^2) while the
   body does not.
-- Colours (`FLAME.colours`): a white knot, a pale peach body, orange where the jet burns in the air and in the
-  sheet on the launcher. Judged by eye against the same stills; they carry no `Measure`.
+- Colours (`FLAME.colours`): a white knot, a translucent pink-peach body, salmon-orange where the jet burns late in
+  the air and orange in the sheet on the launcher. Judged by eye against the same stills and S61-01908 (MR-3
+  climbing against the sky); they carry no `Measure`.
+- A soft cone, not a solid. The white heart is seen only in and just under the bell (`HEART_GOES`, 0.45 of the
+  supersonic core) and then gives way to the body, which starts at the lip and widens at 0.14 of a metre a metre
+  (`WIDENS`) and thins less than as the square of its width (`spent`, its 1.3th power), so the fire is a
+  translucent cone some three bell widths across where it fades, as in S61-01908. All estimated.
+- The Redstone's turbopump ran on hydrogen peroxide decomposed to steam and oxygen, so its turbine exhaust is
+  steam, not the soot of a gas generator burning kerosene: there is no dark smoke to draw. (The steam's own plume
+  is not drawn.)
+- Above the air a fire is no beam: let go at the lip it spreads in a cone at the lip's turn and thins as the
+  square of the cone's width (`plume.wesl`, `let_go`), and is drawn no longer than 60 of its nozzle's exit radii
+  (`draw.rs`, `REACH`): the tower's jettison rocket and the retrorockets are short bright fires with a soft fan.
+  Estimated.
 - The sheet on the launcher: orange tongues out to 3.4 m (`SHEET_REACH`), and as a light 40,000 cd/m^2 over
   that disc (`glare.rs`, `SHEET_GLOW`: a few times sunlit concrete, the brightest thing under the tail in
   6100884). This is what lights the cloud warm from inside at liftoff.
@@ -66,10 +78,12 @@ the frame (S61-02409, MR-3), and on MR-4 a grey-white bank across the whole pad 
 **What is fed (`flight/dust.rs`).** While the jet reaches the ground: a radial wall jet from a ring under the
 nozzle (axis speed 6.8 sqrt(J/rho)/x, Pope 5.1; sheet 1.1 sqrt(J/rho)/r, Poreh, Tsuei and Cermak 1967; held to
 45 m/s at no less than a 3 m ring, which is what the grid can carry), warm (`HOT`, 20 K over the air at its
-fastest, estimated), carrying the exhaust's condensed water (`PadAir.condenses`, 6 a second, estimated against
-S61-02409 and S61-03121), and raising the apron's dust where the air over it is faster than 6 m/s
-(`PadAir.dust`, 0.02, estimated against S61-01928). As the engine lights, the white billow
-(`PadAir.vapour`, 4.5, lasting `vapour_lasts`, 1 s, against S61-02407). Before launch and as it lifts, the
+fastest, estimated), carrying the exhaust's condensed water (`PadAir.condenses`, 3 a second, estimated against
+S61-02409, S61-03121 and S61-03248) only while the jet arrives as the fire's own gas: the share falls by e over
+6 m of the nozzle's height (`LADEN`), so the billow is thrown while the vehicle leaves the launcher and not
+fed for the twenty seconds the jet still blows on the apron as a wind; and raising the apron's dust where the air
+over it is faster than 6 m/s (`PadAir.dust`, 0.012, estimated against S61-01928 and S61-03248). As the engine
+lights, the white billow (`PadAir.vapour`, 3, lasting `vapour_lasts`, 1 s, against S61-02407). Before launch and as it lifts, the
 oxygen tank's vent (S61-03158, S61-01928). Why the exhaust condenses at all on a 24 C morning: the A-7 burned
 75 per cent alcohol in water with liquid oxygen, so its exhaust is some two fifths water and cool per kilogram
 of water; the mixing line with humid air can cross saturation. That reasoning is not worked here; the amount
@@ -79,8 +93,8 @@ is set against the stills.
 1.25 m cells (dust and vapour on the same cells: the billows' finer shape is the picture's), the pad 60 m in from
 its upwind side, one step a frame of the clock's time since the last (a sixtieth of a second at 60 frames, up to
 a twentieth when the clock runs fast or a frame is slow), the pressure searched six times over in pairs. Hot air rises; the wind is the day's (090 at 5.1 m/s at 10 m, ISD;
-a seventh-power profile); the ground drags. The vapour evaporates in about 25 s (`VAPOUR_LASTS`; still dense with the vehicle well up in
-S61-01908), the fine
+a seventh-power profile); the ground drags. The vapour evaporates in about 20 s (`VAPOUR_LASTS`; the pad nearly
+clear a few seconds up in S61-03248, a thin bank still about it in S61-01908), the fine
 dust lasts about two minutes beyond what mixing takes (`DUST_LASTS`) and falls at 4 cm/s (`DUST_FALLS`: Stokes
 for 20 to 30 micrometre grains). All four are estimated.
 
@@ -101,12 +115,15 @@ map: `fumes_shadow.wesl`); its own picture draws nothing. The march finds where 
 found where it is, then steps by optical depth (0.35 of a step's worth, between 0.25 and 0.4 m where there are
 fumes) and stops once less than 2 per cent of what is behind comes through.
 
-**The billows.** The vapour is eroded at its outline by eddies of three sizes (5.5, 2.2 and 0.9 m, `KNOBS`, read
+**The billows.** The vapour is an off-white (it carries the apron's dust and the burned alcohol's haze), the dust
+a dirty grey tan (`VAPOUR`, `DUST`). The vapour is eroded at its outline by eddies of three sizes (5.5, 2.2 and 0.9 m, `KNOBS`, read
 from the repeating block of curl noise): where the grid's vapour is under 1.2/m (`SKIN`) the eddies eat up to
 three quarters of it (`ERODE`) and what is left comes to full thickness over a short edge (`EDGE`), so the
 outline is a crisp knobbed one, as S61-02409's; the hollows between knobs see up to half less of the Sun and the
 sky (`HOLLOWS`); inside, the vapour varies by 60 per cent on the largest eddies and is never thicker than 5/m
-(`INSIDE`, `THICKEST`), so the inside of a billow is seen into a metre or so. Where the fumes are read is bent
+(`INSIDE`, `THICKEST`), so the inside of a billow is seen into a metre or so. A cloud thinned below a third of
+the outline's thickness as it drifts and evaporates has no knobs left: there the eddies only fray it and it is as
+thin as the grid says (`fresh`), a haze, not a scatter of crisp knobs. Where the fumes are read is bent
 by eddies of 9 and 3.2 m by 1.6 and 0.6 m (`BILLOWS`, `BENT`). The dust is cut at its edges finer than the grid
 (`CUT`), as wisps. All estimated.
 
@@ -126,7 +143,10 @@ the grid's dust and vapour are on its 1.25 m cells, not half that (eight times l
 solver step a frame; six pressure turns, not eight; the fire's lamps cast no shadows (each was the whole scene
 drawn again). To measure it within one run, set `SR_AB` to a number of seconds: the fumes and the fires are on
 and off by turns and each turn is logged, so `--bench` seconds can be split (`SR_AB_PARTS` picks `s` the solver,
-`d` the fumes' picture, `f` the fires). On the shared machine (six to eight other renders and builds running)
+`d` the fumes' picture, `f` the fires). Seen from more than a kilometre off the box's nearest side (the chase camera from about T+25 s), the solver works
+only once its owed time has come to its longest step, a twentieth of a second, and lights the air only then: a
+third of the cost (`pace.rs`, `FAR`), with no difference to be seen in a chase strip from T+20 to T+60 s. On the
+shared machine (six to eight other renders and builds running)
 the seconds without them were 2 to 7 ms faster at the quietest quarter of the run, in four runs; the medians
 were too noisy to say more. `fumes::ON`, `plume::ON` and `shock::ON` take each out of the build.
 
@@ -163,7 +183,8 @@ forward (g 0.8), so it shows where the Sun is behind it and hardly at all elsewh
 would for the light it scatters. Its density (`fire.rs`,
 `vapour`): 0.8 at its densest, at Mach 0.98, falling off over 0.012 of Mach either side (the Redstone gained
 about 0.02 of Mach a second there, so it is seen for under two seconds), fading from 8 to 14
-km as the air dries and thins, and only while the nose meets the air. Every one of those is estimated from
+km as the air dries and thins, and only while the nose meets the air. It is a soft shell, mottled and flickering,
+not streaked: the flow through it is too fast for streaks to be seen. Every one of those is estimated from
 films of other launches (Saturn I and V, the Shuttle); no film of a Mercury-Redstone through Mach 1 was found,
 nor the humidity aloft that morning. The Prandtl-Glauert cone of pictures (a disc at the shock) is the same
 thing; only the collar at the one shoulder is drawn.
@@ -185,8 +206,11 @@ thing; only the collar at the one shoulder is drawn.
 ## Sources
 
 - NASA stills, images.nasa.gov: 6100884, S61-01928 (MR-3 just off the pad), S61-02407 (MR-3 ignition),
-  S61-02409 (MR-3 liftoff from low down), S61-03121 and S61-03248 (MR-4 liftoff), S63-22731 (MR-2),
-  S61-03158 (MR-3 on the pad at night), S61-01908 (MR-3 climbing).
+  S61-02409 (MR-3 liftoff from low down), S61-01927 (MR-3 at liftoff from the ground), S61-03121 and S61-03248
+  (MR-4 liftoff, and a few seconds up from the structure), S63-22731 (MR-2), S61-03158 (MR-3 on the pad at night),
+  S61-01908 (MR-3 climbing).
+- The A-7's turbopump, driven by steam from hydrogen peroxide over a permanganate catalyst: Aircraft Engine
+  Historical Society, "U.S. Manned Rocket Propulsion Evolution", part 4 (enginehistory.org/Rockets/RPE04/).
 - Q. D. Pack, "A note on the Prandtl-Meyer expansion of supersonic jets", Q. J. Mech. Appl. Math. 3, 1950.
 - NASA SP-8072, Acoustic Loads Generated by the Propulsion System, 1971 (the core's length).
 - S. B. Pope, Turbulent Flows, 2000, 5.1 (the round jet's decay).

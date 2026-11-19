@@ -24,6 +24,10 @@ const DIAMONDS: f32 = 0.9;
 const DIAMONDS_LEAST: f32 = 0.5;
 /// No fire is drawn longer than this, m: in thin air it is long, and too faint to see long before its end.
 const LONGEST: f32 = 400.0;
+/// Nor longer than this many of its own nozzle's exit radii: a jet let into air too thin to hold it spreads as
+/// it leaves the lip, its gas thinning as the square of the distance, and is seen for a few dozen nozzle widths
+/// (as the solid motors fired above the air are filmed: a short bright fire and a soft fan, not a beam). Estimated.
+const REACH: f32 = 60.0;
 /// Nor further than this many times the jet's own width.
 const FAR: f32 = 40.0;
 /// The fan turned out at the lip in thin air is drawn this many exit radii out, where it is a thousandth as
@@ -67,7 +71,7 @@ pub fn lengths(plume: &Plume) -> [f32; 2] {
     let grown = plume.burning.clamp(0.0, 1.0).sqrt();
     let (here, sea) = (plume.nozzle.shape(plume.ambient), plume.nozzle.shape(SEA));
     // (in thin air the jet goes on thinning as it goes: by some tens of its own width there is nothing to see)
-    let seen = LONGEST.min(FAR * here.radius.max(plume.nozzle.radius));
+    let seen = LONGEST.min(FAR * here.radius.max(plume.nozzle.radius)).min(REACH * plume.nozzle.radius);
     [here.core * grown, (plume.length * here.core / sea.core * grown).min(seen)]
 }
 
@@ -176,7 +180,9 @@ mod tests {
     #[test]
     fn it_grows_in_thin_air_is_cut_at_the_ground_and_is_short_while_it_builds() {
         let high = figures(&a7(1.0, 500.0, f32::INFINITY), 0.0);
-        assert!(high.1[1] > 60.0 && high.1[0] > 5.0 && high.0.bounds.y > 0.5);
+        // (longer than at the sea, but no beam: a few dozen of its nozzle's widths)
+        assert!(high.1[1] > 20.0 && high.1[1] <= REACH * 0.366 + 1e-3);
+        assert!(high.1[0] > 5.0 && high.0.bounds.y > 0.5);
         let low = figures(&a7(1.0, SEA, 1.0), 0.0);
         assert!((low.1[1] - 1.3).abs() < 1e-3 && low.1[0] == SHEET);
         assert!(lengths(&a7(0.25, SEA, f32::INFINITY))[1] < 7.0);

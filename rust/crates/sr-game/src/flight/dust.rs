@@ -38,6 +38,12 @@ const SLOWEST: f64 = 12.0;
 /// The ring widens by this much of the nozzle's height, as the jet does before it strikes (a jet's half-width
 /// is a tenth of how far it has gone).
 const WIDENS: f64 = 0.12;
+/// The exhaust's water is laid along the ground only while the jet that strikes it is still the fire's own gas,
+/// within about the fire's length of the nozzle (13.9 m at the sea): above that the jet reaching the ground is
+/// mostly air it has taken in, still a wind that raises dust but carrying little to condense. The share falls by e
+/// over this much of the nozzle's height, m. Estimated, against the stills of MR-3 and MR-4 just off the pad
+/// (NASA 6100884, S61-01928, S61-03248: a low haze over the apron and no great bank once the vehicle is up).
+const LADEN: f64 = 6.0;
 /// The air in the sheet is this much hotter than the day's where it leaves the ring at its fastest, K.
 /// Estimated: the gas is 1,800 K at the nozzle and has mixed with many times its mass of air by there.
 const HOT: f32 = 20.0;
@@ -100,7 +106,7 @@ fn still(course: &Course, air: &PadAir) -> Fumes {
 fn struck(nozzle: DVec3, thrust: f64, burning: f64, since_lit: f64, air: &PadAir, into: &mut Vec<Source>) {
     let Some(blast) = blast(thrust, nozzle.y, burning) else { return };
     // (the less of the jet reaches the ground, the less of its water is laid along it)
-    let strength = blast.speed / FASTEST as f32;
+    let strength = blast.speed / FASTEST as f32 * (-(nozzle.y.max(0.0)) / LADEN).exp() as f32;
     into.push(Source {
         at: DVec3::new(nozzle.x, 0.0, nozzle.z),
         radius: blast.ring,

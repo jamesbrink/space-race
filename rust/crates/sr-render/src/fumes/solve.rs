@@ -284,7 +284,10 @@ fn work(
         settle(&mut context, &volumes, &images);
     }
     // The light and the Sun's view are the dearest of these and change slowly: each is worked every other frame,
-    // by turns.
+    // by turns (and from far off only when the air has been worked: `pace.rs`, `FAR`).
+    if !step.light {
+        return;
+    }
     *turn = !*turn;
     let mut pass = context.command_encoder().begin_compute_pass(&ComputePassDescriptor::default());
     for job in LIGHT.filter(|&job| !(job == LIT_JOB && *turn || job == SHADE_JOB && !*turn)) {

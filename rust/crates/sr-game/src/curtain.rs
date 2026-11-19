@@ -201,14 +201,18 @@ fn watch(
 fn hold(
     curtain: Res<Curtain>,
     opening: Option<Res<Opening>>,
+    options: Res<Options>,
     mut clock: ResMut<Clock>,
     mut held: Local<bool>,
 ) {
+    // (filmed, it holds until it has gone: a strip's first frames are of the flight, not of the fade)
+    let filmed = options.film.is_some();
     match curtain.phase {
-        Phase::Up if !clock.stopped => {
+        Phase::Up | Phase::Lifting(_) if !clock.stopped && (filmed || curtain.is_up()) => {
             clock.stopped = true;
             *held = true;
         }
+        Phase::Lifting(_) if filmed => {}
         Phase::Lifting(_) | Phase::Gone if *held => {
             *held = false;
             if !opening.is_some_and(|opening| opening.playing()) {

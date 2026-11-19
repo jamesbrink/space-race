@@ -149,17 +149,17 @@ pub const MR3_PAD_AIR: PadAir = PadAir {
         "ISD, Cape Canaveral, 09:00 EST: 5.1 m/s (the flight's own report has 12 knots at liftoff)",
     ),
     dust: Measure::estimated(
-        0.02,
+        0.012,
         "set so the blast leaves a tan haze over the concrete that is seen through but plainly there for 20 to \
-         40 m round the launcher, as the stills of MR-3 just off the pad have it (NASA S61-01928, 6100884), and \
-         drifts on down the wind as a thin haze for minutes",
+         40 m round the launcher, low, as the stills of MR-3 just off the pad have it (NASA S61-01928, 6100884), \
+         nearly gone from the pad a few seconds up (S61-03248, MR-4), and drifting on down the wind as a thin haze",
     ),
     dust_over: Measure::estimated(
         6.0,
         "m/s: fine dust on a hard surface begins to lift in a wind of about that; the day's own 5 m/s raised none",
     ),
     vapour: Measure::estimated(
-        4.5,
+        3.0,
         "set so the engine's lighting throws up the compact white billow, some 10 m across and 3 m high, that \
          stands round the launcher in the still of MR-3's ignition (NASA S61-02407)",
     ),
@@ -168,11 +168,11 @@ pub const MR3_PAD_AIR: PadAir = PadAir {
         "s: by liftoff the billow of S61-02407 has gone to the thin haze of S61-01928",
     ),
     condenses: Measure::estimated(
-        6.0,
-        "set so the jet's strike keeps a dense white billow rolling round the tail and out over the apron until \
-         the vehicle is well up, as the stills of MR-3 and MR-4 at liftoff have it (NASA S61-02409: knobbed white \
-         cloud standing above the fins and wider than the frame; S61-03121: a grey-white bank across the whole \
-         pad, some 10 to 15 m high). Why it condenses: the A-7 burned 75 per cent ethyl alcohol in water with \
+        3.0,
+        "set so the jet's strike throws a white billow round the tail and out over the apron while the vehicle \
+         leaves the launcher, low and to the sides (NASA S61-02409: knobbed white cloud standing above the fins; \
+         S61-03121: a grey-white bank across the pad, some 10 m high), and no great bank once it is up (S61-03248, \
+         MR-4 a few seconds up: the pad nearly clear); laid only while the jet arrives hot (dust.rs, LADEN). Why it condenses: the A-7 burned 75 per cent ethyl alcohol in water with \
          liquid oxygen, so its exhaust is about two fifths water by mass and far cooler per kilogram of water \
          than a kerosene engine's, and its mixing line with a 24 C seaside morning (ERA5 at the ground, \
          mr3_aloft.rs) can cross saturation (the Schmidt-Appleman reasoning for contrails, not worked here)",

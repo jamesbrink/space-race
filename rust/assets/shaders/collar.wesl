@@ -1,5 +1,5 @@
 // The collar of vapour round a shoulder near the speed of sound (sr-render/src/shock/collar.rs): a thin sheet of
-// mist swept a little aft, soft at the shoulder and feathered out toward the shock, streaked along the flow and
+// mist swept a little aft, soft at the shoulder and feathered out toward the shock, a soft shell mottled and
 // flickering as the clock runs; thicker where it is seen edge on; lit almost only by the Sun scattered forward,
 // so it shows where the Sun is behind it and hardly at all elsewhere.
 
@@ -62,7 +62,8 @@ fn fragment(in: VertexOutput) -> @location(0) vec4<f32> {
     // (read round a circle, so the sheet has no seam)
     let streaks = noise3(vec3(ring * 9.0, along * 1.5 - clock * 5.0));
     let fine = noise3(vec3(ring * 23.0 + 3.0, along * 3.0 - clock * 8.0));
-    let amount = density * shape * saturate(1.6 * streaks * fine - 0.15);
+    // (a soft shell, mottled: the flow through it is too fast for streaks to be seen, as on the films)
+    let amount = density * shape * (0.7 + 0.2 * streaks + 0.1 * fine);
     let toward_eye = normalize(view.world_position - in.world_position.xyz);
     let slant = 1.0 / max(abs(dot(normalize(in.world_normal), toward_eye)), 0.2);
     let hides = 1.0 - exp(-THICK * amount * slant);

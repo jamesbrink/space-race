@@ -38,8 +38,13 @@ const STEPS: i32 = 36;
 // A streak is this many exit radii long at the nozzle and lengthens by this much a metre. Estimated.
 const STREAK: f32 = 5.0;
 const STREAK_GROWS: f32 = 0.45;
-// The turbulent body widens by this much a metre (a free jet's half-width grows as 0.085 x).
-const WIDENS: f32 = 0.085;
+// The turbulent body widens by this much a metre (a free jet's half-width grows as 0.085 x; a burning one,
+// lit through its whole spread, reads wider: 0.14 is set so the A-7's fire is a soft cone some three bell widths
+// across where it fades, as it climbs against the sky in NASA S61-01908). Estimated.
+const WIDENS: f32 = 0.14;
+// The white heart is seen for this share of the supersonic core and then gives way to the body: in NASA 6100884
+// and S61-01928 the fire is white only in and just under the bell, the rest a pale translucent pink. Estimated.
+const HEART_GOES: f32 = 0.45;
 // The sheet along the ground: how far it reaches at full strength, m, how thick it is at the strike and how
 // much thicker a metre out. Estimated from stills of MR-3's liftoff (orange for three to four metres).
 const SHEET_REACH: f32 = 3.4;
@@ -102,7 +107,7 @@ fn free_jet(q: vec3<f32>, s: f32, r_in: f32) -> Gas {
     let cells = cos(TAU * s / cell) * exp(-s / (0.7 * core));
     let edge = settled + (exit - settled) * cells;
     // The turbulent body it becomes, widening from part way down the core.
-    let wide = 0.75 * edge + WIDENS * max(s - 0.4 * core, 0.0);
+    let wide = 0.75 * edge + WIDENS * max(s - 0.12 * core, 0.0);
     let streak = noise3(vec3(q.x / (0.5 * wide), run(s) * 1.0, q.z / (0.5 * wide)));
     let roll = noise3(vec3(q.x / (0.28 * wide), run(s) * 2.3 + 17.0, q.z / (0.28 * wide)));
     // (its outline is not a ruled line: the eddies push it about, more the further down)
@@ -112,7 +117,10 @@ fn free_jet(q: vec3<f32>, s: f32, r_in: f32) -> Gas {
     let layer = edge * mix(0.18, 0.85, saturate(s / core));
     // (swollen many times over in thin air it has no edge to speak of: it thins outward, as any gas let go)
     let swollen = smoothstep(2.0, 10.0, settled / exit);
-    let inside = mix(1.0 - smoothstep(edge - layer, edge, r), exp(-pow(r / (0.55 * edge), 2.0)), swollen);
+    // (and it is let go at the lip, turned out at the lip's angle: a cone from the nozzle, not a beam of the
+    // nozzle's width that the cells would only open out far down a core that in no air is very long)
+    let let_go = exit + jet.bounds.y * s;
+    let inside = mix(1.0 - smoothstep(edge - layer, edge, r), exp(-pow(r / (0.6 * let_go), 2.0)), swollen);
     // Where the jet is squeezed its gas is hot and bright, where it has swollen thin and dim: the diamonds,
     // each a lozenge on the axis.
     let squeezed = cells * sign(settled - exit) * abs(jet.bounds.x) * (1.0 - swollen);
@@ -125,8 +133,8 @@ fn free_jet(q: vec3<f32>, s: f32, r_in: f32) -> Gas {
     let mixed_in = smoothstep(0.2 * core, 0.7 * core, s);
     let streaked = mix(0.85 + 0.3 * streak, 0.45 + 0.7 * streak + 0.5 * fine, mixed_in);
     heart *= (1.0 + 0.6 * exp(-s / (4.0 * exit))) * mix(streaked, 0.8 + 0.4 * streak, swollen);
-    // (and with no air to hold it to a width it goes on thinning, as the square of how far it has gone)
-    heart *= mix(1.0, 1.0 / (1.0 + pow(s / (6.0 * settled), 2.0)), swollen);
+    // (and with no air to hold it to a width it thins as the cone it spreads in widens, as the square)
+    heart *= mix(1.0, 5.0 * (exit * exit) / (let_go * let_go), swollen);
     // The diamonds: a squeezed jet is narrowest, and its gas brought hot again, half a cell down and every cell
     // on; a swollen one a cell down. Each a knot on the axis, brightest at the first, gone in a few cells.
     // The cells shorten down the jet: `k` counts them, the n-th starting where n cells each a share of the last
@@ -141,12 +149,16 @@ fn free_jet(q: vec3<f32>, s: f32, r_in: f32) -> Gas {
     // (and between the knots, where the gas has expanded and cooled, it is dimmer: the train reads as beads)
     heart *= 1.0 - GAPS * pow(saturate(-crossing), 2.0) * train / max(abs(jet.bounds.x), 1.0e-3);
     heart += KNOT * knot * dense;
+    // (white only under the bell: past the first cells the heart has mixed into the body)
+    heart *= 1.0 - 0.8 * smoothstep(0.12 * core, HEART_GOES * core, s);
 
     // The shear layer burning in the air, and the turbulent body downstream of the core.
     let ring = exp(-pow((r - edge) / max(layer * 0.6, 0.03), 2.0)) * air * (0.35 + 0.9 * roll);
-    let spent = (exit * exit) / (wide * wide);
+    // (as it widens it thins, but a burning body is lit through its depth: less than as the square, so the soft
+    // cone keeps its width to its end. Estimated)
+    let spent = pow(exit / wide, 1.3);
     // (it is the air it mixes with that makes this body: in none there is none)
-    let mixed = exp(-pow(r / wide, 2.0)) * spent * smoothstep(0.15 * core, 0.9 * core, s) * (0.25 + 1.5 * streak * roll)
+    let mixed = exp(-pow(r / wide, 2.0)) * spent * smoothstep(0.0, 0.4 * core, s) * (0.45 + 1.1 * streak * roll)
         * smoothstep(0.0, 0.3, air);
     let fades = 1.0 - smoothstep(0.45 * ends, ends, s);
     let body = (0.45 * ring * (1.0 - smoothstep(0.3 * core, core, s)) + 1.4 * mixed) * fades;

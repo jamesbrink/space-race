@@ -19,7 +19,7 @@ use super::material::{Cloud, FumesMaterial};
 use super::{Fumes, Push, Source};
 use crate::ab::Ab;
 use crate::air::Air;
-use crate::origin::WorldPos;
+use crate::origin::{Origin, WorldPos};
 use crate::sky::Sky;
 
 /// One step of the solver, s of the flight's clock, and the longest a step is let be when the clock runs fast
@@ -38,6 +38,11 @@ const LINGERS: f32 = 300.0;
 const CARRIED_AT: f32 = 2.0;
 /// And comes to that speed in about this long, s. Estimated: gently, so the air in it is not jolted.
 const LETS_GO: f32 = 4.0;
+/// Farther than this from the box's nearest side, m, the eye is too far off to see the air's motion between one
+/// frame and the next (the box is a few hundred pixels across at most, and a billow moves a few metres a second):
+/// there it is worked only once its time has come to the longest step, a twentieth of a second, and lit only then,
+/// which costs a third as much. Chosen by measurement: the solver is a millisecond and more of the frame.
+const FAR: f64 = 1000.0;
 /// A clock that goes back, or on by more than this in a frame, has been set, not run: the air starts again.
 const JUMP: f32 = 20.0;
 
@@ -51,6 +56,8 @@ pub struct Step {
     pub steps: u32,
     /// Whether there is anything to work and light at all.
     pub live: bool,
+    /// Whether the light is worked this frame.
+    pub light: bool,
     /// Whether it is drawn.
     pub drawn: bool,
     /// Goes up each time the air starts again from nothing.
@@ -140,6 +147,15 @@ fn frame(fumes: &Fumes, sky: &Sky, clock: f32, floor: DVec3, turned: Quat, step:
     }
 }
 
+/// Whether the eye is [`FAR`] from the box standing on `floor` (the middle of its floor).
+fn afar(eye: DVec3, floor: DVec3) -> bool {
+    let half = (0.5 * size()).as_dvec3();
+    let middle = floor + DVec3::Y * half.y;
+    // (the box turns about the upright: its level half-diagonal bounds it whichever way it is turned)
+    let reach = half.x.hypot(half.z).max(half.y);
+    eye.distance(middle) - reach > FAR
+}
+
 /// Each frame: how many steps the clock has earned, the box where the wind has it, and the figures for the
 /// passes and the picture.
 pub fn keep(
@@ -147,6 +163,7 @@ pub fn keep(
     sky: Res<Sky>,
     air: Option<Res<Air>>,
     ab: Option<Res<Ab>>,
+    origin: Res<Origin>,
     mut kept: Local<Kept>,
     mut step: ResMut<Step>,
     mut cloud: Query<(&Cloud, &mut WorldPos, &mut Transform, &mut Visibility)>,
@@ -173,7 +190,11 @@ pub fn keep(
     let solved = live && ab.as_ref().is_none_or(|ab| ab.solving());
     let drawn = live && ab.as_ref().is_none_or(|ab| ab.drawing());
     kept.owed = (kept.owed + passed.clamp(0.0, JUMP)).min(LONGEST_STEP * MOST as f32);
-    step.steps = if solved { ((kept.owed / STEP) as u32).min(MOST) } else { 0 };
+    let (floor, _) = stands(&fumes, kept.drift.z);
+    let far = afar(origin.0, floor);
+    let due = !far || kept.owed >= LONGEST_STEP * 0.99;
+    step.steps = if solved && due { ((kept.owed / STEP) as u32).min(MOST) } else { 0 };
+    step.light = solved && due;
     let each = if step.steps > 0 { (kept.owed / step.steps as f32).min(LONGEST_STEP) } else { STEP };
     kept.owed -= step.steps as f32 * each;
     step.live = solved;

@@ -25,6 +25,9 @@ pub struct OpeningPlugin;
 
 impl Plugin for OpeningPlugin {
     fn build(&self, app: &mut App) {
+        if app.world().get_resource::<crate::Options>().is_some_and(|o| o.film.is_some()) {
+            app.insert_resource(film::locked());
+        }
         app.init_resource::<film::Filming>()
             .add_systems(Startup, (play::start, caption::lay))
             .add_systems(PreUpdate, play::skip.after(crate::curtain::gate))

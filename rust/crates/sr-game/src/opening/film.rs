@@ -1,7 +1,9 @@
-//! Frames of the curtain and the opening written to a folder (`--film <dir> --frames <list>`), then the game
-//! leaves: how the opening is looked at without a person watching it. They are drawn as `--shot`'s are, into an
-//! image with no window (`shot::offscreen`). While filming, the opening runs a sixtieth
-//! of a second a frame whatever the frame took, so a strip of frames is what sixty frames a second would show.
+//! Frames written to a folder (`--film <dir> --frames <list>`), then the game leaves: of the curtain and the
+//! opening, at seconds of the opening; or, opened on the count (`--at`, `--keys`), at instants of the flight's
+//! clock, so one run gives a strip across a liftoff. They are drawn as `--shot`'s are, into an image with no window
+//! (`shot::offscreen`). While filming, every clock runs a sixtieth of a second a frame whatever the frame took
+//! ([`locked`]), so a strip is what sixty frames a second would show: the air at the pad, which takes one step a
+//! frame, as much as the flight.
 
 use std::path::PathBuf;
 
@@ -10,7 +12,8 @@ use bevy::render::view::screenshot::{ScreenshotCaptured, save_to_disk};
 
 use super::{Opening, Phase};
 use crate::Options;
-use crate::curtain::Curtain;
+use crate::clock::Clock;
+use crate::curtain::{Curtain, Phase as CurtainPhase};
 use crate::shot::Offscreen;
 
 /// A frame to write.
@@ -18,7 +21,7 @@ use crate::shot::Offscreen;
 pub enum Frame {
     /// The curtain, once its words are up.
     Curtain,
-    /// So many seconds into the opening.
+    /// So many seconds into the opening; or, opened on the count, at that instant of the flight's clock.
     At(f64),
 }
 
@@ -63,6 +66,12 @@ pub fn frames(list: &str) -> Option<Vec<Frame>> {
     Some(out)
 }
 
+/// While filming, a frame is a sixtieth of a second of every clock, however long it took to draw.
+#[must_use]
+pub fn locked() -> bevy::time::TimeUpdateStrategy {
+    bevy::time::TimeUpdateStrategy::ManualDuration(std::time::Duration::from_secs_f64(1.0 / 60.0))
+}
+
 /// The curtain's frame is taken once it has been up this many frames: its words are laid out and drawn.
 const CURTAIN_AFTER: u32 = 20;
 
@@ -81,6 +90,7 @@ pub fn take(
     options: Res<Options>,
     curtain: Res<Curtain>,
     opening: Res<Opening>,
+    clock: Res<Clock>,
     offscreen: Option<Res<Offscreen>>,
     mut filming: ResMut<Filming>,
 ) {
@@ -93,6 +103,9 @@ pub fn take(
         Frame::Curtain => {
             filming.curtain_frames += u32::from(curtain.is_up());
             (filming.curtain_frames >= CURTAIN_AFTER, "curtain".to_owned())
+        }
+        Frame::At(at) if opening.phase == Phase::Off => {
+            (curtain.phase == CurtainPhase::Gone && clock.ready && clock.t >= at, format!("t{at:+07.2}"))
         }
         Frame::At(at) => (opening.phase != Phase::Waiting && opening.tau >= at, format!("opening-{at:06.2}")),
     };

@@ -344,8 +344,9 @@ pub const FLAME: Flame = Flame {
         0.0,
         "an alcohol flame makes no soot: the pad is seen through it in the same stills",
     ),
-    // (the body pale peach and the knot white in 6100884 and S61-01928; orange where it burns in the air)
-    colours: [[1.0, 0.93, 0.82], [1.0, 0.82, 0.66], [1.0, 0.56, 0.15], [1.0, 0.3, 0.05], [0.7, 0.8, 1.0]],
+    // (the knot white under the bell in 6100884 and S61-01928, the body a translucent pink-peach that it keeps as
+    // it climbs against the sky in S61-01908; orange-salmon where it burns late in the air, orange on the launcher)
+    colours: [[1.0, 0.88, 0.74], [1.0, 0.5, 0.38], [1.0, 0.36, 0.2], [1.0, 0.26, 0.05], [0.7, 0.8, 1.0]],
 };
 
 /// The main canopy's two colours, linear: orange and natural white gores (`flight.ts`, the canopy: #ee7a30 and

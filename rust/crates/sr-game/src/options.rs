@@ -95,8 +95,8 @@ space-race [--at <seconds>] [--size <w>x<h>] [--rig <name>] [--rate <n>] [--benc
   --mute   open with the sound off (M puts it on)
   --hear   fly without a window, to --until, and write what would have been heard to a WAV file
   --reference  the straight grade, for judging colours, instead of the film's
-  --film   play the curtain and the opening and write frames of them to a folder, then leave
-  --frames which: seconds of the opening, a span with a step, or c for the curtain (c,0,12.5,20:30:0.5)
+  --film   write frames to a folder, then leave: of the opening, or with --at or --keys of the flight
+  --frames which: seconds of the opening (or of the clock), a span with a step, c for the curtain (c,0,20:30:0.5)
 
   With none of --at, --shot, --pose, --eye, --keys, --bench or --hear it opens on the morning: the pad's last
   three hours played fast to T-12 (any key or click skips to it).";
@@ -155,14 +155,10 @@ impl Options {
                 _ => return Err(format!("unknown option {flag}")),
             }
         }
-        // (anything that asks to open somewhere, or to measure or record a flight, starts there; a film is the opening)
+        // (anything that asks to open somewhere, or to measure or record a flight, starts there)
         let elsewhere = options.shot.is_some() || options.pose.is_some() || options.eye.is_some();
         let measuring = !options.keys.is_empty() || options.bench || options.hear.is_some();
-        options.begins = if options.film.is_some() || !(elsewhere || measuring || placed) {
-            Begins::Morning
-        } else {
-            Begins::Count
-        };
+        options.begins = if elsewhere || measuring || placed { Begins::Count } else { Begins::Morning };
         Ok(options)
     }
 }
@@ -190,7 +186,7 @@ mod tests {
             (Begins::Count, Begins::Count)
         );
         let o = parse("--at 30 --film shots --frames c,0,10:11:0.5").unwrap();
-        assert_eq!(o.begins, Begins::Morning);
+        assert_eq!((o.begins, parse("--film shots").unwrap().begins), (Begins::Count, Begins::Morning));
         assert!(o.film.is_some_and(|film| film.frames.len() == 5));
         let o = parse("--keys 0:Space,18:W:9 --until 40 --rate 8").unwrap();
         assert_eq!((o.keys.len(), o.until, o.rate), (2, Some(40.0), 8.0));

@@ -40,12 +40,12 @@ const FRAYS: f32 = 0.4;
 const DRAGS: f32 = 0.6;
 // Vapour is gone in about this long, s, and the fine dust and burned gas in this, beyond what mixing with the
 // clean air round them takes; the dust falls at this speed, m/s. All estimated. The condensed exhaust evaporates
-// as the drier air it mixes with takes it up: the white billow of the stills is still dense with the vehicle well
-// up (S61-01908), and drifts off thinning. The tan haze a launch leaves drifts for minutes (it is still on the
+// as the drier air it mixes with takes it up: the billow of the stills thins within tens of seconds, and the pad
+// is nearly clear in the still of MR-4 some seconds up (S61-03248). The tan haze a launch leaves drifts for minutes (it is still on the
 // films as the vehicle goes out of sight): what hangs is the finest of what is raised, dust of some 20 to 30
 // micrometres, which falls at a few centimetres a second (Stokes, for 2,600 kg/m^3 grains in air); the coarse
 // grit is down in seconds and is not drawn.
-const VAPOUR_LASTS: f32 = 25.0;
+const VAPOUR_LASTS: f32 = 20.0;
 const DUST_LASTS: f32 = 120.0;
 const DUST_FALLS: f32 = 0.04;
 // Dust is raised from the lowest this much of the air, m.

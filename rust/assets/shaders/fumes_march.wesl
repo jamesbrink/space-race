@@ -31,9 +31,12 @@ const PI: f32 = 3.14159265;
 // No ray is followed further than this, m: the targets hold half-precision figures.
 const FARTHEST: f32 = 6.0e4;
 // What dust off a concrete apron and Florida sand sends back of each colour, and what vapour does. Estimated:
-// the haze in the stills of MR-3 and MR-2 leaving the pad is a whitish tan, the billow at ignition white.
-const DUST: vec3<f32> = vec3<f32>(0.80, 0.72, 0.60);
-const VAPOUR: vec3<f32> = vec3<f32>(0.96, 0.96, 0.97);
+// the haze in the stills of MR-3 and MR-2 leaving the pad is a whitish tan, the billow at ignition white; in
+// the films of the launches the haze the blast leaves is a dirtier, greyer tan than the sunlit sand.
+const DUST: vec3<f32> = vec3<f32>(0.70, 0.63, 0.53);
+// (the condensed exhaust carries the apron's dust and the burned alcohol's own haze: an off-white, as a cloud of
+// steam over sand reads in the colour stills, not the clean white of a cumulus)
+const VAPOUR: vec3<f32> = vec3<f32>(0.88, 0.865, 0.83);
 // How the fumes throw the light they scatter: two lobes of Henyey and Greenstein's, a sharp forward one (the
 // droplets' and fine grains' diffraction peak, which silvers a billow seen toward the Sun) and a broad one, and
 // how much of the light goes in the sharp one. Estimated.
@@ -156,10 +159,15 @@ fn billow(vapour: f32, p: vec3<f32>) -> Billow {
     let c = eddy(p.zxy, KNOBS.z, 1.2);
     // (the eddies' parts are about a half each, give or take a third: this spreads them over nought to one)
     let knobs = saturate((0.5 * a.x + 0.3 * b.y + 0.2 * c.z - 0.25) * 2.0);
-    let eroded = ERODE * knobs;
+    // (a cloud thinned to a haze as it drifts and evaporates has no knobs left to show: below a third of the
+    // outline's thickness the eddies only fray it, and it is as thin as the grid says, not a scatter of crisp
+    // knobs each as thick as a billow's skin. Estimated: the drifting remains in the films are a haze)
+    let fresh = smoothstep(0.3, 0.7, covered);
+    let eroded = ERODE * knobs * mix(0.35, 1.0, fresh);
     let shaped = saturate((covered - eroded) / max(1.0 - eroded, 0.05));
     let edge = smoothstep(0.0, EDGE, shaped);
-    return Billow(edge * clamp(vapour, SKIN, THICKEST) * inside, knobs * (1.0 - shaped));
+    let thick = mix(vapour, clamp(vapour, SKIN, THICKEST), fresh);
+    return Billow(edge * thick * inside, knobs * (1.0 - shaped) * fresh);
 }
 
 fn walls(p: vec3<f32>) -> f32 {
