@@ -47,28 +47,25 @@ const shedBy = (flight) => [...new Set((flight.flies?.drops ?? []).flatMap((d) =
 export function sourceOf(def, kind, flight) {
   const hash = createHash('sha256');
   hash.update(readFileSync(join(root, 'public', def.url)));
-  const parts = def.parts.map((p) => ({
-    node: p.node,
-    inside: Boolean(p.inside),
-    going: Boolean(p.going?.length),
-    explode: p.explode,
-    order: p.order,
-    moves: p.moves,
-    clocked: p.clocked,
-  }));
-  hash.update(
-    JSON.stringify({
-      BAKE,
-      CELL,
-      NEAR,
-      NEAR_BOXES,
-      FAR_BOXES,
-      kind,
-      parts,
-      ...(kind === 'vehicle' ? { sheds: shedBy(flight) } : {}),
-      sequence: def.sequence?.map((k) => [k.at, k.slider]),
-    }),
-  );
+  // Only what that kind's bake reads: a vehicle's hulls know nothing of its parts' moves. And every figure to eight
+  // places: a figure worked out with a sine differs in its last bit between an arm64 Mac and the x86 Linux of CI, and
+  // a digest of all seventeen digits called a file stale on one machine that was baked on the other.
+  const posed =
+    kind === 'vehicle'
+      ? { sheds: shedBy(flight) }
+      : {
+          parts: def.parts.map((p) => ({
+            node: p.node,
+            going: Boolean(p.going?.length),
+            explode: p.explode,
+            order: p.order,
+            moves: p.moves,
+            clocked: p.clocked,
+          })),
+          sequence: def.sequence?.map((k) => [k.at, k.slider]),
+        };
+  const data = { BAKE, CELL, NEAR, NEAR_BOXES, FAR_BOXES, kind, absent: def.absent ?? [], ...posed };
+  hash.update(JSON.stringify(data, (_, v) => (typeof v === 'number' && Number.isFinite(v) ? Number(v.toPrecision(8)) : v)));
   return hash.digest('hex').slice(0, 24);
 }
 

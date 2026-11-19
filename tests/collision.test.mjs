@@ -9,7 +9,7 @@ import { test } from 'node:test';
 import { flights } from '../missions/index.ts';
 import { SiteWorld, solidModels, solidUrl } from '../src/sim/siteworld.ts';
 import { decodeSolids, outOf } from '../src/sim/solids.ts';
-import { bake, staleness } from '../tools/collision-bake.mjs';
+import { bake, sourceOf, staleness } from '../tools/collision-bake.mjs';
 import { framesOf } from './glb.mjs';
 
 const root = join(import.meta.dirname, '..');
@@ -40,6 +40,40 @@ test('the files are what the bake makes today: a flight’s pad and its vehicle,
       `${def.id}: the committed file is not what the bake makes`,
     );
   }
+});
+
+test('a file’s digest does not turn on a figure’s last bit, and does turn on a change', () => {
+  // (a figure worked out with a sine differs in its last bit between an arm64 Mac and the x86 Linux of CI: a digest of
+  // every digit called files baked on the one stale on the other)
+  const flight = flights.find((f) => f.id === 'usa/mercury/mr-3-freedom-7');
+  const pad = flight.models.find((m) => m.id === 'pad');
+  const was = sourceOf(pad, 'structure', flight);
+  /** The pad with the first figure of its parts' moves that is not a whole number multiplied by `by`. */
+  const nudged = (by) => {
+    let done = false;
+    const walk = (v) => {
+      if (done) return v;
+      if (typeof v === 'number' && !Number.isInteger(v)) {
+        done = true;
+        return v * by;
+      }
+      if (Array.isArray(v)) return v.map(walk);
+      if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]));
+      return v;
+    };
+    const parts = pad.parts.map((p) => ({ ...p, moves: walk(p.moves) }));
+    assert.ok(done, 'the pad has a figure to nudge');
+    return { ...pad, parts };
+  };
+  assert.equal(sourceOf(nudged(1 + 2 ** -52), 'structure', flight), was, 'the last bit');
+  assert.notEqual(sourceOf(nudged(1.001), 'structure', flight), was, 'a part in a thousand');
+  // what the site does not draw is not baked, so it is in the digest; a vehicle's hulls do not turn on its parts' moves
+  assert.notEqual(sourceOf({ ...pad, absent: ['CameraTowers'] }, 'structure', flight), was, 'a part left out');
+  const vehicle = flight.models.find((m) => m.id === 'vehicle');
+  const moved = { ...vehicle, parts: vehicle.parts.map((p) => ({ ...p, explode: [1, 2, 3] })) };
+  assert.equal(sourceOf(moved, 'vehicle', flight), sourceOf(vehicle, 'vehicle', flight), 'a vehicle’s parts’ offsets');
+  const shedding = { ...flight, flies: { ...flight.flies, drops: [...flight.flies.drops, { at: 1, nodes: ['Hatch'] }] } };
+  assert.notEqual(sourceOf(vehicle, 'vehicle', shedding), sourceOf(vehicle, 'vehicle', flight), 'another node shed');
 });
 
 test('a structure’s boxes lie where its model has that part', () => {
