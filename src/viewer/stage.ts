@@ -2482,6 +2482,15 @@ export class Stage {
     else if (at >= 0) this.apartGoal[at] = this.apartOwn[at] = THREE.MathUtils.clamp(to, 0, 1);
   }
 
+  /**
+   * The land round the site as the simulator comes down on it (sim/sitecontact.ts `Ground`): its height in the pad's
+   * frame wherever the setting has relief, out to the furthest thing placed there. Null for a setting with no land.
+   */
+  get land(): { at(x: number, z: number): number | null; reach: number } | null {
+    const at = this.setting.groundAt;
+    return at ? { at: (x, z) => at(x, z), reach: this.setting.horizon ?? this.setting.reach ?? 0 } : null;
+  }
+
   /** The open ground under a point: the land's height where the setting has relief (Setting.groundAt), else its level floor; null where there is none. */
   private groundAt(x: number, z: number): number | null {
     return this.setting.groundAt?.(x, z) ?? this.setting.floor?.position.y ?? null;

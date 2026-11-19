@@ -222,8 +222,11 @@ export interface VehicleState {
   enteredAt: number | null;
   /** When the spacecraft was let go of its booster while the booster still pushed it (staging.ts `pressed`): it rides on until the push ends. */
   loose: number | null;
-  /** Where and how fast it came down, once it has: speeds through the air there, m/s, and the long axis's angle from the vertical, degrees. */
-  landing: null | { t: number; vertical: number; horizontal: number; latitude: number; longitude: number; lean: number };
+  /**
+   * Where and how fast it came down, once it has: speeds through the air there, m/s, and the long axis's angle from the vertical, degrees.
+   * `lies`: it came to rest on something at its site (sitecontact.ts), and lies there: not in the sea.
+   */
+  landing: null | { t: number; vertical: number; horizontal: number; latitude: number; longitude: number; lean: number; lies?: boolean };
   /** The controls last applied. */
   controls: Controls;
 }

@@ -1108,6 +1108,8 @@ export class OrbitDeck extends Deck {
         this.frame,
         this.flight.site.seaLevel.value,
         orbitalFlown(this.flight).ascent.solved,
+        undefined,
+        this.atSiteOf(() => this.vehicle!.start().q).floor,
       );
     }
     return this.vehicle;
@@ -1197,7 +1199,13 @@ export class OrbitDeck extends Deck {
     const record = this.record!;
     const before = (record.samples as LiveSample[]).filter((x) => x.t < from - 1e-9);
     const sample = v.sample(s, this.centre);
-    const sheds = new Sheds(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, { frame: this.frame });
+    const stands = this.atSiteOf(() => v.start().q);
+    const sheds = new Sheds(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, {
+      frame: this.frame,
+      site: stands.site,
+      names: stands.names,
+      floor: stands.under,
+    });
     this.run = {
       ...record,
       samples: [...before, sample],
@@ -2232,7 +2240,11 @@ export class OrbitDeck extends Deck {
           s = { ...s, r: met.r, v: met.v, q: met.q, w: met.w };
           touched = true;
         }
+        // (the first blow hard enough breaks parts free, as one from something shed does: sim/shed.ts `broke`)
+        for (const hit of met.hits) if (hit.activeBroken && !run.sheds?.broke(hit)) delete hit.activeBroken;
         for (const hit of met.hits) this.impact(hit);
+        // lying still on what it met, it is down there: as fast as the hardest it struck on the way (sitecontact.ts `Lying`)
+        if (met.rest) s = { ...s, landed: { t: s.t, speed: Math.hypot(met.rest.vertical, met.rest.horizontal) } };
       }
       if (s.parted) break;
       if (s.broke) {

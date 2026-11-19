@@ -213,7 +213,8 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
           return { ...hit, normal: escapeFrame.toInertial(siteToEcefDirection(escapeSite, hit.normal), at) };
         }, holds);
       }),
-    solids: () => solids,
+    // (with the land round the site as it is drawn: what comes down there comes down on it)
+    solids: () => solids && { ...solids, ground: stage.land },
     heat: (t) => effects.reading(t),
     say: (title, line) => ui.say(title, line),
     kept: (at, phase) => markKept(at === null ? null : missionTime(at), () => cockpit.discard(), phase),

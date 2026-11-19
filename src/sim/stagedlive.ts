@@ -247,6 +247,8 @@ export function stagedVehicle(
   x: Solved,
   /** For a test of the forces alone: a steering acceleration other than the record's, rad/s^2. */
   authorityOverride?: number,
+  /** The ground it comes down on, m above the sea, where it is not the simulator's own (sitecontact.ts `floorOver`: the land at its site). */
+  ground?: (latitude: number, longitude: number) => number,
 ): StagedVehicle {
   const def = plan.craft[0]!;
   const stages = stagesOf(plan);
@@ -258,7 +260,7 @@ export function stagedVehicle(
   const steering = def.thrusters.find((t) => t.authority);
   const authority = authorityOverride ?? (steering?.authority?.value ?? 0) * DEG;
   const last = stages.length - 1;
-  const floor = floorAt(site, seaLevel);
+  const floor = ground ?? floorAt(site, seaLevel);
   const pad0 = geodeticToEcef(site);
   // the body's axes on the pad: the plumb line, the plane's pole, and back up range
   const yIn = unit(sub(law.n, scale(law.up0, dot(law.n, law.up0))));
