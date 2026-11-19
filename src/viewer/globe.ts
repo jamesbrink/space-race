@@ -54,6 +54,7 @@ const sheetsShade = (day: Day | null | undefined): string => /* glsl */ `
             vec2 pd = world.xz + lean * ${deckHeightGlsl(day)};
             // (the deck's patches, as the scene's own ground has them: deckShadeAt)
             shade *= deckShadeAt(vec3(world.x, 0.0, world.z), vec3(sun.x, max(mu, 0.08), sun.z), 0.0, deckCoverAt(weatherAt(pd), pd));
+            ${day?.deck.overcast ? 'shade = mix(shade, 0.05, cloudCeiling(world));' : ''}
             vec2 pc = world.xz + lean * ${(day?.high.height ?? HIGH_HEIGHT).toFixed(1)};
             return shade * ${highOf(day) ? 'veilShade(highCoverAt(weatherAt(pc), pc), mu)' : '(1.0 - 0.5 * cirrusAt(pc, fp, weatherAt(pc).g))'};`;
 
@@ -1381,6 +1382,7 @@ export class Globe {
                 ? `#ifdef USE_FOG
             float footprint = length(fwidth(vFogWorld.xz));
             sceneShade = airShade;   // (the shared chunk's own, just worked out: what is taken back out below is what it put in)
+            ${this.day?.deck.overcast ? 'sceneShade *= ceilingBeam(vFogWorld);' : ''}
             sunShade = mix(1.0, globeShade(vFogWorld, uGlobeSun, dot(normalize(vGlobeNormal), uGlobeSun), footprint), uCloudsLeft);
             #endif`
                 : ''

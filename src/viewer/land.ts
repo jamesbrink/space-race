@@ -887,7 +887,9 @@ ${spec.cel ? CEL_HOOK : defaultCel(p, spec.crown)}          paint(landAt, coverA
             vec3 r1 = cross(dy, normal), r2 = cross(normal, dx);
             float det = dot(dx, r1);
             vec3 grad = sign(det) * (bx * r1 + by * r2);
-            normal = normalize(abs(det) * normal - (1.0 - uCel) * grad);
+            // Degenerate screen derivatives have no slope. Keep the geometric normal there.
+            vec3 perturbed = abs(det) * normal - (1.0 - uCel) * grad;
+            if (dot(perturbed, perturbed) > 0.0) normal = normalize(perturbed);
           }`,
         );
     };

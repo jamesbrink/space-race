@@ -8,7 +8,7 @@ import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
 import { densityFor, type PlaceAir, setDeckShade, setHazeAbove, setVeilLight } from './air.ts';
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere.ts';
-import { type Blowing, dayOf, VEIL_DOWN, veilShade, windsOf } from './day.ts';
+import { type Blowing, dayOf, DECK_DEPTH, VEIL_DOWN, veilShade, windsOf } from './day.ts';
 import { dayLight, type RGB, starLimit } from './daysky.ts';
 import { wavesOf } from '../sim/sea.ts';
 import { chapman, Globe } from './globe.ts';
@@ -25,6 +25,7 @@ import { studio } from './studio.ts';
 import { checkUnits } from './units.ts';
 import { uLast } from './overlay.ts';
 import { newPlace } from './programs.ts';
+import { DECK_REACH } from './weather.ts';
 import { WeatherMap } from './weathermap.ts';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
@@ -492,6 +493,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   // back as the sky's light (day.ts: veilShade, VEIL_DOWN). Null on a day whose record has none there.
   const veil =
     today.high.cover !== null && today.high.cover > 0 && today.high.depth > 0 ? { ...today.high, cover: today.high.cover } : null;
+  const overcast = today.deck.overcast;
   const h = new Heavens(site, true, renderer.getPixelRatio());
   const uniforms: SkyUniforms = {
     uSun: { value: h.sunDir },
@@ -525,6 +527,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   const recoveryWindow = recovery?.weather.transition.map(julianDate);
   const b = site.bearingX * DEG;
   let nearRecovery = 0;
+  let nearDeck = 1;
   const density = densityFor(today.visibility);
   const dayAir = here.air.air; // (the place's air on its day: air.ts)
   // the Earth past the place's own ground, which hands over to it across its last kilometre and a half
@@ -582,6 +585,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   const reflections = new Reflections(renderer);
 
   // what the screen last showed, to tell when it needs showing again
+  let shownCover = 0;
   let shownAt = Number.NaN;
   let askedAt = Number.NaN;
   let askedMs = 0;
@@ -622,6 +626,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       // the sky's up is the plumb line at the eye
       const was = uniforms.uUp.value.clone();
       const leans = globe.up(eye, uniforms.uUp.value).angleTo(was) > 1e-5;
+      if (overcast) nearDeck = 1 - THREE.MathUtils.smoothstep(eye.length(), ...DECK_REACH);
       if (recovery) {
         const de = eye.x * Math.sin(b) + eye.z * Math.cos(b) - recovery.east;
         const dn = eye.x * Math.cos(b) - eye.z * Math.sin(b) - recovery.north;
@@ -637,6 +642,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     plantsOut: here.plantsOut,
     view: here.view,
     // (under a veil the Sun is a disc in a glow some degrees across: a shadow's edge is that much softer. Estimated)
+    ...(overcast ? { shadowRadius: 3 } : {}),
     ...(veil ? { shadowRadius: 1 + 2 * veil.cover * Math.min(1, veil.depth / 0.4) } : {}),
   };
 
@@ -691,6 +697,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     here.blow(blowing);
     globe.seaWind(blowing.wind.speed);
     const air = airAbove(height);
+    const cover = overcast ? nearDeck * (1 - THREE.MathUtils.smoothstep(height, today.deck.height, today.deck.height + DECK_DEPTH)) : 0;
     globe.thin = 1 - air;
     setHazeAbove(globe.thin); // the haze seen from above, on the globe and the land round the site alike (air.ts)
     setDeckShade(THREE.MathUtils.smoothstep(height, 1000, 3000)); // the middle deck's shadow on everything, from above (air.ts)
@@ -708,8 +715,9 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     const rung = Math.round(Math.min(Math.max(height, 0), 120_000) / 500);
     const arrived = h.arrived;
     h.arrived = false;
-    if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due && !jumped && air === shownAir && rung === shownRung)
+    if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due && !jumped && air === shownAir && rung === shownRung && cover === shownCover)
       return fading || arrived ? { shadows: false } : null;
+    shownCover = cover;
     shownAir = air;
     shownRung = rung;
     if (jdUT !== shownAt) {
@@ -787,6 +795,16 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       colour(uniforms.uVeilAir.value, [0, 1, 2].map((c) => fill * (0.9 * fillSky[c]! + 0.2 * fillGround[c]!)) as unknown as RGB);
     }
 
+    // A complete stratocumulus ceiling gives the sky and its reflection diffuse
+    // daylight. Its scattering also neutralizes the coastal haze. The optical response is estimated.
+    if (overcast) {
+      for (const color of [uniforms.uZenith.value, uniforms.uHorizon.value, uniforms.uGlow.value, fog.color]) {
+        const grey = color.r * 0.2126 + color.g * 0.7152 + color.b * 0.0722;
+        const neutral = cover * 0.95;
+        color.setRGB(color.r + (grey - color.r) * neutral, color.g + (grey - color.g) * neutral, color.b + (grey - color.b) * neutral);
+      }
+      uniforms.uSunLight.value.multiplyScalar(1 - cover);
+    }
     // the one direct light: with neither Sun nor Moon it keeps its last direction, at no strength
     globe.sun.copy(h.sunDir);
     atmosphereUniforms.uTrueSun.value.copy(h.sunDir);
@@ -818,6 +836,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     // (the Sun's patch through the veil, as the eye sees its disc through it: along the slant, clouds.ts)
     const through = veil ? Math.exp(-veil.depth * veil.cover * Math.min(1 / Math.max(h.sunDir.y, 0.05), 6)) : 1;
     colour(patch.material.color, [30 * light.sun[0] * day * through, 27 * light.sun[1] * day * through, 22 * light.sun[2] * day * through]);
+    if (overcast) patch.material.color.multiplyScalar(1 - cover);
     patch.position.copy(h.sunDir).multiplyScalar(46);
     // (and how much air is over the eye: it thins the sky the reflections see, above. Left out, a bake made from high up,
     // under a dark sky, was kept for good when the eye came back down to a clock that was not running: the pad lit
@@ -826,6 +845,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     const look = [
       ...[...light.zenith, ...light.horizon, ...light.glow, ...light.sun, lit].map((v) => v * day),
       air,
+      ...(overcast ? [cover] : []),
       ...uniforms.uUp.value.toArray(),
       ...(veil ? [...uniforms.uVeilSun.value.toArray(), ...uniforms.uVeilAir.value.toArray()].map((v) => v * day) : []),
     ];

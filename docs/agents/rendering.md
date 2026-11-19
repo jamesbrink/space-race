@@ -866,6 +866,7 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   `beyond` for what a report says of a stretch of country. `viewer/day.ts` turns it once into what is drawn
   (`dayOf`), and nothing else in the viewer holds a figure of any day's sky: not a place's `ground.ts`, not `weather.ts`. A
   flight with none stands under its place's (`PlaceDef.weather`), and then under a clear sky: both estimates.
+  - A station reporting ten tenths stratocumulus, as Kennedy did for Apollo 12, gives the pad diffuse daylight. The direct solar beam, sky colour and reflections recover as the eye crosses the layer or leaves the station’s coverage. The optical response and the rendered sheet’s 300 m thickness are estimates.
   - **A day is written into the shaders, not handed to them.** A setting has one day (one for each pad and day): its
     figures are text in the shaders that draw it (`sheetsGlsl`, `weatherGlsl`, `overGlsl`, the shared chunk in
     air.ts, the globe's shade), and what a day does not have is not in the text at all (weather.ts: `highOf`).
