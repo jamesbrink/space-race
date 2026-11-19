@@ -2569,7 +2569,10 @@ export class OrbitDeck extends Deck {
       (!this.sequence && this.mine !== null && step && !alone && t >= this.dueAt(step.step)) ||
       (descending && !auto && descent !== null && this.descentDue(descent.id, t));
     const prompt = this.cells.get('prompt')!;
-    const lights = matchMedia('(hover: none), (pointer: coarse)').matches ? 'Ignition lights' : 'Space lights';
+    const touch = matchMedia('(hover: none), (pointer: coarse)').matches;
+    const lights = touch ? 'Ignition lights' : 'Space lights';
+    // (how a flight is taken over, in a line: the switches, the action or the throttle)
+    const takes = touch ? 'a switch, the action or the throttle takes it over' : 'G, B, Space or the throttle takes it over';
     // (the next step lights a stage into the one it stands on: said where it is offered, as it is how it flew)
     const hot = step ? this.hotNote(step.step) : null;
     const text =
@@ -2579,30 +2582,30 @@ export class OrbitDeck extends Deck {
           : 'Uprighting bags inflated by the postlanding compressors'
         : waiting
           ? this.mine === null
-            ? `Ready: ${lights} the engines. Switch Steering or Events to Manual to take over`
-            : `Ready: ${lights} the engines; the flight is yours`
+            ? `Ready: ${lights} the engines · as flown until ${takes.replace(' takes it over', ' takes it')}`
+            : `Ready: ${lights} the engines · the flight is yours`
           : broken
             ? 'Broken up: the card says by what, against which limit'
             : !alone
               ? this.mine === null
                 ? hot
-                  ? `Next, ${step!.label.toLowerCase()}: ${hot}`
-                  : 'Following the recorded ascent. Switch steering or events to manual to take control'
+                  ? 'Next: hot staging, as it flew'
+                  : `As flown: ${takes}`
                 : due && step
-                  ? `${step.label} is due${hot ? `. ${hot}` : ''}`
+                  ? `${step.label} is due${hot ? ' · hot staging' : ''}`
                   : hot
-                    ? `Next, ${step!.label.toLowerCase()}: ${hot}`
+                    ? 'Next: hot staging, as it flew'
                     : this.guidance
-                      ? 'Automatic guidance follows the flight plan. Steer to adjust its aim'
-                      : 'Use the flight controls to steer while an engine burns'
+                      ? 'Guidance flying · steer to lean its aim'
+                      : 'Hands only · steer while an engine burns'
               : descending && (!auto || this.downMine !== null)
                 ? !descent
                   ? t >= this.over()
                     ? 'Down: the card says how it ended'
                     : 'Nothing left to give: the rest is the physics'
                   : !auto
-                    ? `Sequencer off: nothing in the descent happens but what you give. ${descent.label}${due ? ' is due' : ' next'}`
-                    : `The automatic sequence flies the rest. Use the action button to advance`
+                    ? `Sequencer off · ${descent.label}${due ? ' is due' : ' next'}`
+                    : `The automatic sequence flies the rest · the action sets it off sooner`
                 : this.free
                   ? this.fired === null
                     ? this.mine !== null && !(orbit && el.a * (1 - el.e) > ball + 100_000)
@@ -2614,9 +2617,12 @@ export class OrbitDeck extends Deck {
                     : code && t < coast.on
                       ? `Open More and enter ${[...code].join('-')} to unlock steering`
                       : fire
-                        ? `Next, the ${this.burnName.toLowerCase()}: use the action button to fire along the long axis, or wait until ${this.wall(coast.on)}`
+                        ? `Next: the ${this.burnName.toLowerCase()} by the action, or at ${this.wall(coast.on)}`
                         : 'The descent is automatic';
     if (prompt.textContent !== text) prompt.textContent = text;
+    // (a line of the instrument's; what is behind it, where there is more to say, in its title)
+    const tip = hot ? `${step!.label}: ${hot}` : text;
+    if (prompt.title !== tip) prompt.title = tip;
     prompt.hidden = !text;
     prompt.classList.toggle('due', Boolean(due));
     this.card(t);
