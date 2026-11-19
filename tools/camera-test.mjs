@@ -462,6 +462,139 @@ const sequences = {
     await h.page.keyboard.press('Escape');
     await h.wait(2500);
   },
+  // The map (M, camera/map.ts): from the chase view of a flight in the air, with the real key, the wheel and the mouse.
+  // It takes in all of the path; its zoom pulls straight back from what it turns about, which is the vehicle (carried
+  // with it) or the Earth (C); the eye never goes under the ground; and M again gives the chase view back as it was left.
+  async 'the map, in and out'(h) {
+    await h.page.evaluate(() => {
+      const sr = window.sr;
+      sr.show('vehicle', true);
+      sr.cockpit.enter();
+    });
+    await h.wait(2500);
+    await h.page.evaluate(() => {
+      const sr = window.sr;
+      sr.cockpit.eventAt = -1e9;
+      sr.cockpit.command('next');
+      sr.stage.setCamera('chase');
+      sr.clock.setRate(25);
+      sr.clock.play(true);
+    });
+    await h.page.waitForFunction(() => window.sr.clock.t >= 200, null, { timeout: 600000, polling: 300 });
+    await h.page.evaluate(() => window.sr.clock.setRate(1));
+    try {
+      const chase = await h.page.evaluate(() => window.__until((p) => !p.blend, 3));
+      await h.page.evaluate(() => {
+        window.__frames = [];
+        window.__recording = true;
+      });
+      await h.page.keyboard.press('m');
+      const map = await h.page.evaluate(() => window.__until((p) => p.rig === 'map' && !p.blend && !window.sr.stage.cam.map.busy, 6));
+      check(map.rig === 'map', `M goes to the map (${map.rig})`);
+      // all of the line ahead and the vehicle inside the window, and the path drawn though its switch may be off
+      const framed = await h.page.evaluate(() => {
+        const sr = window.sr;
+        const c = sr.stage.camera;
+        const L = sr.path.line();
+        const v = c.position.clone();
+        let out = 0;
+        for (let i = 0; i < L.t.length; i++) {
+          // (in front of the eye, whatever the far plane, which is fitted to the globe: the line is drawn past it)
+          const ahead = v.set(L.p[i * 3], L.p[i * 3 + 1], L.p[i * 3 + 2]).applyMatrix4(c.matrixWorldInverse).z < 0;
+          v.set(L.p[i * 3], L.p[i * 3 + 1], L.p[i * 3 + 2]).project(c);
+          if (!(ahead && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1)) out++;
+        }
+        return {
+          points: L.t.length,
+          out,
+          focus: sr.stage.cam.map.focus,
+          pressed: document.querySelector('[data-path=map]')?.getAttribute('aria-pressed'),
+        };
+      });
+      check(
+        framed.points > 1 && framed.out === 0,
+        `the whole path is in the frame: ${framed.points} points of its line, ${framed.out} outside`,
+      );
+      check(framed.pressed === 'true', 'and its switch beside the navball is lit');
+      const rel = (s) => (framed.focus === 'craft' && s.craft ? sub(s.pivot, s.craft) : s.pivot);
+      // the wheel out: straight back from what it turns about
+      for (let i = 0; i < 5; i++) {
+        await h.wheel(720, 300, 120);
+        await h.wait(30);
+      }
+      const out = await h.page.evaluate(
+        (from) => window.__until((p) => Math.hypot(p.p[0] - p.pivot[0], p.p[1] - p.pivot[1], p.p[2] - p.pivot[2]) > 1.3 * from, 1.5),
+        far(map),
+      );
+      check(
+        far(out) > 1.3 * far(map),
+        `the wheel zooms the map out (${(far(map) / 1000).toFixed(0)} to ${(far(out) / 1000).toFixed(0)} km)`,
+      );
+      check(
+        len(sub(rel(out), rel(map))) < 1e-6 * far(out) && ang(side(map), side(out)) < 2e-3,
+        `straight back: what it turns about moved ${len(sub(rel(out), rel(map))).toFixed(1)} m, the view turned ${ang(side(map), side(out)).toExponential(1)} rad`,
+      );
+      // a drag turns it about the same place (once the zoom has gone as far as it was asked)
+      const still = await h.page.evaluate(() => window.__until(() => !window.sr.stage.cam.map.busy, 3));
+      await h.drag(720, 300, 860, 250);
+      const turned = await h.page.evaluate(() => window.__until(() => !window.sr.stage.cam.map.busy, 3));
+      check(
+        ang(side(still), side(turned)) > 0.05 && Math.abs(far(turned) - far(still)) < 1e-3 * far(still),
+        `a drag turns it (${ang(side(still), side(turned)).toFixed(2)} rad), at the same distance (${(far(still) / 1000).toFixed(0)} km, then ${(far(turned) / 1000).toFixed(0)} km)`,
+      );
+      // C: the other of the vehicle and the Earth, eased there
+      await h.page.keyboard.press('c');
+      const other = await h.page.evaluate(() => window.__until(() => !window.sr.stage.cam.map.busy, 4));
+      const focus = await h.page.evaluate(() => window.sr.stage.cam.map.focus);
+      check(
+        other.rig === 'map' && focus !== framed.focus,
+        `C turns it about the ${focus === 'body' ? 'Earth' : 'vehicle'} (it was the ${framed.focus === 'body' ? 'Earth' : 'vehicle'}), still the map`,
+      );
+      check(
+        Math.abs(far(other) - far(turned)) < 0.02 * far(turned),
+        `from as far off as it was (${(far(turned) / 1000).toFixed(0)} km, then ${(far(other) / 1000).toFixed(0)} km)`,
+      );
+      // the wheel in, hard: never under the ground
+      for (let i = 0; i < 40; i++) {
+        await h.wheel(720, 300, -120);
+        await h.wait(20);
+      }
+      await h.page.evaluate(() => window.__until(() => false, 1.5));
+      // 0: all of it framed again
+      await h.page.keyboard.press('0');
+      const home = await h.page.evaluate(() => window.__until(() => !window.sr.stage.cam.map.busy, 5));
+      check(home.rig === 'map', `0 stays in the map (${home.rig})`);
+      // M again: the chase view as it was left
+      await h.page.keyboard.press('m');
+      const back = await h.page.evaluate(() => window.__until((p) => p.rig !== 'map' && !p.blend, 6));
+      check(back.rig === chase.rig, `M again gives back the ${chase.rig} view (${back.rig})`);
+      check(
+        Math.abs(far(back) - far(chase)) < 0.01 * far(chase) && ang(side(back), side(chase)) < 0.02,
+        `as it was left: ${far(chase).toFixed(1)} m off then, ${far(back).toFixed(1)} m now, turned ${ang(side(back), side(chase)).toFixed(3)} rad`,
+      );
+      const frames = await h.page.evaluate(() => {
+        window.__recording = false;
+        return window.__frames;
+      });
+      const bad = frames.filter((f) => ![...f.p, ...f.dir, ...f.pivot, f.fov].every(Number.isFinite));
+      // (in the map itself: on the way into it and out of it the view is the handover's, from beside the vehicle)
+      const under = frames.filter((f) => f.rig === 'map' && !f.blend && Number.isFinite(f.clear) && f.clear < 1000);
+      check(!bad.length, `nothing is not a number through ${frames.length} frames of it`);
+      check(
+        !under.length,
+        `the eye is never under the ground in the map (${under.length} frames; lowest ${(Math.min(...frames.filter((f) => f.rig === 'map' && !f.blend).map((f) => f.clear)) / 1000).toFixed(0)} km up)`,
+      );
+    } finally {
+      await h.page.evaluate(() => {
+        window.__recording = false;
+        window.sr.stage.setMap(false);
+        window.sr.cockpit.leave();
+        window.sr.clock.reset();
+        window.sr.stage.setCamera('orbit');
+      });
+      await h.wait(1500);
+    }
+  },
   // Flying free used to leave the orbit's pivot two metres in front of the lens.
   async 'free, and back to orbit'(h) {
     await h.page.evaluate(() => {

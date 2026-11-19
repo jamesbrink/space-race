@@ -216,6 +216,24 @@ rules are the screen's, the same for every path, never tuned to a flight:
   forth along itself: a point of it a minute ahead turned back on the screen 19 times in four seconds of Friendship 7's
   sustainer burn at life's rate, and 28 times at T+100 (none, carried). A path flown under guidance to its cutoff (K) is
   held to its programme instead and is not carried.
+- **On the map** (the `map` rig, camera.md; `PathHost.map`): the same lines by the same rules, with what a view of the
+  whole Earth needs. The path is drawn whatever its switch (J) says. An orbit is drawn as it lies among the stars
+  whatever the navball's frame (a path that comes down is still drawn over the ground, where it comes down), and
+  whole: on past the curve's end along the stretch already flown, a revolution later, moved by what the curve's two
+  ends differ by (the Earth's bulge turns the orbit a little each time round), less and less of it toward the vehicle,
+  so the line neither steps where the curve ends nor misses the vehicle where it closes. What the Earth hides is drawn
+  at three tenths (`BEHIND`: the Earth's own depth is not asked there) instead of ending at the limb. The line flown is
+  drawn from any distance. The vehicle has a marker of its own, by the flight's callsign, and so has everything else
+  that flies in the run (viewer/ascent.ts `others`: what the vehicle has let go that flies as a body of its own, and
+  the flight's target), each with a line in a blue-white of its own: the way it came (replayed from its own flight, the
+  last revolution or so) and, from above `OTHER_AIR` (120 km, estimated), the way it goes, a coast under gravity alone
+  to where it comes down to that height, once round, or two hours. Lower, the air decides where it goes, which is its
+  own flight's to say (sim/shed.ts) and is not predicted here: it has no line ahead. The Earth's outline is drawn
+  (`LIMB`: the circle in which the cone from the eye touches a ball 40 km over the equatorial radius), because its
+  night side is black on a black sky and an orbit over it otherwise reads as a line hung in space beside a crescent.
+  The map's own markers are places: their glyphs are drawn wherever they are in view, their names where the layout has
+  room for them. With nothing predicted (down, or on the pad with guidance off) the map shows only the Earth: nothing
+  of the flight is drawn without a path.
 - **Predicted again only when it would be seen to move**: a prediction is worked in slices of 1.5 ms a frame, the path
   put at its own instants in a slice of its own; the curve on show stands while a prediction made again from the
   flight would lie within half a pixel of it wherever it is drawn (path.ts `holds`: the flight's departure from the
@@ -227,7 +245,10 @@ rules are the screen's, the same for every path, never tuned to a flight:
   of a run at life's rate and at ten and a hundred thousand times it, in Surface and in Orbit; the line flown never
   drawn from near the vehicle, and owed from far out behind every flight that has flown a minute (an orbital deck's
   from its run's own samples, `PathSource.track`), chips off the panels and pointing at their places, the apsides where the path's radial speed
-  changes sign; and each flight taken over at seeded instants and flown by scripted hands, then run on to its end
+  changes sign; the map taken from the chase view at every third instant (the map's view, all of the line ahead in the
+  window, the path drawn with its switch off, an orbit among the stars and whole, closing on the vehicle, the vehicle's
+  marker on the vehicle, a line and a marker for every other thing that flies, the Earth's outline, and the chase view
+  given back); and each flight taken over at seeded instants and flown by scripted hands, then run on to its end
   against where the path said (one that breaks up is held to where the path had it as it broke up, and must then show
   no path; one that stays up, to where the path has it as far ahead as it goes). It is deterministic, and is never
   made looser to pass: each instant is reached exactly (the clock put forward a deck's five seconds at a time, or a

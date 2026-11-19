@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { FootRig, type FootView, ShoulderRig } from './foot.ts';
 import { FreeRig } from './free.ts';
 import { type Hands, listen } from './input.ts';
+import { MapRig } from './map.ts';
 import { anchorOk, blendPose, fitDistance, nudgeIntoFrame } from './maths.ts';
 import { OnboardRig } from './onboard.ts';
 import { ChaseRig, OrbitRig } from './orbit.ts';
@@ -73,6 +74,10 @@ export class Cameras {
   readonly onboard: OnboardRig;
   readonly pad: TrackRig;
   readonly free: FreeRig;
+  /** The map (map.ts): the whole path from far out. M's, never offered by C, which in it chooses what it turns about. */
+  readonly map: MapRig;
+  /** The rig the map was taken from: leaving the map gives the view back to it. */
+  private mapFrom: RigId | null = null;
   /** On foot: the walker's view, through the eyes or over the shoulder (foot.ts). Never offered by C: the walker's C is its own. */
   readonly eyes = new FootRig('eyes');
   readonly shoulder = new ShoulderRig();
@@ -114,6 +119,7 @@ export class Cameras {
     this.onboard = new OnboardRig(scene);
     this.pad = new TrackRig(scene);
     this.free = new FreeRig(scene, lens);
+    this.map = new MapRig(scene, lens);
     this.active = this.orbit;
     this.now.position.copy(camera.position);
     this.now.quaternion.copy(camera.quaternion);
@@ -155,7 +161,7 @@ export class Cameras {
   /** No easing, coasting or flying about: for anyone who has asked for less motion. */
   set calm(on: boolean) {
     this.quiet = on;
-    for (const rig of [this.orbit, this.chase, this.locked, this.onboard, this.pad, this.free]) rig.calm = on;
+    for (const rig of [this.orbit, this.chase, this.locked, this.onboard, this.pad, this.free, this.map]) rig.calm = on;
   }
 
   get calm(): boolean {
@@ -182,8 +188,9 @@ export class Cameras {
     return this.pad.sees(this.stood ? this.pad.at : this.scene.reach().centre);
   }
 
-  /** The rig C goes to next. */
+  /** The rig C goes to next (in the map, the map: C there chooses what it turns about, `refocus`). */
   next(): RigId {
+    if (this.active === this.map) return 'map';
     const all = this.available();
     return all[(all.indexOf(this.active.id) + 1) % all.length]!;
   }
@@ -202,10 +209,12 @@ export class Cameras {
       id === this.active.id ||
       (VEHICLE.includes(id) && (!craft || (craft.exhibit && id !== 'onboard'))) ||
       (id === 'onboard' && !craft?.seat) ||
-      (id === 'pad' && !this.padSees())
+      (id === 'pad' && !this.padSees()) ||
+      (id === 'map' && !this.scene.map?.())
     )
       return;
     const last = this.active;
+    if (id === 'map') this.mapFrom = last.id;
     this.refresh();
     const from: Pose = { position: this.now.position.clone(), quaternion: this.now.quaternion.clone(), fov: this.now.fov };
     const next = this.rigOf(id);
@@ -218,7 +227,7 @@ export class Cameras {
       next.enter(
         from,
         id === 'orbit' ? this.pivotFor(last, from) : last.pivot.clone(),
-        last === this.onboard || last === this.pad,
+        last === this.onboard || last === this.pad || last === this.map,
         // (the place's view at a distance nobody chose: a rig about the vehicle frames the vehicle, it does not inherit it)
         last === this.orbit && !this.orbit.handSet,
       );
@@ -263,6 +272,32 @@ export class Cameras {
     this.active = this.beforeFoot ?? this.orbit;
     this.beforeFoot = null;
     this.adopt(pivot);
+  }
+
+  /** The map is there to be gone to: there is a body to map and something flown round it. */
+  get mappable(): boolean {
+    return Boolean(this.scene.map?.());
+  }
+
+  /**
+   * Into the map, or out of it to the view it was taken from as that was left (one that is no longer there to go to,
+   * the pad camera with the vehicle below its horizon, gives way to the chase view, or the place's with nothing flying).
+   */
+  mapped(on: boolean): void {
+    if (on) return void this.set('map');
+    if (this.active !== this.map) return;
+    const craft = this.scene.craft();
+    const about = craft && !craft.exhibit;
+    const back =
+      this.mapFrom && (this.available().includes(this.mapFrom) || (about && VEHICLE.includes(this.mapFrom))) ? this.mapFrom : null;
+    this.mapFrom = null;
+    this.set(back ?? (about ? 'chase' : 'orbit'));
+    if (this.active === this.map) this.set(about ? 'chase' : 'orbit');
+  }
+
+  /** In the map: turn about the other of the vehicle and the body (C). Says which, or null out of the map. */
+  refocus(): 'craft' | 'body' | null {
+    return this.active === this.map ? this.map.refocus() : null;
   }
 
   /** The view an exhibit's seat was taken from (`set`): where leaving the seat goes back to, as it was left. */
@@ -425,7 +460,7 @@ export class Cameras {
 
   /** The fraction of the frame's height the controls cover at the bottom: subjects are seen in the middle of what is left. */
   set inset(fraction: number) {
-    this.orbit.inset = this.chase.inset = this.locked.inset = this.pad.inset = fraction;
+    this.orbit.inset = this.chase.inset = this.locked.inset = this.pad.inset = this.map.inset = fraction;
   }
 
   get inset(): number {
@@ -434,7 +469,7 @@ export class Cameras {
 
   /** The fraction of the frame's height nothing covers, top or bottom: the chase views frame the whole vehicle inside it. */
   set clear(fraction: number) {
-    this.chase.clear = this.locked.clear = fraction;
+    this.chase.clear = this.locked.clear = this.map.clear = fraction;
   }
 
   /** The hands are on the orbiting view, or what they did is still playing out. */
@@ -510,7 +545,7 @@ export class Cameras {
 
   /** Bring the view back to what it is about; with a flight in the air and the view elsewhere, to the vehicle. */
   refind(): void {
-    if (!VEHICLE.includes(this.active.id) && this.scene.craft()?.flying) {
+    if (this.active !== this.map && !VEHICLE.includes(this.active.id) && this.scene.craft()?.flying) {
       this.set('chase');
       return;
     }
@@ -542,7 +577,7 @@ export class Cameras {
     // The vehicle has gone below the pad camera's horizon (or out of its reach) while it was being watched from there:
     // the camera would look into the ground, so the chase takes over with the usual handover (C no longer offers it).
     if (this.active === this.pad && flying && !this.pad.sees(this.pad.at)) this.set('chase');
-    this.pad.aspect = this.eyes.aspect = this.shoulder.aspect = this.camera.aspect;
+    this.pad.aspect = this.eyes.aspect = this.shoulder.aspect = this.map.aspect = this.camera.aspect;
     const keys = this.scene.piloted() ? this.unspoken() : this.keys;
     this.active.update(dt, keys, this.fast);
     const now = this.now;
@@ -618,7 +653,7 @@ export class Cameras {
       on: () => this.scene.free(),
       spoken: () => this.scene.piloted(),
       grab: () => {
-        this.orbit.held = this.chase.held = this.locked.held = true;
+        this.orbit.held = this.chase.held = this.locked.held = this.map.held = true;
         this.took = false;
       },
       release: () => this.release(),
@@ -634,7 +669,7 @@ export class Cameras {
         this.told.taken('zoom');
         if (fresh) this.under = undefined;
         // going in, what is under the pointer is looked up, once a gesture; going out it does not matter what is
-        if (nepers < 0 && this.under === undefined) {
+        if (nepers < 0 && this.under === undefined && this.active !== this.map) {
           const hit = this.scene.solidAt(...this.inView(x, y));
           const point = hit?.point ?? null;
           this.under = this.active === this.free || anchorOk(this.now.position, this.pivot, point, hit?.ground) ? point : null;
@@ -677,6 +712,6 @@ export class Cameras {
   }
 
   private release(): void {
-    this.orbit.held = this.chase.held = this.locked.held = false;
+    this.orbit.held = this.chase.held = this.locked.held = this.map.held = false;
   }
 }

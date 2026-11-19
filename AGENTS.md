@@ -58,7 +58,7 @@ pnpm test:history     # needs `pnpm dev` running: Back and Forward between the f
 pnpm test:seat        # needs `pnpm dev` running: every seat of every flight sat in from the gallery, by the control and by C, at 1280 and 390
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
 pnpm test:wheels      # needs `pnpm dev` running: every slide and drive at each site, each wheel on what it runs on, within 5 mm
-pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through each flight and by scripted hands, seen from each rig and from far out, its line, the line flown and chips checked (four pages at once)
+pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through each flight and by scripted hands, seen from each rig, from far out and in the map, its line, the line flown and chips checked (four pages at once)
 pnpm test:impact      # needs pnpm dev: a glancing strike spins a capsule and a hard strike releases visible pieces
 pnpm test:separation  # needs `pnpm dev` running: released hardware moves clear in the rendered flight
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
@@ -261,7 +261,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   as data (`DeckSpec`: figures, readings, systems, steps, extra keys); a new kind is a class on `Deck`, not a second deck.
   As flown is the default; G, B or a step of Space takes a flight over, and the deck says so in its mode line.
 - C is the camera everywhere: off foot it goes to the next rig there is as things stand ("The camera"), on foot
-  between first and third person. Each has its own block in the legend. T is the look.
+  between first and third person. Each has its own block in the legend. T is the look. M, on the flight deck, is the map
+  (camera.md): the same camera pulled out to the whole path, the Earth turning under it; in it C chooses what it turns
+  about, the vehicle or the Earth, and M again gives back the view it was taken from.
 - The front page (`front.ts`; its words `title.ts`, the mark in `logo.ts`) is what an address that names
   nothing shows, and is no flight's: a main menu and the missions to choose from, over a picture of its own, the Earth seen from out by
   the Moon at the instant a person first left it, the camera going slowly out (`front/`; gallery.md, "The front

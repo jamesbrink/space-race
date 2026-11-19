@@ -7,8 +7,8 @@ import * as THREE from 'three';
  * nothing of any flight: what it turns about, sits in or follows comes through `World`.
  */
 
-/** The rigs there are. `locked` is the chase view held in the vehicle's own frame; `eyes` and `shoulder` are on foot (foot.ts). */
-export type RigId = 'orbit' | 'free' | 'chase' | 'locked' | 'onboard' | 'pad' | 'eyes' | 'shoulder';
+/** The rigs there are. `locked` is the chase view held in the vehicle's own frame; `map` is the view from far out of the whole path (map.ts); `eyes` and `shoulder` are on foot (foot.ts). */
+export type RigId = 'orbit' | 'free' | 'chase' | 'locked' | 'onboard' | 'pad' | 'map' | 'eyes' | 'shoulder';
 
 /** What each is called on the screen, and what it does, in a line. */
 export const RIGS: Record<RigId, { name: string; says: string }> = {
@@ -18,6 +18,7 @@ export const RIGS: Record<RigId, { name: string; says: string }> = {
   locked: { name: 'Chase view · locked', says: 'Turns with the vehicle: it holds still and the world moves' },
   onboard: { name: 'On board', says: 'From the couch · drag to look round · wheel zooms' },
   pad: { name: 'Pad camera', says: 'Stands on the ground and follows the vehicle with a long lens · wheel zooms' },
+  map: { name: 'Map', says: 'The whole path from far out, the Earth turning under it · drag to turn · wheel zooms' },
   eyes: { name: 'Through the eyes', says: 'On foot · W A S D walk · the mouse looks round' },
   shoulder: { name: 'Over the shoulder', says: 'On foot · the figure seen from behind · W A S D walk' },
 };
@@ -52,6 +53,24 @@ export interface Craft {
   exhibit?: boolean;
 }
 
+/**
+ * What the map is of (`World.map`): the body the flight is round, and how far what is shown of the flight reaches. The
+ * scene's frame is fixed to the body, which turns: `turned` is how far it has turned, so a view held against it does
+ * not turn with it (the stars stand still and the body goes round under the path, as it does).
+ */
+export interface MapOf {
+  /** The body's centre in the scene, its axis (north, a unit vector) and its radius, m. */
+  centre: THREE.Vector3;
+  pole: THREE.Vector3;
+  radius: number;
+  /** How far the body has turned about its axis at this instant, radians. */
+  turned: number;
+  /** The furthest from the body's centre anything shown of the flight goes (its path ahead, the way it came, where it is), m. */
+  reach: number;
+  /** The furthest from the vehicle any of that is, m. */
+  extent: number;
+}
+
 /** What a rig may ask of the world it is in. Lengths are metres in the scene's frame. */
 export interface World {
   /** Straight up at a place: the site's +Y on the site, the plumb line beyond it. */
@@ -77,6 +96,8 @@ export interface World {
    * from `from` to `to`. Left out, nothing does.
    */
   blocked?(from: THREE.Vector3, to: THREE.Vector3): boolean;
+  /** What a map of the flight is of, or null where there is nothing to map (no body, nothing flown). Left out, there is no map. */
+  map?(): MapOf | null;
 }
 
 /** What is common to every rig: stepped by `dt`, told what the hands did, asked where the camera is. */

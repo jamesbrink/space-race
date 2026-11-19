@@ -281,7 +281,7 @@ src/
   viewer/cabin.ts                     a model's inside as somewhere to fly from: its needles and lamps read the flight, its controls work, its periscope shows outside
   viewer/shade.ts                     a cabin's baked shade read lamp by lamp (`shadeBy`): by the cabin's switch, or as built where no cabin is worked (the Lineup)
   viewer/gauges.ts                    what an instrument reads and where that puts its needle: scales, counter wheels, attitude from axes (pure, tested)
-  viewer/path.ts                      the predicted path, drawn: a ribbon a few pixels wide, narrower with depth, ahead of the vehicle and never behind it (an orbit stopped short of coming round), the line flown from far out only, its markers and the ring where it comes down; its switch and figures
+  viewer/path.ts                      the predicted path, drawn: a ribbon a few pixels wide, narrower with depth, ahead of the vehicle and never behind it (an orbit stopped short of coming round), the line flown from far out only, its markers and the ring where it comes down; its switch and figures; and on the map (M) an orbit whole, what the Earth hides faintly, the vehicle's and every other body's marker and line, the Earth's outline
   viewer/pathline.ts                  the path's line as numbers: its ribbon's vertices, a prediction eased from the last by instant and carried with the flight between two, the rules that keep it off the vehicle, how deep in the view a point of it is, how far round a path has gone and where an orbit's line ends short of the vehicle (pure)
   viewer/pathmarks.ts                 where the path's markers go on the page: by rank, off the panels, the vehicle and each other, and staying put; and the chips at the view's edge for those not in view (pure)
   viewer/lookouts.ts                  what can be looked out of from a cabin's seat, from its data: its windows by name, then its periscope
@@ -290,6 +290,7 @@ src/
   viewer/camera/maths.ts              its arithmetic, pure and tested: zoom by proportion, what a zoom may move, easing and coasting by time, framing
   viewer/camera/rig.ts                what a rig is (`Rig`), the rigs there are (`RigId`, `RIGS`), and what one may ask of the world (`World`, `Craft`)
   viewer/camera/orbit.ts              turning about a pivot (`OrbitRig`), and about a vehicle that carries it (`ChaseRig`: level with the horizon, or locked to the vehicle)
+  viewer/camera/map.ts                the map (`MapRig`): the orbiting view pulled out to the whole path, about the vehicle or the Earth, in the frame that does not turn; what it takes in and what it turns about (`mapFit`, `focusOf`, `mapFrame`, pure)
   viewer/camera/free.ts  onboard.ts  track.ts   the free camera; first person from a seat; the pad camera that stands still and follows with a long lens
   viewer/camera/foot.ts               the rigs on foot (`eyes`, `shoulder`): the collision-limited shoulder boom and the view at the eyes, or watching what is worked by hand
   viewer/camera/watch.ts              watching what is worked by hand, pure and tested: the head turned within a neck's reach, the camera stepped aside and back off the figure
@@ -354,7 +355,7 @@ tools/
   flights-test.mjs                    browser check of going flight to flight with no reload: the right flight each time, memory and listeners back to their level, Back and Forward
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks
   studio-test.mjs                     browser check of each gallery view of a cabin's inside, read from the flights (`pnpm test:studio`): it opens the cutaway, and what it is of is on the screen and lit, both looks at 1280, 820 and 390
-  camera-test.mjs                     browser check of the camera: the sequences that went wrong, then a seeded soak of mixed input
+  camera-test.mjs                     browser check of the camera: the sequences that went wrong (and the map, in and out), then a seeded soak of mixed input
   places-test.mjs                     browser check of going between a flight's places: slow loads, a change of mind, the shows, what both remember
   history-test.mjs                    browser check of Back and Forward between the front page, flights and places, with real clicks; a gallery's History tab and its way to the Lineup
   mem-test.mjs                        browser check of what the page holds on the GPU as a phone (ready, late, on foot, in flight), against a budget
@@ -374,7 +375,7 @@ tools/
   glow-test.mjs                       browser check that the glow of entry is a glow from the chase view at 5, 9 and 20 m and from inside its box: no straight-edged step in what it adds, at 1280 and 390, in both looks
   night-test.mjs                      browser check of the sites by night: stills, the light through dusk and dawn without a jump, and the eye walking off a floodlit apron and back
   winds-test.mjs                      browser check that the wind drawn (the plants, the low cloud's drift, the sea's waves) follows a flight's hours with the clock, and is the record's at liftoff
-  path-test.mjs                       browser check of the predicted path's promises: flown live through the flights and by scripted hands, seen from each rig and from far out, measured frozen, on pages run at once
+  path-test.mjs                       browser check of the predicted path's promises: flown live through the flights and by scripted hands, seen from each rig, from far out and in the map, measured frozen, on pages run at once
   seat-test.mjs                       browser check of every seat of every flight, sat in from the gallery by the control and by C, at 1280 and 390
   sheet-test.mjs                      browser check of a phone's sheet under a finger (the gallery, the site, the Lineup at 390 and 820): every line of buttons swiped to reach each, faded only where there is more, the sheet and the page left still
   sound-test.mjs                      browser check of what is heard on the ground, read off `sr.sound.voices`: a car driven and got out of, a machine worked by hand, a vehicle on the clock

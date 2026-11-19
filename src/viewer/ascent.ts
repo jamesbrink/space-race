@@ -630,6 +630,39 @@ export class Ascent {
     return true;
   }
 
+  /**
+   * What else flies in the run at `t`, for a map of it (viewer/path.ts): each thing the vehicle has let go that flies as a
+   * body of its own (sim/shed.ts) or is the flight's target (sim/orbital-target.ts), by its drop: what it is called,
+   * when it left, and where it is and how fast in the frame that does not turn. Not what a parachute carries off or
+   * what rides a descent's body (they come down beside the vehicle), nor what has no name; `down` once it has landed.
+   */
+  others(t: number): { drop: number; name: string; from: number; r: Vec3; v: Vec3; down: boolean }[] {
+    const out: { drop: number; name: string; from: number; r: Vec3; v: Vec3; down: boolean }[] = [];
+    if (!this.flying(t)) return out;
+    this.drops.forEach((drop, i) => {
+      const at = t >= drop.at ? this.otherAt(i, t) : null;
+      const name =
+        at && (this.flight.flies!.target?.drop === this.flight.flies!.drops[i]?.on ? this.flight.flies!.target!.name : this.dropName(i));
+      if (at && name) out.push({ drop: i, name, from: drop.at, ...at });
+    });
+    return out;
+  }
+
+  /** Where drop `i` is at `t` and how fast, in the frame that does not turn (`others`), or null: before it left, or it is not a body of its own. */
+  otherAt(i: number, t: number): { r: Vec3; v: Vec3; down: boolean } | null {
+    const drop = this.drops[i];
+    const def = this.flight.flies!.drops[i];
+    if (!drop || t < drop.at || drop.under || def?.rides) return null;
+    const target = this.flight.flies!.target;
+    if (target && def?.on === target.drop) {
+      const s = detachedStageAt(this.flight, this.flown(), t);
+      return s ? { r: s.r, v: s.v, down: false } : null;
+    }
+    if (this.flown().loose?.[i]) return null;
+    const at = this.body(i)?.at(t);
+    return at ? { r: at.r, v: at.v, down: at.down } : null;
+  }
+
   /** The body flown for drop `i` (sim/shed.ts), if the flight gives one: the cockpit's on a flight flown by hand, else made here from the record's run as it left. */
   /** What drop `i` is called, where the flight gives it a body (`ShedBody.name`): null where it does not. */
   dropName(i: number): string | null {

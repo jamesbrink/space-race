@@ -14,6 +14,7 @@ import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops.ts';
 import { bulkOf } from './bulk.ts';
 import { Cabin, type CabinThing } from './cabin.ts';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
+import type { MapOf } from './camera/rig.ts';
 import { disposeTree } from './dispose.ts';
 import type { Effects } from './effects.ts';
 import { Eye } from './eye.ts';
@@ -1257,6 +1258,25 @@ export class Stage {
     this.cam.set(mode, snap);
   }
 
+  /**
+   * What a map of the flight is of (camera/rig.ts `MapOf`: the Earth, how far it has turned, how far what is shown of
+   * the flight reaches), given by whoever draws the flight's path (app/session.ts: viewer/path.ts `mapOf`). Without it,
+   * or while it gives null, there is no map to go to.
+   */
+  mapOf: (() => MapOf | null) | null = null;
+
+  /** Into the map (camera/map.ts), or back out of it to the view it was taken from. */
+  setMap(on: boolean): void {
+    this.cam.mapped(on);
+  }
+
+  /** In the map: turn about the other of the vehicle and the Earth. Says which it now is, or null out of the map. */
+  mapFocus(): 'craft' | 'body' | null {
+    const focus = this.cam.refocus();
+    if (focus) this.dirty = true;
+    return focus;
+  }
+
   /** The rigs there are to choose from as things stand, and the one C goes to next. */
   get cameras(): RigId[] {
     return this.cam.available();
@@ -1320,6 +1340,8 @@ export class Stage {
       far: () => Math.max(30, 4 * this.bounds.radius, this.setting.horizon ?? this.setting.reach ?? 0),
       maxPolar: () => this.setting.maxPolar,
       minPolar: () => this.setting.minPolar ?? 0,
+      // (a map is of the globe the place stands on, and of a flight: nobody on foot has one)
+      map: () => (this.setting.globe && !this.walk.active ? (this.mapOf?.() ?? null) : null),
       craft: () => this.show.craft(),
       // (asked by the chase view as it is first framed, a few rays at most: the solids the near plane asks, less the vehicle)
       blocked: (from, to) => {

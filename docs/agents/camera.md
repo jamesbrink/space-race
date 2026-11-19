@@ -18,6 +18,7 @@ time, is told what the hands did, and says where the camera is. One is in charge
 | `locked` | the chase view measured in the vehicle's own frame: it holds still and the world turns | the same |
 | `onboard` | first person from a seat in the vehicle (`ModelDef.seats[0]`: `node`, whose +Z looks ahead and +Y is overhead, and `eye` in its frame) | drag and arrows turn the head within limits, wheel changes the lens, 1 2 3 (and the lookouts' buttons) lean to a port or the periscope and back |
 | `pad` | stands at one place on the ground and follows the vehicle, closing its lens as it goes (to a quarter of a degree) | wheel asks for a tighter or wider frame, drag puts the vehicle off the middle |
+| `map` | the orbiting view pulled out to where the whole path is seen (`map.ts`): it turns about the vehicle or the Earth's centre, its angles held in the frame that does not turn, so the Earth goes round under the path | drag turns, wheel and R F zoom about what it turns about, arrows turn and tilt, C changes what it turns about, 0 frames everything again |
 | `eyes`, `shoulder` | on foot (`foot.ts`): the walker's view, through the figure's eyes or over its shoulder, with the walker providing the eye pose (stride, lean, couch: walking.md) and the shoulder rig extending its boom until it meets an obstruction; `Cameras.foot` as a walk starts or C changes it, `unfoot` hands back to the rig the walk was taken from; while something is worked by hand they watch it (`Cameras.watch`, `FootRig.watch`: the head turned to it within a neck's reach, or the camera stepped aside and back off the figure; walking.md) until it is let go or the hands move the view | the walker's own (walking.md); C offers neither |
 
 C goes to the next of the rigs there are as things stand (`Cameras.available`): on the pad, orbit
@@ -30,6 +31,30 @@ chase takes over by itself, and gives the view back to orbit when it is on the p
 flight in the air and the camera elsewhere, "Find the vehicle" (and C) goes to it. 0 is the reset:
 the section's first view in orbit and free, the vehicle centred in the others. While the vehicle is
 flown by hand W A S D Q E are its keys and the camera has the arrows, R, F, 0 and C.
+
+**The map is M's, not C's** (`Cameras.mapped`; `available` never lists it). On the flight deck M (its switch beside
+the path's by the navball, and among the deck's keys) puts the `map` rig in charge from whichever rig has the camera,
+and M again gives the view back to that rig as it was left (`mapFrom`, `Rig.enter`'s `resume`). There is a map only
+where there is something to map (`World.map`, a `MapOf`: the body, how far it has turned, and how far what is shown of
+the flight reaches from its centre and from the vehicle; the stage is given it by whoever draws the path,
+`Stage.mapOf`), and nobody on foot has one. Taken up with nobody having set it, it takes in all that is shown
+(`mapFit`: in the height of the frame the controls leave clear, and in its width where the frame is narrower than it
+is tall, a phone held upright) from over the vehicle, to the side the last view saw it from, so the vehicle is on the
+near side of the Earth. What it turns about is chosen for it (`focusOf`: the vehicle while everything shown lies within four tenths of
+the Earth's radius of it, a lob or a fall; the Earth's centre once anything is over six tenths, an orbit; between, as
+it was), and that and the distance follow the path as it grows, until the hands choose: a zoom sets the distance, and C
+there (`Cameras.refocus`: in the map C is the map's own, `map.focus`) the other thing to turn about, from as far off as
+it was. 0 gives both back. A change of what it turns about slides the pivot there over `SLIDE` seconds, never cuts.
+
+Its angles are measured in the frame that does not turn (`mapFrame`: the Earth's axis for its vertical, turned back by
+as much as the Earth has turned), because the scene is fixed to the Earth: a view left alone stands still among the
+stars and the Earth turns under the orbit, as it does. Its zoom is always about what it turns about (at that distance
+nothing under the pointer is near and solid), so zooming out pulls straight back and in again comes back, as
+everywhere. The eye stays `CLEAR` over the Earth's radius by coming up round the pivot at the same distance
+(`MapRig.limit`); only where no place at that distance clears, the pivot on its way between the Earth's centre and the
+vehicle with the eye close in, is it further off for as long as that lasts. What is drawn in the map is the path's
+business (rendering.md, "The predicted path": on the map), and from that far the day's cloud is let go (rendering.md,
+"The Earth from height").
 
 Coming to the chase from near the vehicle, the view is taken up as it stands if its distance had
 been set by hand; from the place's own view at a distance nobody chose (`Rig.enter`'s `unset`), or
@@ -130,7 +155,8 @@ the camera's: `Stage.fitDepth` fits it every frame to the nearest thing there is
 the draw only (`Stage.shaker`), after the rig has said where the camera is.
 
 To check a change: `node --test tests/camera.test.mjs`, then `pnpm test:camera` (`tools/camera-test.mjs`):
-real wheel, drag, key and touch events in a browser, first the sequences that used to go wrong, then a
+real wheel, drag, key and touch events in a browser, first the sequences that used to go wrong (and the map, in and
+out, with M, the wheel, a drag, C and 0), then a
 seeded soak with the clock running a flight and C stepping through the rigs, asserting on every frame
 that nothing is not a number, the eye is above the ground, the pivot has not moved without cause, a
 zoom out has moved and turned nothing, and the subject is where it should be. The idle show does not
