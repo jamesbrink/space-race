@@ -450,6 +450,7 @@ export const flight: Flight = {
     },
     eagleModel,
     mobileLauncher(1, {
+      holdDowns: 'as-506',
       ingress: boarding[0],
       parkCommand: -3000,
       parkedBy: -2994,

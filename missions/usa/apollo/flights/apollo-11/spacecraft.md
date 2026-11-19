@@ -6,6 +6,10 @@ The flight report's reconstructed masses at transposition and docking are 63,473
 
 The Motors tab uses the nominal ratings published for this flight. The Apollo 11 press kit gives about 1,530,771 lbf per F-1 at liftoff and 224,003 to 231,000 lbf per second-stage J-2 over the flight. The third-stage rating runs from 178,161 to 203,779 lbf. The tab displays the upper rating for each J-2. The same kit gives the spacecraft propulsion ratings and distinguishes Eagle’s throttleable descent engine from its fixed-thrust ascent engine. [Apollo 11 Press Kit, pp. 88, 93, 106, 109 and 114–115](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A11_PressKit.pdf)
 
+### On the mobile launcher
+
+The tower stood north of SA-506. As seen from above, No. 1 F-1 was northeast of the vehicle axis and No. 2 northwest. The four outboard engines and their fins lay on the diagonals of the square exhaust opening. Between them, four points on the lower thrust ring bore on the launcher. The exhibit places the bearing soles 19.44 ft above the F-1 exits, at the lower edge of the reconstructed stage. The four contact points and engine indexing follow the Saturn V reference plan. The local lug shapes, their dimensions and their precise contact elevation are estimates. The black roll pattern continues from the S-IC across the interstage onto the S-II. [Saturn V Flight Manual SA-504, §4-1 and fig. 8-7](https://www.ibiblio.org/apollo/Documents/Saturn_V_Flight_Manual_SA_504.pdf) · [Launch-site hardware](../../../places/cape-canaveral/lc-39.md)
+
 ## Reconstruction limits
 
 SA-506 internal tank structure and equipment-bay arrangements use adjacent Saturn V drawings. Roll markings and blanket colors use photographic estimates. Eagle’s crew-access interval represents inspection availability. Individual control settings are illustrative. See the spacecraft records for equipment omitted at close range.
