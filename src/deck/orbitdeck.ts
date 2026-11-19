@@ -596,7 +596,10 @@ export class OrbitDeck extends Deck {
   /** When the spacecraft leaves the last stage on the flight on show, s. */
   private get parting(): number {
     if (this.mine !== null) return this.ascended?.separation.t ?? Infinity;
-    return recordStages(this.flight.plan!, orbitalFlown(this.flight).ascent.stops).at(-1)?.sep ?? Infinity;
+    const flown = orbitalFlown(this.flight).ascent;
+    const sep = recordStages(this.flight.plan!, flown.stops).at(-1)?.sep ?? Infinity;
+    // (a last stage that is itself the spacecraft, an Agena, is let go of by nothing: alone once its engine has stopped)
+    return Number.isFinite(sep) ? sep : flown.separation.t;
   }
   /** Whether the record's own braking burn was fired by hand: its command within one of the record's periods of orientation by hand. */
   private get burnByHand(): boolean {
@@ -2425,10 +2428,12 @@ export class OrbitDeck extends Deck {
       row.style.setProperty('--left', `${st.aboard ? (100 * part).toFixed(0) : 0}%`);
       row.classList.toggle('low', st.aboard && part < 0.2);
     });
+    const all = stagesOf(plan);
     const burning = [
-      ...stagesOf(plan)
+      ...all
         .filter((_, i) => stages[i]!.burning)
-        .map((st) => short(st.body.label)),
+        // (two stages on one body, an Atlas's sustainer and its verniers, by their engines)
+        .map((st) => short(all.some((o) => o !== st && o.body.id === st.body.id) ? st.engine.label : st.body.label)),
       // (a manoeuvre burning on the flight as it stands, by its thrusters' name: orbital.ts `movesOf`)
       ...shipOf(this.planned ?? (this.free || this.mine !== null ? this.givenUp() : plan))
         .moves.filter((m) => t >= m.on && t < m.off)
@@ -2637,7 +2642,11 @@ export class OrbitDeck extends Deck {
                       ? `Open More and enter ${[...code].join('-')} to unlock steering`
                       : fire
                         ? `Next: the ${this.burnName.toLowerCase()} by the action, or at ${this.wall(coast.on)}`
-                        : 'The descent is automatic';
+                        : coast.on === Number.POSITIVE_INFINITY && !downOf(plan)
+                          ? orbit && el.a * (1 - el.e) > ball + 100_000
+                            ? 'In orbit: it stays up'
+                            : 'Short of orbit: it falls to the sea'
+                          : 'The descent is automatic';
     if (prompt.textContent !== text) prompt.textContent = text;
     // (a line of the instrument's; what is behind it, where there is more to say, in its title)
     const tip = hot ? `${step!.label}: ${hot}` : text;
