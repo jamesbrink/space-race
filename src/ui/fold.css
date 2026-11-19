@@ -19,7 +19,7 @@
   :is(#gallery, #ui) .title .ways .way-on[aria-disabled='true'] { white-space: nowrap; }
   :is(#gallery, #ui) .title .ways .way-long { display: none; }
   :is(#gallery, #ui) .title .ways .way-short { display: inline; }
-  :is(#gallery, #ui) .title .ways .way-back .icon { margin-right: 0; }
+  :is(#gallery, #ui) .title .ways .way-back .icon { margin-right: 6px; }
   :is(#gallery, #ui) .title .ways .kept-mark { height: 36px; padding: 0 10px; }
   /* (short of room, the programme's line goes first, and the ways' icons, which stand beside words; then the way back keeps only its chevron: gallery.ts fitWays) */
   :is(#gallery, #ui) .title:has(> .ways.tight) > .sub, :is(#gallery, #ui) .title .ways.tight .icon { display: none; }
