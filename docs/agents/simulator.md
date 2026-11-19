@@ -916,9 +916,9 @@ read gives enough of to fly (issue #10).
   the angle beyond both horizons, the vehicle's and the path's highest point's (pathline.ts `overHorizon`), and 12° more,
   turned round from where the vehicle is now (`sweepOf`, `tailOf`), so nothing near the vehicle sees its end, and goes
   out over the 30° before; one cut off by its horizon of time goes out over its last stretch; only one that meets the
-  ground ends there, at its ring. It is a ribbon of constant
-  width in pixels (each chord pushed out across its own direction on the screen and mitred to the next, never thinned
-  with distance) with a soft core (in the cel look a flat line with an ink edge), drawn over the finished frame (viewer/overlay.ts
+  ground ends there, at its ring. It is a ribbon whose
+  width is in pixels (each chord pushed out across its own direction on the screen and mitred to the next; narrower and
+  fainter the deeper into the view it goes, so the curve has depth, and never under a pixel: rendering.md) with a soft core (in the cel look a flat line with an ink edge), drawn over the finished frame (viewer/overlay.ts
   `drawLast`), against the scene's depth and writing none, so the vehicle, the ground and the cabin's walls hide it and
   the smoke behind it does not, and under as much cloud as lies in front of it; the Earth hides it by its ellipsoid
   tested for every pixel, so it ends at the limb to a pixel; it starts a gap from the vehicle (a little more than half

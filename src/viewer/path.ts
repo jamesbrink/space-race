@@ -23,6 +23,9 @@ import {
   type Curve,
   curveAt,
   curveOf,
+  DEPTH_DIM,
+  DEPTH_LEAST,
+  DEPTH_THIN,
   limbPx,
   overHorizon,
   type Ribbon,
@@ -86,12 +89,16 @@ import { disposeTree } from './dispose.ts';
  *   whole flight seen from space): a thin cool grey core with no casing or glow, at half strength, the last revolution
  *   or so of the flight (`FLOWN_SPAN`), its far end coming in from nothing, carried to the vehicle along the line ahead;
  *   the path's figures name it while it is drawn.
- * - **A width on the screen, not in the world, and the same everywhere**: each chord is a quad pushed out across its
+ * - **A width on the screen, not in the world, and narrower with depth**: each chord is a quad pushed out across its
  *   own direction on the screen (from both its ends as projected, never from a direction in the world, which near the
  *   eye or along the line of sight projects to anything), mitred to the next at each join, a core of `CORE` CSS pixels
  *   each side with a pixel's soft edge, a thin dark casing (what reads against bright sky, cloud and sea) and a glow
- *   to `HALF` (what reads against black); in the cel look a flat core with an ink edge. It never thins with distance:
- *   a line too thin to cover a pixel breaks into dots.
+ *   to `HALF` (what reads against black); in the cel look a flat core with an ink edge. That is what it is at the
+ *   vehicle. The deeper into the view it goes (pathline.ts `depthOf`: by the logarithm of the distance, from the
+ *   vehicle's to the furthest of the line) the narrower and fainter it is drawn, to `DEPTH_THIN` of the width and
+ *   `DEPTH_DIM` of the strength, so the curve has depth: what is far is seen to be far, and a path seen from near its
+ *   own plane no longer reads as a line that turns square into the horizon. Its core is never under a pixel across: a
+ *   line too thin to cover a pixel breaks into dots.
  * - **Never at the eye**: each chord is cut where it crosses a plane just in front of the near plane and nothing behind
  *   that plane is drawn (pathline.ts `clipNear`: no vertex is ever behind the eye, where a ribbon turns inside out
  *   across the screen); the line fades in over the next doubling of the distance from the eye, so where it passes the
@@ -209,8 +216,14 @@ const HOLD_ROUND = 0.95;
 /** How fast a coast's departure from a curve grows, times its difference in velocity: an orbit's along its track, 3 dv t, the fastest. */
 const GROWTH = 3;
 
+/** How deep in the view a point is, 0 to 1 (pathline.ts `depthOf`): `uDepth` is the nearest the depth counts from, m, and one over the logarithm of the span it is measured over. */
+const DEPTH = /* glsl */ `
+  uniform vec2 uDepth;
+  float depthOf(float d) { return clamp(log(max(d, uDepth.x) / uDepth.x) * uDepth.y, 0.0, 1.0); }`;
+
 const VERT = /* glsl */ `
   #include <common>
+  ${DEPTH}
   attribute vec3 aOther;      // the chord's other end
   attribute vec3 aBeyond;     // the point past this end along the line (this end again at an open end)
   attribute float aSide;      // -1 or 1: which edge of the ribbon
@@ -220,7 +233,8 @@ const VERT = /* glsl */ `
   uniform float uHalf;        // half the ribbon's width, pixels
   uniform float uClip;        // nothing nearer the eye than this plane is drawn, m (just past the near plane)
   uniform float uRing;        // the ring's radius, m
-  varying float vSide, vT;
+  uniform float uThin;        // how wide the line is where it is deepest in the view, of its width at the vehicle
+  varying float vSide, vT, vWide;
   varying vec3 vView;         // this point in the view's frame (the eye at the origin), m
   vec3 toView(vec3 p) { return (modelViewMatrix * vec4(p, 1.0)).xyz; }
   vec2 toScreen(vec3 v) { vec4 c = projectionMatrix * vec4(v, 1.0); return c.xy / c.w * 0.5 * uView; }
@@ -241,7 +255,7 @@ const VERT = /* glsl */ `
     bool behind = s.z > -uClip;
     // never at the eye: a chord all behind the plane is not drawn (put outside the view, its triangles are culled);
     // one that crosses it is cut there, this end moved along the chord to the plane
-    if (behind && o.z > -uClip) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); vView = vec3(0.0); return; }
+    if (behind && o.z > -uClip) { gl_Position = vec4(0.0, 0.0, 2.0, 1.0); vView = vec3(0.0); vWide = 1.0; return; }
     if (behind) s = cut(o, s);
     else o = cut(s, o);
     // the chord's way on the screen, from its start to its end, and the neighbour's, for the mitre at this end
@@ -265,9 +279,11 @@ const VERT = /* glsl */ `
       }
     }
     vView = s;
+    // narrower the deeper in the view it is (pathline.ts depthOf): what is far is seen to be far
+    vWide = mix(1.0, uThin, depthOf(length(s)));
     // its depth a hundredth nearer than it is (the same place on the screen), and never past the far plane
     vec4 clip = projectionMatrix * vec4(s * 0.99, 1.0);
-    clip.xy += normal * aSide * stretch * uHalf / uView * 2.0 * clip.w;
+    clip.xy += normal * aSide * stretch * vWide * uHalf / uView * 2.0 * clip.w;
     clip.z = min(clip.z, clip.w * 0.99999);
     gl_Position = clip;
   }`;
@@ -276,8 +292,9 @@ const FRAG = /* glsl */ `
   #include <common>
   ${sceneDepthGlsl}
   ${cloudAheadGlsl}
+  ${DEPTH}
   uniform vec3 uColour, uInk;
-  uniform float uCut, uOpacity, uCel, uCore, uHalf, uClip, uGap, uFade, uRatio;
+  uniform float uCut, uOpacity, uCel, uCore, uHalf, uClip, uGap, uFade, uRatio, uDim;
   uniform vec4 uEnds;         // its ends, in seconds from the line's zero: it comes in from x over y, and goes out by z over w (no fade where y or w is 0)
   uniform vec3 uShip;         // the vehicle's middle in the view's frame
   uniform vec4 uShipSeg;      // and on the target: its long axis from end to end, pixels
@@ -288,15 +305,17 @@ const FRAG = /* glsl */ `
   uniform float uStretch;     // and how much longer than its polar radius that is (a/b - 1)
   uniform float uPxPerRad;    // pixels to a radian of the view
   uniform vec2 uView;         // the target's size, pixels
-  varying float vSide, vT;
+  varying float vSide, vT, vWide;
   varying vec3 vView;
   void main() {
     // behind what the scene has drawn (the vehicle, the ground, the cabin's walls): a hundredth nearer than it is, so the
     // sea it comes down to does not hide its end (overlay.ts: the finished frame it is drawn over has no depth of its own)
     if (behindScene(-vView.z * 0.99, uView)) discard;
     float eye = length(vView);
-    float px = abs(vSide) * uHalf;
-    float c = uCore;
+    // (the ribbon is narrower the deeper it is, and its core with it: never under a pixel across, which breaks into dots)
+    float ribbonHalf = uHalf * vWide;
+    float px = abs(vSide) * ribbonHalf;
+    float c = max(uCore * vWide, 0.6 * uRatio);
     vec3 colour = uColour;
     float a;
   #ifdef FLOWN
@@ -313,7 +332,7 @@ const FRAG = /* glsl */ `
       // the glow against black (each laid over the one under it)
       float body = 1.0 - smoothstep(c - 0.6, c + 0.6, px);
       float rim = 0.65 * (1.0 - smoothstep(c + 1.2 * uRatio - 0.6, c + 1.2 * uRatio + 0.6, px));
-      float g = max(0.0, 1.0 - px / uHalf);
+      float g = max(0.0, 1.0 - px / ribbonHalf);
       float glow = 0.3 * g * g;
       vec3 under = uInk * rim + uColour * glow * (1.0 - rim);
       float behind = rim + glow * (1.0 - rim);
@@ -341,6 +360,8 @@ const FRAG = /* glsl */ `
   #endif
     // never at the eye: in from the plane over the next doubling of the distance
     a *= smoothstep(uClip, 2.0 * uClip, eye);
+    // fainter the deeper in the view it is, as it is narrower
+    a *= mix(1.0, uDim, depthOf(eye));
     // behind the Earth: the ray from the eye to here passes inside its ellipsoid first (by how many pixels: pathline.ts
     // limbPx; stretched along the pole, it is a sphere), faded over the pixel and a half before the limb, so a line that
     // goes down behind it, to the ground, has gone before the globe's own depth, which is nearer by only the 1 % the
@@ -710,6 +731,9 @@ export class FlightPath {
       uRadius: { value: WGS84_A },
       uStretch: { value: WGS84_A / WGS84_B - 1 },
       uPxPerRad: { value: 1000 },
+      uDepth: { value: new THREE.Vector2(1, 1) },
+      uThin: { value: DEPTH_THIN },
+      uDim: { value: DEPTH_DIM },
       uColour: { value: new THREE.Color() },
       uInk: { value: new THREE.Color() },
       uCut: { value: -1 },
@@ -1663,6 +1687,21 @@ export class FlightPath {
     this.flownMesh.quaternion.identity();
     const ringAt = this.ringMesh.userData.at as THREE.Vector3 | null;
     if (ringAt) this.ringMesh.position.copy(ringAt).sub(this.mesh.position);
+    // how deep the line goes into the view (pathline.ts depthOf): from the vehicle, or the nearest of it, to the furthest of it
+    let nearest = Number.POSITIVE_INFINITY;
+    let furthest = 0;
+    for (const line of [ahead, behind])
+      for (let i = 0; i < line.n; i++) {
+        const d = Math.hypot(line.p[i * 3]! - eye.x, line.p[i * 3 + 1]! - eye.y, line.p[i * 3 + 2]! - eye.z);
+        nearest = Math.min(nearest, d);
+        furthest = Math.max(furthest, d);
+      }
+    const depthFrom = Math.max(vessel ? Math.max(toShip, vessel.radius) : nearest, 1.02 * camera.near);
+    if (Number.isFinite(depthFrom))
+      (this.uniforms.uDepth!.value as THREE.Vector2).set(
+        depthFrom,
+        1 / Math.max(Math.log(Math.max(furthest, depthFrom) / depthFrom), Math.log(DEPTH_LEAST)),
+      );
     this.drawn = {
       ahead: Math.max(0, ahead.n - 1),
       flown: Math.max(0, behind.n - 1),

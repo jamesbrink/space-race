@@ -477,6 +477,27 @@ export function fadeIn(d: number, gap: number, span = 2 * gap): number {
   return x * x * (3 - 2 * x);
 }
 
+/**
+ * How deep in the view a point of the line `d` metres from the eye is, 0 to 1: nothing at `near` (the vehicle's distance,
+ * where the line starts) or nearer, all of it at `far` (the furthest the line goes from the eye), by the logarithm of the
+ * distance between, so each doubling counts alike from 30 m and from 30,000 km. A line that keeps much the same distance
+ * (`far` under `DEPTH_LEAST` times `near`) is measured over that least span, and so is never all the way deep. path.ts
+ * draws the line narrower and fainter by it (`DEPTH_THIN`, `DEPTH_DIM`): a ribbon of one width and strength from the
+ * vehicle to the limb has no depth, and a path seen from near its own plane (the chase view of an orbit, or of a lob
+ * from behind) then reads as a line that goes away and turns square down into the horizon, where it is a curve going
+ * 5,000 km off and over the Earth's shoulder. Its fragment shader does the same.
+ */
+export function depthOf(d: number, near: number, far: number): number {
+  const from = Math.max(near, 1e-6);
+  const span = Math.max(Math.log(Math.max(far, from) / from), Math.log(DEPTH_LEAST));
+  return Math.min(1, Math.max(0, Math.log(Math.max(d, from) / from) / span));
+}
+/** The least ratio of the furthest to the nearest the depth is measured over. */
+export const DEPTH_LEAST = 2;
+/** How wide and how strong the line is drawn where it is deepest, of what it is at the vehicle. */
+export const DEPTH_THIN = 0.5;
+export const DEPTH_DIM = 0.6;
+
 /** How much of the line is drawn `px` pixels from the vehicle's outline on the screen, which it keeps `w` pixels off: none within, all of it `margin` further out. */
 export function clearOf(px: number, w: number, margin: number): number {
   if (!(w > 0)) return 1;

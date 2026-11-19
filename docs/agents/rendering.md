@@ -175,9 +175,16 @@ rules are the screen's, the same for every path, never tuned to a flight:
 - **Sampled for the eye.** The prediction is a curve (points with velocities, the cubic between them); each time the eye,
   the instant or the prediction moves it is cut into chords until none strays more than `ERROR_PX` (0.35 px) from the
   curve as seen from the eye, starting from multiples of a power of two seconds so the chords stay put as the clock runs.
-- **A width on the screen that never thins**: each chord is a quad pushed out across its own direction as projected
-  (never a direction in the world, which near the eye projects to anything) and mitred to the next; a line under a
-  pixel wide breaks into dots, so it is faded, never thinned.
+- **A width on the screen, narrower with depth and never thin**: each chord is a quad pushed out across its own
+  direction as projected (never a direction in the world, which near the eye projects to anything) and mitred to the
+  next. At the vehicle it is its full width and strength; the deeper into the view it goes the narrower and fainter it
+  is drawn (pathline.ts `depthOf`: by the logarithm of the distance from the eye, from the vehicle's to the furthest the
+  line goes, down to half the width and six tenths of the strength, `DEPTH_THIN`, `DEPTH_DIM`), its core never under a
+  pixel across: a line under a pixel wide breaks into dots. One width and strength from the vehicle to the limb gave the
+  curve no depth. A path seen from near its own plane (an orbit from the chase view pulled back, a lob from behind) is a
+  line that goes away, turns within a few dozen pixels and drops into the horizon; with nothing to say that the leg
+  going down is the far side of the curve, thousands of kilometres off and going over the Earth's shoulder, it read as
+  a line taking a right-angle turn at the horizon (its owner's words). The geometry was right, and is unchanged.
 - **Never at the eye**: each chord is cut at a plane just past the near plane in the vertex shader, and fades in over the
   next doubling of the distance; nothing behind the eye is ever a vertex.
 - **Behind the Earth to a pixel**: the globe's ellipsoid (WGS 84) is tested for every pixel of the ribbon in the view's

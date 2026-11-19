@@ -11,6 +11,8 @@ import {
   clipNear,
   curveAt,
   curveOf,
+  DEPTH_LEAST,
+  depthOf,
   ERROR_PX,
   fadeIn,
   limbPx,
@@ -365,4 +367,26 @@ test('an orbit the clock has outrun is drawn from the same curve whole turns on,
     const past = turnsPast(t, 100, 5500);
     assert.ok(t - past >= 100 && t - past <= 5500, `T+${t} lands within the curve`);
   }
+});
+
+test('the line is deeper in the view the further it is from the eye, by the doubling, from the vehicle to its furthest', () => {
+  // nothing at the vehicle or nearer, everything at the furthest; the same from 30 m and from 30,000 km
+  for (const near_ of [30, 400e3, 3e7]) {
+    const far = near_ * 4096;
+    assert.equal(depthOf(near_, near_, far), 0);
+    assert.equal(depthOf(0.1 * near_, near_, far), 0, 'what passes nearer than the vehicle is not deep');
+    assert.equal(depthOf(far, near_, far), 1);
+    assert.equal(depthOf(10 * far, near_, far), 1);
+    near(depthOf(near_ * 64, near_, far), 0.5, 1e-12, 'half the doublings, half as deep');
+    let last = -1;
+    for (let d = near_; d <= far; d *= 1.3) {
+      const k = depthOf(d, near_, far);
+      assert.ok(k >= last && k >= 0 && k <= 1, `monotonic at ${d}`);
+      last = k;
+    }
+  }
+  // a line that keeps its distance is measured over the least span: never all the way deep, and never divided by nothing
+  near(depthOf(1.2e7, 1e7, 1.2e7), Math.log(1.2) / Math.log(DEPTH_LEAST), 1e-12, 'over the least span');
+  assert.equal(depthOf(1e7, 1e7, 1e7), 0);
+  assert.ok(Number.isFinite(depthOf(5, 0, 0)));
 });
