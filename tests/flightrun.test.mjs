@@ -52,10 +52,15 @@ for (const f of flights) {
         plan.events.some((e) => e.id === id),
         `${f.id}: ${id} is the plan's`,
       );
-    // what the clock sets off happens at the record's instant, unless the run decides it (the pilot let loose at a height)
+    // what the clock sets off happens at the record's instant, unless the run decides it (the pilot let loose at a height;
+    // a burn guidance solved on the flight's target, cut when it had given what was solved: orbital.ts `BurnFlown`)
+    const solved = new Map(
+      (plan.kind === 'orbital' ? (orbitalFlown(f).coast.burns ?? []) : []).filter((x) => x.solved).map((x) => [x.cut, x.off]),
+    );
     for (const e of run.events) {
       const def = e.event && plan.events.find((x) => x.id === e.event);
-      if (def?.at && clocked(def)) assert.equal(e.t, clockAt(plan, def), `${f.id}: ${e.event} at its clock's instant`);
+      if (solved.has(e.event)) assert.equal(e.t, solved.get(e.event), `${f.id}: ${e.event} when guidance cut it`);
+      else if (def?.at && clocked(def)) assert.equal(e.t, clockAt(plan, def), `${f.id}: ${e.event} at its clock's instant`);
     }
     // the record's instants by the record's ids, as the orbital record's events give them
     if (plan.kind === 'orbital')

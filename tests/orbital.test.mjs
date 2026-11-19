@@ -448,8 +448,10 @@ for (const f of orbiters) {
   });
 
   test(`${f.designation}: the coast against the record; every miss is recorded`, () => {
+    // (the coast alone, from the published orbit: it has no target to be any range from, and its burns are the record's)
+    const alone = (c) => !(c.when && 'reading' in c.when && c.when.reading === 'range');
     holdChecks(
-      f.plan.checks.filter((c) => c.of === 'orbit'),
+      f.plan.checks.filter((c) => c.of === 'orbit' && alone(c)),
       (id) => run.results[id],
       missesOf(f.id, 'coast'),
       { name: f.designation },

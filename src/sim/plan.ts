@@ -40,6 +40,8 @@ export interface FlightPlan {
    * liftoff), which the simulator flies through where it reaches (sim/air.ts `skyOf`). Left out: the 1976 standard.
    */
   aloft?: Aloft;
+  /** The craft its manoeuvres in orbit are made on, where it has one (sim/pursuit.ts). */
+  target?: TargetDef;
   /** The record's figures, to hold a run to: set before anything was flown. */
   checks: PlanCheck[];
   /** What the record has that is not flown from but held to or shown: the published orbit, where it came down. */
@@ -360,8 +362,11 @@ export type Action =
    * record gives each burn its own (a manoeuvre's, read off the spacecraft's velocity indicator): the record's run flies it
    * evenly between this lighting and the engine's next cut, along the attitude then held (orbital.ts `movesOf`). Without
    * it a manoeuvre is flown at its engine's thrust over the ship's mass.
+   * `toward`: what the burn was for, where it was made on another craft (`FlightPlan.target`): guidance then solves it on
+   * the state the run is in as it lights, and the record's impulse and attitude are what the solved burn is held against
+   * (sim/pursuit.ts).
    */
-  | { ignite: string; flown?: Measure; firingTime?: Measure; massAtIgnition?: Measure }
+  | { ignite: string; flown?: Measure; firingTime?: Measure; massAtIgnition?: Measure; toward?: Pursuit }
   | { cut: string }
   | { throttle: string; to: number }
   | { separate: string }
@@ -369,6 +374,36 @@ export type Action =
   | { release: string }
   | { attitude: string }
   | { arm: string };
+
+/**
+ * What a burn made on another craft is for (`Action.ignite.toward`): the command guidance carries out on the live state
+ * of both (sim/pursuit.ts), as the ground or the crew worked it from where the two then were. Where the target is from
+ * the craft is given the same way throughout: `ahead`, m along the craft's orbit (the arc between the two, on the
+ * target's radius), and `above`, the target's distance from the Earth's centre less the craft's.
+ */
+export type Pursuit =
+  /** Aimed so that the target is at this place from the craft at the instant `at`, s from liftoff, and in its plane. */
+  | { reach: { ahead: Measure; above: Measure }; at: Measure }
+  /** Leaves the craft on an orbit of the target's shape, the height between them the same all the way round. */
+  | { coelliptic: true }
+  /**
+   * Braked to rest with the target at this place from it by the firing's recorded end, and held there until `until`,
+   * s from liftoff: thrust commanded all the while from the range and its rate, within what the engine can give. The
+   * crew's own pulses are not on any record read.
+   */
+  | { station: { ahead: Measure; above: Measure }; until: Measure };
+
+/**
+ * Another craft a flight's manoeuvres are made on: a craft of its own, integrated from where it began on the forces it
+ * has (gravity and the air on `dragArea`, its drag coefficient times its area, m^2, at `mass`, kg), which nothing the
+ * spacecraft does changes. `joint`: it is what that joint of the first craft lets go, flown on from the parting.
+ */
+export interface TargetDef {
+  joint: string;
+  label: string;
+  mass: Measure;
+  dragArea: Measure;
+}
 
 /** A way of holding the craft's attitude. */
 export interface AttitudeDef {
@@ -435,6 +470,8 @@ export interface PlanCheck {
  */
 export type CheckWhen =
   | { at: number; reading: 'g' | 'orbit' }
+  /** How far the flight's target is from the spacecraft at an instant, m (the check's id is `<name>.range`): orbital.ts `flyOrbit`, flown with its target. */
+  | { at: number; reading: 'range' }
   | { most: 'g'; aboard: string[]; gone?: string[] }
   | { most: 'g'; burning: string };
 
