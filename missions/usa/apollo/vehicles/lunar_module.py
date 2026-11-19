@@ -9,6 +9,7 @@ import lm5_equipment
 import lm6_equipment
 import lm7_equipment
 import lm8_equipment
+import lm10_equipment
 import lm_cabin
 import lm_propulsion
 import lm_systems
@@ -185,6 +186,8 @@ def descent(parent, foil, amber, dark, alloy, spacecraft):
         def decal(dx, dz, depth, sgn=sign, t=u, n=normal):
             if spacecraft >= 4 and sgn < 0:
                 dx += 12  # Flag toward one edge of the MESA bay, estimated.
+            if spacecraft == 10:
+                depth += 4.5 if sgn > 0 else 8.0  # Outer face of the stowed rover or enlarged MESA.
             return at((58.5, sgn * 58.5, 77)) + at(t * dx + Vector((0, 0, dz)) + n * depth)
 
         vs = [decal(x, z, 0.45) for x, z in ((-12, -6), (12, -6), (12, 6), (-12, 6))]
@@ -528,7 +531,7 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
 
 
 def build(iu_top=0, *, deployed=False, spacecraft=3):
-    if spacecraft not in (3, 4, 5, 6, 7, 8):
+    if spacecraft not in (3, 4, 5, 6, 7, 8, 10):
         raise ValueError(f"Unsupported lunar module LM-{spacecraft}")
     foil = material("lm3-blanket-gold", (0.64, 0.29, 0.042), metallic=0.68, roughness=0.43)
     amber = material("lm3-copper-blanket", (0.41, 0.132, 0.029), metallic=0.50, roughness=0.52)
@@ -575,6 +578,10 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
             parts["LMHammocks"] = group("LMHammocks")
             if spacecraft == 6:
                 lm6_equipment.build(parts, silver, amber, dark, white, ivory)
+            elif spacecraft == 10:
+                for name in ("LMRover", "LMRoverPallet", "LMRetroreflector"):
+                    parts[name] = group(name)
+                lm10_equipment.build(parts, silver, amber, dark, white, ivory)
             elif spacecraft == 8:
                 for name in ("LMTransporter", "LMRetroreflector", "LMPortableMagnetometer"):
                     parts[name] = group(name)
@@ -592,9 +599,9 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
     landing_gear(parts["LMLandingGear"], foil, silver, dark, deployed, spacecraft)
     cabin(parts["LMAscent"], parts["LMEquipment"], parts["LMPorch"], white, white, dark, glass, silver, foil, deployed, spacecraft)
     apollo_docking.lunar(parts["LMDockingPort"], silver, dark, drogue_installed=not (spacecraft == 7 and deployed))
-    lm_propulsion.engine(parts["LMDescentEngine"], False, silver, dark, white, amber)
+    lm_propulsion.engine(parts["LMDescentEngine"], False, silver, dark, white, amber, j_mission=spacecraft == 10)
     lm_propulsion.engine(parts["LMAscentEngine"], True, silver, dark, white, amber)
-    lm_propulsion.tanks(parts["LMDPSTanks"], parts["LMAPSTanks"], parts["LMDescentStructure"], silver, ox, fuel, amber)
+    lm_propulsion.tanks(parts["LMDPSTanks"], parts["LMAPSTanks"], parts["LMDescentStructure"], silver, ox, fuel, amber, j_mission=spacecraft == 10)
     lm_propulsion.rcs_tanks(parts["LMReactionSupply"], silver, fuel, ox)
     lm_systems.build(parts, silver, interior_paint, dark, white, spacecraft=spacecraft)
     staging_fittings(parts["LMDescent"], parts["LMAscent"], silver, dark)
