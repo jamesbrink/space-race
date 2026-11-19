@@ -163,6 +163,11 @@ test('a flown vehicle has a hull for every node it sheds, within that node', () 
           x >= lo[0] - 0.05 && x <= hi[0] + 0.05 && z >= lo[2] - 0.05 && z <= hi[2] + 0.05,
           `${flight.id} ${node}: a sphere off the node`,
         );
+        // and no sphere reaches beyond the node's sides (a sphere wider than its stage struck a tower it stood clear of)
+        assert.ok(
+          x - r >= lo[0] - 0.1 && x + r <= hi[0] + 0.1 && z - r >= lo[2] - 0.1 && z + r <= hi[2] + 0.1,
+          `${flight.id} ${node}: a sphere of ${r} at ${x}, ${z} beyond the node's sides, ${lo[0]} to ${hi[0]} and ${lo[2]} to ${hi[2]}`,
+        );
       }
       hulls++;
     }
