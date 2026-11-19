@@ -1409,8 +1409,9 @@ class Run {
         const result = {
           rig: st.cameraMode,
           focus: st.cam.map.focus,
-          // (a future to show: none for a vehicle in pieces or one come down, and then the map shows the Earth and no more)
-          wanted: Boolean(p.want()) && Boolean(shown),
+          // (a future to show: none for a vehicle in pieces, one come down, or one whose prediction has no path in it, and
+          // then the map shows the Earth and no more)
+          wanted: Boolean(p.want()) && Boolean(shown) && shown.curve.n > 1,
           points: n,
           out,
           outcome: shown?.result.outcome ?? null,
