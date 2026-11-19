@@ -101,10 +101,10 @@ def bell(name, origin, direction, length, radius, mat, parent):
 
 def build(offset=0, *, spacecraft=101):
     """Build top-level part nodes, translated together by offset inches."""
-    if spacecraft not in (101, 103, 104, 106):
+    if spacecraft not in (101, 103, 104, 106, 107):
         raise ValueError(f"Unmodelled CSM-{spacecraft}")
     lunar = spacecraft != 101
-    probe_installed = spacecraft in (104, 106)
+    probe_installed = spacecraft in (104, 106, 107)
     white = material("apollo-radiator-white", (0.82, 0.84, 0.80), roughness=0.65)
     silver = material("apollo-aluminium", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33)
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
@@ -181,7 +181,7 @@ def build(offset=0, *, spacecraft=101):
         void,
         docking_ring=probe_installed,
     )
-    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft == 106)
+    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft in (106, 107))
     forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=lunar, hatch_setback=10 if probe_installed else 0)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     window_glazing.build(groups["CabinWindows"], CM_BASE, hatch_parent=hatch_leaf)

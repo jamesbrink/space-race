@@ -63,7 +63,8 @@ class Console(InchPanel):
 
 
 def _layout(spacecraft):
-    if spacecraft == 106:
+    # CM-107 uses its sister ship’s registered layout until control positions can be resolved individually.
+    if spacecraft in (106, 107):
         # CM-106 coordinates are rectified to the CM-104 crop. Only the recorded
         # differences replace the common controls. Each call loads fresh data.
         layout = _layout(104)
