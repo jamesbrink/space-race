@@ -10,7 +10,7 @@ stands at its launch site as that site was that morning, under that day's Sun, M
 can be flown from liftoff to landing: as it was flown, or by your own hand.
 
 **35 crewed flights so far, Vostok 1 (April 1961) to Soyuz T-2 (June 1980).** All of them are in the Gallery,
-24 stand at their launch site, and 15 can be flown.
+24 stand at their launch site, and 15 can be flown. The seven uncrewed Gemini targets can be flown too, from Complex 14 on their Atlas: the two lost ones as the record had them fail.
 
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
 

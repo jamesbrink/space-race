@@ -8,10 +8,11 @@ const levels = ['', '.lod1', '.lod2'];
 const publicRoot = new URL('../public/', import.meta.url);
 const asset = (url, level) => new URL(url.replace('.glb', level + '.glb'), publicRoot);
 
-test('each Gemini target opens its spacecraft exhibit and stands shrouded on its own Atlas at Complex 14', async () => {
+test('each Gemini target opens its spacecraft exhibit, stands shrouded on its own Atlas at Complex 14 and is flown on it', async () => {
   for (const id of roots) {
     const { flight } = await import('../missions/usa/gemini/flights/' + id + '/flight.ts');
-    assert.deepEqual(entrances(flight), { gallery: true, site: true, fly: false });
+    assert.deepEqual(entrances(flight), { gallery: true, site: true, fly: true });
+    assert.equal(flight.flies.model, 'vehicle', 'what flies is the stack at the site');
     const craft = exhibit(flight);
     const [stack, pad] = atSite(flight).models;
     assert.equal(craft.id, 'spacecraft');

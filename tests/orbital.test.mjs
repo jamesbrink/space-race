@@ -26,7 +26,8 @@ const all = await Promise.all(
     async (file) => (await import(pathToFileURL(join(root, file)).href)).flight,
   ),
 );
-const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site);
+// (a flight whose coast has a burn that brings it down: an uncrewed target's has none, and is held in staged.test.mjs)
+const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site && Number.isFinite(coastOf(f.plan).on));
 /** The plan a record is written into: a Vostok's (vostok-record.ts, `stages`) or a Mercury-Atlas's (mercury-atlas-plan.ts, `atlas`). */
 const planOf = (orbital) =>
   'atlas' in orbital ? mercuryAtlasPlan(orbital) : 'titan' in orbital ? geminiTitanPlan(orbital) : vostokPlan(orbital);

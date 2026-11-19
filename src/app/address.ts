@@ -224,13 +224,14 @@ export function flightFor<F extends Dated>(flights: readonly F[], hash: string):
 }
 
 /**
- * The model the gallery shows: the flight's vehicle. It is the one the run carries off the
+ * The model the gallery shows: the flight's vehicle. It is its gallery's own configuration where it has one
+ * (`galleryOnly`: an uncrewed target alone, which flies on its Atlas), else the one the run carries off the
  * pad where the flight says (`flies`); otherwise the first model that is hardware and not a person
  * (`walker`) or a place working through its morning (`sequence`). Null: nothing to exhibit.
  */
 export function exhibit(flight: Pick<Flight, 'models' | 'flies'>): ModelDef | null {
   const hardware = flight.models.filter((m) => !m.walker && !m.sequence);
-  return hardware.find((m) => m.id === flight.flies?.model) ?? hardware[0] ?? null;
+  return hardware.find((m) => m.galleryOnly) ?? hardware.find((m) => m.id === flight.flies?.model) ?? hardware[0] ?? null;
 }
 
 type Placed = Pick<Flight, 'models' | 'flies' | 'site' | 'plan' | 'docking'>;

@@ -642,6 +642,22 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   inputs), and its recorded `cutoff` becomes a check (Vostok 1's Block E, on the flight task's apparent velocity). How
   the ascent compares with the record, and why the documents' own staging times for the core cannot be flown on the
   blocks' secondary masses, is in the flight's mission.md ("What the ascent gives", "The 2011 documents").
+- **An uncrewed target stays up, or falls as it did** (missions/usa/gemini/vehicles/target-plan.ts). A Gemini target's
+  launch is the Atlas SLV-3 (mercury-atlas-plan.ts `atlasPieces`, the Mercury-Atlas flights' Atlas, its two verniers an engine
+  of their own burning twenty seconds alone) and what it carried: an Agena let go after the verniers' cutoff, coasting a
+  minute and lighting its own engine, or the ATDA put in orbit by the Atlas alone (its sustainer cut by the guidance at
+  the planned speed). Its masses are the mission report's weight table (the booster section and the chambers' flow are
+  derived from it: what the weights leave once the sustainer's flow at its impulse is taken out), its instants the report's
+  sequence, its checks the report's trajectory table. A last stage that is itself the spacecraft (the Agena) is let go of
+  by nothing: the ascent ends as its engine stops (staged.ts `ascend`), cut by the guidance at the planned insertion speed,
+  and a tank several stages share is scheduled again once one of them is cut on its speed. Its coast has no burn of the
+  record's (orbital.ts `shipOf`: no aim, no landing): it is flown round for six hours and stays up, or, short of an orbit,
+  comes down where it meets the sea (`floor`, the sea's height), its impact the run's `ejection*` figures. A flight that went
+  otherwise than planned carries the plan as planned (`FlightPlan.planned`): its law is solved on that (`steer`), as the
+  guidance was set, and it is flown on that solution, never on the published orbit (`published`). GATV-5002's engine is
+  cut 0.91 s after its start, as the record has it; GATV-5004's Atlas follows the record's pitch once control is lost
+  (`Guidance.lost`: the tilt in the launch plane against time, in place of the law). What the records do not give is said
+  in each flight's orbital.ts and README, not flown: 5002's breakup and pieces, 5004's turn to the north.
 - **The descent can be given by hand** (orbital.ts `DescentHands`, staged.ts `flyOn`). Its events are the record's data:
   the modules' parting (`entry.separation`), the ejection (`ejection.altitude`), and each body's parachutes; a body other
   than the first (the entry body, which carries the pilot until the ejection and the instrument module until the modules
