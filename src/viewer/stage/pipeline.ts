@@ -363,13 +363,22 @@ export class Pipeline {
     this.frameAt = began;
   }
 
+  /**
+   * The drawing's pixels made what the canvas and the frame rate now ask for, if they are not (`resize`, `nextScale`):
+   * as a frame begins, and before the scene is warmed (Stage.warm), so that what is built and sent to the GPU unseen is
+   * built for the frame it will be drawn into, not for a canvas of three's default 300 by 150 that the first frame then
+   * makes again.
+   */
+  fit(): void {
+    if (!this.resized && this.nextScale === this.pixelScale) return;
+    this.resized = false;
+    this.fitPixels(this.nextScale);
+  }
+
   /** A frame is to be drawn: the ink's depth range taken from the camera, and the renderer's counts begun again. */
   begin(): void {
     // Resizing clears the WebGL canvas. Do it only when a replacement picture will be drawn in this callback.
-    if (this.resized || this.nextScale !== this.pixelScale) {
-      this.resized = false;
-      this.fitPixels(this.nextScale);
-    }
+    this.fit();
     this.ink.range(this.camera);
     this.renderer.info.reset();
     this.drawn++;
