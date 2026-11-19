@@ -102,6 +102,7 @@ import {
   FINE,
   GUARD,
   KEEP,
+  HOLD_TURN,
   MOST,
   START,
   type ThrottleView,
@@ -228,6 +229,9 @@ export class OrbitDeck extends Deck {
   /** How it is flown: the two switches, and how far the hands have leaned the law. */
   private guidance = START.guidance;
   private sequence = START.sequence;
+  /** Hold (deck.ts `START`): with guidance off the steering keeps `holdAt`, the attitude the hands leave the launch vehicle at. */
+  private hold = START.hold;
+  private holdAt: Vec3 | null = null;
   private trim = { pitch: 0, yaw: 0 };
   /** When the flight became the user's (0 from the pad), or null while it is the record's. */
   private mine: number | null = null;
@@ -610,16 +614,18 @@ export class OrbitDeck extends Deck {
       this.downMine,
       this.run && [this.run.samples.length, this.run.duration, this.run.dropped],
       [this.lever.at, [...this.cutByLever]],
+      [this.hold, this.holdAt],
     ]);
   }
   protected switches(to?: Record<string, boolean>): Record<string, boolean> {
     if (to) {
       this.guidance = to.guidance ?? START.guidance;
       this.sequence = to.sequence ?? START.sequence;
+      this.hold = to.hold ?? START.hold;
       this.options.guidance = this.guidance;
       this.options.sequence = this.sequence;
     }
-    return { guidance: this.guidance, sequence: this.sequence };
+    return { guidance: this.guidance, sequence: this.sequence, hold: this.hold };
   }
   /** The attitude turned by hand is integrated frame by frame (`turnTo`): while the hands turn it, each frame is part of the run. */
   protected override get framed(): boolean {
@@ -704,6 +710,7 @@ export class OrbitDeck extends Deck {
     this.told = Number.NEGATIVE_INFINITY;
     this.asked = [];
     this.cutByLever = new Set();
+    this.holdAt = null;
     this.tally = null;
     this.heard = 0;
     this.ascended = null;
@@ -734,6 +741,7 @@ export class OrbitDeck extends Deck {
     else if (this.padImpact) return;
     else if (what === 'next') this.next();
     else if (what === 'guidance' || what === 'sequence') this.toggle(what);
+    else if (what === 'hold') this.toggleHold();
     else if (what === 'abort' || what === 'abort-orbit') this.abortAsked(what === 'abort-orbit', input);
     this.show();
   }
@@ -1060,6 +1068,15 @@ export class OrbitDeck extends Deck {
     else this.say();
   }
 
+  /** Hold thrown: on the pad a switch; going up, the flight taken over (as a switch does) and the hold kept or let go. */
+  private toggleHold(): void {
+    const t = this.clock.t;
+    const waiting = t <= 0 && !this.clock.running;
+    if (!waiting && this.mine === null && t <= this.parting && !this.ascended) this.takeOver();
+    this.hold = !this.hold;
+    if (waiting) this.mine = this.recordOnPad ? null : 0;
+  }
+
   /** Space: the next thing to do. */
   private next(): void {
     const t = this.clock.t;
@@ -1203,11 +1220,12 @@ export class OrbitDeck extends Deck {
     this.options.memo ??= { thetaTurn: null };
     // (the pilot is given the deck's own options, not a copy: the switches thrown after this are read every tick)
     const options = this.options;
-    // (keys at `FINE` of full throw on the launch vehicle flown by hand, as the ballistic deck's)
+    // (keys at `FINE` of full throw on the launch vehicle flown by hand, as the ballistic deck's; with Hold, they move the hold)
     options.hands = () => {
-      const p = this.push(this.guidance ? 1 : FINE);
-      return this.guidance ? { pitch: 0, yaw: 0, roll: p.roll } : p;
+      const p = this.push(this.guidance || this.hold ? 1 : FINE);
+      return this.guidance || this.hold ? { pitch: 0, yaw: 0, roll: p.roll } : p;
     };
+    options.hold = () => (this.hold && !this.guidance ? this.holdAt : null);
     options.steps = () => this.asked.splice(0);
     const inner = stagedPilot(
       v,
@@ -1225,6 +1243,14 @@ export class OrbitDeck extends Deck {
         this.trim = { pitch: lean(this.trim.pitch, p.pitch), yaw: lean(this.trim.yaw, p.yaw) };
       }
       options.trim = this.trim;
+      if (this.hold && !this.guidance) {
+        // the attitude held: where it is as Hold takes it, turned by the keys at `HOLD_TURN` about the body's own axes
+        this.holdAt ??= turn(st.q, [1, 0, 0]);
+        const p = this.push();
+        const by = (x: number) => x * HOLD_TURN * TICK;
+        if (p.pitch) this.holdAt = turn(aboutAxis(turn(st.q, [0, 1, 0]), by(p.pitch)), this.holdAt);
+        if (p.yaw) this.holdAt = turn(aboutAxis(turn(st.q, [0, 0, 1]), by(p.yaw)), this.holdAt);
+      } else this.holdAt = null;
       this.leverCuts(st);
       const c = inner(st);
       // (the lever on every stage, as KSP's one throttle: left out while it is full and has never moved, so the record's run is the same to the bit)
@@ -2627,6 +2653,7 @@ export class OrbitDeck extends Deck {
     const auto = automatic({ given: {}, switched: this.switched }, t);
     const sequence = this.root.querySelector<HTMLButtonElement>('[data-do=sequence]')!;
     sequence.setAttribute('aria-pressed', String(descending ? auto : this.sequence && !this.free));
+    this.root.querySelector('[data-do=hold]')?.setAttribute('aria-pressed', String(this.hold));
     sequence.disabled = Boolean(this.padImpact);
     const waiting = t <= 0 && !this.clock.running;
     const replay = live !== null && this.clock.t < live.t - TICK;

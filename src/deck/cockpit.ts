@@ -16,6 +16,7 @@ import type { Command, MechanismDef, SitedFlight } from '../types.ts';
 import { type Clock, missionTime } from '../world/clock.ts';
 import { frameOf } from '../world/earthframe.ts';
 import { angleBetween, DEG, siteFrame, type Vec3 } from '../world/frames.ts';
+import { aboutAxis, turn } from '../sim/rigid.ts';
 import {
   ABORT_ARMED,
   type CockpitHost,
@@ -23,6 +24,7 @@ import {
   type DeckSpec,
   FINE,
   GUARD,
+  HOLD_TURN,
   KEEP,
   MOST,
   START,
@@ -139,6 +141,9 @@ export class Cockpit extends Deck {
   private kept = 0;
   private guidance = START.guidance;
   private sequence = START.sequence;
+  /** Hold (deck.ts `START`): with guidance off the autopilot keeps `holdAt`, the attitude the hands leave it at. */
+  private hold = START.hold;
+  private holdAt: Vec3 | null = null;
   /** The capsule's rate command mode, where it has one (types.ts `rcs.rate`): on, the stick asks for rates on the spacecraft alone. */
   private rate = false;
   /** What the hands are asking: axes while keys are held, the plan's events once asked for (each asked every tick until it is done). */
@@ -324,6 +329,14 @@ export class Cockpit extends Deck {
     }
   }
 
+  /** What Hold is doing: holding, or with nothing to steer with in this phase (the booster not burning; the jets' gas gone). */
+  private holdSays(s: VehicleState): string {
+    const onBooster = !hasLeft(s.craft, this.roles.booster.id);
+    if (onBooster) return s.ignited && !s.cutoff ? 'Hold' : s.ignited ? 'Hold: nothing to steer with, the engine out' : 'Hold';
+    const rcs = this.roles.craft.rigid?.capsule.rcs;
+    const gas = rcs ? (this.run.samples.at(-1) as LiveSample | undefined)?.rcs.left.some((x) => x > 0.01) : false;
+    return gas ? 'Hold' : 'Hold: nothing to steer with, no gas left';
+  }
   /** Either switch off: the flight is the hands' in that part. */
   private get byHandNow(): boolean {
     return !this.guidance || !this.sequence;
@@ -357,6 +370,7 @@ export class Cockpit extends Deck {
       this.trim,
       this.hand,
       [this.lever.at, this.lever.lit],
+      [this.hold, this.holdAt],
       this.towerAt,
       this.retropackAt,
       this.hatchAt,
@@ -371,9 +385,10 @@ export class Cockpit extends Deck {
     if (to) {
       this.guidance = to.guidance ?? START.guidance;
       this.sequence = to.sequence ?? START.sequence;
+      this.hold = to.hold ?? START.hold;
       this.rate = to.rate ?? false;
     }
-    return { guidance: this.guidance, sequence: this.sequence, rate: this.rate };
+    return { guidance: this.guidance, sequence: this.sequence, hold: this.hold, rate: this.rate };
   }
 
   /** A new flight: back on the pad. */
@@ -385,6 +400,7 @@ export class Cockpit extends Deck {
     this.tally = new Tally();
     this.hand = {};
     this.trim = { pitch: 0, yaw: 0 };
+    this.holdAt = null;
     this.touched = false;
     this.abortArmed = Number.NEGATIVE_INFINITY;
     this.kept = 0;
@@ -418,20 +434,23 @@ export class Cockpit extends Deck {
 
   /** Who flies each tick: the autopilot as far as it is switched on, with the hands laid over it. */
   private pilot(): Pilot {
+    // (Hold, with guidance off: the autopilot keeps the attitude the hands leave it at, `held`, which their keys move)
+    const holding = this.hold && !this.guidance;
     const auto = autopilot(this.vehicle!, {
       launch: false,
       sequence: this.sequence,
-      pitch: this.guidance,
-      yaw: this.guidance,
-      roll: this.guidance,
+      pitch: this.guidance || holding,
+      yaw: this.guidance || holding,
+      roll: this.guidance || holding,
       trim: () => this.trim,
+      ...(holding ? { hold: () => this.holdAt } : {}),
     });
     // (a key is all or nothing, at `FINE` of full throw on a booster flown by hand; a finger's stick is as far as it is pushed)
     const stick = (plus: string, minus: string, finger: number, fine: number): number =>
       Math.max(-1, Math.min(1, fine * (Number(this.held.has(plus)) - Number(this.held.has(minus))) + finger));
     return (s) => {
       // W tips the nose down the range and S back; A swings it left of the azimuth; E rolls right
-      const fine = !this.guidance && !hasLeft(s.craft, this.roles.booster.id) ? FINE : 1;
+      const fine = !this.guidance && !holding && !hasLeft(s.craft, this.roles.booster.id) ? FINE : 1;
       const pitch = stick('w', 's', this.finger.pitch, fine);
       const yaw = stick('a', 'd', this.finger.yaw, fine);
       const roll = stick('e', 'q', this.finger.roll, fine);
@@ -443,7 +462,14 @@ export class Cockpit extends Deck {
         const lean = (now: number, by: number) => Math.max(-TRIM_MOST, Math.min(TRIM_MOST, now + by * TRIM * TICK));
         this.trim = { pitch: lean(this.trim.pitch, pitch), yaw: lean(this.trim.yaw, yaw) };
       }
-      const own = (v: number): number | undefined => (v !== 0 ? v : this.guidance ? undefined : 0);
+      if (holding) {
+        // the attitude held: where it is as Hold takes it, turned by the keys at `HOLD_TURN` about the body's own axes
+        this.holdAt ??= turn(s.q, [1, 0, 0]);
+        const by = (x: number) => x * HOLD_TURN * TICK;
+        if (pitch) this.holdAt = turn(aboutAxis(turn(s.q, [0, 1, 0]), by(pitch)), this.holdAt);
+        if (yaw) this.holdAt = turn(aboutAxis(turn(s.q, [0, 0, 1]), by(yaw)), this.holdAt);
+      } else this.holdAt = null;
+      const own = (v: number): number | undefined => (v !== 0 ? v : this.guidance || holding ? undefined : 0);
       // an engine with a lever runs where the lever stands, from the moment it is lit; the sequencer's cutoff at the record's time is not undone by it
       const cut = this.sequence && s.abortAt === null && s.t >= rolesOf(this.flight)!.cutoff - 1e-9;
       // rate command, on the spacecraft alone: the stick is a rate asked for on every axis, held through the manual jets
@@ -452,8 +478,8 @@ export class Cockpit extends Deck {
       return blend(auto(s), {
         ...this.hand,
         ...(s.abortAt === null ? { throttle: this.lever.asks(cut) } : {}),
-        pitch: trimmed ? undefined : own(pitch),
-        yaw: trimmed ? undefined : own(yaw),
+        pitch: trimmed || holding ? undefined : own(pitch),
+        yaw: trimmed || holding ? undefined : own(yaw),
         roll: own(roll),
         // On the spacecraft an axis the hand has is worked through the manual system's own chambers and tank; what the
         // autopilot steers goes through the automatic system's. (Mercury's fly-by-wire, a hand on the automatic
@@ -809,6 +835,7 @@ export class Cockpit extends Deck {
     if (what === 'leave') this.leave();
     else if (what === 'again') this.fresh();
     else if (what === 'guidance') this.guidance = !this.guidance;
+    else if (what === 'hold') this.hold = !this.hold;
     else if (what === 'rate' && rolesOf(this.flight)?.craft.rigid?.capsule.rcs?.rate) {
       this.rate = !this.rate;
       this.rateChanges.push({ t: this.state?.t ?? 0, out: this.rate });
@@ -929,12 +956,15 @@ export class Cockpit extends Deck {
           ? `Programme leaned${leans}`
           : rated
             ? 'Rate command'
-            : !this.guidance
-              ? 'Hands only'
-              : '',
+            : !this.guidance && this.hold
+              ? this.holdSays(state)
+              : !this.guidance
+                ? 'Hands only'
+                : '',
     );
     this.root.querySelector('[data-do=guidance]')!.setAttribute('aria-pressed', String(this.guidance));
     this.root.querySelector('[data-do=sequence]')!.setAttribute('aria-pressed', String(this.sequence));
+    this.root.querySelector('[data-do=hold]')?.setAttribute('aria-pressed', String(this.hold));
     this.root.querySelector('[data-do=rate]')?.setAttribute('aria-pressed', String(ratedAt));
     for (const m of this.mechanisms)
       this.root

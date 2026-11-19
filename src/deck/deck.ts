@@ -126,6 +126,8 @@ export interface DeckSpec {
   sequence: string;
   /** Labels for a deck that flies an approach instead of a launch. */
   labels?: { steering: string; events: string; restart: string };
+  /** Whether the deck has the Hold switch (a kind whose guidance is itself an attitude hold, the docking deck's, has not). */
+  hold?: boolean;
   /** The K control (the path to cutoff or cut now): only where the path can fly the programme ahead. */
   choose: boolean;
   /** Buttons for the list's Flight group beyond restarting and leaving (a mechanism, a lock's digits). */
@@ -135,12 +137,21 @@ export interface DeckSpec {
 }
 
 /**
+ * How every flight is flown as its deck is taken: by hand, with the attitude held (`hold`): the vehicle's own control system
+ * keeps the attitude it was last left at and damps its rates, within the authority the plan gives its steering, and the
+ * hands' keys move that attitude; Hold off, the keys work the controls themselves. The real vehicles' autopilots always
+ * stabilised them; guidance was the programme on top.
  * How every flight is flown as its deck is taken: by hand. Guidance (G) and the sequencer (B) are off, and the player
  * lights, steers, throttles, stages, cuts and fires; each switch, turned on, has the record's guidance or its sequence fly
  * that part for them. Each entry to Fly starts so (nothing remembers it); a kept run resumes with the switches it had. The
  * launch site's own clock, the idle show and every batch run are still the record's (AGENTS.md: the flight deck).
  */
-export const START: Readonly<{ guidance: boolean; sequence: boolean }> = { guidance: false, sequence: false };
+export const START: Readonly<{ guidance: boolean; sequence: boolean; hold: boolean }> = { guidance: false, sequence: false, hold: true };
+/**
+ * How fast a key held turns the attitude Hold keeps, rad/s: as a key leans guidance's programme (`TRIM`). The vehicle
+ * follows it within its steering's authority, as it would follow its programme.
+ */
+export const HOLD_TURN = 3 * (Math.PI / 180);
 
 /**
  * How far a key held steers a launch vehicle flown by hand, of its full throw: KSP's fine controls. A key is all or
@@ -173,6 +184,7 @@ const COMMANDS: [KeyName, string][] = [
   ['deck.leave', 'leave'],
   ['deck.toggle', 'leave'],
   ['deck.abort', 'abort'],
+  ['deck.hold', 'hold'],
 ];
 
 export type Watcher = (sample: LiveSample, live: VehicleState | null, news?: DeckNews) => void;
@@ -399,6 +411,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
             <span class="deck-takeover">A switch, the action or the throttle takes control</span>
             <button data-do="guidance" class="switch" aria-pressed="true" title="${spec.guidance} (${capsOf('deck.guidance').join(' ')})">${kbd('deck.guidance')}<span class="for-keys">Guidance</span><span class="for-touch">${steering} · <span class="deck-auto">Auto</span><span class="deck-manual">Manual</span></span></button>
             <button data-do="sequence" class="switch" aria-pressed="true" title="${spec.sequence} (${capsOf('deck.sequence').join(' ')})">${kbd('deck.sequence')}<span class="for-keys">Sequencer</span><span class="for-touch">${events} · <span class="deck-auto">Auto</span><span class="deck-manual">Manual</span></span></button>
+            ${spec.hold === false ? '' : `<button data-do="hold" class="switch" aria-pressed="true" title="Hold: the autopilot keeps the attitude you leave it at, within what the vehicle can steer with; your keys move it, and the navball's flight director shows where the record's programme points. Off, the keys work the controls themselves (${capsOf('deck.hold').join(' ')})">${kbd('deck.hold')}<span>Hold</span></button>`}
           </span></p>
         <div class="gauges"></div>
         <div class="deck-throttle" hidden>

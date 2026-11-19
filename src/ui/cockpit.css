@@ -380,7 +380,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 }
 /* Touch pilots can switch to manual steering or event control without opening More. */
 @media (hover: none), (pointer: coarse) {
-  .cockpit:not(.keys-open) .deck-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .cockpit:not(.keys-open) .deck-modes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)) auto; }
   .cockpit.waiting:not(.keys-open) .deck-modes:not(:has([aria-pressed='false'])) .deck-takeover { display: block; grid-column: 1 / -1; padding-left: 4px; color: var(--faint); letter-spacing: 0.02em; text-transform: none; }
   .deck-modes button { min-height: 44px; min-width: 0; white-space: normal; }
   .cockpit-keys .deck-lock button { min-width: 44px; min-height: 44px; }
