@@ -1068,6 +1068,12 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   frames: the row profile's frame-to-frame jerk 0.36 to 0.024, the same as with even frames). The camera's shake
   still moves the eye after it is placed. So nothing it draws may depend on where it sits, how big it is or where
   the near plane is (`pnpm test:frozen`: "ball", the ball moved and resized; "near", the near plane at half).
+  **Nothing on the ground reaches into the ball.** What is inside it has none of its light and what is beyond has the
+  whole ray's, so ground or a structure within its radius (300 m at the least) stepped there: at Site 1, 100 m above
+  the sea, it was drawn on the pad at a weight of 0.015 and made a ring 300 m out of one or two levels (Voskhod 2's
+  hazy day). It is drawn only from 450 m over the ground under the eye (a place's own ground; elsewhere the sea),
+  coming in by 900 m (globe.ts `AIR_CLEAR`); under that the sky and the fog are the air, and the little of the air
+  from above they have already given up (a weight of 0.11 at most, at 900 m) is drawn in part or not at all.
 - **The setting is told the instant and where the eye is after the camera has moved** (`Stage.attend`, just before
   `fitDepth`), never as the frame begins: the sky, haze and stars for the eye's height (`Setting.at`), what is made or
   chosen round the eye (the globe's mesh and the air's ball, the land's cells, each plant's form and how far through
