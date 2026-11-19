@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { BufferAttribute, BufferGeometry, Matrix4 } from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
 import { flight } from '../missions/usa/apollo/flights/apollo-12/flight.ts';
-import { lacks } from '../src/app/address.ts';
+import { lacks, openingFor } from '../src/app/address.ts';
 import { Exploder } from '../src/viewer/explode.ts';
 import { readGlb } from '../tools/glb-geometry.mjs';
 import { framesOf, hierarchy } from './glb.mjs';
@@ -13,11 +13,11 @@ const file = (model, level) => new URL('../public/' + model.url.replace('.glb', 
 
 test('Apollo 12 offers the two Gallery exhibits, three couches and two standing stations', () => {
   assert.equal(lacks(flight, 'gallery'), null);
-  assert.ok(lacks(flight, 'site'));
+  assert.equal(lacks(flight, 'site'), null);
   assert.ok(lacks(flight, 'fly'));
   assert.deepEqual(
     flight.models.map((m) => m.id),
-    ['vehicle', 'intrepid'],
+    ['vehicle', 'intrepid', 'pad', 'crew', 'pilot', 'lmp'],
   );
   assert.deepEqual(
     stack.seats.map((s) => s.label.split('’')[0]),
@@ -39,6 +39,26 @@ test('Apollo 12 offers the two Gallery exhibits, three couches and two standing 
       node,
     );
   }
+});
+
+test('ML-2 starts its prelaunch sequence in EST and opens Yankee Clipper for crew ingress', () => {
+  assert.deepEqual(openingFor(flight, { fly: false, named: '', clockAt: 0, running: false }), {
+    at: -43200,
+    model: 'pad',
+    view: 'launcher',
+  });
+  assert.deepEqual(flight.site.zone, { name: 'EST', utcOffset: -5 });
+  const pad = flight.models.find((m) => m.id === 'pad');
+  assert.match(pad.url, /pad-a-1969-11\.glb$/);
+  assert.equal(pad.sequence.find((k) => k.event.includes('First vehicle motion')).at, 0.25);
+  assert.deepEqual(
+    stack.seats.map((s) => [flight.models.find((m) => m.id === s.figure).name, ...s.open]),
+    [
+      ['Conrad', -10140, -8220],
+      ['Gordon', -10140, -8220],
+      ['Bean', -10140, -8220],
+    ],
+  );
 });
 
 for (const level of ['', '.lod1', '.lod2']) {

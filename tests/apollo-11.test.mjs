@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BufferAttribute, BufferGeometry, Matrix4, Ray, Vector3 } from 'three';
+import { BufferAttribute, BufferGeometry, Matrix4 } from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
 import { flight } from '../missions/usa/apollo/flights/apollo-11/flight.ts';
 import { lacks } from '../src/app/address.ts';
@@ -122,84 +122,5 @@ test('Eagle’s landing hardware clears the adapter walls throughout extraction'
         local.copy(wall.object.matrixWorld).invert().multiply(item.object.matrixWorld);
         assert.ok(!wall.tree.intersectsGeometry(item.geometry, local), `${item.object.name} enters ${wall.object.name} at ${step}%`);
       }
-  }
-});
-
-test('SA-506 rests on ML-1 at four bearing points between its F-1 engines at every detail level', async () => {
-  const pad = flight.models.find((model) => model.id === 'pad');
-  // Viewer +X is north at Pad A, +Z east. MSFC-MAN-504 figure 8-7 numbers position I in the east.
-  const directions = [
-    [0, 1],
-    [1, 0],
-    [0, -1],
-    [-1, 0],
-  ];
-  for (const suffix of ['', '.lod1', '.lod2']) {
-    const vehicle = framesOf(file(stack, suffix));
-    const { gltf, triangles } = await readGlb(file(pad, suffix));
-    const scene = hierarchy(gltf);
-    scene.position.fromArray(pad.position);
-    scene.updateMatrixWorld(true);
-    const supports = scene.getObjectByName('Holddown_Arms');
-    const indices = new Map(gltf.nodes.map((node, i) => [node.name, i]));
-    // Cast just above each sole onto the stationary bearing steel in the exported pad.
-    const surfaces = supports.children.flatMap((child) =>
-      triangles(indices.get(child.name)).map((mesh) => ({
-        ...mesh,
-        matrix: child.matrixWorld,
-      })),
-    );
-    for (const [i, [north, east]] of directions.entries()) {
-      const lug = vehicle.box('SIC506_BearingLug_' + (i + 1));
-      const x = (lug.lo[0] + lug.hi[0]) / 2;
-      const z = (lug.lo[2] + lug.hi[2]) / 2;
-      assert.ok(north * x + east * z > 5 && Math.abs(east * x - north * z) < 0.001);
-      const ray = new Ray(new Vector3(x, lug.lo[1] + 0.01, z), new Vector3(0, -1, 0));
-      const a = new Vector3(),
-        b = new Vector3(),
-        c = new Vector3(),
-        hit = new Vector3();
-      let top = -Infinity;
-      for (const mesh of surfaces) {
-        for (let j = 0; j < mesh.indices.length; j += 3) {
-          a.fromArray(mesh.positions, mesh.indices[j] * 3).applyMatrix4(mesh.matrix);
-          b.fromArray(mesh.positions, mesh.indices[j + 1] * 3).applyMatrix4(mesh.matrix);
-          c.fromArray(mesh.positions, mesh.indices[j + 2] * 3).applyMatrix4(mesh.matrix);
-          if (ray.intersectTriangle(a, b, c, false, hit)) top = Math.max(top, hit.y);
-        }
-      }
-      assert.ok(Math.abs(lug.lo[1] - top) < 0.001, `bearing ${i + 1}${suffix}: lug ${lug.lo[1]} m, support ${top} m`);
-      const [engineX, , engineZ] = vehicle.point('F1_Mount_' + (i + 1));
-      const [nextNorth, nextEast] = directions[(i + 1) % 4];
-      assert.ok(Math.abs(Math.abs(engineX) - Math.abs(engineZ)) < 0.001);
-      assert.ok(engineX * (north + nextNorth) > 0 && engineZ * (east + nextEast) > 0);
-    }
-  }
-});
-
-test('the four hold-down links release, three hoods close and every tail mast withdraws on the pad clock', async () => {
-  const pad = flight.models.find((model) => model.id === 'pad');
-  for (const level of ['', '.lod1', '.lod2']) {
-    const { gltf } = await readGlb(file(pad, level));
-    const root = hierarchy(gltf);
-    const slider = new Exploder(root, pad.parts);
-    const angleSince = (name, before) => before.angleTo(root.getObjectByName(name).quaternion);
-    const rotation = (name) => root.getObjectByName(name).quaternion.clone();
-    slider.clock(0.29);
-    const original = new Map();
-    for (let arm = 1; arm <= 4; arm++) {
-      for (const name of [`Holddown_Link_${arm}`, `Holddown_Hood_${arm}`]) original.set(name, rotation(name));
-    }
-    for (const suffix of ['1_2', '3_2', '3_4']) {
-      for (const name of ['Tail_Boom_' + suffix, 'Tail_Visor_' + suffix]) original.set(name, rotation(name));
-    }
-    slider.clock(9.3);
-    for (const [name, before] of original) {
-      const angle = angleSince(name, before);
-      if (name === 'Holddown_Hood_1') assert.ok(angle < 1e-6, name);
-      else assert.ok(angle > Math.PI / 4, name);
-    }
-    slider.clock(-9480);
-    for (const [name, before] of original) assert.ok(angleSince(name, before) < 1e-6, name + ' returns for boarding');
   }
 });

@@ -1,8 +1,12 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
+import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
+import { lc39Crew } from '../../crew/lc39.ts';
+import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { APOLLO12_THRUST } from '../../vehicles/propulsion.ts';
 import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
 import { intrepidModel, intrepidPort, intrepidStackParts, intrepidViews } from './intrepid.ts';
+import { WEATHER } from './weather.ts';
 
 const inch = 0.0254;
 const kit = 'NASA Apollo 12 Press Kit, spacecraft and launch vehicle descriptions';
@@ -351,6 +355,9 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-507',
   launch: '1969-11-14T16:22:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
+  opens: { at: boarding[0], model: 'pad', view: 'launcher' },
+  site: LC39A,
+  weather: WEATHER,
   crew: ['Charles Conrad Jr.', 'Richard F. Gordon Jr.', 'Alan L. Bean'],
   summary:
     'Conrad and Bean landed Intrepid within walking distance of Surveyor III. On two moonwalks they set up the first full Apollo lunar surface experiments package and recovered parts of the robotic lander. Gordon waited in lunar orbit aboard Yankee Clipper.',
@@ -364,7 +371,8 @@ export const flight: Flight = {
     { t: -elapsed(2, 43, 0), event: 'Bean takes the right couch' },
     { t: -elapsed(2, 36, 0), event: 'Gordon enters the centre couch' },
     { t: boarding[1], event: 'Closeout crew shuts the hatch' },
-    { t: 0.7, event: 'Liftoff from Pad 39A' },
+    { t: 0.25, event: 'SA-507 first moves as all four hold-down arms release' },
+    { t: 0.7, event: 'IU umbilical disconnect starts time base 1' },
     { t: 36.5, event: 'First lightning discharge disconnects the fuel cells from the main buses' },
     { t: 52, event: 'Second electrical discharge' },
     { t: elapsed(2, 47, 23), event: 'S-IVB restarts for translunar injection' },
@@ -410,15 +418,15 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Apollo 12 · Saturn V',
       url: 'models/usa/apollo/apollo-12/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       dockingPorts: [clipperPort, intrepidPort],
       ...cabin,
       cabin: { ...cabin.cabin, within: [...cabin.cabin.within, 'TelemetryPower', 'WaterDispenser'] },
       seats: [
-        { node: 'Seat_Commander', label: 'Conrad’s left couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_CommandModulePilot', label: 'Gordon’s centre couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_LunarModulePilot', label: 'Bean’s right couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Conrad’s left couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Gordon’s centre couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Bean’s right couch', from: 'SideHatch', open: boarding },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -476,8 +484,20 @@ export const flight: Flight = {
         { id: 'antenna', label: 'S-band antenna', nodes: ['HighGainAntenna'], from: [-0.75, -0.5, 0.6] },
         { id: 'f1', label: 'F-1 cluster', nodes: ['FirstStageEngines'], from: [-0.62, 0.08, 0.78] },
       ],
-      parts: [...command, ...service, ...intrepidStackParts, ...escapeParts, ...launcher],
+      parts: boardingHatches([...command, ...service, ...intrepidStackParts, ...escapeParts, ...launcher], boarding),
     },
     intrepidModel,
+    mobileLauncher(2, {
+      holdDowns: 'as-507',
+      ingress: boarding[0],
+      parkedBy: -elapsed(0, 29, 54),
+      pao: 'Kennedy Launch Control, 14 November 1969. The T−29:54 update reports arm 9 at standby; at T−5:00 it moves again.',
+      intertankClear: -17,
+      forwardRetract: -16.2,
+      firstMotion: 0.25,
+      terminalSource:
+        'Saturn V Flight Manual SA-507, fig. 8-20 (nominal preflight arm sequence); AS-507 Flight Evaluation Report, table 2-2 and §3.6.1 (first motion).',
+    }),
+    ...lc39Crew(['Conrad', 'Gordon', 'Bean'], true),
   ],
 };
