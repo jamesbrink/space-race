@@ -26,6 +26,7 @@ export type Pref =
   | 'pathOn'
   | 'pathGuided'
   | 'deckAboard'
+  | 'deckDetails'
   | 'soundOff'
   | 'galleryLight'
   | 'galleryMeasure'

@@ -621,7 +621,6 @@ export class OrbitDeck extends Deck {
     const code = String(plan.record?.manual?.code?.value ?? '');
     const service = coastEvents(plan).burn;
     el.innerHTML = `
-      <div class="tank engine" title="What is burning, and what kind of engines they are"><span>Engine</span><b data-cell="engine"></b><i data-cell="engine-kind"></i></div>
       ${stagesOf(plan)
         .map((s, i) =>
           tank(
@@ -1290,8 +1289,10 @@ export class OrbitDeck extends Deck {
     }
     const now = this.stagesAt(t);
     const lit = now.map((x, i) => (x.burning ? i : -1)).filter((i) => i >= 0);
+    // (nothing burning: on the pad, the stages lit at liftoff; after, the first still aboard with something left)
+    const pad = recordStages(plan).flatMap((st, i) => (st.from <= 0 ? [i] : []));
     const next = now.findIndex((x) => x.aboard && !x.burning && x.left > 0);
-    const on = lit.length ? lit : next >= 0 ? [next] : [];
+    const on = lit.length ? lit : t <= 0 && pad.length ? pad : next >= 0 ? [next] : [];
     if (!on.length) return null;
     const v = this.vehicleOf();
     const s = this.sampleAt(t);
@@ -1319,6 +1320,7 @@ export class OrbitDeck extends Deck {
       flow: flows,
       isp: rated > 0 ? on.reduce((sum, i) => sum + vac(i), 0) / (G0 * rated) : 0,
       mass: s.mass,
+      ...(!lit.length && live && Number.isFinite(live.stages[on[0]!]!.from) ? { doing: 'cut off' } : {}),
       ...(this.mine === null && t > 0 ? { not: 'as flown: the lever takes it over' } : {}),
     };
   }
@@ -2440,8 +2442,6 @@ export class OrbitDeck extends Deck {
             : null;
     const braking = retro !== null && t >= retro.on && t < Math.min(retro.off, this.parts);
     const thrust = s.burning.reduce((sum, m) => sum + m.thrust, 0);
-    set('engine', burning.length ? burning.join(' + ') : braking ? this.burnName : t <= 0 ? 'Not lit' : 'None burning');
-    set('engine-kind', this.mine === null ? 'fixed thrust, cut by the record' : 'fixed thrust: the action button cuts it');
     // (the timer's command for the burn, where the plan has one, or its lighting)
     const burnEvents = coastEvents(plan);
     const command = clockAt(plan, burnEvents.command ?? burnEvents.on);
@@ -2459,7 +2459,9 @@ export class OrbitDeck extends Deck {
     set('lock', this.free ? 'Free' : this.byPlan !== null ? 'Open, by plan' : 'Locked');
     for (const lamp of this.root.querySelectorAll<HTMLElement>('[data-digit]'))
       lamp.classList.toggle('on', this.free || Number(lamp.dataset.digit) < this.typed.length);
-    set('motors', thrust > 0 ? `${burning.join(' + ') || 'braking'} ${(thrust / 1000).toFixed(0)} kN` : '–');
+    // (what burns by name, the coast's burn by the plan's: nothing on the pad, where the record's first sample already has the stages' thrust)
+    const named = burning.length ? burning.join(' + ') : braking ? this.burnName : null;
+    set('motors', named && t > 0 && thrust > 0 ? `${named} ${(thrust / 1000).toFixed(0)} kN` : '–');
     // (the run as flown, and the instant its coast hands over to the descent: from there it comes down on its own bodies)
     const whole = this.flown ?? orbitalFlown(this.flight);
     const handed = whole.down ? whole.coast.samples[whole.coast.samples.length - 1]!.t : Number.POSITIVE_INFINITY;

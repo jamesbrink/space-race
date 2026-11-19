@@ -695,7 +695,7 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
       await page.waitForTimeout(1500);
       let r = await read(page);
       if (r.warns) fail(where, 'the browser is set to ask while the flight is only watched as flown');
-      await page.click('#ui > .cockpit .deck-foot [data-do=leave]');
+      await page.click('#ui .cockpit-enter'); // (Leave, by the clock: the deck's foot has the time's keys)
       await page.waitForTimeout(500);
       r = await read(page);
       if (r.active || r.keeping || r.asking || r.stored?.length)
@@ -706,7 +706,7 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
     }
     // flown by hand, each way out within the flight keeps it, and Fly resumes it to the digit
     const within = [
-      ["the deck's Leave button", (page) => page.click('#ui > .cockpit .deck-foot [data-do=leave]')],
+      ['the Leave button by the clock', (page) => page.click('#ui .cockpit-enter')],
       ['Esc', (page) => page.keyboard.press('Escape')],
       ['the Gallery tab', (page) => page.click('#ui :is(.places [data-place=gallery], .ways [data-way=gallery]):visible')],
       ['the Launch site tab', (page) => page.click('#ui :is(.places [data-place=site], .ways [data-way=site]):visible')],

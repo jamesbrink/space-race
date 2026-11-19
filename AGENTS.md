@@ -254,8 +254,9 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   keeps its lamp and has none), a flag by nation, an emblem by programme, and a Soviet programme's emblem says it is this
   site's mark, not a patch it had ([gallery.md](docs/agents/gallery.md), "Icons, flags and emblems").
 - The flight deck (`deck.ts`, `cockpit.css`) is one for every flight: three panels, the navball and path in the left corner, the primary
-  figures, the throttle, the G and B switches and the one action (Space) in the middle, the systems as bars and lamps on the right; its keys fold to one
-  line. The throttle is one lever for every flight and every liquid engine (the arrows, Z full, Cut; sim/lever.ts `handRange`: the engine's
+  figures, the throttle, the G and B switches and the one action (Space) in the middle, the systems as bars and lamps on the right, their
+  readings folded under Details (a chevron and a `Pref`); its keys fold to one line (steering, the time's pace), the rest behind Keys, what flies
+  first. Its prompt is an instrument's line, a line or two with the whole of it in its title, not a paragraph; the diagnostics are away while it is flown. The throttle is one lever for every flight and every liquid engine (the arrows, Z full, Cut; sim/lever.ts `handRange`: the engine's
   own range, or the game's, estimated and said so, where it ran at one thrust); a solid's row says it burns until spent. Every key it shows is also a button that does what the key does (`data-do` a command, `data-hold` a key held
   while pressed, `data-press` the key itself, dispatched); only its panels take the pointer. It tells the stage how
   much of the view it covers (`Ui.covers`). A flight kind (`cockpit.ts` ballistic, `orbitdeck.ts` into orbit) supplies what differs

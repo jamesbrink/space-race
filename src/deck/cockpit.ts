@@ -236,6 +236,9 @@ export class Cockpit extends Deck {
     const left = Math.max(0, s.mass - (roles.craft.mass.value - burnable));
     const lit = Boolean(main) && !s.cutoff;
     const throttle = lit ? s.throttle || this.lever.at : this.lever.at;
+    const spent = v.tanks && sample.tanks ? Math.min(sample.tanks.oxidizer, sample.tanks.fuel) < 1 : false;
+    const doing =
+      !s.ignited && s.abortAt === null ? 'not lit' : spent ? (engine.kind === 'solid' ? 'burnt out' : 'out of propellant') : 'cut off';
     return {
       engines: engine.label,
       burning: lit,
@@ -245,6 +248,7 @@ export class Cockpit extends Deck {
       flow: this.flow * throttle,
       isp: (engine.isp?.vacuum ?? engine.isp?.seaLevel)?.value ?? 0,
       mass: s.mass,
+      ...(lit ? {} : { doing }),
       ...(s.abortAt !== null ? { not: 'aborted: the lever is let go' } : {}),
     };
   }
@@ -258,9 +262,11 @@ export class Cockpit extends Deck {
     const supplies = body.capsule.rcs?.supplies ?? [];
     const axes = body.capsule.rcs ? ['pitch', 'yaw', 'roll'] : [];
     el.innerHTML = `
-      <div class="tank engine" title="The engine: what it is doing, and what kind it is"><span>Engine</span><b data-cell="engine"></b><i data-cell="engine-kind"></i></div>
-      <div class="tank burn" title="Propellant left of what the engine burns before its cutoff"><span>Burn left</span><u class="bar"></u><b><u data-cell="fuel"></u></b><i></i></div>
-      ${this.vehicle?.tanks ? tank('oxidizer', 'Oxidizer', 'Liquid oxygen left in its tank') + tank('fuel-tank', 'Fuel', 'Fuel left in its tank') : ''}
+      ${
+        this.vehicle?.tanks
+          ? tank('oxidizer', 'Oxidizer', 'Liquid oxygen left in its tank') + tank('fuel-tank', 'Fuel', 'Fuel left in its tank')
+          : '<div class="tank burn" title="Propellant left of what the engine burns before its cutoff"><span>Burn left</span><u class="bar"></u><b><u data-cell="fuel"></u></b><i></i></div>'
+      }
       ${supplies.map((u, i) => tank(`rcs-${i}`, `Jets ${u.name.length > 6 ? u.name.slice(0, 4) : u.name}`, `Attitude-jet propellant left in the ${u.name} system’s tank`)).join('')}
       ${
         axes.length
@@ -807,10 +813,13 @@ export class Cockpit extends Deck {
     set('pitch', (90 - angleBetween(s.axis, up) / DEG).toFixed(0));
     set('alpha', s.groundSpeed > 5 && s.q > 1 ? s.alpha.toFixed(1) : '–');
     const toBurn = Math.max(0, Math.min(100, (100 * (s.mass - (roles.craft.mass.value - burnable))) / burnable));
-    set('fuel', riding ? `${toBurn.toFixed(0)} %` : '–');
-    const burn = this.cells.get('fuel')!.closest<HTMLElement>('.tank')!;
-    burn.style.setProperty('--left', `${riding ? toBurn.toFixed(0) : 0}%`);
-    burn.classList.toggle('low', riding && toBurn < 100 * LOW && toBurn > 0);
+    // (a booster whose propellants are not given apart: what it has left to burn, as one bar)
+    const burn = this.cells.get('fuel')?.closest<HTMLElement>('.tank');
+    if (burn) {
+      set('fuel', riding ? `${toBurn.toFixed(0)} %` : '–');
+      burn.style.setProperty('--left', `${riding ? toBurn.toFixed(0) : 0}%`);
+      burn.classList.toggle('low', riding && toBurn < 100 * LOW && toBurn > 0);
+    }
     const replay = this.clock.t < state.t - TICK;
     const leant = (v: number, plus: string, minus: string) =>
       Math.abs(v) < 0.05 * DEG ? '' : ` ${(Math.abs(v) / DEG).toFixed(1)}° ${v > 0 ? plus : minus}`;
@@ -869,36 +878,7 @@ export class Cockpit extends Deck {
       set(`${id}-kg`, empty ? '' : `${now.toFixed(now < 100 ? 1 : 0)} kg`, part < LOW);
       this.cells.get(id)?.parentElement?.style.setProperty('--left', `${(100 * Math.max(0, Math.min(1, part))).toFixed(0)}%`);
     };
-    // the engine: its kind, and what it is doing
-    const nature = roles.engine;
-    const main = s.burning.find((m) => m.engine === this.vehicle!.engine);
-    const range = nature.throttle?.range;
-    set(
-      'engine-kind',
-      nature.kind === 'solid'
-        ? 'solid: burns out'
-        : range
-          ? `throttle ${(range[0] * 100).toFixed(0)} to ${(range[1] * 100).toFixed(0)} %`
-          : 'fixed thrust',
-    );
-    const before = !state.ignited && state.abortAt === null;
-    const spent = this.vehicle!.tanks && s.tanks ? Math.min(s.tanks.oxidizer, s.tanks.fuel) < 1 : false;
-    const at = this.lever?.at ?? 1;
-    const lever = range ? `, lever ${(at * 100).toFixed(0)} %` : '';
-    set(
-      'engine',
-      main
-        ? `${(main.thrust / 1000).toFixed(0)} kN${range ? ` (${((state.throttle || at) * 100).toFixed(0)} %${lever})` : ''}`
-        : before
-          ? 'Not lit'
-          : s.tanks === null
-            ? 'Gone'
-            : spent
-              ? nature.kind === 'solid'
-                ? 'Burnt out'
-                : 'Out of propellant'
-              : 'Cut off',
-    );
+    // (the engine, what it is doing and what it can do, is the throttle's row: `throttled`)
     const full = this.vehicle!.tanks;
     if (full && s.tanks) {
       left('oxidizer', s.tanks.oxidizer, full.oxidizer);
@@ -966,7 +946,7 @@ export class Cockpit extends Deck {
     if (state.abortAt !== null && !hasLeft(state.craft, this.roles.tower) && !this.sequence && coming)
       due.push('Tower jettison is due: no parachute comes out past it');
     // waiting on the pilot to begin: said, and the button asks (cockpit.css `waiting`)
-    const waiting = before && !replay;
+    const waiting = !state.ignited && state.abortAt === null && !replay;
     if (waiting)
       cues.push(
         matchMedia('(hover: none), (pointer: coarse)').matches ? 'Ready: Ignition lights the engine' : 'Ready: Space lights the engine',
