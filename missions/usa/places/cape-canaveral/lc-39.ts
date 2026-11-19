@@ -70,7 +70,7 @@ interface Countdown {
   intertankLatch?: number;
   firstMotion?: number;
   terminalConfidence?: 'assumed' | 'documented';
-  holdDowns?: 'as-506' | 'as-507' | 'as-508' | 'as-509';
+  holdDowns?: 'as-506' | 'as-507' | 'as-508' | 'as-509' | 'as-510';
 }
 
 const cover508 =
@@ -79,6 +79,7 @@ const cover508 =
 interface Installation {
   pad?: string;
   tail: string;
+  mastStrokes?: Record<'1_2' | '3_2' | '3_4', number>;
   hold: string;
   arm?: Record<number, string>;
 }
@@ -115,11 +116,21 @@ const installations: Record<NonNullable<Countdown['holdDowns']> | 'common', Inst
   },
   'as-509': {
     pad: 'a-1971-01',
+    mastStrokes: { '1_2': 2.168, '3_2': 2.496, '3_4': 2.131 },
     tail: 'The measured strokes from plate separation to retraction were 2.168 s for mast 1-2, 2.496 s for 3-2 and 2.131 s for 3-4. After mast power went off, cutoff valve A18651 opened and residual RP-1 entered the piping in launcher room 4A. The replacement valve was scheduled for the next flight.',
     hold: 'All four arms released pneumatically within four milliseconds. SA-509 first moved at T+0.2 s. Two primary service-arm control switches closed 418 and 424 milliseconds after launch commit. The linkage and hood travel are reconstructed.',
     arm: {
       1: 'The S-IC received oxygen here. At 08:46 EST all three stages were replenishing. A replacement vent valve on the first stage worked throughout the countdown. The two ground-side couplings follow the preceding Saturn V installation.',
       2: 'A water header served the S-IC forward arm. The exhibit carries forward the quench valve and pipework reconstructed for this same mobile launcher on Apollo 12. The ground team reported satisfactory service-arm operation on Apollo 14.',
+    },
+  },
+  'as-510': {
+    pad: 'a-1971-07',
+    mastStrokes: { '1_2': 2.307, '3_2': 2.151, '3_4': 2.688 },
+    tail: 'Mast 3-2 retracted fastest. From plate separation to full retraction the booms took 2.307 seconds on 1-2, 2.151 on 3-2 and 2.688 on 3-4. Earlier, a pressure meter for mast 3-2 in Launch Control read about 150 psi low. Controllers monitored the pressure switches for readiness.',
+    hold: 'The four hold-down arms released pneumatically within three milliseconds. The two primary service-arm control switches closed 449 and 476 milliseconds after launch commit. The exhibit places release at first motion and reconstructs the linkage and hood travel.',
+    arm: {
+      1: 'Two lines fed the S-IC oxygen tank through the intertank. During fast fill a gasket leaked at filter A224 in the lower fill-and-drain line. The leak stopped after about five minutes as the filter chilled. The exposed ground couplings and links follow this launcher’s Apollo 13 reconstruction.',
     },
   },
 };
@@ -145,8 +156,9 @@ export function mobileLauncher(
   const as507 = holdDowns === 'as-507';
   const as508 = holdDowns === 'as-508';
   const as509 = holdDowns === 'as-509';
-  const laterLauncher = as507 || as508 || as509;
-  const manualSerial = as508 ? '508' : '507';
+  const as510 = holdDowns === 'as-510';
+  const laterLauncher = as507 || as508 || as509 || as510;
+  const manualSerial = as510 ? '510' : as508 ? '508' : '507';
   const manual = laterLauncher ? `Saturn V Flight Manual SA-${manualSerial}, section VIII, figure 8-8.` : MANUAL;
   const evaluation = `AS-${holdDowns?.slice(3) ?? '506'} Flight Evaluation Report, §3.6.1.`;
   const armSchedule = `SA-${manualSerial} Flight Manual, figure 8-20. Nominal end of the retract-and-lock interval.`;
@@ -182,7 +194,13 @@ export function mobileLauncher(
       parkCommand === undefined ? pao + ' Travel placed before the standby report.' : pao,
     ),
     key(parkedBy, 0.2, 'Crew access arm in its 12° standby position', 'estimated', pao + ' Arrival estimated from the standby exchanges.'),
-    key(-300, 0.2, 'Crew access arm retracts from standby', as509 ? 'assumed' : 'documented', pao),
+    key(
+      -300,
+      0.2,
+      'Crew access arm retracts from standby',
+      as510 ? 'estimated' : as509 ? 'assumed' : 'documented',
+      as510 ? pao + ' Motion was observed just before the five-minute mark. The model rounds the start to that minute.' : pao,
+    ),
     key(
       retractedBy ?? (laterLauncher ? -290 : -270),
       0.4,
@@ -291,9 +309,9 @@ export function mobileLauncher(
     ] as const
   ).flatMap(([mast, degrees]): Move[] => {
     const angle = (degrees * Math.PI) / 180;
-    // AS-509 §3.6.1 times plate separation to mast retracted. The individual breakaway
+    // The flight evaluations time plate separation to mast retracted. The individual breakaway
     // instants are unavailable, so first motion anchors all three measured durations.
-    const mastDuration = as509 ? { '1_2': 2.168, '3_2': 2.496, '3_4': 2.131 }[mast] : 1.1;
+    const mastDuration = configuration.mastStrokes?.[mast] ?? 1.1;
     const mastRetracted = firstMotion + mastDuration;
     const radialX = Math.cos(angle);
     const radialZ = -Math.sin(angle);
@@ -323,7 +341,7 @@ export function mobileLauncher(
         axis,
         angle: -Math.PI / 2,
         from: mastRetracted,
-        to: firstMotion + (as509 ? mastDuration + 0.6 : 1.7),
+        to: firstMotion + (configuration.mastStrokes ? mastDuration + 0.6 : 1.7),
       },
     ];
   });
@@ -372,6 +390,16 @@ export function mobileLauncher(
         'The deflector divides the exhaust beneath the launcher.',
         'Its refractory surface directs exhaust along the trench in both directions. The curved profile is approximated.',
       ),
+      ...(as510
+        ? [
+            part(
+              'ECS_Room',
+              'Environmental control room',
+              'Air-handling units in the west side of the pad supplied conditioned air or nitrogen to the vehicle.',
+              'The team changed over to gaseous nitrogen at 23:10 EDT the night before launch. The purge ended at 09:44 EDT, ten minutes after liftoff. Postlaunch inspection found scorched ducts and loose anchors at the air plenum on the exterior wall. Its shape and placement on this wall are estimated.',
+            ),
+          ]
+        : []),
       part(
         'Pad_Pedestals',
         'Launcher supports',
@@ -471,7 +499,7 @@ export function mobileLauncher(
             },
           ]
         : []),
-      ...(as508 || as509
+      ...(as508 || as509 || as510
         ? [
             {
               id: 'intertank-carrier',
@@ -490,6 +518,17 @@ export function mobileLauncher(
               nodes: ['RP1_Mast_Cutoff'],
               span: 1.2,
               from: [-0.9, 0.32, -0.46] as [number, number, number],
+            },
+          ]
+        : []),
+      ...(as510
+        ? [
+            {
+              id: 'ecs-plenum',
+              label: 'Environmental control air plenum',
+              nodes: ['ECS_Air_Plenum'],
+              span: 6,
+              from: [-0.27, 0.14, -1] as [number, number, number],
             },
           ]
         : []),

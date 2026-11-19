@@ -13,7 +13,7 @@ LEVELS = [0, 30, 60, *range(80, 361, 20)]
 CORNERS = [(60, -15), (100, -15), (100, 15), (60, 15)]
 
 
-def hardstand(parts, pad):
+def hardstand(parts, pad, ecs_room):
     # North-south trench runs under the engine opening. Model zero is the hardstand top.
     parts.node("Hardstand")
     for side in (-1, 1):
@@ -24,7 +24,21 @@ def hardstand(parts, pad):
         outline = [(inner, 0), (outer, -42), (inner, -42)]
         if side > 0:
             outline.reverse()
-        hull(parts("Hardstand", "earth"), [[(x, y, z) for y, z in outline] for x in (-169.9, 279.9)])
+        if side > 0 and ecs_room:
+            # The pad ECS room opens onto the west apron (SA-510 manual, §VIII).
+            # Cut its frontage out of the pad fill, so a walker can reach the wall.
+            soil = parts("Hardstand", "earth")
+            front = 265
+            crest = -42 * (front - inner) / (outer - inner)
+            for left, right, caps in ((-169.9, 64, (True, False)), (160, 279.9, (False, True))):
+                hull(soil, [[(x, y, z) for y, z in outline] for x in (left, right)], caps)
+            cut = [(inner, -42), (front, -42), (front, crest), (inner, 0)]
+            hull(soil, [[(x, y, z) for y, z in cut] for x in (64, 160)], (False, False))
+            for left, right in ((64, 64.7), (159.3, 160)):
+                wing = [(front, -42), (outer, -42), (front, crest)]
+                hull(parts("Hardstand", "concrete"), [[(x, y, z) for y, z in wing] for x in (left, right)])
+        else:
+            hull(parts("Hardstand", "earth"), [[(x, y, z) for y, z in outline] for x in (-169.9, 279.9)])
     # Crawlerway climbs at five percent from the south; the trench opens north.
     hull(parts("Hardstand", "concrete"), [[(-1010, y, -42), (-170, y, 0), (-170, y, -42)] for y in (-85, 85)])
     parts.node("Water_Valve_Pit")
@@ -52,6 +66,59 @@ def hardstand(parts, pad):
     parts.node("Flame_Deflector")
     profile = [(-60, -42), (-36, -38), (-17, -25), (-5, -7), (0, -1), (5, -7), (17, -25), (36, -38), (60, -42)]
     hull(parts("Flame_Deflector", "brick"), [[(x, y, z) for x, z in profile] for y in (-28.4, 28.4)])
+
+
+def ecs_room_front(parts):
+    """West pad-fill ECS room, exterior only. Room footprint documented, frontage and ductwork estimated."""
+    name = "ECS_Room"
+    parts.node(name)
+    # Concrete retaining face and an exposed work apron at the foot of the slope.
+    box(parts(name, "concrete"), (64.01, 265.02, -42), (159.99, 266.0, -25.53))
+    box(parts(name, "concrete/apron"), (64.72, 266.02, -42.5), (159.28, 323.0, -41.84))
+    # Framed service leaves and hardware on the exposed face.
+    for x in (75, 80.05):
+        box(parts(name, "steel"), (x, 266.02, -41.82), (x + 5.0, 266.19, -32.52))
+        beam(parts(name, "rail"), (x + 2.1, 266.29, -38.2), (x + 3.3, 266.29, -38.2), 0.15)
+    box(parts(name, "deck"), (74.65, 266.0, -32.48), (85.4, 266.65, -31.94))
+
+    # AS-510 FER §3.6.1 identifies ducts and the wall-anchored remote air
+    # plenum. Profiles, connections, quantity and mounting positions are estimates.
+    node = "ECS_Air_Plenum"
+    parts.node(node, name, (116, 267, -34))
+    box(parts(node, "deck"), (109, 266.04, -38.6), (123, 268.5, -30.2))
+    for height in (-38.8, -30.16):
+        box(parts(node, "steel"), (108.55, 266.0, height), (123.45, 266.36, height + 0.34))
+        for x in (109, 115.9, 122.9):
+            parts(node, "rail", True).tube(P(x, 266.38, height + 0.17), P(x, 266.53, height + 0.17), 0.12 * FT)
+    for x in (112, 120):
+        duct = parts(node, "rail", True)
+        # Quarter-round duct elbows turn through the retaining wall. Cross sections
+        # travel continuously around the bend, including where a walker sees underneath.
+        duct.tube(P(x, 268, -30.2), P(x, 268, -29.1), 0.72 * FT, caps=False)
+        bends = []
+        for step in range(9):
+            angle = step * pi / 16
+            ring = []
+            for k in range(20):
+                phase = 2 * pi * k / 20
+                radius = 1.45 + 0.72 * sin(phase)
+                ring.append((x + 0.72 * cos(phase), 266.55 + radius * cos(angle), -29.1 + radius * sin(angle)))
+            bends.append(ring)
+        hull(duct, bends, (False, False))
+        duct.tube(P(x, 266.55, -27.65), P(x, 265.98, -27.65), 0.72 * FT, caps=False)
+        duct.tube(P(x, 268, -29.8), P(x, 268, -29.59), 0.79 * FT)
+        duct.tube(P(x, 266.0, -27.65), P(x, 266.17, -27.65), 0.88 * FT)
+    # Removable access covers and their perimeter fasteners break up the broad
+    # side of the sheet-metal enclosure. Their layout is reconstructed.
+    for x in (112.6, 119.4):
+        box(parts(node, "steel"), (x - 2.75, 268.52, -37.5), (x + 2.75, 268.68, -31.25))
+        box(parts(node, "deck"), (x - 2.54, 268.70, -37.30), (x + 2.54, 268.81, -31.45))
+        for dx in (-2.23, 2.23):
+            for z in (-36.98, -34.36, -31.77):
+                parts(node, "rail", True).tube(P(x + dx, 268.82, z), P(x + dx, 268.94, z), 0.12 * FT, segs=6)
+        for dx in (-0.58, 0.58):
+            beam(parts(node, "rail"), (x + dx, 268.82, -34.36), (x + dx, 269.13, -34.36), 0.13)
+        beam(parts(node, "rail"), (x - 0.62, 269.13, -34.36), (x + 0.62, 269.13, -34.36), 0.16)
 
 
 def base(parts):
@@ -384,7 +451,7 @@ def intertank_carrier(parts):
             beam(parts(parent, "deck/pipe_support"), (x + 0.12, y, z + 0.48), (x + 0.12, y, z + 2.11), 0.19)
 
 
-def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_valve=False):
+def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_valve=False, ecs_room=False):
     use(FT)
     parts = Parts(
         {
@@ -398,7 +465,9 @@ def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_va
             "white": material("paint-room-white", (0.85, 0.84, 0.81), 0.13, 0.62),
         }
     )
-    hardstand(parts, pad)
+    hardstand(parts, pad, ecs_room)
+    if ecs_room:
+        ecs_room_front(parts)
     base(parts)
     if detailed:
         articulated_holddowns(parts)
