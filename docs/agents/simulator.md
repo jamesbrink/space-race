@@ -707,7 +707,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   otherwise than planned carries the plan as planned (`FlightPlan.planned`): its law is solved on that (`steer`), as the
   guidance was set, and it is flown on that solution, never on the published orbit (`published`). GATV-5002's engine is
   cut 0.91 s after its start, as the record has it; GATV-5004's Atlas follows the record's pitch once control is lost
-  (`Guidance.lost`: the tilt in the launch plane against time, in place of the law). What the records do not give is said
+  (`Guidance.lost`: the tilt in the launch plane against time, in place of the law). The failures are the hardware's, not the sequence's: flown by hand with the guidance and the sequencer off, GATV-5002's engine still shuts down 0.91 s after whoever lights it (plan.ts `EngineDef.fails`), and GATV-5004's stack turns as the record has it until control was regained at 150 s whatever the hands do (`Guidance.lost.until`; sim/stagedlive.ts `stagedPilot`; tests/target-failures.test.mjs). What the records do not give is said
   in each flight's orbital.ts and README, not flown: 5002's breakup and pieces, 5004's turn to the north.
 - **The descent can be given by hand** (orbital.ts `DescentHands`, staged.ts `flyOn`). Its events are the record's data:
   the modules' parting (`entry.separation`), the ejection (`ejection.altitude`), and each body's parachutes; a body other

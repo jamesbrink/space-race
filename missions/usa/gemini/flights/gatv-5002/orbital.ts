@@ -36,6 +36,10 @@ const record = targetRecord(
     },
     insertion: PLANNED_GAATV.insertion,
     fell: {
+      shutdown: {
+        after: 0.91,
+        source: `"910 milliseconds after initiation of operation of the primary propulsion system" (${R}, 1.0): a hard start, most probably from a fuel lead (LSFR, III.E-1)`,
+      },
       impact: {
         latitude: 27 + 30.57 / 60,
         longitude: -(48 + 59.33 / 60),
