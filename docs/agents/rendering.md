@@ -826,6 +826,8 @@ JavaScript heap and 125 MB of decoded pictures.
   the launch site's 350 some hundred and forty-nine.
   With Apollo 13, the 45-vehicle overview takes 217 draw calls at 1280 px. Small transparent panes submit their back faces before their front faces in a single draw, preserving the blend order where the panes overlap.
   With Apollo 14, the 46-vehicle overview takes 218 draw calls at 1280 px. Constant emissive colours, including the Apollo docking target’s green, share the paint draw in both looks. Materials with emission textures keep their own draws.
+  With Apollo 17, the 49-vehicle overview takes 218 draw calls at 1280 px. Opaque paint shared by identical coarsest
+  levels is instanced across visible stands. During a level change each fading vehicle draws its own materials.
 - **Another flight lets the last one go** (app/main.ts, session.ts; gallery.md, "Back and Forward"). The page is not
   loaded again: the site's stage is loaded again (`Stage.load`), and lets go of every model the next flight has not
   got and the place round its pad if the next is at another place or on another day (`Settings.drop`: the place's
