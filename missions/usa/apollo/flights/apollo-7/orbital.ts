@@ -145,12 +145,56 @@ const sps = [
 ] as const;
 
 /**
+ * What the S-IVB let out in orbit while the spacecraft was still on it, where the flight evaluation has what it was
+ * worth: the velocity the guidance platform's accelerometers gained in each event (the Saturn IB flight evaluation (MPR-SAT-FE-68-4), §12.4.2.2 and Fig. 12-15;
+ * §9.6.2 and §9.6.3). Each is flown as a steady force over its interval, the measured gain times the stack's mass as the
+ * run has it (30,256 kg: Table 6-I less what the run burns) over the time, along the stack's axis as its attitude
+ * programme holds it (`Guidance.attached`):
+ *   the 30 s propulsive vent of the oxygen tank, from 30.17 s after cutoff: 1.1 m/s;
+ *   the oxygen dump through the engine, 5,668.95 to 6,388.95 s: 3.5 m/s in its first 131 s (the thrust at its most
+ *     1,979 N at 5,702 s) and 6.6 m/s by its end;
+ *   0.2 m/s more by 6,671 s, and the 13,789 N s the partly open valve gave after that, until the tank was empty at about
+ *     10,500 s.
+ * The hydrogen tank's vents were open for three spells before the dump (§4, Table 4-II); what they pushed is not in the
+ * report and is not flown. The tracked states either side (the postflight trajectory, Table XIII) say the stack gained more than this
+ * before the dump and after it: that difference is the run's residual (physics.md). The trajectory report is TH-AP-68-369.
+ */
+const STACK_IN_ORBIT = 30_256;
+const J2_CUTOFF_BASE = 616.76;
+const vented = (gain: number, from: number, to: number): number => (STACK_IN_ORBIT * gain) / (to - from);
+const ventSteps: [from: number, to: number, newtons: number][] = [
+  [J2_CUTOFF_BASE + 30.17, J2_CUTOFF_BASE + 60.17, vented(1.1, 0, 30)],
+  [5668.95, 5668.95 + 131, vented(3.5, 0, 131)],
+  [5668.95 + 131, 6388.95, vented(6.6 - 3.5, 5668.95 + 131, 6388.95)],
+  [6388.95, 6671, vented(0.2, 6388.95, 6671)],
+  [6671, 10_500, 13_789 / (10_500 - 6671)],
+];
+const sivbVenting = {
+  id: 'sivb-venting',
+  label: 'S-IVB oxygen tank vent and oxygen dump',
+  body: 'sivb',
+  thrust: {
+    // (each step begins and ends in a twentieth of a second, and there is nothing between two that do not meet)
+    points: ventSteps.flatMap(([from, to, f], i) => {
+      const meets = ventSteps[i + 1]?.[0] === to;
+      return [
+        ...(ventSteps[i - 1]?.[1] === from ? [] : [[from - 0.05, 0] as [number, number]]),
+        [from, f] as [number, number],
+        [to - 0.05, f] as [number, number],
+        ...(meets ? [] : [[to, 0] as [number, number]]),
+      ];
+    }),
+    confidence: 'derived' as const,
+    source: `${ASCENT}, §12.4.2.2 and Fig. 12-15 (the velocity the platform measured: 1.1 m/s in the oxygen tank's 30 s vent; 3.5 m/s after 131 s of the dump, 6.6 m/s at its end, 0.2 m/s more by 6,671 s) and §9.6.3 (13,789 N s after the valve part closed), each as a steady force on the stack's mass as the run has it`,
+  },
+};
+
+/**
  * The rendezvous with the S-IVB as commands (sim/plan.ts `Pursuit`): what each of its burns was for, which guidance
  * carries out on where the two craft are (sim/pursuit.ts). The impulses and attitudes of Tables 3-IV and 3-V stay on
  * the burns as the record's, to hold the solved ones against. The two phasing burns before them are flown as recorded:
  * what they were aimed at is not in anything read.
  */
-const SIVB_PERIOD = 89.7 * 60;
 export const rendezvous = {
   /** Where the corrective combination was to leave the S-IVB from the spacecraft as the coelliptic manoeuvre lit. */
   coelliptic: {
@@ -158,9 +202,9 @@ export const rendezvous = {
     above: doc(7.8 * NMI, `${REPORT}, §3.2.1, altitude difference at the coelliptic maneuver`),
   },
   /** When the terminal phase's transfer was to arrive at the stage. */
-  intercept: assumed(
-    T(29, 16, 33) + (130 / 360) * SIVB_PERIOD,
-    `Terminal phase initiation (${REPORT}, Table 2-I) and 130 degrees of the target's travel after it, the transfer the Gemini rendezvous were planned on (Gemini Midprogram Conference, NASA SP-121, paper 28) and assumed here: Apollo 7's own figure is not in anything read. At the report's 89.7 min a revolution`,
+  intercept: doc(
+    T(29, 43, 55) + (7 * 60 + 51),
+    `${REPORT}, §3.2.1: "At 7 minutes 51 seconds before theoretical intercept, braking was started at a range of 1.2 n. mi.", the braking begun at 29:43:55: 29:51:46, 141 degrees of the stage's travel after the terminal phase initiation`,
   ),
   /** Where the spacecraft kept station, and until when. */
   station: {
@@ -326,6 +370,40 @@ const formationEvents: EventDef[] = [
     at: estimated(
       FORMATION + 300,
       'Five minutes to turn round and come to rest by the stage: an estimate, the transposition’s own times not being on the record',
+    ),
+  },
+];
+
+/**
+ * The separation from the stage once the station was left: "After a short period of station keeping, a separation
+ * maneuver of 2 ft/sec was performed with the reaction control system and the resultant orbit was 161.5 by 122.0 n. mi."
+ * (the report, §8, p. 8-3; before it, 161.0 by 122.2). Its instant and its direction are not given: it is put at the
+ * end of the station-keeping, and along the motion, which is what raises the apogee half a mile and leaves the stage
+ * drawing ahead, as the sextant's later ranges have it.
+ */
+const SEPARATED = T(30, 20, 0);
+const separationAim = localAim(
+  'rcs-separation-aim',
+  'Separation from the S-IVB',
+  [1, 0, 0],
+  'Along the motion: derived from the orbit it left (161.0 by 122.2 to 161.5 by 122.0 n. mi.) and the stage drawing ahead afterwards',
+);
+const separationEvents: EventDef[] = [
+  {
+    ...timed('rcs-separation', 'Separation from the S-IVB', SEPARATED, [
+      { attitude: separationAim.id },
+      { ignite: 'sm-rcs', flown: doc(2 * FT, `${REPORT}, §8, p. 8-3: a separation maneuver of 2 ft/sec`) },
+    ]),
+    at: estimated(
+      SEPARATED,
+      `${REPORT}, §8: "after a short period of station keeping"; put at the end of the station-keeping interval (SP-4029)`,
+    ),
+  },
+  {
+    ...timed('rcs-separation-cutoff', 'Separation maneuver complete', SEPARATED + 10, [{ cut: 'sm-rcs' }]),
+    at: estimated(
+      SEPARATED + 10,
+      'Ten seconds: 2 ft/s on two 100 lbf thrusters at the spacecraft’s mass; the firing’s length is not on the record',
     ),
   },
 ];
@@ -517,6 +595,7 @@ export const apollo7Plan: FlightPlan = {
       label: 'Saturn IB AS-205 with CSM-101',
       mass: doc(586_392.8, `${ASCENT}, Table 6-I, total stack at first motion`),
       sheds,
+      vents: [sivbVenting],
       bodies: [
         {
           id: 'sib',
@@ -879,6 +958,7 @@ export const apollo7Plan: FlightPlan = {
       },
     },
     formationAim,
+    separationAim,
     ...rcsAttitudes,
     ...spsAttitudes,
     bank('entry-lift-up', 0),
@@ -908,6 +988,7 @@ export const apollo7Plan: FlightPlan = {
     timed('sivb-cutoff', 'J-2 cutoff', J2_OFF, [{ cut: 'sivb-j2' }], `${ASCENT}, §9.1, guidance cutoff command`, [{ orbit: 'published' }]),
     timed('spacecraft-separation', 'CSM separates from S-IVB', SEPARATION, [{ separate: 'spacecraft-separation' }], `${LV_TRAJ}, Table VI`),
     ...formationEvents,
+    ...separationEvents,
     ...rcsEvents,
     ...spsEvents,
     timed('cm-sm-separation', 'Command module separates from service module', MODULES, [
@@ -954,6 +1035,15 @@ export const apollo7Plan: FlightPlan = {
       'estimated',
       'NASA, Apollo 7/S-IVB Rendezvous in Space, photo caption: approximately 100 ft',
     ),
+    range(
+      'lead',
+      'S-IVB as the corrective combination lit',
+      T(26, 24, 55),
+      84 * NMI,
+      10 * NMI,
+      'documented',
+      `${REPORT}, §3.2.1: the second phasing maneuver "caused the spacecraft to lead by about 84 n. mi. instead of by the intended 75 n. mi." by 26:25:00`,
+    ),
     range('braking', 'S-IVB as braking began', T(29, 43, 55), 1.2 * NMI, 0.2 * NMI, 'documented', `${REPORT}, §3.2.1`),
     range('station', 'S-IVB while keeping station', T(30, 0, 0), 70 * FT, 5, 'documented', `${REPORT}, §2: final closure within 70 ft`),
     range(
@@ -983,7 +1073,10 @@ export const apollo7Plan: FlightPlan = {
       perigee: doc(123.3 * NMI, `${REPORT}, Table 2-II`),
       apogee: doc(153.7 * NMI, `${REPORT}, Table 2-II`),
       inclination: doc(31.58, `${REPORT}, Table 2-II`),
-      period: doc(89.7 * 60, `${REPORT}, Table 2-II`),
+      period: derived(
+        89.525 * 60,
+        `${LV_TRAJ}, Table XIII, p. 74, the tracked state at insertion read as a mean orbit, perigee to perigee: 89.525 min. ${REPORT}, Table 2-II prints 89.7, to a tenth of a minute, where its own heights (123.3 by 153.7 n. mi.) go round in 89.56`,
+      ),
       kind: { is: 'anomalistic', confidence: 'documented', source: `${REPORT}, Table 3-I, perigee to perigee` },
       mass: doc(32_356 * LB, `${WEIGHTS}, first SPS firing, nearest tabulated free-flight mass`),
       injection: {
