@@ -1,9 +1,9 @@
 // The flight deck's promises, checked in the running page for every flight that can be flown, at a desk, a tablet and a
 // phone (AGENTS.md: the flight deck; src/deck/deck.ts): the same three panels in the same order and corners on every flight,
 // every key shown a button that does what the key does, nothing in the control block hidden, overlapping or (on touch)
-// under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, and Vostok 1 taken over in
-// the ascent with real keys: turned by W and staged by Space.
-//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving|touch|apollo-escape|apollo-escape-replay for one section)
+// under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, Vostok 1 taken over in
+// the ascent with real keys: turned by W and staged by Space, and the throttle on a ballistic flight and one into orbit.
+//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving|touch|apollo-escape|apollo-escape-replay|throttle for one section)
 import { launch, open, url as urlOf } from './browser.mjs';
 
 const url = urlOf(process.argv.slice(2));
@@ -1228,6 +1228,61 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'apollo-escape-replay') {
     console.log(`  ${where}: replay used the same held pad pose at T+0 with the displayed clock at T+0.4`);
   } finally {
     await context.close();
+  }
+}
+// The throttle (deck.ts `lever`, sim/lever.ts): a row under the figures on every flight, the same keys on every flight.
+// A ballistic flight's engine and a flight into orbit's stages follow the down arrow a notch at a time (taking the flight
+// over), Cut puts the engines out, and a range the game gives an engine that ran at one thrust says so.
+if (!process.env.SR_ONLY || process.env.SR_ONLY === 'throttle') {
+  for (const id of ['usa/mercury/mr-3-freedom-7', 'ussr/vostok/vostok-1']) {
+    const where = `${id} throttle`;
+    const { page, errors, context: ctx } = await fly(id, 1280, 800, false);
+    const read = () =>
+      page.evaluate(() => {
+        const row = document.querySelector('#ui > .cockpit .deck-throttle');
+        const c = window.sr.cockpit;
+        const s = c.state;
+        return {
+          shown: Boolean(row && !row.hidden && row.getBoundingClientRect().height > 0),
+          lever: row?.querySelector('[data-cell=lever]')?.textContent ?? '',
+          what: row?.querySelector('[data-cell=lever-engine]')?.textContent ?? '',
+          left: row?.querySelector('[data-cell=lever-left]')?.textContent ?? '',
+          title: row?.title ?? '',
+          mode: document.querySelector('[data-cell=mode]')?.textContent ?? '',
+          throttle: s?.throttle,
+          hand: s?.hand?.[0]?.at(-1)?.[1],
+          burning: s && 'stages' in s ? s.stages.map((g) => Number.isFinite(g.from) && !Number.isFinite(g.to)) : null,
+        };
+      });
+    const pad = await read();
+    if (!pad.shown) fail(where, 'no throttle row on the pad');
+    if (pad.lever !== '100 %') fail(where, `on the pad the lever reads "${pad.lever}", not full`);
+    if (!/real: fixed thrust|range: the game’s/.test(pad.what) || !/the game’s range/.test(pad.title))
+      fail(where, `the game's range is not said: "${pad.what}" / "${pad.title}"`);
+    await page.keyboard.press('Space');
+    for (let t = 0; t <= 20; t += 4) {
+      await page.evaluate((x) => window.sr.clock.seek(x), t);
+      await page.waitForTimeout(80);
+    }
+    await page.keyboard.press('ArrowDown');
+    await page.keyboard.press('ArrowDown');
+    await page.evaluate(() => window.sr.clock.seek(window.sr.clock.t + 1));
+    await page.waitForTimeout(300);
+    const low = await read();
+    if (low.lever !== '90 %') fail(where, `two notches down the lever reads "${low.lever}"`);
+    const held = low.throttle ?? low.hand;
+    if (Math.abs(held - 0.9) > 1e-9) fail(where, `the engines are not at nine tenths: ${held}`);
+    if (!/Δv \d+ m\/s/.test(low.left)) fail(where, `no speed left to give: "${low.left}"`);
+    if (id.startsWith('ussr') && !/Not the record/.test(low.mode)) fail(where, `the throttle did not take the flight over: "${low.mode}"`);
+    await page.click('#ui > .cockpit .deck-throttle [data-do=cut]');
+    await page.evaluate(() => window.sr.clock.seek(window.sr.clock.t + 1));
+    await page.waitForTimeout(300);
+    const cut = await read();
+    if (cut.lever !== 'Cut') fail(where, `Cut reads "${cut.lever}"`);
+    if (cut.burning ? cut.burning.some(Boolean) : cut.throttle !== 0) fail(where, `Cut left an engine burning: ${JSON.stringify(cut)}`);
+    console.log(`  ${where}: ${pad.lever} on the pad, ${low.lever} two notches down (${held}), then ${cut.lever}: ${cut.what}`);
+    if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+    await ctx.close();
   }
 }
 await browser.close();
