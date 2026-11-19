@@ -1917,11 +1917,14 @@ if (!quick && !at) {
             }
             if (await lit()) r.fail(name, 'an engine is still lit after every step: the hands cannot let go');
             await r.views(`${name} cut`);
-            await r.outcome(
-              `${name} cut, then down`,
-              () => r.runTo(4000, 300),
-              (way) => 2000 + 0.02 * way,
-            );
+            // (cut fast enough to stay up, it is held to where the path has it once round, as an orbital burn's is)
+            if ((await r.predicted())?.outcome === 'orbit') await r.around(`${name} cut, then round`, (way) => 2000 + 0.02 * way);
+            else
+              await r.outcome(
+                `${name} cut, then down`,
+                () => r.runTo(4000, 300),
+                (way) => 2000 + 0.02 * way,
+              );
           },
         });
     }
