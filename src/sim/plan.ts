@@ -554,6 +554,22 @@ export function abortAt(plan: FlightPlan, t: number, preferOrbit = false): Abort
   );
 }
 
+/**
+ * That the braking burn was timed to bring the ship down at the landing place (`PlanRecord.landing.aimed`): the ground
+ * worked its instant from where the ship then was, so guidance does the same on the state the run is in (orbital.ts
+ * `flyOrbit`): the burn is lit, in its recorded attitude and with its recorded impulse, at the instant from which the
+ * run's own forces bring it down level with that place along its track, and everything the plan sets off by the clock
+ * from the burn's command on follows by as much. The recorded instant is then a figure the run is held to
+ * (`OrbitResults.retroLate`). `late`: how long after the intended instant the burn was in fact lit, s, where the record
+ * says it was not lit when intended: applied to the instant solved. Left out of a landing, the burn is lit by the clock
+ * at its recorded instant: a flight whose burn was not timed for the place it came down at.
+ */
+export interface LandingAim {
+  late?: Measure;
+  confidence: Confidence;
+  source: string;
+}
+
 /** The record's own figures that a run is not flown from. */
 export interface PlanRecord {
   /**
@@ -595,7 +611,7 @@ export interface PlanRecord {
    * Where and when it came down; `near`, the place in the record's own words: on land the place it was near ('Smelovka'),
    * at sea the water and where in it ('the Atlantic, east of Grand Turk'), as `Craft.lands.on` says which.
    */
-  landing?: { latitude: Measure; longitude: Measure; at: Measure; near?: string };
+  landing?: { latitude: Measure; longitude: Measure; at: Measure; near?: string; aimed?: LandingAim };
   /** How long it could stay up, days. */
   supplies?: Measure;
   /** The ground the descent comes down to, m above the sea. */

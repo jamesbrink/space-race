@@ -187,7 +187,7 @@ export interface GeminiTitanRecord {
   crew: DescentCrew;
   /** What the crew came down in and what on, as the decks' cards and the verdict say it (sim/plan.ts `Lands`). */
   lands: Lands;
-  landing: { latitude: Measure; longitude: Measure; at: Measure; near: string };
+  landing: NonNullable<NonNullable<FlightPlan['record']>['landing']> & { near: string };
   /** The record's instants: the ones the plan's events are set off at are theirs; the rest are marks. */
   events: Instant[];
   checks: (Omit<RecordCheck, 'id'> & { id: keyof OrbitResults })[];

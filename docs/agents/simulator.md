@@ -81,6 +81,22 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   from the stack's turning rate, so the law keeps no memory and every run has the same axis). Apollo 7's vent and oxygen
   dump are the velocities the flight evaluation's platform measured, as forces.
 - **A solved burn draws what it gave** (`BurnFlown.fuel`, orbital.ts `fuelFor`; `coastEngineState` takes a run's burns).
+- **The braking burn is timed for the landing place where the ground timed it so** (`PlanRecord.landing.aimed`, plan.ts
+  `LandingAim`; orbital.ts `flyOrbit`, `delayed`). The ground worked every retrofire's instant from where the ship then
+  was, to bring it down at a planned place. So after its last manoeuvre, and at most 3,000 s before the recorded command,
+  guidance flies the run ahead with the burn's command sooner or later (in its recorded attitude, with its recorded
+  impulse) until the run comes down level with the record's landing place along its own track, and the rest of the
+  coast and the descent are flown on that plan (`OrbitFlown.plan`, `FlownWhole.plan`: the flight's plan with the command
+  and all the clock sets off after it moved together). The recorded instant is a figure the run is held to
+  (`OrbitResults.retroLate`), and the events' instants on the run follow (run.ts `orbitalEvents`). What is left is the
+  miss across the track, which no timing can take off, and the time. A flight whose burn was not timed for the place it
+  came down at says so beside its landing and is flown by the clock at its recorded instant: Vostok 1, Voskhod 2 (fired
+  by hand a revolution late), Aurora 7 (late and yawed, 250 miles long) and Gemini 3 (short of its planned place, which
+  is not in its record). A plan a hand has changed is not aimed again. The flight deck asks the plan as flown for the record's instants (run.ts `flownPlan`, deck/orbitdeck.ts `recordPlan`).
+- **A body in orbit with no recorded attitude presents the mean of every attitude** (`Craft.rarefied.area`,
+  `TargetDef.dragArea`): a quarter of its outside, as a convex body (Cauchy), derived from the model's own sizes, the
+  attitude assumed random and said so. Apollo 7's command and service modules and its S-IVB are flown so. Where the
+  record gives the attitude held (a Mercury capsule in orbit attitude, Gemini 3) the area is that attitude's.
 
 What a run misses the record by is its finding. A flight that comes out badly wrong wants its guidance or its data put
 right; a fix written into the state is not one.

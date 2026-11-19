@@ -212,6 +212,8 @@ export interface FlownWhole {
   down: ReturnType<typeof flyDown> | null;
   /** The craft the flight's manoeuvres are made on, where its plan has one: flown on its own forces (`targetOf`). */
   target?: Target;
+  /** The plan as the coast and the descent flew it, where guidance timed the braking burn (`OrbitFlown.plan`). Left out, the flight's. */
+  plan?: FlightPlan;
 }
 
 /** One unit's nozzle exit area, m^2: given, or (vacuum less sea-level thrust) over one atmosphere. Nothing for an engine with no sea-level figure. */
@@ -476,9 +478,7 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
     return blend >= 1 ? axis : unit(add(scale(from, 1 - blend), scale(axis, blend)));
   };
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 =>
-    g.attached && m === 'tangent' && t >= g.attached.align[0].value
-      ? attachedAt(s, t, lawAt(s, t, m, wind, thetaTurn))
-      : lawAt(s, t, m, wind, thetaTurn);
+    g.attached && t >= g.attached.align[0].value ? attachedAt(s, t, lawAt(s, t, m, wind, thetaTurn)) : lawAt(s, t, m, wind, thetaTurn);
   const lawAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 => {
     // a stored programme is the first part of the law, the gyros' own: it is flown open, as it was, until the tangent takes over
     if (g.programme && m !== 'tangent') return tilted(along(g.programme, t) * DEG);
@@ -934,8 +934,10 @@ export function flyWhole(plan: FlightPlan, site: Geodetic, frame: EarthFrame, se
   const target = targetOf(plan, frame, seaLevel, ascent);
   const coast = flyOrbit(plan, site, frame, seaLevel, every, ascent.separation, undefined, undefined, undefined, target);
   const end = coast.samples[coast.samples.length - 1]!;
-  const down = downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end) : null;
-  return { ascent, coast, down, ...(target ? { target } : {}) };
+  // (the plan as the coast flew it: its braking burn where guidance timed it for the landing place, orbital.ts `LandingAim`)
+  const flown = coast.plan ?? plan;
+  const down = downOf(flown) && end.phase === 'down' ? flyDown(flown, frame, seaLevel, end) : null;
+  return { ascent, coast, down, ...(target ? { target } : {}), ...(coast.plan ? { plan: coast.plan } : {}) };
 }
 
 const targets = new WeakMap<object, Target>();
@@ -997,11 +999,13 @@ export function flyOn(
   const target = targetOf(plan, frame, seaLevel, ascent);
   const coast = flyOrbit(plan, site, frame, seaLevel, every, from, hands, contacts, undefined, target);
   const end = coast.samples[coast.samples.length - 1]!;
+  const flown = coast.plan ?? plan;
   return {
     ascent,
     coast,
-    down: downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end, hands) : null,
+    down: downOf(flown) && end.phase === 'down' ? flyDown(flown, frame, seaLevel, end, hands) : null,
     ...(target ? { target } : {}),
+    ...(coast.plan ? { plan: coast.plan } : {}),
   };
 }
 
@@ -1345,6 +1349,7 @@ export function drawnOf(down: DescentFlown, offset: Vec3, ground = 0): DrawnDesc
 export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
   const parting = plan.record?.manual?.parting;
   const out = structuredClone(plan);
+  unaimed(out);
   const k = coastEvents(out);
   const deltaV = k.burn?.deltaV;
   if (!parting || !k.burn || !deltaV) throw new Error('this plan says nothing of what a hand could do');
@@ -1380,6 +1385,7 @@ export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
  */
 export function givenUp(plan: FlightPlan, before = Number.NEGATIVE_INFINITY): FlightPlan {
   const out = structuredClone(plan);
+  unaimed(out);
   if (out.record?.coastFixes) out.record.coastFixes = out.record.coastFixes.filter((fix) => fix.at.value <= before);
   const k = coastEvents(out);
   if (clockAt(out, k.on) > before) for (const e of [k.command, k.on, k.off, k.parting]) setOff(e, Number.MAX_SAFE_INTEGER);
@@ -1417,8 +1423,16 @@ export function movedTo(record: FlightPlan, plan: FlightPlan, k: number, t: numb
 /** The plan with the burn's body let go at `t` (the modules' parting, as a hand or the timer has it). */
 export function partingAt(plan: FlightPlan, t: number): FlightPlan {
   const out = structuredClone(plan);
+  unaimed(out);
   setOff(coastEvents(out).parting, t);
   return out;
+}
+
+/** A plan a hand has changed is the hand's: its braking burn is lit when the plan says, not timed again by guidance (`LandingAim`). */
+function unaimed(plan: FlightPlan): void {
+  if (!plan.record?.landing?.aimed) return;
+  const { aimed: _, ...landing } = plan.record.landing;
+  plan.record.landing = landing;
 }
 
 /** An event set off so long after the one it follows (its `after`'s wait made `wait`), if it follows one: whether it does. */
