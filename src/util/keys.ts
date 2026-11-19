@@ -43,7 +43,11 @@ export const KEYS = {
   'seat.deck': { slots: ['p'], does: 'the flight deck back', when: 'on board in flight' },
   // ---- the camera's rigs (viewer/camera/input.ts hands them to the rig in charge, which reads them as held)
   'orbit.move': { slots: WASD, does: 'move', when: 'orbit: slide the pivot over the ground' },
-  'orbit.turn': { slots: ARROWS, does: 'orbit · tilt', when: 'orbit, chase, locked' },
+  'orbit.turn': {
+    slots: ARROWS,
+    does: 'orbit · tilt',
+    when: 'orbit, chase, locked (on the flight deck up and down are the throttle’s: deck.lever)',
+  },
   'orbit.rise': { slots: ['e', 'q'], does: 'up · down', when: 'orbit, free' },
   'orbit.zoom': {
     slots: [
@@ -121,8 +125,12 @@ export const KEYS = {
   'path.choose': { slots: ['k'], does: 'path · to cutoff · cut now', when: 'the flight deck, under guidance with the engine burning' },
   'navball.show': { slots: ['i'], does: 'navball', when: 'the flight deck' },
   'navball.frame': { slots: ['o'], does: 'surface · orbit', when: 'the flight deck' },
-  'deck.lever': { slots: ['arrowup', 'arrowdown'], does: 'throttle up · down a notch', when: 'the flight deck, an engine with a lever' },
-  'deck.full': { slots: ['z'], does: 'throttle full', when: 'the flight deck, an engine with a lever' },
+  'deck.lever': {
+    slots: ['arrowup', 'arrowdown'],
+    does: 'throttle up · down a notch',
+    when: 'the flight deck: every liquid engine (sim/lever.ts); held, it goes on; the camera tilts by dragging there',
+  },
+  'deck.full': { slots: ['z'], does: 'throttle full', when: 'the flight deck: every liquid engine' },
   'deck.code': { slots: ['0', ...DIGITS], does: 'a digit of the lock’s code', when: 'the orbital deck, the spacecraft alone and locked' },
   // ---- the gallery (ui/gallery.ts)
   'gallery.next': { slots: ['n', 'b'], does: 'next part · the one before', when: 'the gallery' },

@@ -102,9 +102,26 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .deck-lock { display: inline-flex; align-items: center; gap: 4px; }
 .deck-lock em { margin-inline: 4px; font-style: normal; }
 .cockpit-keys p > span kbd { margin-right: 3px; }
-.cockpit-lever { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-top: 1px solid var(--line); font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
-.cockpit-lever[hidden] { display: none; }
-.cockpit-lever input { flex: 1; }
+/* the throttle (deck.ts `drawThrottle`): one lever for every flight, what it works, and what is left to it; a tick at the engine's least */
+.deck-throttle { display: grid; grid-template-columns: auto minmax(110px, 1fr) 46px auto; grid-template-areas: 'name lever pct do' 'what what left left'; align-items: center; column-gap: 10px; row-gap: 1px;
+  padding: 5px 8px 5px 14px; border-top: 1px solid var(--line); font: 11px/1.4 var(--mono); letter-spacing: 0.06em; color: var(--dim); }
+.deck-throttle[hidden] { display: none; }
+.thr-name { grid-area: name; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
+.thr-lever { grid-area: lever; position: relative; display: flex; align-items: center; min-height: 22px; }
+.thr-lever input { width: 100%; margin: 0; accent-color: var(--amber); cursor: pointer; }
+.thr-lever::after { content: ''; position: absolute; left: var(--least, 0%); top: 3px; bottom: 3px; width: 1px; background: var(--faint); pointer-events: none; }
+.deck-throttle > [data-cell='lever'] { grid-area: pct; font: 500 14px/1.2 var(--sans); color: var(--amber); font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+.deck-throttle.cut > [data-cell='lever'] { color: #ff9d7d; }
+.deck-throttle.solid > [data-cell='lever'], .deck-throttle.idle > [data-cell='lever'] { color: var(--dim); }
+.thr-do { grid-area: do; display: flex; gap: 4px; }
+.thr-do button { display: flex; align-items: center; padding: 3px 7px; border: 1px solid var(--line); border-radius: 2px; color: var(--dim); font: 11px/1.4 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; white-space: nowrap; }
+.thr-do button:hover { color: var(--ink); border-color: var(--faint); }
+.thr-do button kbd { margin: 0; }
+.thr-do [data-press='z'] kbd { margin-right: 6px; }
+/* (what it works wraps rather than be cut: its range's note is part of it) */
+.thr-what { grid-area: what; align-self: start; min-width: 0; white-space: normal; overflow-wrap: anywhere; }
+.thr-left { grid-area: left; justify-self: end; align-self: start; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.deck-throttle.solid :is(.thr-lever, .thr-do) { visibility: hidden; }
 
 /* --- the right corner: what there is to fly with, as bars and lamps; what the air is doing to it --- */
 .deck-sys { grid-area: sys; justify-self: end; width: 330px; padding: 8px 0 9px; }
@@ -246,6 +263,8 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .cockpit-next { flex: 1; }
   .cockpit-prompt { order: 3; flex: none; width: 100%; padding: 0 4px; }
   .cockpit-prompt[hidden] { display: none !important; }
+  .deck-throttle { grid-template-columns: auto minmax(0, 1fr) 40px auto; padding: 4px 6px 4px 10px; column-gap: 8px; }
+  .cockpit:not(.keys-open) :is(.thr-what, .thr-left) { display: none; }
   .deck-foot { padding: 2px 4px 2px 10px; }
   .cockpit-keys { padding: 8px 6px 9px 10px; }
   .cockpit-keys > div { grid-template-columns: 1fr; }
@@ -345,6 +364,8 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   .cockpit.waiting:not(.keys-open) .deck-modes:not(:has([aria-pressed='false'])) .deck-takeover { display: block; grid-column: 1 / -1; padding-left: 4px; color: var(--faint); letter-spacing: 0.02em; text-transform: none; }
   .deck-modes button { min-height: 44px; min-width: 0; white-space: normal; }
   .cockpit-keys .deck-lock button { min-width: 44px; min-height: 44px; }
+  .thr-do button { min-height: 36px; min-width: 44px; justify-content: center; }
+  .thr-lever { min-height: 36px; }
   @media (max-width: 620px) and (min-height: 521px), (max-height: 520px) {
     .cockpit:not(.keys-open) .cockpit-phase { display: flex; padding: 4px 6px; }
     .cockpit:not(.keys-open) .cockpit-phase > :not(.deck-modes) { display: none; }

@@ -523,7 +523,12 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   ratio and the engine stops when either is empty. An engine is what its `body.engine` says
   (liquid or solid, how many starts, a throttle range or none): `Controls.throttle` is 0 to 1 and
   the vehicle allows what the engine does (below a throttle's least it is off; a solid hears
-  nothing; no lag, there being no figure for one). Solids (escape, retro) burn out once lit.
+  nothing; no lag, there being no figure for one). Every liquid engine has a hand's range
+  (sim/lever.ts `handRange`, which the machine holds an action's `throttle` to, craft.ts): its own
+  where the plan gives one, and where it gives none the game's, `HAND_LEAST` (60 per cent, the
+  RD-107's first intermediate stage, taken: estimated) to full, said as such on the deck: "real:
+  fixed thrust" where the engine ran at one thrust, "range: the game's" where only its control
+  system's programme throttled it (a `throttle.curve`: the R-7's). Solids (escape, retro) burn out once lit.
 - **An abort is flown.** `Controls.abort`, while the tower is aboard: the engine is shut down, the
   spacecraft leaves on `body.escape` (its curve of thrust against time where one has been read, else
   thrust, burn and total impulse; its propellant leaving as it burns) with its tower on as one body
@@ -729,6 +734,7 @@ Before is what it did ahead of `sim/staging.ts`.
 | Turn across the wind at max q (hands, 50 s) | any time | no limit: 310 kPa rad, flew on to the ground | breaks up | breaks up at 51.9 s, 151 % of 3.34 kPa rad (estimated) |
 | Never stage (sequencer off) | any time | down at 620 s at 263 m/s, 17 g | falls back, breaks up | breaks up by bending at 533 s, coming back down |
 | Ask a step twice | any time | heard once | heard once | heard once |
+| Throttle the stages by hand (the lever) | any time | not offered | the strap-ons and core throttled only by the control system's programme (their intermediate and final stages) | every stage held under the lever, the record's setting under it, each within the game's range (60 to 100 per cent, estimated: the engines' own is not read) and cut under it; held at 70 per cent from 20 s the stack flies its programme's angles low in thick air and breaks up by bending at 83 s |
 | Braking engine before parting | not offered | | its nozzle in Block E's adapter | not offered: the hot-staging rule would be its case, no figure read |
 | An abort, 150 to 730 s (X twice) | on the launch vehicle | not offered ("not simulated") | Molodtsov 2001: to 700 s every engine shut down and the spacecraft separated, its descent module at once, to come down as from orbit; to 730 s the third stage shut down and the whole spacecraft separated | the deck asks the live vehicle to cut every stage burning and let the last go (orbitdeck.ts `abort`, as the mode's `AbortMode.escape` says), so the spacecraft parts as the hardware lets it (held while the fairing covers it, pressed on until the push falls); from 150 to 700 s the modules part as it does, and the module comes down on its own sequence: aborted at 200 s it parts at 87 km, 10.3 g at most, the pilot down at 4.5 m/s. How the module left through the fairing before 154.6 s: not read |
 | An abort, to 40 s (X twice) | on the launch vehicle | not offered | Molodtsov: the pilot ejected on a radio command from the ground; the first 15 to 20 s had no satisfactory answer | he is ejected at once from the stack's state (the spacecraft's point up the stack, `StagedVehicle.aboard`) and flown down as the descent flies him from the ball (orbital.ts `flyEjected`: the seat thrown 20 m/s against its motion through the air, its parachute, the main canopy at 4 km falling, the reserve), to the ground under him (`floorAt`); the stack flies on, empty: aborted at 5 s (0.2 km) he is down at 4.5 m/s at T+25 s, at 35 s (3.3 km) at T+742 s. The card holds him to the descent's limits (`ejectedVerdict`). His seat's way out through the fairing's opening (the hatch's bearing round the stack is the model's own), and what the stack did near him: not read |
@@ -745,6 +751,7 @@ Before is what it did ahead of `sim/staging.ts`.
 | Retrofire in the air | once alone | fires; the physics | as that | the same |
 | A parachute at every regime | once alone, the tower gone | torn by pressure (13.5 kPa at 101 s) or by pull meeting the air full (main above the air: 35.8 m/s down) | as that | the same (`limits`, estimated) |
 | Cut at T+10, relight at 12 | any time; one start | breaks at 17.1 s, the escape rocket pulls it clear, 8.8 m/s under the main | as that | the same |
+| Throttle the A-7 (the lever) | any time | not offered: fixed thrust, no lever | ran at one thrust | the game's range, 60 to 100 per cent (estimated, said on the deck); under it the engine is cut, and raised again it is refused and said (one start) |
 | Turn across the wind at max q | any time | breaks at 51.5 s, 17.6 degrees off the wind; abort | as that | the same |
 | Liberty Bell 7's hatch blown in flight (200 s) | in flight, with the spacecraft alone | it goes and the flight flies on as if closed; down, it floats | 23 lb of hatch made to blow on the water (Results, Hammack); afloat with it gone the capsule filled and sank | it flies off on its own (sim/loose.ts) and the flight flies on as if closed (its 23 lb, 0.8 per cent, left aboard; the open cabin's entry not read); down in the sea the open sill takes the sea at once and it goes under (sim/afloat.ts), and the card says so |
 
@@ -759,8 +766,27 @@ read gives enough of to fly (issue #10).
   differs is data the kind supplies (`DeckSpec`): the middle panel's figures (a flight into orbit shows a ballistic
   flight's five going up and height, speed, apogee, perigee and period once alone), the readings, the systems strip (each
   stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
-  deck's own (a throttle's arrows, a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
-  both, Space is the next thing on both.
+  deck's own (a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
+  both, Space is the next thing on both, and the throttle is the deck's own on both (below, "The throttle").
+- **The throttle is one lever for every flight** (deck.ts `lever`, sim/lever.ts): the up and down arrows a notch, Z full,
+  Cut nothing, its slider in a row of the middle panel under the figures, the same on every flight and at every width. It
+  starts full, which is the record's setting, so a flight nobody touches is the record's to the bit. Moving it takes a
+  flight over as G, B or Space does. Each kind gives it to what burns (`levered`) and says what it works (`throttled`, a
+  `ThrottleView`: the engines, their thrust, the hand's range, the propellant left to them, their flow at this setting and
+  specific impulse, the mass), from which the deck draws the burn's time left at this setting and the speed it can still
+  give (the rocket equation on the live mass, at the vacuum impulse). A range that is the game's says so ("real: fixed
+  thrust", the source in its title); a solid's row says it burns until spent. Under an engine's least the lever cuts it,
+  and up again it is asked to start, which the machine allows only as often as the engine starts (said when it cannot).
+  On a ballistic flight it is `Controls.throttle` on the booster's engine (vehicle.ts). On the staged vehicle
+  (stagedlive.ts) it is `StagedControls.lever`, the same figure for every stage, as KSP's one throttle: each stage's
+  setting is the record's held under it (`min(Stage.throttle, lever)`), clamped to the stage's hand range, and kept as a
+  schedule in the state (`StagedState.hand`) from which what each stage burns is integrated exactly; a lever at full and
+  never moved writes nothing, and the run is the record's (tests/stagedlive.test.mjs). Under a stage's least the deck
+  asks for it to be cut (orbitdeck.ts `leverCuts`), whenever it is lit. Each sample of a run flown so carries the
+  settings (`LiveSample.throttles`), and the fires burn at them (`Ascent.fireLevels`). Not reached by it: the spacecraft's
+  own burn in orbit (Space fires it whole, its impulse the plan's: orbital.ts), and the docking deck's thrusters, which
+  are on or off. The arrows are the deck's while it is flown, not the camera's (viewer/camera/input.ts `SPOKEN`): the
+  view tilts by dragging there.
 - **A run flown by hand is never lost by leaving it** (`Deck.leave`, `deck/leaving.ts`; gallery.md has the ways out). Within
   the flight the deck parks it as data (state, run, samples), the clock reset for the site and put back on Resume, which waits
   for a touch. It is also written to the browser's storage (`app/runs.ts`, one run a flight, a second flight's not putting out
@@ -809,7 +835,7 @@ read gives enough of to fly (issue #10).
   clock back and it shows what was flown; the record's own run is untouched and comes back on
   leaving. An abort is X twice within two seconds (the first press arms it and says so). Under the
   gauges a strip made from the flight's data shows the engine's kind and state ("fixed thrust: no
-  throttle"; a lever, arrow keys and Z only for an engine with a range: `sim/lever.ts`, which `tests/lever.test.mjs` drives against a fixture that throttles, Freedom 7's not being one), each tank and each jet
+  throttle" in the real engine; the lever is the deck's own, above: `sim/lever.ts`, which `tests/lever.test.mjs` drives against a fixture with a range of its own and against Freedom 7's A-7 on the game's), each tank and each jet
   supply in per cent and kilograms (amber under a fifth, "Empty" when it is), which jets are
   firing and every motor burning; a prompt line gives the cues (0.05 g, the next parachute's
   height) and, sequencer off, what is due in amber. On a touch screen a stick (pitch, yaw: as far

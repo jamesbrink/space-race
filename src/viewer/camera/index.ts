@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { FootRig, type FootView, ShoulderRig } from './foot.ts';
 import { FreeRig } from './free.ts';
-import { type Hands, listen } from './input.ts';
+import { type Hands, listen, SPOKEN } from './input.ts';
 import { MapRig } from './map.ts';
 import { anchorOk, blendPose, fitDistance, nudgeIntoFrame } from './maths.ts';
 import { OnboardRig } from './onboard.ts';
@@ -615,7 +615,7 @@ export class Cameras {
   /** The keys held, less the ones a vehicle being flown has taken. */
   private unspoken(): ReadonlySet<string> {
     const out = new Set(this.keys);
-    for (const k of 'wasdqe') out.delete(k);
+    for (const k of SPOKEN) out.delete(k);
     return out;
   }
 

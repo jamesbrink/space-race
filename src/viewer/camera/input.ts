@@ -49,8 +49,8 @@ const TWIST_SLOP = 0.1;
 
 /** The keys the camera reads while held. The legend in the corner of the page (ui.ts) lists them. */
 
-/** The keys that are another's while it has them (the flight flown by hand steers on W A S D Q E: deck.steer). */
-const SPOKEN = keysOf('deck.steer');
+/** The keys that are another's while it has them (the flight flown by hand steers on W A S D Q E, deck.steer, and throttles on the up and down arrows, deck.lever). */
+export const SPOKEN = keysOf('deck.steer', 'deck.lever');
 
 export function listen(canvas: HTMLElement, hands: Hands): void {
   canvas.style.touchAction = 'none'; // the page does not scroll or zoom under a finger on the view

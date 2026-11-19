@@ -5,8 +5,10 @@ import '../ui/cockpit.css';
 import { leftWhen, runs } from '../app/runs.ts';
 import type { Run } from '../sim/run.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
+import { type HandRange, Lever, NOTCH } from '../sim/lever.ts';
 import type { Command, Flight, SitedFlight } from '../types.ts';
-import { capOf, capsOf, is, isTyping, KEYS, type KeyName, kbd, keyOf, keysOf, modified } from '../util/keys.ts';
+import { capOf, capsOf, is, isTyping, KEYS, type KeyName, kbd, keyOf, keysOf, modified, which } from '../util/keys.ts';
+import { G0 } from '../world/bodies.ts';
 import { Scope } from '../util/scope.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import { type Clock, missionTime, Clock as Own } from '../world/clock.ts';
@@ -77,6 +79,26 @@ export interface Figure {
   about: string;
 }
 
+/**
+ * What the throttle lever works at this instant, as the kind has it from the flight on show (`Deck.throttled`): the deck
+ * draws it the same way for every flight. Nothing in it is the record's but where the flight on show is the record's.
+ */
+export interface ThrottleView {
+  /** The engines it works, by name ('Strap-ons + Core', 'Booster engine'), and whether any of them is burning. */
+  engines: string;
+  burning: boolean;
+  /** The hand's range on them (sim/lever.ts `handRange`): null for a solid, which no lever works. */
+  range: HandRange | null;
+  /** Their thrust now, N; the propellant left to them, kg; what they draw at this setting, kg/s; their vacuum specific impulse, s; the vehicle's mass, kg. */
+  thrust: number;
+  left: number;
+  flow: number;
+  isp: number;
+  mass: number;
+  /** Where the lever does not reach what burns now, why (said beside it): the lever is then shown and not worked. */
+  not?: string;
+}
+
 /** What a flight kind puts in the deck when it is built (the rest it fills as it flies). */
 export interface DeckSpec {
   /** The middle panel's figures as the deck opens: the first three are a phone's one line. */
@@ -90,7 +112,7 @@ export interface DeckSpec {
   labels?: { steering: string; events: string; restart: string };
   /** The K control (the path to cutoff or cut now): only where the path can fly the programme ahead. */
   choose: boolean;
-  /** Buttons for the list's Flight group beyond restarting and leaving (a throttle, a mechanism, a lock's digits). */
+  /** Buttons for the list's Flight group beyond restarting and leaving (a mechanism, a lock's digits). */
   flightKeys: string;
   /** The way in's tooltip. */
   enter: string;
@@ -197,6 +219,11 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   private unsaved = false;
   /** A kept run being flown again a slice at a time, and how to stop it. */
   private restoring: { stop(): void } | null = null;
+  /**
+   * The throttle lever (sim/lever.ts), one for every flight and every engine a hand can throttle: the arrows a notch, Z
+   * full, Cut nothing. It starts full, which is the record's setting, and each kind gives it to what burns (`levered`).
+   */
+  protected lever = new Lever([0, 1]);
   /** The keys held (W S A D Q E), by the keyboard or their buttons. */
   protected readonly held = new Set<string>();
   /** What the deck hangs on the window (util/scope.ts). */
@@ -298,6 +325,19 @@ export abstract class Deck<F extends Flight = SitedFlight> {
             <button data-do="sequence" class="switch" aria-pressed="true" title="${spec.sequence} (${capsOf('deck.sequence').join(' ')})">${kbd('deck.sequence')}<span class="for-keys">Sequencer</span><span class="for-touch">${events} · <span class="deck-auto">Auto</span><span class="deck-manual">Manual</span></span></button>
           </span></p>
         <div class="gauges"></div>
+        <div class="deck-throttle" hidden>
+          <span class="thr-name">Throttle</span>
+          <span class="thr-lever"><input type="range" min="0" max="1" step="0.05" value="1" data-lever aria-label="Throttle" title="The throttle lever: a notch with the arrows (${capsOf('deck.lever').join(' ')}), ${capsOf('deck.full').join(' ')} full" /></span>
+          <b data-cell="lever">100 %</b>
+          <span class="thr-do">
+            <button data-press="${KEYS['deck.lever'].slots[1]}" class="for-keys" title="Throttle down a notch (${capOf(KEYS['deck.lever'].slots[1] as string)})"><kbd>${capOf(KEYS['deck.lever'].slots[1] as string)}</kbd></button>
+            <button data-press="${KEYS['deck.lever'].slots[0]}" class="for-keys" title="Throttle up a notch (${capOf(KEYS['deck.lever'].slots[0] as string)})"><kbd>${capOf(KEYS['deck.lever'].slots[0] as string)}</kbd></button>
+            <button data-press="${KEYS['deck.full'].slots[0]}" title="Full throttle (${capsOf('deck.full').join(' ')})">${kbd('deck.full')}Full</button>
+            <button data-do="cut" title="Cut: the lever to nothing, and every liquid engine it works shut down (a solid burns on)">Cut</button>
+          </span>
+          <span class="thr-what" data-cell="lever-engine"></span>
+          <span class="thr-left" data-cell="lever-left"></span>
+        </div>
         <div class="deck-act">
           <button data-do="next" class="cockpit-next" title="Set off the next event of the flight now (${capsOf('deck.next').join(' ')})">${kbd('deck.next')}<span data-cell="next"></span></button>
           <p class="cockpit-prompt" data-cell="prompt" role="status" hidden></p>
@@ -321,7 +361,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
           <div><h4>Camera</h4><p>
             <button data-press="${KEYS['cam.next'].slots[0]}" title="The next camera (${capsOf('cam.next').join(' ')})">${kbd('cam.next')}Next view</button>
             <button data-press="${KEYS['cam.home'].slots[0]}" title="Centre the vehicle (${capsOf('cam.home').join(' ')})">${kbd('cam.home')}Centre</button>
-            <span class="deck-turn" title="Turn and tilt the view (the arrow keys)">${turn(1, 'Turn the view left')}${turn(0, 'Tilt the view up')}${turn(2, 'Tilt the view down')}${turn(3, 'Turn the view right')}<em>turn · tilt</em></span>
+            <span class="deck-turn" title="Turn the view (the left and right arrows; drag to tilt it: up and down are the throttle's)">${turn(1, 'Turn the view left')}${turn(3, 'Turn the view right')}<em>turn</em></span>
             <span class="deck-turn">${zoom(0, 'Zoom in')}${zoom(1, 'Zoom out')}<em>zoom</em></span>
             <button data-press="${KEYS['page.cel'].slots[0]}" title="Cel shading (${capsOf('page.cel').join(' ')})">${kbd('page.cel')}Cel</button>
             <button data-press="${KEYS['page.bare'].slots[0]}" class="for-keys" title="Hide every panel; ${capsOf('page.bare').join(' ')} shows them again (${capsOf('page.bare').join(' ')})">${kbd('page.bare')}Hide panels</button>
@@ -338,7 +378,6 @@ export abstract class Deck<F extends Flight = SitedFlight> {
             <button data-do="leave" title="Leave the flight deck (${capsOf('deck.leave').join(' ')})">${kbd('deck.leave')}Leave</button>
           </p></div>
         </div>
-        <label class="cockpit-lever" hidden>Throttle <input type="range" min="0" max="1" step="0.01" value="1" data-lever title="The throttle lever (the up and down arrows; Z for full)" /></label>
       </section>
       <section class="deck-sys" aria-label="Systems">
         <div class="systems" data-cell="systems"></div>
@@ -410,6 +449,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       const to = Number(lever.value);
       this.journal('l', [to], () => this.setLever(to));
     });
+    this.throttleRow = root.querySelector<HTMLElement>('.deck-throttle')!;
     for (const el of root.querySelectorAll<HTMLElement>('[data-cell]')) this.cells.set(el.dataset.cell!, el);
     // Every key the deck shows is also a button. One that is an event (Space, G, X...) is its command; one that is held
     // (the six that steer) is that key held, for as long as the pointer is down on it; the rest press their key, so a
@@ -512,6 +552,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     } finally {
       this.depth--;
     }
+    this.drawThrottle();
     if (framed) this.write('f', [], t, this.ticks);
     this.lastT = this.clock.t;
     if (this.ticks !== ticks) this.reachT = this.clock.t;
@@ -577,6 +618,9 @@ export abstract class Deck<F extends Flight = SitedFlight> {
 
   /** A run begins on the pad (the kind's `fresh`): what is done to it is written down from here, with the switches it began with. */
   protected started(): void {
+    this.lever = new Lever([0, 1]);
+    this.syncLever();
+    queueMicrotask(() => this.drawThrottle()); // (once the kind has stood the run on its pad)
     this.lastImpact.clear();
     this.announcedBreakups.clear();
     this.hardestImpact = null;
@@ -702,8 +746,71 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   }
   /** A hand has gone to the controls (a key, its button, the stick): for a kind that must say what the hands may do. */
   protected steered(): void {}
-  /** The throttle lever's slider has moved (where there is one). */
-  protected setLever(_to: number): void {}
+  /**
+   * The lever moved (its slider, an arrow, Z, Cut, or a kept run played again): put where it was asked, and told to the
+   * kind (`levered`), which gives it to what burns.
+   */
+  protected setLever(to: number): void {
+    const from = this.lever.at;
+    this.lever.move(Math.round(to * 1000) / 1000); // (a notch is a twentieth: kept to the notch, not to its sum's last bit)
+    this.syncLever();
+    if (this.lever.at !== from) this.levered(from);
+    this.drawThrottle();
+  }
+  /** The lever has moved from `from`: the kind's to give to its engines (and to take the flight over, where that is what it does). */
+  protected levered(_from: number): void {}
+  /** What the lever works now (`ThrottleView`), or null where there is nothing a lever could work. */
+  protected throttled(): ThrottleView | null {
+    return null;
+  }
+  private throttleRow: HTMLElement | null = null;
+  private throttleKey = '';
+  private syncLever(): void {
+    const slider = this.root.querySelector<HTMLInputElement>('[data-lever]');
+    if (slider && Number(slider.value) !== this.lever.at) slider.value = String(this.lever.at);
+  }
+
+  /**
+   * The throttle row, from the kind's `throttled`: the lever and where it stands, what it works and its thrust, and what
+   * is left to it (the burn's time at this setting and the speed it can still give, by the rocket equation on the live
+   * mass). A range that is the game's and not the engine's says so.
+   */
+  protected drawThrottle(): void {
+    const row = this.throttleRow;
+    if (!row) return;
+    const view = this.on ? this.throttled() : null;
+    row.hidden = !view;
+    if (!view) return;
+    const r = view.range;
+    const at = this.lever.at;
+    const cut = r ? at < r.least - 1e-9 : false;
+    const pct = (x: number) => `${Math.round(x * 100)}`;
+    const lever = r ? (cut ? 'Cut' : `${pct(at)} %`) : 'Solid';
+    const what = `${view.engines}${view.burning ? ` · ${(view.thrust / 1000).toFixed(view.thrust < 20_000 ? 1 : 0)} kN` : ' · not lit'}`;
+    const burn = view.flow > 0 && view.burning ? view.left / view.flow : Number.NaN;
+    const dv = view.left > 0 && view.mass > view.left && view.isp > 0 ? view.isp * G0 * Math.log(view.mass / (view.mass - view.left)) : 0;
+    const time = (x: number) => (x >= 60 ? `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}` : `${x.toFixed(0)} s`);
+    const left = view.left > 0.5 ? `${Number.isFinite(burn) ? `${time(burn)} · ` : ''}Δv ${dv.toFixed(0)} m/s` : 'Empty';
+    const tip = view.not
+      ? view.not
+      : !r
+        ? 'A solid: lit, it burns until it is spent. No lever works it'
+        : r.real
+          ? `The engine throttles ${pct(r.least)} to ${pct(r.most)} % of its rated thrust; under ${pct(r.least)} it is cut`
+          : `${pct(r.least)} to ${pct(r.most)} % is the game’s range (${r.confidence}). ${r.source}`;
+    const key = [lever, what, left, tip, at, r?.least].join('|');
+    if (key === this.throttleKey) return;
+    this.throttleKey = key;
+    this.put('lever', lever);
+    const game = r && !r.real ? (r.fixed ? ' · real: fixed thrust' : ' · range: the game’s') : '';
+    this.put('lever-engine', `${what}${view.not ? ` · ${view.not}` : game}`);
+    this.put('lever-left', left);
+    row.title = tip;
+    row.classList.toggle('solid', !r);
+    row.classList.toggle('cut', cut);
+    row.classList.toggle('idle', Boolean(view.not));
+    row.style.setProperty('--least', `${(r?.least ?? 0) * 100}%`);
+  }
 
   /**
    * The middle panel's figures: the first three are a phone's one line. A flight kind may change them as the flight
@@ -877,6 +984,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     this.host.kept?.(null);
     this.clock.seek(at.t);
     this.restore();
+    this.drawThrottle(); // (the clock is held: nothing else draws it)
     this.showKept(at.t, 'Your flight, kept at ', Deck.why(this.parkedPhase ?? this.phaseNow(), this.leftAt), true);
     this.sync();
   }
@@ -951,6 +1059,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       this.stored = null;
       this.pageClock.seek(tape.view.t);
       this.restore();
+      this.drawThrottle(); // (the clock is held: nothing else draws it)
       this.showKept(tape.view.t, title, Deck.why(kept.note.phase, kept.note.left), true);
       this.sync();
     };
@@ -1038,6 +1147,10 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         () => {},
         'again',
       );
+    if (what === 'cut') {
+      this.journal('l', [0], () => this.setLever(0));
+      return void this.sync();
+    }
     if (what === 'leave' || what === 'again') this.command(what);
     else {
       const input: (string | number)[] = [what];
@@ -1153,6 +1266,17 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       this.root.querySelector(`[data-hold="${key}"]`)?.classList.toggle('down', down);
       e.preventDefault();
       if (down && !e.repeat) this.steer();
+      return;
+    }
+    const notch = which(key, 'deck.lever');
+    if (down && (notch >= 0 || is(key, 'deck.full'))) {
+      // (a notch at a time, pressed or held; under the engine's least it is cut, and up from there it comes back at its least)
+      e.preventDefault();
+      e.stopPropagation();
+      const least = this.throttled()?.range?.least ?? 0;
+      const at = this.lever.at;
+      const to = notch < 0 ? 1 : notch === 0 ? (at < least - 1e-9 ? least : at + NOTCH) : at - NOTCH < least - 1e-9 ? 0 : at - NOTCH;
+      this.journal('l', [to], () => this.setLever(to));
       return;
     }
     if (!down || e.repeat) return;

@@ -25,6 +25,7 @@ import {
   type Move,
   shipOf,
 } from '../sim/orbital.ts';
+import { handRange } from '../sim/lever.ts';
 import { targetAt } from '../sim/orbital-target.ts';
 import { type AbortMode, abortAt, clockAt, eventOf, type FlightPlan, flownByHand, type TowerEscape } from '../sim/plan.ts';
 import { type Predictor, propagate } from '../sim/predict.ts';
@@ -83,13 +84,26 @@ import { downVerdict, ejectedVerdict, landsOf } from '../sim/verdict.ts';
 import type { SitedFlight } from '../types.ts';
 import { is } from '../util/keys.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
-import { EARTH_SPHERE } from '../world/bodies.ts';
+import { EARTH_SPHERE, G0 } from '../world/bodies.ts';
 import { type Clock, COAST_RATES, RATES } from '../world/clock.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { angleBetween, cross, DEG, dot, length, scale, siteFrame, sub, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
-import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, type Figure, GUARD, KEEP, MOST, TRIM, TRIM_MOST, tank } from './deck.ts';
+import {
+  ABORT_ARMED,
+  type CockpitHost,
+  Deck,
+  type DeckSpec,
+  type Figure,
+  GUARD,
+  KEEP,
+  MOST,
+  type ThrottleView,
+  TRIM,
+  TRIM_MOST,
+  tank,
+} from './deck.ts';
 import { pack } from './tape.ts';
 
 /**
@@ -199,6 +213,8 @@ export class OrbitDeck extends Deck {
   private pilot: StagedPilot | null = null;
   private options: StagedPilotOptions = { guidance: true, sequence: true };
   private asked: Step[] = [];
+  /** The stages the lever has cut (taken under their least): raised again, each is asked to start once more. */
+  private cutByLever = new Set<number>();
   private tally: StagedTally | null = null;
   private kept = 0;
   /** How many of the live vehicle's notes (`StagedState.said`) the deck has said. */
@@ -560,6 +576,7 @@ export class OrbitDeck extends Deck {
       this.ejected?.at ?? null,
       this.downMine,
       this.run && [this.run.samples.length, this.run.duration, this.run.dropped],
+      [this.lever.at, [...this.cutByLever]],
     ]);
   }
   protected switches(to?: Record<string, boolean>): Record<string, boolean> {
@@ -641,13 +658,14 @@ export class OrbitDeck extends Deck {
     this.handover = null;
     this.priorMoves = 0;
     this.planned = null;
-    this.mine = this.guidance && this.sequence ? null : 0;
+    this.mine = this.recordOnPad ? null : 0;
     this.state = null;
     this.pilot = null;
     // (nothing of a run before: the law's turn is this run's own, and so is when the deck last spoke of the hands)
     this.options = { guidance: this.guidance, sequence: this.sequence };
     this.told = Number.NEGATIVE_INFINITY;
     this.asked = [];
+    this.cutByLever = new Set();
     this.tally = null;
     this.heard = 0;
     this.ascended = null;
@@ -1000,7 +1018,7 @@ export class OrbitDeck extends Deck {
     this[which] = !this[which];
     this.options.guidance = this.guidance;
     this.options.sequence = this.sequence;
-    if (waiting) this.mine = this.guidance && this.sequence ? null : 0;
+    if (waiting) this.mine = this.recordOnPad ? null : 0;
     else this.say();
   }
 
@@ -1167,7 +1185,10 @@ export class OrbitDeck extends Deck {
         this.trim = { pitch: lean(this.trim.pitch, p.pitch), yaw: lean(this.trim.yaw, p.yaw) };
       }
       options.trim = this.trim;
-      return inner(st);
+      this.leverCuts(st);
+      const c = inner(st);
+      // (the lever on every stage, as KSP's one throttle: left out while it is full and has never moved, so the record's run is the same to the bit)
+      return this.lever.at === 1 && !st.hand ? c : { ...c, lever: stagesOf(this.flight.plan!).map(() => this.lever.at) };
     };
     // the run: the record's up to here, then this flight's
     const record = this.record!;
@@ -1191,6 +1212,115 @@ export class OrbitDeck extends Deck {
     this.heard = s.said.length;
     this.dropsFrom(s, from);
     this.host.fly(this.run);
+  }
+
+  /** On the pad, as flown: both switches on and the lever full. */
+  private get recordOnPad(): boolean {
+    return this.guidance && this.sequence && this.lever.at === 1;
+  }
+
+  /**
+   * The lever moved. On the pad it is set for the liftoff (off full, the flight is a flight of one's own, as a switch
+   * thrown makes it); going up it takes the flight over as a switch does, and is given to every stage (`StagedControls.lever`);
+   * under an engine's least it asks for what it holds to be cut, and raised again for each to start once more, which the
+   * machine allows only as often as the engine starts (stagedlive.ts says when it cannot). Alone, the spacecraft's burn is
+   * Space's: the lever does not reach it.
+   */
+  protected override levered(from: number): void {
+    if (!this.on || this.padImpact || this.aborted || this.ejected) return;
+    const t = this.clock.t;
+    if (t <= 0 && !this.clock.running) {
+      this.mine = this.recordOnPad ? null : 0;
+      return;
+    }
+    if (t > this.parting || this.ascended) return;
+    if (this.mine === null) {
+      this.takeOver();
+      this.host.say?.('Your flight', 'You took the throttle. The simulator will fly from here');
+    }
+    const s = this.state;
+    if (!s) return;
+    const v = this.vehicleOf();
+    stagesOf(this.flight.plan!).forEach((st, i) => {
+      const range = handRange(st.engine);
+      if (!range || Number.isFinite(s.stages[i]!.gone)) return;
+      if (from < range.least && this.lever.at >= range.least && this.cutByLever.delete(i)) this.asked.push({ kind: 'ignite', stage: i });
+    });
+    this.leverCuts(s, v);
+    if (!this.clock.running) this.clock.play(true);
+  }
+
+  /** The lever under a burning liquid stage's least: it is asked to be cut (once), whenever it is lit. */
+  private leverCuts(s: StagedState, v = this.vehicleOf()): void {
+    if (this.lever.at >= 1) return;
+    stagesOf(this.flight.plan!).forEach((st, i) => {
+      const range = handRange(st.engine);
+      if (!range || this.lever.at >= range.least - 1e-9 || !v.burning(s, i) || this.asked.some((k) => k.kind === 'cut' && k.stage === i))
+        return;
+      this.asked.push({ kind: 'cut', stage: i });
+      this.cutByLever.add(i);
+    });
+  }
+
+  /**
+   * What the lever works now: the launch vehicle's stages burning (or the next to light), from the live state where the
+   * flight is one's own and from the record's run where it is as flown; alone, the spacecraft's burn, which it does not reach.
+   */
+  protected override throttled(): ThrottleView | null {
+    if (!this.run || this.ejected) return null;
+    const plan = this.flight.plan!;
+    const stages = stagesOf(plan);
+    const live = this.state && this.pilot && !this.ascended && this.mine !== null ? this.state : null;
+    const t = Math.max(0, live ? Math.min(this.clock.t, live.t) : this.clock.t);
+    if (t > this.parting || this.ascended) {
+      const burn = coastEvents(plan).burn;
+      if (!burn || t >= this.parts) return null;
+      const engine = plan.craft[0]!.engines.find((e) => e.id === burn.id) ?? burn;
+      return {
+        engines: this.burnName,
+        burning: false,
+        range: handRange(engine),
+        thrust: 0,
+        left: 0,
+        flow: 0,
+        isp: 0,
+        mass: 0,
+        not: engine.kind === 'solid' ? 'fired whole by Space' : 'fired by Space at full: no throttle in orbit yet',
+      };
+    }
+    const now = this.stagesAt(t);
+    const lit = now.map((x, i) => (x.burning ? i : -1)).filter((i) => i >= 0);
+    const next = now.findIndex((x) => x.aboard && !x.burning && x.left > 0);
+    const on = lit.length ? lit : next >= 0 ? [next] : [];
+    if (!on.length) return null;
+    const v = this.vehicleOf();
+    const s = this.sampleAt(t);
+    const throttle = (i: number) => (live ? v.throttle(live, i, t) : stages[i]!.throttle ? along(stages[i]!.throttle!, t) : 1);
+    const flow = (i: number) => stages[i]!.count * flowOf(stages[i]!.engine) * (lit.length ? throttle(i) : this.lever.at);
+    // (the specific impulse is the engines' whatever the setting: their rated thrust over their rated flow)
+    const rated = on.reduce((sum, i) => sum + stages[i]!.count * flowOf(stages[i]!.engine), 0);
+    const vac = (i: number) => stages[i]!.count * stages[i]!.engine.thrust.vacuum.value;
+    // (a tank several stages draw on is counted once)
+    const holders = new Set<string>();
+    const left = on.reduce((sum, i) => {
+      const key = stages[i]!.shares.length > 1 ? stages[i]!.holder.id : `own-${i}`;
+      if (holders.has(key)) return sum;
+      holders.add(key);
+      return sum + now[i]!.left;
+    }, 0);
+    const flows = on.reduce((sum, i) => sum + flow(i), 0);
+    const range = handRange(stages[on[0]!]!.engine);
+    return {
+      engines: [...new Set(on.map((i) => short(stages[i]!.body.label)))].join(' + '),
+      burning: lit.length > 0,
+      range,
+      thrust: lit.length ? s.burning.reduce((sum, m) => sum + m.thrust, 0) : 0,
+      left,
+      flow: flows,
+      isp: rated > 0 ? on.reduce((sum, i) => sum + vac(i), 0) / (G0 * rated) : 0,
+      mass: s.mass,
+      ...(this.mine === null && t > 0 ? { not: 'as flown: the lever takes it over' } : {}),
+    };
   }
 
   /** The control the user has just taken over. */
