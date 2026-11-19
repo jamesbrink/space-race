@@ -24,12 +24,15 @@ const root = join(import.meta.dirname, '..');
 /** The cells' size, metres (solids.ts). Change it and every file is stale. */
 export const CELL = 0.25;
 /**
- * A piece is cut as fine as `CELL` while that is no more boxes than this: what of it lies within `NEAR` metres of the
- * launch axis (the vertical through the model's origin, where a vehicle is) has the larger budget, the rest of it the
- * smaller. Past its budget a piece is cut twice as coarse, and again, until it fits: a great sloped earthwork is.
+ * Where a vehicle is, a piece is always cut as fine as `CELL`: what of it lies within `NEAR` metres of the launch axis
+ * (the vertical through the model's origin) and no more than `DEEP` metres under the model's zero: the towers, the
+ * launcher, the umbilicals, a flame pit's rim. The rest of it is cut as fine while that is no more boxes than its
+ * budget, and past that twice as coarse, and again, until it fits: what is near but deeper (`DEEP_BOXES`: a stand's
+ * legs under its deck fit, a flame pit's depths do not) and what is further out (`FAR_BOXES`), each by itself.
  */
 const NEAR = 50;
-const NEAR_BOXES = 16000;
+const DEEP = 6;
+const DEEP_BOXES = 16000;
 const FAR_BOXES = 4000;
 /** What the bake itself is, for the digest: raise it when the shapes it makes change. */
 const BAKE = 1;
@@ -64,7 +67,7 @@ export function sourceOf(def, kind, flight) {
           })),
           sequence: def.sequence?.map((k) => [k.at, k.slider]),
         };
-  const data = { BAKE, CELL, NEAR, NEAR_BOXES, FAR_BOXES, kind, absent: def.absent ?? [], ...posed };
+  const data = { BAKE, CELL, NEAR, DEEP, DEEP_BOXES, FAR_BOXES, kind, absent: def.absent ?? [], ...posed };
   hash.update(JSON.stringify(data, (_, v) => (typeof v === 'number' && Number.isFinite(v) ? Number(v.toPrecision(8)) : v)));
   return hash.digest('hex').slice(0, 24);
 }
@@ -318,11 +321,10 @@ async function structure(def, stats) {
       objects[index].updateWorldMatrix(true, false);
       for (const v of carried(glb, index, new THREE.Matrix4().multiplyMatrices(frame, objects[index].matrixWorld))) triangles.push(v);
     }
-    // near the launch axis (the model's own vertical through its origin) and beyond it, each within its own budget
+    // where a vehicle is, as fine as can be; a pit's depths and what is further out, each within its budget
     const origin = new THREE.Vector3().applyMatrix4(frame);
     const up = new THREE.Vector3(0, 1, 0).transformDirection(frame);
-    const near = [];
-    const far = [];
+    const sets = { fine: [], deep: [], far: [] };
     const d = new THREE.Vector3();
     for (let i = 0; i < triangles.length; i += 9) {
       d.set(
@@ -330,16 +332,23 @@ async function structure(def, stats) {
         (triangles[i + 1] + triangles[i + 4] + triangles[i + 7]) / 3,
         (triangles[i + 2] + triangles[i + 5] + triangles[i + 8]) / 3,
       ).sub(origin);
-      d.addScaledVector(up, -d.dot(up));
-      const into = d.length() <= NEAR ? near : far;
+      const height = d.dot(up);
+      d.addScaledVector(up, -height);
+      const into = d.length() > NEAR ? sets.far : height < -DEEP ? sets.deep : sets.fine;
       for (let k = 0; k < 9; k++) into.push(triangles[i + k]);
     }
-    const a = within(Float32Array.from(near), NEAR_BOXES);
-    const b = within(Float32Array.from(far), FAR_BOXES);
-    const boxes = new Float32Array(a.boxes.length + b.boxes.length);
-    boxes.set(a.boxes);
-    boxes.set(b.boxes, a.boxes.length);
-    built.set(piece, { boxes, cell: Math.max(a.boxes.length ? a.cell : CELL, b.boxes.length ? b.cell : CELL) });
+    const cut = [
+      { boxes: boxesOf(Float32Array.from(sets.fine)), cell: CELL },
+      within(Float32Array.from(sets.deep), DEEP_BOXES),
+      within(Float32Array.from(sets.far), FAR_BOXES),
+    ].filter((c) => c.boxes.length);
+    const boxes = new Float32Array(cut.reduce((n, c) => n + c.boxes.length, 0));
+    let at = 0;
+    for (const c of cut) {
+      boxes.set(c.boxes, at);
+      at += c.boxes.length;
+    }
+    built.set(piece, { boxes, cell: Math.max(CELL, ...cut.map((c) => c.cell)) });
   }
   // on the clock: the viewer's own moves, from liftoff to the last thing the model does
   const parts = def.parts.map(({ going, ...part }) => part);

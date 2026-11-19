@@ -90,15 +90,14 @@ is the next step, and until it lands a vehicle flown by hand still passes throug
 
 Simplified, and to be kept in mind by whoever uses it:
 
-- Shapes are as fine as a cell. A piece that would be more than 16,000 boxes within 50 m of the launch axis, or 4,000
-  beyond it, is cut twice as coarse, and again, until it fits, and records it (`SolidPiece.cell`). These budgets are
-  ours, chosen for the files' size (22 MB in 84 files for the 42 flights there are; without them, over 250 MB), and they
-  cost more than earthworks. As baked today: Site 1's flame pit is in cells of 4 m, under the rocket; Complex 34's
-  roads 2 m, its blockhouse and propellant areas 1 m; Complex 19's ramp, Complex 14's 1965 service structure and
-  Complex 39's storage spheres 1 m; and, at 0.5 m, towers that stand beside the vehicle: Mercury-Atlas's service
-  tower, Complex 39's umbilical tower and hardstand, and Site 1's command bunker for the Soyuz flights. A tower at
-  0.5 m is too coarse to judge a near miss by; raise the near budget before trusting one. (The list is as baked when
-  this was written: a pad rebuilt may fall on either side of its budget, and each file says, `SolidPiece.cell`.)
+- Shapes are as fine as a cell. Where a vehicle is, that is always 0.25 m: within 50 m of the launch axis and no more
+  than 6 m under the model's zero (the towers, the launcher, the umbilicals, a flame pit's rim). The rest of a piece
+  is cut twice as coarse, and again, until it is within a budget, and the piece records its coarsest
+  (`SolidPiece.cell`): 16,000 boxes for what is near but deeper (a stand's legs under its deck fit; Site 1's flame
+  pit does not, and is 4 m in its depths), 4,000 for what is further out (Complex 34's roads 2 m, its blockhouse 1 m,
+  a service structure parked far from its pad 1 m, Complex 39's hardstand beyond 50 m 0.5 m). The 50 m, the 6 m and
+  the budgets are ours, chosen for the files' size (27 MB in 84 files for the 42 flights there are; unbounded, over
+  250 MB).
 - A closed volume is a shell: nothing is inside it.
 - Before liftoff nothing is right: the simulator does not fly then, and no pose before it is kept.
 - What a hand has worked out of its programme on foot (a platform held open) is not known here.
