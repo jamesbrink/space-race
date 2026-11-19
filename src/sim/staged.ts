@@ -72,7 +72,9 @@ import {
   type OrbitFlown,
   publishedOf,
   shipOf,
+  targetFrom,
 } from './orbital.ts';
+import type { Target } from './pursuit.ts';
 import { type Action, type BodyDef, clockAt, type EngineDef, type EventDef, eventOf, type FlightPlan, type TankDef } from './plan.ts';
 import { aboutAxis, fromAxes, multiply, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import { nozzleThrust } from './thrust.ts';
@@ -208,6 +210,8 @@ export interface FlownWhole {
   coast: OrbitFlown;
   /** The bodies that come down from the ejection height, where the record has them (orbital.ts: flyDown). */
   down: ReturnType<typeof flyDown> | null;
+  /** The craft the flight's manoeuvres are made on, where its plan has one: flown on its own forces (`targetOf`). */
+  target?: Target;
 }
 
 /** One unit's nozzle exit area, m^2: given, or (vacuum less sea-level thrust) over one atmosphere. Nothing for an engine with no sea-level figure. */
@@ -888,10 +892,35 @@ export function flyWhole(plan: FlightPlan, site: Geodetic, frame: EarthFrame, se
   const ascent = ascend(plan, site, frame, seaLevel, x);
   attachedAttitude(plan, frame, ascent);
   ascent.separation = partedOff(plan, ascent);
-  const coast = flyOrbit(plan, site, frame, seaLevel, every, ascent.separation);
+  const target = targetOf(plan, frame, seaLevel, ascent);
+  const coast = flyOrbit(plan, site, frame, seaLevel, every, ascent.separation, undefined, undefined, undefined, target);
   const end = coast.samples[coast.samples.length - 1]!;
   const down = downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end) : null;
-  return { ascent, coast, down };
+  return { ascent, coast, down, ...(target ? { target } : {}) };
+}
+
+const targets = new WeakMap<object, Target>();
+/**
+ * The flight's target where it is what the spacecraft's last joint lets go (`FlightPlan.target`): the stage flown on as
+ * a craft of its own from the parting (orbital.ts `targetFrom`), its velocity the spacecraft's as it left (`partedOff`)
+ * less the whole of the speed the joint pushed the two apart at, along the long axis as it lay. One for an ascent,
+ * whoever asks: the record's coast and one flown on from the same ascent by hand have the same target, which follows
+ * neither.
+ */
+export function targetOf(plan: FlightPlan, frame: EarthFrame, seaLevel: number, ascent: Ascended): Target | undefined {
+  const def = plan.target;
+  if (!def || def.joint !== sequenceOf(plan).stages.at(-1)!.joint) return undefined;
+  const key = ascent.separation;
+  let target = targets.get(key);
+  if (!target) {
+    const c = plan.craft[0]!;
+    const push = c.joints.find((j) => j.id === def.joint)?.push ?? c.sheds?.find((shed) => shed.on === def.joint)?.push;
+    const axis = ascent.samples.at(-1)!.axis;
+    const start = { t: key.t, r: key.r, v: sub(key.v, scale(axis, push?.value ?? 0)) };
+    target = targetFrom(plan, frame, seaLevel, start);
+    if (target) targets.set(key, target);
+  }
+  return target;
 }
 
 /**
@@ -952,9 +981,15 @@ export function flyOn(
   every = 1,
   contacts?: CoastContacts,
 ): FlownWhole {
-  const coast = flyOrbit(plan, site, frame, seaLevel, every, from, hands, contacts);
+  const target = targetOf(plan, frame, seaLevel, ascent);
+  const coast = flyOrbit(plan, site, frame, seaLevel, every, from, hands, contacts, undefined, target);
   const end = coast.samples[coast.samples.length - 1]!;
-  return { ascent, coast, down: downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end, hands) : null };
+  return {
+    ascent,
+    coast,
+    down: downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end, hands) : null,
+    ...(target ? { target } : {}),
+  };
 }
 
 /** Draw a passively stable sphere from the release attitude. Air drag can tip the heavy side

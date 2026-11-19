@@ -20,6 +20,7 @@ import { ballisticOf, flownOnce, type Sample, sampleAt } from './fly.ts';
 import { flyLoose, type LooseFlown } from './loose.ts';
 import { type CoastContacts, coastEvents, coastOf, shipOf } from './orbital.ts';
 import { type Action, type EventDef, eventOf, type FlightPlan } from './plan.ts';
+import type { Target } from './pursuit.ts';
 import { type CoastRotation, conjugate, IDENTITY, multiply, nlerp, type Quat, rotateFor, turn } from './rigid.ts';
 import { wavesOf } from './sea.ts';
 import { apart, Sheds } from './shed.ts';
@@ -102,6 +103,8 @@ export interface Run {
   descent?: DrawnDescent | null;
   /** A flight flown by hand: what it gave for each of the record's checks (by check id), for the Flown panel to set beside the record's run. */
   held?: Record<string, number>;
+  /** The craft its manoeuvres in orbit were made on, flown on its own forces (staged.ts `targetOf`): the record's run's. */
+  target?: Target;
 }
 
 /** What every run answers the same way from its own samples. */
@@ -467,8 +470,12 @@ export function firesOf(
 ): NonNullable<Run['fires']> {
   const stages = stagesOf(plan);
   const lit = sequenceOf(plan).stages;
-  // (a manoeuvre's engine lit several times: each of its fires is its next lighting, in order, orbital.ts `movesOf`)
-  const moves = shipOf(plan).moves;
+  // (a manoeuvre's engine lit several times: each of its fires is its next lighting, in order, orbital.ts `movesOf`; one
+  // guidance solved on the flight's target burns for as long as this run had it burn, `OrbitFlown.burns`)
+  const moves = shipOf(plan).moves.map((m) => {
+    const flown = whole.coast.burns?.find((b) => b.lit === m.lit && b.solved);
+    return flown ? { ...m, on: flown.on, off: flown.off } : m;
+  });
   const seen = new Map<string, number>();
   return (flight.flies?.fires ?? []).map((f) => {
     const mine = moves.filter((m) => m.engine === f.on);
@@ -553,6 +560,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
     events,
     bodies: bodiesOf(plan, events),
     results: held(plan, whole),
+    ...(whole.target ? { target: whole.target } : {}),
   });
   if (whole.down) floatUprighting(flight, run);
   orbitalRuns.set(plan, run);
@@ -610,6 +618,8 @@ export function orbitalEvents(
       plan.events.find((e) => e.automatic && e.do.some((a) => 'separate' in a && a.separate === joint)),
       at,
     );
+  // A manoeuvre guidance solved on the flight's target (sim/pursuit.ts) is cut when it has given what was solved.
+  for (const b of whole.coast.burns ?? []) if (b.solved) put(eventOf(plan, b.cut), b.off);
   const k = coastEvents(plan);
   if (hand) {
     if (hand.burn !== undefined) {

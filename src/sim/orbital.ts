@@ -47,7 +47,9 @@ import {
   type FlightPlan,
   type Hold,
   type OrbitFix,
+  type Pursuit,
 } from './plan.ts';
+import { type Ahead, coelliptic, flownFrom, reach, stationPush, type Target } from './pursuit.ts';
 import type { CoastRotation } from './rigid.ts';
 
 /**
@@ -493,6 +495,10 @@ export interface OrbitResults {
    * orbit's heights are over (`heightsBall`: the ellipsoid under the apsis), m, and the nodal period with the perigee where it stands, s.
    */
   [reading: `${string}.${OrbitReading}`]: number;
+  /** The impulse each manoeuvre of the coast gave on this run, m/s, by the event that lit it (`BurnFlown.velocity`). */
+  [burn: `${string}.velocity`]: number;
+  /** How far the target was at an instant a check states (`CheckWhen` `reading: 'range'`), m, by the check's id: on a run flown with its target. */
+  [sighting: `${string}.range`]: number;
 }
 /** What a check of the orbit at an instant reads. */
 export type OrbitReading = 'perigee' | 'apogee' | 'period';
@@ -532,9 +538,26 @@ export interface OrbitSample {
   v: Vec3;
 }
 
+/**
+ * A manoeuvre as a run flew it: lit and cut, the impulse it gave, m/s, and the line it pushed along where it kept one
+ * (the flight's frame). Guidance's own where it solved the burn on the target (sim/pursuit.ts), the plan's otherwise.
+ */
+export interface BurnFlown {
+  /** The events that lit and cut it, by id. */
+  lit: string;
+  cut: string;
+  on: number;
+  off: number;
+  velocity: number;
+  line?: Vec3;
+  solved: boolean;
+}
+
 export interface OrbitFlown {
   samples: OrbitSample[];
   results: OrbitResults;
+  /** The coast's manoeuvres as this run flew them, in the order lit; left out with none. */
+  burns?: BurnFlown[];
 }
 
 /** Where the air is taken to begin for the choice of step, and where it is thick: m above the sea. */
@@ -816,6 +839,13 @@ export interface Move {
   aim: Extract<Hold, { aim: unknown }>;
   /** Propellant carried by a restartable engine and drawn by this firing, kg. */
   fuel?: number;
+  /**
+   * What it is for, where it is made on the flight's target (`Action.ignite.toward`): with the target there, guidance
+   * solves its line and length as it lights (sim/pursuit.ts) and `aim`, `accel` times its recorded length and `off` are
+   * the record's, which the solved burn is held against. `most`: the most its engine can push the ship, m/s^2.
+   */
+  toward?: Pursuit;
+  most?: number;
 }
 
 /** Capacity of the propulsion system carried into the coast. */
@@ -882,12 +912,16 @@ export function movesOf(plan: FlightPlan): Move[] {
           accel,
           aim: hold.hold,
           ...(fuel === undefined ? {} : { fuel }),
+          ...(a.toward ? { toward: a.toward, most: (engine.count * engine.thrust.vacuum.value) / burnMass } : {}),
         });
       }
   return out.sort((p, q) => p.on - q.on);
 }
 
-/** The manoeuvres' push from the instant `as` the ship is from, m/s^2, each along its line (`lines`, by its index, fixed as it lit); null with none burning. */
+/**
+ * The manoeuvres' push from the instant `as` the ship is from, m/s^2, each along its line (`lines`, by its index, fixed as
+ * it lit); null with none burning. A braking held on the target has no line: its thrust is commanded as it goes (`holding`).
+ */
 export function movingAt(moves: readonly Move[], lines: readonly (Vec3 | undefined)[], as: number): Vec3 | null {
   let push: Vec3 | null = null;
   moves.forEach((m, i) => {
@@ -1071,6 +1105,30 @@ export interface Coast {
   loose: string | null;
 }
 
+/**
+ * The flight's target (`FlightPlan.target`) as a craft of its own from `start`, where it began (a stage let go: the
+ * stack's state at the parting with the stage's side of the joint's push): gravity, and the air of the day's Sun on its
+ * drag area at its mass, down to the top of the thick air, where it is taken to be gone. Undefined for a plan with none.
+ */
+export function targetFrom(
+  plan: FlightPlan,
+  frame: EarthFrame,
+  seaLevel: number,
+  start: { t: number; r: Vec3; v: Vec3 },
+): Target | undefined {
+  const def = plan.target;
+  if (!def) return undefined;
+  const k = def.dragArea.value / def.mass.value;
+  return flownFrom(
+    start,
+    (s, at) => {
+      const air = airAt(frame, s.r, s.v, at, seaLevel);
+      return airDrag(air.wind, air.airspeed, air.air.density * solarAt(frame, s.r, at, air.altitude) * k, 1);
+    },
+    (s, at) => frame.place(s.r, at).height - seaLevel < THICK,
+  );
+}
+
 /** Local rigid-body encounters on a hand-flown coast. The scene gets the same corrected
  * position and velocity that the next integration step starts from. */
 export interface CoastContacts {
@@ -1105,10 +1163,16 @@ export function flyOrbit(
   hands?: DescentHands,
   contacts?: CoastContacts,
   stopAt = Infinity,
+  pursued?: Target,
 ): OrbitFlown {
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
   const ship = shipOf(plan);
-  const { on, off, parted, floor, moves } = ship;
+  const { on, off, parted, floor } = ship;
+  // (this run's own: a burn guidance solves ends when it has given what was solved, not at the record's instant)
+  const moves = ship.moves.map((m) => ({ ...m }));
+  /** The manoeuvres held on the target, by index: braking and station-keeping, their thrust commanded as they go. */
+  const holding: boolean[] = moves.map(() => false);
+  const burns: BurnFlown[] = [];
   const radius = heightsBall(plan, site);
   const interfaceHeight = plan.record?.entryInterface?.value ?? INTERFACE;
   /** Each manoeuvre's line, fixed as it lit (`movesOf`). */
@@ -1141,9 +1205,23 @@ export function flyOrbit(
    * (Read at each stage's own instant, the stage that ends a step on the cutoff had the engine off, and the burn came out
    * a sixth of a step short: 0.5 m/s of Vostok 1's 136.)
    */
+  const either = (a: Vec3 | null, b: Vec3 | null): Vec3 | null => (a && b ? add(a, b) : (a ?? b));
+  /** The thrust commanded on the target by the manoeuvres held on it (`holding`), m/s^2; null with none. */
+  const held = (s: State, at: number, as: number): Vec3 | null => {
+    let out: Vec3 | null = null;
+    moves.forEach((m, i) => {
+      if (!holding[i] || as < m.on || as >= m.off || !m.toward || !('station' in m.toward)) return;
+      const want = { ahead: m.toward.station.ahead.value, above: m.toward.station.above.value };
+      out = add(out ?? [0, 0, 0], stationPush(pursued!, s, at, want, ship.moves[i]!.off, m.most!));
+    });
+    return out;
+  };
   const pushAs = (s: State, at: number, as: number): Vec3 => {
     const air = airOf(s, at);
-    const more = moves.length || lifts ? { push: movingAt(moves, lines, as), up: () => frame.upOver(frame.place(s.r, at), at) } : undefined;
+    const more =
+      moves.length || lifts
+        ? { push: either(movingAt(moves, lines, as), held(s, at, as)), up: () => frame.upOver(frame.place(s.r, at), at) }
+        : undefined;
     return shipPush(
       plan,
       as,
@@ -1155,6 +1233,23 @@ export function flyOrbit(
     );
   };
   const push = (s: State, at: number): Vec3 => pushAs(s, at, at);
+  /** The run's own forces flown ahead with a burn, for guidance to solve one on (sim/pursuit.ts `Ahead`): the air, and the burn; steps of 1 s through it and 10 s after. */
+  const flyAhead: Ahead = (s, from, to, burn) => {
+    let x = s;
+    let at = from;
+    while (at < to - 1e-9) {
+      const firing = burn !== undefined && at < burn.until - 1e-9;
+      const h = Math.min(firing ? 1 : 10, (firing ? burn.until : to) - at);
+      const as = at;
+      const thrust = firing ? { push: scale(burn.line, burn.accel) } : undefined;
+      x = step(x, at, h, (q, when) => {
+        const air = airOf(q, when);
+        return shipPush(plan, as, air.wind, air.altitude, null, solarAt(frame, q.r, when, air.altitude), thrust);
+      });
+      at += h;
+    }
+    return x;
+  };
   const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>
     at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= ENTRY_G ? 'entry' : 'descent';
 
@@ -1227,18 +1322,79 @@ export function flyOrbit(
     }
   };
 
+  /** A manoeuvre's end moved to where guidance put it: the steps end on it. */
+  const endAt = (m: Move, at: number): void => {
+    m.off = at;
+    marks = [...marks, at].sort((p, q) => p - q);
+  };
+  /**
+   * A manoeuvre lit: along the attitude the plan holds, for the record's time; or, made on the target with the target
+   * there, as guidance solves it from the state now (sim/pursuit.ts), ending when it has given what was solved.
+   */
+  const light = (m: Move, i: number): void => {
+    const planned = aimFor(
+      m.aim,
+      state.r,
+      state.v,
+      () => sunAt(t),
+      () => frame.upOver(frame.place(state.r, t), t),
+    );
+    const size = Math.abs(m.accel);
+    const sense = m.accel < 0 ? -1 : 1;
+    const record = {
+      lit: m.lit,
+      cut: m.cut,
+      on: t,
+      off: m.off,
+      velocity: size * (m.off - m.on),
+      line: scale(planned, sense),
+      solved: false,
+    };
+    lines[i] = planned;
+    const toward = pursued?.at(t) ? m.toward : undefined;
+    if (toward && 'station' in toward) {
+      lines[i] = undefined;
+      holding[i] = true;
+      endAt(m, toward.until.value);
+      burns.push({ lit: m.lit, cut: m.cut, on: t, off: m.off, velocity: 0, solved: true });
+      return;
+    }
+    const solved = !toward
+      ? null
+      : 'reach' in toward
+        ? reach(
+            flyAhead,
+            pursued!,
+            state,
+            t,
+            size,
+            { ahead: toward.reach.ahead.value, above: toward.reach.above.value },
+            toward.at.value,
+            scale(record.line, record.velocity),
+          )
+        : (() => {
+            const dv = coelliptic(pursued!, state, t);
+            return dv && { line: unit(dv), length: length(dv) / size };
+          })();
+    if (!solved) {
+      burns.push(record);
+      return;
+    }
+    lines[i] = scale(solved.line, sense);
+    endAt(m, t + solved.length);
+    burns.push({ ...record, off: m.off, velocity: size * solved.length, line: solved.line, solved: true });
+  };
+  /** The instants the checks ask how far the target is at: a step ends on each, and nothing else is done there. */
+  const ranges = plan.checks.flatMap((c) => (c.of === 'orbit' && c.when && 'reading' in c.when && c.when.reading === 'range' ? [c] : []));
   /** What happens at the instant now reached. */
   const arrive = (): void => {
     moves.forEach((m, i) => {
-      if (t === m.on)
-        lines[i] = aimFor(
-          m.aim,
-          state.r,
-          state.v,
-          () => sunAt(t),
-          () => frame.upOver(frame.place(state.r, t), t),
-        );
+      if (t === m.on) light(m, i);
     });
+    for (const c of ranges) {
+      const it = (c.when as { at: number }).at === t ? pursued?.at(t) : undefined;
+      if (it) results[c.id as `${string}.range`] = length(sub(it.r, state.r));
+    }
     if (t === on) {
       aim = aimAt(state, t);
       const here = frame.place(state.r, t);
@@ -1253,7 +1409,11 @@ export function flyOrbit(
     if (t === parted) results.separationAltitude = airOf(state, t).altitude;
   };
   for (const [i, move] of moves.entries())
-    if (move.on < t && t < move.off)
+    if (move.on < t && move.toward && 'station' in move.toward && t < move.toward.until.value && pursued?.at(t)) {
+      // (begun part-way through a braking held on the target: it is held on from here)
+      holding[i] = true;
+      move.off = move.toward.until.value;
+    } else if (move.on < t && t < move.off)
       lines[i] = aimFor(
         move.aim,
         state.r,
@@ -1262,13 +1422,12 @@ export function flyOrbit(
         () => frame.up(state.r, t),
       );
   if (on < t && t < off) aim = aimAt(state, t);
-  arrive();
   /** The plumb line at a sample's place, in the inertial frame. */
   const upAt = (s: OrbitSample): Vec3 => frame.upOver(s, s.t);
 
   // (the coast hands over to the descent at the ejection height, or at the first event of the descent a hand gave: flyDown)
   const handover = Math.min(...Object.values(hands?.given ?? {}).filter((g) => g > t));
-  const marks = [
+  let marks = [
     on,
     off,
     parted,
@@ -1277,9 +1436,11 @@ export function flyOrbit(
     ...moves.flatMap((m) => [m.on, m.off]),
     ...ship.banks.map((b) => b.at),
     ...fixes.map((f) => f.at.value),
+    ...ranges.map((c) => (c.when as { at: number }).at),
   ]
     .filter(Number.isFinite)
     .sort((p, q) => p - q);
+  arrive();
   const samples: OrbitSample[] = [sample()];
   let kept = t;
   let before = samples[0]!;
@@ -1303,6 +1464,12 @@ export function flyOrbit(
     const h = Math.min(most, mark === undefined ? most : mark - t, contacts?.limit(t) ?? Infinity);
     const last = state;
     const as = t;
+    // (what a braking held on the target has given: the thrust commanded at each step's start, over the step)
+    holding.forEach((is, i) => {
+      if (!is || as < moves[i]!.on || as >= moves[i]!.off) return;
+      const burn = burns.find((b) => b.lit === moves[i]!.lit && b.solved);
+      if (burn) burn.velocity += length(held(state, as, as) ?? [0, 0, 0]) * h;
+    });
     state = step(state, t, h, (s, at) => pushAs(s, at, as));
     t = mark !== undefined && Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
     const free = state;
@@ -1395,5 +1562,6 @@ export function flyOrbit(
     }
     before = now;
   }
-  return { samples, results };
+  for (const b of burns) results[`${b.lit}.velocity`] = b.velocity;
+  return { samples, results, ...(burns.length ? { burns } : {}) };
 }

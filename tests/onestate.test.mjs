@@ -18,6 +18,7 @@ import { flyWhole, guidanceOf, sequenceOf, stagesOf, steer } from '../src/sim/st
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { EARTH, G0 } from '../src/world/bodies.ts';
 import { frameOf } from '../src/world/earthframe.ts';
+import { step as orbitStep } from '../src/world/orbit.ts';
 import { add, DEG, dot, enuAxes, length, scale, siteFrame, sub } from '../src/world/frames.ts';
 import { meanOf, periodsOf } from '../src/world/meanelements.ts';
 import { part } from './part.mjs';
@@ -131,6 +132,33 @@ for (const f of part(orbital)) {
       for (const track of Object.values(whole.down.tracks).slice(0, 1))
         assert.ok(length(sub(track[0].r, end.r)) < 1e-6, 'the descent begins where the coast ends');
     }
+  });
+
+  // The craft a flight's manoeuvres are made on is one state too (sim/pursuit.ts): from where it began, every ten seconds
+  // of its first two days are gravity's (world/orbit.ts `step`: with the Earth's flattening) and the thin air's, through
+  // every burn the spacecraft makes on it, and the spacecraft's burns on it are forces on the spacecraft (the test above).
+  test(`${f.designation}: its target is a craft of its own, moved by gravity and the air alone`, { skip: !plan.target }, () => {
+    whole ??= orbitalFlown(f);
+    const target = whole.target;
+    assert.ok(target, 'the run has its target');
+    assert.equal(target.from, whole.ascent.separation.t, 'it begins at the parting');
+    const end = Math.min(whole.coast.samples.at(-1).t, target.from + 48 * 3600);
+    let worst = { dv: 0, dr: 0, at: 0 };
+    for (let t = target.from; t + 10 <= end; t += 10) {
+      const [a, b] = [target.at(t), target.at(t + 10)];
+      assert.ok(a && b, `the target is there at T+${t}`);
+      const free = orbitStep(a, t, 10);
+      const [dv, dr] = [length(sub(b.v, free.v)), length(sub(b.r, free.r))];
+      if (dv > worst.dv) worst = { ...worst, dv, at: t };
+      if (dr > worst.dr) worst = { ...worst, dr };
+    }
+    console.log(
+      `  #   ${f.id}: the target's most in ten seconds beyond gravity: ${worst.dv.toExponential(2)} m/s (T+${worst.at}), ${worst.dr.toExponential(2)} m`,
+    );
+    assert.ok(worst.dv < 2e-3, `the target's velocity changes by ${worst.dv} m/s in ten seconds beyond gravity at T+${worst.at}`);
+    assert.ok(worst.dr < 0.02, `the target's place steps ${worst.dr} m`);
+    // every burn solved on it ended when it had given what was solved, and is in the run's own account of its burns
+    for (const b of whole.coast.burns ?? []) assert.ok(b.off > b.on && Number.isFinite(b.velocity), `${b.lit}: lit ${b.on}, cut ${b.off}`);
   });
 
   test(`${f.designation}: the run is flown through the record's tracking, and what it misses each fix by is a figure`, {
