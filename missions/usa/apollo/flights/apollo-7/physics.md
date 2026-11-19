@@ -19,21 +19,40 @@ from the available total. Ignition and cutoff transients, engine cant and
 closed-loop guidance are simplified. [AS-205 flight evaluation, §§6, 8–9](https://apollojournals.org/afj/ap07fj/pdf/a07-as205-saturn-ib-results-19900067467.pdf)
 and [S-IVB-205 stage evaluation, §14](https://www.nasa.gov/wp-content/uploads/static/history/afj/ap07fj/pdf/a07-s-ivb-flight-eval-rep-19700076411.pdf).
 
-The stack follows approximate readings from the measured inertial pitch curves
-and the 72° flight azimuth after the initial roll. The simulator interpolates between points read off the figures. The method omits yaw departures, individual
-gimbal angles and Saturn's iterative guidance equations. Aerodynamic drag of the
-stack is approximate. The raw integration reaches 7,779.13 m/s at J-2 cutoff,
-1.19 m/s below the flight report. The raw inclination is 32.467° against 31.58°,
-0.887° high. Raw ellipsoidal altitude is about 240 km against the report's 228 km.
-The replay flies the vertical programme from the modeled launch mount through
-10.31 s. Table XI of the postflight trajectory gives about 121 m of rise and 5 m
-of lateral displacement in the first ten seconds. The simulation rises 127 m and
-drifts about 0.24 m. After the vertical programme it interpolates the differences
-between the integrated trajectory and seven measured position and velocity
-states from 50 s to insertion. Table XIII tracks the vehicle centre of gravity.
-The model uses the stack base as its ascent datum, an offset of tens of metres.
-The postflight table gives 61.9777° W at guidance cutoff and 61.2293° W at
-insertion ten seconds later. On orbit the replay joins the venting and separation
+The whole flight is one integrated state, from the pad to the sea, changed only by the
+forces modeled: thrust, gravity, the air, the joint's push at each separation, lift and
+drag in entry, and the parachutes. Nothing joins it to a tracking state. The tracking
+points of the postflight trajectory and the mission report are kept as a reference
+(`record.coastFixes`): a sample is kept at each of their instants, the difference is
+the run's residual (`node tools/residuals.mjs apollo-7`), and no state is written from
+them. Until November 2026 the replay interpolated itself onto seven measured states
+during the ascent and joined each later one in orbit; that is gone.
+
+The first stage follows approximate readings from its measured inertial pitch curve
+and the 72° flight azimuth after the initial roll, flown open, as the S-IB's tilt
+programme was. The simulator interpolates between points read off the figure. From the
+J-2's start the S-IVB is steered by a closed loop standing in for Saturn's iterative
+guidance: a linear-tangent law in pitch and a constant yaw out of the launch plane,
+solved so that the cutoff comes at the reported height over the Fischer ellipsoid
+(748,374 ft), level, in the reported plane (31.58°). The law's first command steps the
+thrust 7.3° up as it takes over; the report's attitude figure shows about 8°. The yaw
+is what turns the plane from the 32.5° an unsteered ascent on that azimuth reaches,
+as the vehicle's own did: at cutoff the run is 3 km across the track from the
+tracking, where the unsteered ascent was 59 km. The J-2 is cut by the guidance when the orbit reached has the reported
+period, at 615.8 s against the recorded 616.75 s. Individual gimbal angles, the
+guidance equations themselves and the propellant-utilization shift's transient are
+simplified, and the stack's drag is approximate.
+
+The run rises 127 m in the vertical programme and drifts about 0.24 m; Table XI of
+the postflight trajectory gives about 121 m and 5 m in the first ten seconds. Against
+Table XIII (which tracks the vehicle's centre of gravity, where the model flies the
+stack's base, tens of metres off) the run is 0.4 km and 14 m/s out at the first
+stage's separation, and at guidance cutoff 9.5 km further along the track, 3.2 km to
+the right, level with it, and 19 m/s out. It is left on 228 by 298 km and 89.70 min,
+where the report has 228 by 285 km and 89.7 min. By the spacecraft's separation at
+02:55:02.4 it is 32 km along, 7 km across and 9 km below the tracked state: the
+S-IVB's venting and propellant dump, which raised the real orbit in those hours, are
+not modeled. On orbit nothing is joined to the venting or separation
 fixes. [Postflight trajectory, §2 and Tables XI and XIII](https://apollojournals.org/afj/ap07fj/pdf/as205-postflight-traj-rep-19920075302.pdf). The
 attached stack aligns to local horizontal, later pitches nose down and holds
 that inertial attitude before release. The brief crew takeover of the S-IVB
@@ -43,16 +62,20 @@ and [Apollo 7 Mission Report, Tables 2-II and 3-II](https://apollojournals.org/a
 
 ## Coasting, maneuvering and separation
 
-The historical coast integrates the engine impulses, gravity and atmospheric
-drag, and joins the reported ignition states across the 11-day mission. The
-transition between tracking fixes is continuous in position and velocity.
-These fixes contain reconstructed radar-based states. Applying them to a
-historical run keeps the spacecraft near the recorded ground track despite
-accumulated drag, steering and atmospheric errors. The simulator treats
-positions published on the Fischer ellipsoid as corresponding WGS 84
-positions. Takeover retains the trajectory and fuel usage up to the handover,
-then uses the current state under the same forces to integrate forward.
-Subsequent tracking fixes cannot pull a player-flown trajectory back toward
+The coast integrates the engine impulses, gravity and atmospheric drag across the
+11-day mission, from the state the ascent left and from nothing else. The reported
+states at each SPS ignition are a reference the run is held against, not states it
+is put on. With no venting, no propellant-settling translations and each burn aimed
+as the plan has it, the run drifts from the tracking along its orbit: 1,170 km
+ahead by the first SPS firing at 26:24:55, 3,100 km ahead by the fourth, and
+4,200 km behind by the deorbit firing, with at most some 120 km across the track. The
+orbit's shape is kept by the burns, so the entry comes where the lowered perigee is
+and the splashdown is near the recorded place (below). The simulator treats
+positions published on the Fischer ellipsoid as corresponding WGS 84 positions.
+Takeover retains the trajectory and fuel usage up to the handover, then integrates
+forward from the current state under the same forces, exactly as the record's own
+run does: a player-flown trajectory and the record's differ only in what was
+commanded, and nothing pulls either toward
 the mission record. [Apollo 7 Mission Report, §§3.1–3.2 and Tables 3-I–3-V](https://apollojournals.org/afj/ap07fj/pdf/a07-mission-report.pdf).
 
 One SPS engine supplies all eight firings from the measured 9,737.3 lb initial
@@ -108,10 +131,15 @@ upper-air winds and transonic RCS pulses. [Apollo 7 Mission Report, §§3.3,
 [Apollo 7 Entry Postflight Analysis](https://apollojournals.org/afj/ap07fj/pdf/a07-entry-postflight-analysis-19740072689.pdf)
 and [NASA TN D-6725, Table I](https://ntrs.nasa.gov/api/citations/19720013191/downloads/19720013191.pdf).
 
-The peak load is 3.20 g versus the reconstructed trajectory's 3.33 g. The
-flight report gives 3.41 g in the structural analysis. The simulated capsule
-splashes down 41 s after the reported 260:09:03, near 27.62° N, 63.61° W,
-about 47 km from the recovery force's approximate position. The twin drogues
+The flight report gives a peak load of 3.41 g in the structural analysis and
+the reconstructed trajectory 3.33 g; the run's is held against it in
+`src/sim/misses.ts`. Flown from the pad on its own forces, the simulated capsule
+splashes down 652 s after the reported 260:09:03, about 92 km from the recovery
+force's approximate position (28 km short along the track and 88 km across it:
+it enters where the orbit's perigee is, eleven minutes later than the flight did,
+and the Earth has turned under it). With every tracking state joined, as until
+November 2026, it was 41 s late and 47 km off: that agreement was the tracking's,
+not the simulator's. The twin drogues
 have one equivalent drag area and the three mains another. The opening model
 approximates staged reefing with continuous inflation. [Apollo 7 Mission
 Report, Tables 2-I and 3-VI and §§5.1, 5.5 and 5.16](https://apollojournals.org/afj/ap07fj/pdf/a07-mission-report.pdf).

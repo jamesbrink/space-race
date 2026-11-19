@@ -57,25 +57,27 @@ Moscow time (UTC+3), and seconds from liftoff at 10:30:01 on 12 October 1964.
 
 ## What the run gives
 
-On the 11A57's figures in the day's air over the pad (ERA5, `aloft`), then the published orbit from where the ascent left
-the ship, then the descent; and the coast from the estimated injection, in the thermosphere of the day's Sun (Jacchia 1971).
+On the 11A57's figures in the day's air over the pad (ERA5, `aloft`), then the coast flown on from the state the ascent left (one state from the pad: docs/agents/simulator.md, "One state"; until November 2026 the published orbit begun where the ascent left
+the ship), then the descent; and the coast from the estimated injection, in the thermosphere of the day's Sun (Jacchia 1971).
 Tolerances were set before anything was flown.
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Perigee at the last cutoff | 177.5 km ± 5 | −520.6 km | **miss** (−698 km) | the ascent falls short of an orbit (`SHORT_VK1`) |
-| Apogee at the last cutoff | 408 km ± 15 | 177.5 km | **miss** (−230.5 km) | the same: 177.5 km is the top of the orbit it reaches |
+| Perigee at the last cutoff | 177.5 km ± 5 | 177.5 km | yes | the law's target |
+| Apogee at the last cutoff | 408 km ± 15 | 394.3 km | yes (−13.7 km) | Block I is cut by the guidance where the orbit reached has the published period (misses.ts `OSCULATING`): what is read here is the osculating orbit at that instant |
 | Inclination | 64.9° ± 0.1 | 64.90° | yes | not independent: the plane is solved for it |
-| Period at the last cutoff | 90.1 min ± 15 s | 80.81 min | **miss** (−558 s) | the same |
+| Period at the last cutoff | 90.1 min ± 15 s | 89.92 min | yes (−10.6 s) | the same; the orbit the ship is left on has the published period to a tenth of a second |
 | Period, node to node, of the orbit begun | 90.1 min ± 2 s | 90.10 | yes | not independent |
-| Apogee as flown round (coast; shown) | 408 km ± 5 | 409.1; 410.3 km | yes | |
-| Landing across the track (coast; shown) | 0 ± 60 km | −106; −53 km | **miss**; yes | below |
+| Apogee as flown round (coast; shown) | 408 km ± 5 | 409.1; 410.7 km | yes |  |
+| Landing across the track (coast; shown) | 0 ± 60 km | −106; −52 km | **miss**; yes | below |
 | Landing along the track (coast; shown) | 0 ± 100 km | −1,066; −1,198 km | **miss** | below |
 | Touchdown | 10:47:04 ± 2 min | 10:43:17 | **miss** (−227 s) | where it comes down is the burn's (below) |
 | Touchdown speed | 0.2 m/s ± 1 | 2.1 m/s | **miss** | the rocket and the parachutes are each an estimate (below) |
 
-At the last cutoff the stack has 7,583 m/s where 177.5 by 408 km needs some 8,000, with 1.2 t left in Block I: the
-shortfall is in the first two stages, as on every Vostok here, and in a third stage whose 1964 mass is not known.
+Block I is cut by the guidance where the orbit reached has the published period: at 529.6 s, 6.6 s after the record's
+523, with 0.6 t left, at 7,870 m/s. Cut at 523 s it had 7,583 m/s where 177.5 by 408 km needs some 7,870 there, with
+1.2 t left (until November 2026, when the orbit was then handed to it): the first two stages give less than the
+record's did, as on every Vostok here, and the third stage's 1964 mass is not known.
 
 ## The day round, and the landing
 

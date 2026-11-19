@@ -52,17 +52,18 @@ What the record gives of the morning, and so what the launch site shows (the sit
 ## The flight as flown
 
 [mission.md](mission.md) has every input's argument and each check against the run. In short: the
-type's ascent falls short of an orbit as Vostok 1's and 2's do, and its third stage cuts at 676 s
-where the bunker waited for 687. The orbit is begun from the heights Siddiqi and the Great Soviet
+type's ascent reaches the orbit, its third stage cut by the guidance where the orbit reached has the period flown for
+this flight (its own integrator's setting is not known): at 677 s, where the bunker waited for 687. The whole flight is
+one state flown from the pad (docs/agents/simulator.md, "One state"). The orbit it is held against is read from the heights Siddiqi and the Great Soviet
 Encyclopedia give, on the period they give over the WGS 84 ellipsoid under the apsis (88.34 min, derived:
 the reading heights published without a period take, which the sister flights' own heights and periods require; the
 88.33 printed beside them has no traceable source, and is what this reading gives). It goes round four days
-with the entry's load (8.6 g) in, its apogee as published, and comes down **1,059 km short** of the
-record's landing and 90 km across it, Nikolayev 2.4 minutes early: over 64 revolutions a second of period
+with the entry's load (8.6 g) in, its apogee as published, and comes down **1,360 km short** of the
+record's landing and 103 km across it, Nikolayev 2.8 minutes early: over 64 revolutions a second of period
 is 470 km, and no period is known to better than a hundredth of a minute. Over the mean Earth, as until
 November 2026, it came down 4,501 km short. TASS's orbit a day on is held as a check at 12:12 on the 12th:
-its perigee and period hold (the period 5 s long), its apogee does not (6 km), which says the orbit flown
-decays a little too little or began a little high. The misses are in src/sim/misses.ts.
+its perigee, apogee and period hold (the period 5 s long), which says the orbit flown
+decays a little too little. The misses are in src/sim/misses.ts.
 
 ## What is simplified
 

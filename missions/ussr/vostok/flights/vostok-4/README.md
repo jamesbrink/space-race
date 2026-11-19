@@ -39,9 +39,11 @@ April 1961's place, no fillers. The group at the bus is taken from the previous 
 ## The flight as flown
 
 [mission.md](mission.md) has every input's argument and each check against the run, and the misses
-are in src/sim/misses.ts. In short: the type's ascent, in the day's air, falls short of an orbit as
-Vostoks 1 to 3's do; the published orbit flown from where it left the ship goes round three days and
-comes down across the track within the region of Atasu (55 km) but **2,407 km long**, the period
+are in src/sim/misses.ts. In short: the type's ascent, in the day's air, reaches the orbit, Block E cut
+by the guidance where the orbit reached has the published period (676.3 s; its own integrator's setting is not known), and
+leaves the ship on 179 by 238 km and 88.30 min. The whole flight is one state flown from the pad (docs/agents/simulator.md,
+"One state"): it goes round three days and
+comes down across the track within the region of Atasu (56 km) but **2,455 km long**, the period
 carried round 48 times (a second a revolution is some 350 km); the pilot's landing time holds (not
 independent), the module comes down six minutes before him where the record has twelve. Flown
 together, the two records' orbits bring the ships no nearer than 203 km where TASS has 6.5 (1,768 km

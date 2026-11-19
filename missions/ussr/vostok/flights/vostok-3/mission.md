@@ -122,24 +122,24 @@ in each moves.
 Tolerances were set before anything was flown (the record's own commit flew nothing; the TASS check of 12 August with
 the source rule of November 2026, before it was flown). The ascent flies the day's air over the pad (ERA5's column at the
 hour, `aloft.ts`, and the 1976 standard above it); the coast the joined ship's free-molecule drag in the air of the days'
-Sun (world/thermosphere.ts), the descent the standard and calm. On the type's ascent, then the published orbit from where
-it left the spacecraft (the handover the scene shows), then the descent:
+Sun (world/thermosphere.ts), the descent the standard and calm. On the type's ascent, then the coast flown on from the state
+it left the spacecraft in (one state from the pad: docs/agents/simulator.md, "One state"), then the descent:
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Third stage cut off | 687 s ± 3 | 676.35 s | **miss** (−10.65 s) | cut on Vostok 1's integrator setting, as Vostok 1's was: this flight's setting or start differed |
+| Third stage cut off | 687 s ± 3 | 677.2 s | **miss** (−9.8 s) | cut by the guidance on the orbit flown for this flight, its integrator's setting not being known: the record's stage burned ten seconds longer, on a start or a vehicle that differed |
 | Greatest load going up | 6 to 7 g (by feel) ± 1 | 4.71 g | **miss** (−1.79 g) | the type's most, on the first stage; Titov felt no more than five |
-| Perigee at the last cutoff | 180.7 km ± 5 | −240 km | **miss** | the type's ascent falls short, as Vostok 1's and 2's (147 m/s slow) |
-| Apogee at the last cutoff | 234.6 km ± 10 | 180 km | **miss** | the same |
+| Perigee at the last cutoff | 180.7 km ± 5 | 180.0 km | yes (−0.7 km) | the law's target |
+| Apogee at the last cutoff | 234.6 km ± 10 | 218.7 km | **miss** (−15.9 km) | Block E is cut by the guidance where the orbit reached has the published period, its own integrator's setting not being known (misses.ts `OSCULATING`): what is read here is the osculating orbit at that instant |
 | Inclination | 64.98° ± 0.05 | 64.98° | yes | on Vostok 1's aiming azimuth |
 | Perigee at 12:12 on 12 August (TASS) | 176.7 km ± 5 | 175.5 km | yes | |
-| Apogee at 12:12 on 12 August (TASS) | 227.6 km ± 5 | 233.8 km | **miss** (+6.2 km) | begun where the ascent left it, higher than the injection (230.6 km from there, which holds) |
-| Period at 12:12 on 12 August (TASS) | 88.2 min ± 6 s | 88.28 min | yes (+5.0 s) | over the mean Earth, until November 2026: 88.50, +18 s |
-| Apogee as flown round | 234.6 km ± 5 | 239.2 km | yes | |
+| Apogee at 12:12 on 12 August (TASS) | 227.6 km ± 5 | within 5 km | yes | flown on from the ascent's own state |
+| Period at 12:12 on 12 August (TASS) | 88.2 min ± 6 s | 88.29 min | yes (+5.1 s) | over the mean Earth, until November 2026: 88.50, +18 s |
+| Apogee as flown round | 234.6 km ± 5 | 237.3 km | yes |  |
 | Greatest load in the entry | 8 to 9 g ± 2 | 8.64 g | yes | |
-| Landing across the track | 0 ± 150 km (the region of Karkaralinsk) | −90 km | yes | over the mean Earth: −626 km |
-| Landing along the track | 0 ± 150 km | −1,059 km | **miss** | the period over 64 revolutions and four days of decay (below) |
-| Descent module down | 09:39:59 ± 60 s | 09:43:56 | **miss** (+237 s) | it comes down 5.7 minutes before him where the record has twelve |
+| Landing across the track | 0 ± 150 km (the region of Karkaralinsk) | −103 km | yes | over the mean Earth: −626 km |
+| Landing along the track | 0 ± 150 km | −1,360 km | **miss** | the period over 64 revolutions and four days of decay (below) |
+| Descent module down | 09:39:59 ± 60 s | 09:43:27 | **miss** (+209 s) | it comes down 5.7 minutes before him where the record has twelve |
 | Nikolayev down | 09:52 ± 2 min | 09:49:38 | **miss** (−142 s) | the burn is timed from his landing, and from where it now comes he is down in 25.5 minutes, not Vostok 1's 27.9 |
 
 The coast from the estimated injection (tests/orbital.test.mjs): TASS's orbit at 12:12 on the 12th holds in all three

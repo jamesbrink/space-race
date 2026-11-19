@@ -94,22 +94,22 @@ no gas. How the lock's code reached him, and what it was, is in no document: the
 
 ## What the run gives
 
-On the type's ascent (tests/staged.test.mjs), then the published orbit from where it left the spacecraft (the handover the
-scene shows), then the descent. Tolerances were set before anything was flown.
+On the type's ascent (tests/staged.test.mjs), then the coast flown on from the state it left the spacecraft in (one state from the pad: docs/agents/simulator.md, "One state"),
+then the descent. Tolerances were set before anything was flown.
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
 | Greatest load, first stage | about 4.5 g (≤ 5, by feel) ± 1 | 4.72 g | yes | |
-| Perigee at the last cutoff | 183 km ± 5 | −197 km | **miss** | the type's ascent falls short, as Vostok 1's (SHORT) |
-| Apogee at the last cutoff | 244 km ± 10 | 180 km | **miss** | the same |
-| Inclination | 64°56′ ± 0.05° | 64.98° | yes (0.05) | Vostok 1's aiming azimuth, estimated: 64.99°, a miss, in still standard air; the day's wind turns it 0.01° |
-| Period at the last cutoff | 88.46 min ± 15 s | 83.97 min | **miss** | the same as the perigee |
+| Perigee at the last cutoff | 183 km ± 5 | 180.0 km | yes (−3.0 km) | the law's target |
+| Apogee at the last cutoff | 244 km ± 10 | 230.4 km | **miss** (−13.6 km) | Block E is cut by the guidance where the orbit reached has the published period, its own integrator's setting not being known (misses.ts `OSCULATING`): what is read here is the osculating orbit at that instant |
+| Inclination | 64°56′ ± 0.05° | 64.93° | yes | the law steers to it out of the plane of Vostok 1's aiming azimuth |
+| Period at the last cutoff | 88.46 min ± 15 s | 88.25 min | yes (−12.4 s) | the same as the apogee; the orbit the ship is left on has the published period to a tenth of a second |
 | Period, node to node, of the orbit begun | 88.46 min ± 2 s | 88.46 | yes | not independent: the published orbit is read as mean elements with this nodal period (issue #8) |
-| Apogee as flown round | 244 km ± 5 | 248.9 km | yes | over the ball its heights and period imply; over the record's old 6,363 km, 245 km (read as osculating, as until November 2026: 265 km, a miss) |
-| Height as the bundle burnt through, 10:07 | 90 km ± 15 (derived) | 56 km | **miss** | not the drag (3.6 km at most): the burn's instant, line and impulse, and Titov's clock (above; as osculating: 79 km, within) |
+| Apogee as flown round | 244 km ± 5 | 249.0 km | yes | over the ball its heights and period imply |
+| Height as the bundle burnt through, 10:07 | 90 km ± 15 (derived) | 54 km | **miss** | not the drag (3.6 km at most): the burn's instant, line and impulse, and Titov's clock (above) |
 | Greatest load in the entry | about 10 g ± 2 | 8.38 g | yes | |
-| Landing across the track | 0 ± 25 km | −12 km | yes | (as osculating: −95 km, a miss: four minutes early on the coast) |
-| Landing along the track | 0 ± 100 km | −472 km | **miss** | PHASE (over the record's old ball: −422 km; as osculating: −1,493 km) |
+| Landing across the track | 0 ± 25 km | −11 km | yes |  |
+| Landing along the track | 0 ± 100 km | −477 km | **miss** | PHASE |
 | Descent module down | about 10:15 ± 4 min (derived) | 10:15:01 | yes | |
 | Titov down | 10:18 ± 2 min | 10:22:02 | **miss** (+242 s) | the type's descent is slower than the record's clocks, as Vostok 1's |
 
