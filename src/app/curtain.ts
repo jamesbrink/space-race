@@ -82,7 +82,9 @@ function cancel(curtain?: Curtain): void {
 }
 
 /** Whether there is to be sound, as every curtain's switch shows it: called once the sound's key has been heard by whoever keeps the sound. */
-let heard = typeof localStorage === 'undefined' ? true : !prefs.get('soundOff');
+// (prefs.ts reads the storage under a try: where it is missing, or denied and throws on being touched, as a private
+// window's can, the sound is on; `typeof localStorage` touched it, and threw as the page loaded)
+let heard = !prefs.get('soundOff');
 function sound(): void {
   // (a site's sound hears the key itself and writes the choice down; where there is none yet, the choice is written here for it to find)
   if (!prefs.get('soundOff') === heard) prefs.set('soundOff', heard);
