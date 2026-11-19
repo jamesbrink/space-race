@@ -768,14 +768,47 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         short: 'eleven days of drift before the burn',
       },
     },
+    shown: {
+      'sps-1.velocity': {
+        by: 4.055,
+        slack: 0.6,
+        why:
+          'The corrective combination is solved by guidance on where the run and its S-IVB are as it lights (sim/pursuit.ts): 217.4 ft/s to leave the stage 80 nautical miles ahead and 7.8 above at the coelliptic manoeuvre, where the record’s burn was 204.1. ' +
+          'What it has to correct is the run’s own phasing by then: the two phasing burns are flown at the record’s impulses, open, on a stage whose drag is an estimate and on an orbit that has not had the S-IVB’s venting. ' +
+          'The burns that follow come out as the record’s (the coelliptic manoeuvre 174.1 ft/s for 173.8, the terminal phase 18.2 for 17.4). Not adjusted',
+        short: 'solved on the run’s own phasing',
+      },
+      'rcs-braking.velocity': {
+        by: 0.949,
+        slack: 0.3,
+        why:
+          'The braking and the station kept after it to 30:20 take 21.3 ft/s where the record’s braking, to 29:55:43, is 18.2. The crew braked in pulses by eye at their ranges; guidance commands the thrust that closes the range and its rate together in the time the record’s braking took, ' +
+          'from 1.10 nautical miles where the record has 1.2, and then holds 70 ft for twenty-four minutes more, which the record’s figure does not count. Not adjusted',
+        short: 'a commanded braking, and the station kept after it',
+      },
+      'sextant-1.range': {
+        by: -146_675,
+        slack: 12_000,
+        why:
+          'Fifteen hours after the station was left the stage is 81 nautical miles off where the sextant’s tracking ended at 160, and at 53:20 it is 193 for 320. The run lets the stage go at rest beside it at 30:20 and the two then part by the air alone, the stage’s drag an estimate (`FlightPlan.target.dragArea`). ' +
+          'The record’s two ranges fit a parting by the air a fifth faster than the run’s (0.43 against 0.35 nautical miles an hour squared) and 4 nautical miles an hour besides, which is a separation of some 2 ft/s as the station ended: no such burn is in the plan, and no figure for one in anything read. Not adjusted',
+        short: 'no separation burn flown at 30:20',
+      },
+      'sextant-2.range': {
+        by: -234_117,
+        slack: 20_000,
+        why: 'As at 45:30: 193 nautical miles for 320, the stage left at rest at 30:20 and parted from by the air alone, where the record’s ranges fit a separation of some 2 ft/s as well, which is not in the plan. Not adjusted',
+        short: 'no separation burn flown at 30:20',
+      },
+    },
     descent: {
       'cm.at': {
-        by: 652.4,
+        by: 420.3,
         slack: 30,
         why:
-          'Down 652 s after the recorded 260:09:03, 92 km from the recovery force’s place: the whole flight is one state flown from the pad on its own forces, with nothing joined to the tracking (until November 2026 every tracked state was joined, and it was 41 s late). ' +
-          'By the deorbit burn the run is some 4,200 km behind the tracked state along its orbit (tools/residuals.mjs): the S-IVB’s venting and propellant dump, the settling burns and the drag’s errors are not flown, and each burn is aimed as the plan has it wherever the run then is. ' +
-          'The burn lowers the perigee where the orbit has it, so it comes in at the same place eleven minutes later. Not adjusted',
+          'Down 420 s after the recorded 260:09:03, and 1,320 km beyond the recovery force’s place along the track: the whole flight is one state flown from the pad on its own forces, with nothing joined to the tracking (until November 2026 every tracked state was joined, and it was 41 s late). ' +
+          'By the deorbit burn the run is some 1,500 km behind the tracked state along its orbit (tools/residuals.mjs): the S-IVB’s venting and propellant dump and the settling burns are not flown, the drag is the standard’s on an estimate, and the five firings after the rendezvous are aimed as the plan has them wherever the run then is. ' +
+          'Before the rendezvous was flown by guidance (November 2026) the run was 4,200 km behind there and came down 92 km from the place, by its perigee’s place and not by its own; the rendezvous now leaves it on its S-IVB’s orbit, which is the insertion’s without the venting. Not adjusted',
         short: 'eleven days on its own forces, joined to no tracking',
       },
     },

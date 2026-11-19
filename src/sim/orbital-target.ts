@@ -1,124 +1,79 @@
+/**
+ * The stage a spacecraft left in orbit and went back to (`Flight.flies.target`), where it is at an instant of a run: a
+ * craft of its own, flown from the parting on its own forces (sim/pursuit.ts, orbital.ts `targetFrom`). Nothing moves
+ * it but gravity and the air: where the record has it from the spacecraft (the plan's checks of its range) is what a
+ * run is compared with, never what the stage is put on.
+ */
 import type { SitedFlight } from '../types.ts';
-import { add, cross, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { length, scale, sub, unit } from '../world/frames.ts';
 import { type State, step } from '../world/orbit.ts';
+import { targetFrom } from './orbital.ts';
+import type { Target } from './pursuit.ts';
 import { between, type Run, recordOf } from './run.ts';
 import type { LiveSample } from './vehicle.ts';
 
-interface Coast {
-  from: number;
+/** A stage let go by an abort on the way up: flown on by gravity alone, down to the sea. */
+interface Fall {
   samples: (State & { t: number })[];
   ended?: boolean;
 }
-const newCoast = (t: number, s: State): Coast => ({ from: t, samples: [{ ...s, t }] });
-function at(coast: Coast, t: number, below?: (state: State & { t: number }) => boolean): State {
-  let last = coast.samples[coast.samples.length - 1]!;
-  const dt = below ? 5 : 30;
-  while (last.t < t && !coast.ended) {
-    last = { ...step(last, last.t, dt), t: last.t + dt };
-    coast.samples.push(last);
-    if (below?.(last)) coast.ended = true;
+function falling(fall: Fall, t: number, below: (state: State & { t: number }) => boolean): State {
+  let last = fall.samples[fall.samples.length - 1]!;
+  while (last.t < t && !fall.ended) {
+    last = { ...step(last, last.t, 5), t: last.t + 5 };
+    fall.samples.push(last);
+    if (below(last)) fall.ended = true;
   }
-  return between(coast.samples, t);
+  return between(fall.samples, t);
 }
-const basis = (s: State) => {
-  const up = unit(s.r),
-    normal = unit(cross(s.r, s.v));
-  return [unit(cross(normal, up)), up, normal] as const;
-};
+
 interface Track {
-  start: Coast;
+  from: number;
   aborted?: boolean;
-  history?: Run;
-  corrections: { t: number; offsets: Vec3; ahead: number; above: number; relative?: boolean }[];
-  after?: Coast;
+  target?: Target;
+  fall?: Fall;
 }
 const tracks = new WeakMap<Run, Track>();
-/** Nominal rendezvous telemetry is available only on the original mission branch. */
+
+/** The target of the flight as flown to orbit: none on a launch that was aborted. */
 export function targetAt(flight: SitedFlight, run: Run, t: number): State | undefined {
   if (!run.launchAborted) return detachedStageAt(flight, run, t);
 }
 
-/** A detached upper stage, independently propagated with J2. For a historical separation,
- * sparse observed relative positions constrain a reconstruction in the orbital frame. A
- * different separation state instead seeds a free coast. Neither follows the pilot thereafter. */
+/**
+ * The detached stage at `t` on a run: from the instant the run let it go, with the stage's side of the joint's push,
+ * and from there on its own forces. The record's run carries the very craft its guidance flew on (`Run.target`), and a
+ * run that let the stage go as the record did has that craft too; a run flown by hand that let it go at another
+ * instant, or in another state, has its own, begun where that run left it. Neither follows the spacecraft afterwards. A stage let go by an abort falls by gravity alone to the sea.
+ */
 export function detachedStageAt(flight: SitedFlight, run: Run, t: number): State | undefined {
   const config = flight.flies?.target;
-  if (!config || t > config.until.value) return;
+  const plan = flight.plan;
+  if (!config || !plan || t > config.until.value) return;
   const index = flight.flies!.drops.findIndex((d) => d.on === config.drop);
   const from = run.dropped[index];
   if (from === undefined || !Number.isFinite(from) || t < from || (run.launchAborted && from === 0)) return;
   let track = tracks.get(run);
-  if (!track || track.start.from !== from || track.aborted !== run.launchAborted) {
+  if (!track || track.from !== from || track.aborted !== run.launchAborted) {
     const seed = between(run.samples, from);
-    const push = flight.plan?.craft[0]?.joints.find((joint) => joint.id === config.drop)?.push?.value ?? 0;
-    const departed = { r: seed.r, v: sub(seed.v, scale(unit((run.at(from) as LiveSample).axis), push)) };
-    track = { start: newCoast(from, departed), aborted: run.launchAborted, corrections: [] };
+    const push = plan.craft[0]?.joints.find((joint) => joint.id === config.drop)?.push?.value ?? 0;
+    const departed = (): State => ({ r: seed.r, v: sub(seed.v, scale(unit((run.at(from) as LiveSample).axis), push)) });
+    // (the craft the record's guidance flew on is this run's too where this run let the stage go as the record did: at
+    // the same instant, from the same place, the spacecraft leaving it at the joint's push)
+    const flown = run.launchAborted ? undefined : (run.target ?? recordOf(flight)?.target);
+    const begun = flown && Math.abs(flown.from - from) < 1e-6 ? flown.at(from) : undefined;
+    const same = begun && length(sub(seed.r, begun.r)) < 1e-3 && Math.abs(length(sub(seed.v, begun.v)) - push) < 1e-3;
+    track = { from, aborted: run.launchAborted };
+    if (run.launchAborted) track.fall = { samples: [{ ...departed(), t: from }] };
+    else if (same) track.target = flown;
+    else track.target = targetFrom(plan, run.frame, flight.site.seaLevel.value, { t: from, ...departed() });
     tracks.set(run, track);
-    const history = run.launchAborted ? undefined : recordOf(flight);
-    if (
-      history &&
-      Math.abs(history.dropped[index]! - from) < 1 &&
-      length(sub(seed.r, between(history.samples, from).r)) < 100 &&
-      length(sub(seed.v, between(history.samples, from).v)) < 1
-    ) {
-      track.history = history;
-      track.corrections.push({ t: from, offsets: [0, 0, 0], ahead: 0, above: 0 });
-      for (const fix of config.fixes) {
-        const craft = between(history.samples, fix.at.value);
-        const [ahead, up] = basis(craft);
-        const point = add(craft.r, add(scale(ahead, fix.ahead.value), scale(up, fix.above.value)));
-        const predicted = at(track.start, fix.at.value);
-        const residual = sub(point, predicted.r);
-        const [x, y, z] = basis(predicted);
-        track.corrections.push({
-          t: fix.at.value,
-          relative: fix.relative,
-          ahead: fix.ahead.value,
-          above: fix.above.value,
-          offsets: [dot(residual, x), dot(residual, y), dot(residual, z)],
-        });
-      }
-    }
   }
-  if (run.launchAborted) {
+  if (track.fall) {
     const below = (state: State & { t: number }) => run.frame.place(state.r, state.t).height <= flight.site.seaLevel.value;
-    const state = at(track.start, t, below);
-    if (t <= track.start.samples.at(-1)!.t && !below({ ...state, t })) return state;
+    const state = falling(track.fall, t, below);
+    if (t <= track.fall.samples.at(-1)!.t && !below({ ...state, t })) return state;
     return;
   }
-  function corrected(instant: number): Vec3 {
-    const s = at(track!.start, instant);
-    const fixes = track!.corrections;
-    if (fixes.length < 2) return s.r;
-    let i = 1;
-    while (i < fixes.length - 1 && fixes[i]!.t < instant) ++i;
-    const a = fixes[i - 1]!,
-      b = fixes[i]!;
-    const u = Math.max(0, Math.min(1, (instant - a.t) / (b.t - a.t)));
-    if (b.relative && track!.history) {
-      const craft = between(track!.history.samples, instant),
-        [along, up] = basis(craft);
-      const f = u * u * (3 - 2 * u);
-      const point = add(craft.r, add(scale(along, a.ahead + (b.ahead - a.ahead) * f), scale(up, a.above + (b.above - a.above) * f)));
-      if (i !== 1) return point;
-      // On the first observed arc the cubic starts with the actual joint separation speed.
-      const releaseVelocity = between(track!.history.samples, from!).v;
-      const impulse = sub(track!.start.samples[0]!.v, releaseVelocity);
-      return add(point, scale(impulse, (b.t - a.t) * u * (1 - u) ** 2));
-    }
-    const offset = add(a.offsets, scale(sub(b.offsets, a.offsets), u * u * (3 - 2 * u)));
-    return basis(s).reduce<Vec3>((p, axis, j) => add(p, scale(axis, offset[j]!)), s.r);
-  }
-  const last = track.corrections.at(-1);
-  if (!last) return at(track.start, t);
-  if (t > last.t) {
-    if (!track.after)
-      track.after = newCoast(last.t, {
-        r: corrected(last.t),
-        v: scale(add(sub(scale(corrected(last.t), 3), scale(corrected(last.t - 0.1), 4)), corrected(last.t - 0.2)), 5),
-      });
-    return at(track.after, t);
-  }
-  const r = corrected(t);
-  return { r, v: t < from + 0.1 ? at(track.start, t).v : scale(sub(corrected(t + 0.05), corrected(t - 0.05)), 10) };
+  return track.target?.at(t);
 }
