@@ -97,6 +97,14 @@ for (const f of flown) {
       const t1 = 20 + rand() * (parting - 25);
       const c = cutAt(f, t1, { sequence, guidance });
       if (!c) continue;
+      // (the sequencer lit a stage after the cut: the path "if cut now" lights none, and says nothing of that flight)
+      const relit = c.end.stages.findIndex((x) => Number.isFinite(x.from) && x.from > c.cut.t + 1e-9);
+      if (relit >= 0) {
+        console.log(
+          `# ${f.id} cut at T+${c.cut.t.toFixed(2)}: the sequencer lit stage ${relit} at T+${c.end.stages[relit].from.toFixed(2)}, passed over`,
+        );
+        continue;
+      }
       const p = pathOf(f, c, sequence);
       const parted = p.events.find((e) => e.kind === 'separation');
       const label = `${f.id} cut at T+${c.cut.t.toFixed(2)}, sequencer ${sequence ? 'on' : 'off'}, guidance ${guidance ? 'on' : 'off'}`;
@@ -104,11 +112,11 @@ for (const f of flown) {
         // the parting: when, where and how fast, against the live vehicle's (a rigid body that keeps its attitude, against a
         // point mass on the drag of the shape it has)
         assert.ok(parted, `${label}: the live vehicle parts at T+${c.end.parted.t.toFixed(2)}, the path has no separation`);
-        // (the path's point at the parting, with the parting's push: the last of the points at that instant)
-        const at = p.points.findLast((q) => Math.abs(q.t - parted.t) < 1e-6) ?? parted;
+        // (the state the parting is made from, before its push: the push is the one function of the same two masses,
+        // stagedlive.ts `separationSpeed`, which tests/stagedlive.test.mjs holds to the prediction's)
         const dt = parted.t - c.end.parted.t;
-        const dr = length(sub(at.r, c.end.parted.r));
-        const dv = length(sub(at.v, c.end.parted.v));
+        const dr = length(sub(parted.r, c.end.r));
+        const dv = length(sub(parted.v, c.end.v));
         console.log(
           `# ${label}: parts at T+${parted.t.toFixed(2)} (live ${c.end.parted.t.toFixed(2)}), ${dr.toFixed(1)} m and ${dv.toFixed(3)} m/s apart`,
         );
@@ -117,7 +125,11 @@ for (const f of flown) {
           `${label}: the path parts at T+${parted.t.toFixed(2)}, the live vehicle at T+${c.end.parted.t.toFixed(2)}`,
         );
         const fell = c.end.parted.t - c.cut.t;
-        assert.ok(dr < 50 + 0.002 * fell * fell, `${label}: ${dr.toFixed(0)} m from the live vehicle at the parting`);
+        // (the live vehicle parts on its tick, the path at the instant: at most a hundredth of a second's flight apart)
+        assert.ok(
+          dr < 50 + length(c.end.v) * Math.abs(dt) + 0.002 * fell * fell,
+          `${label}: ${dr.toFixed(0)} m from the live vehicle at the parting`,
+        );
         assert.ok(dv < 0.5 + 0.004 * fell, `${label}: ${dv.toFixed(2)} m/s from the live vehicle at the parting`);
       } else if (c.end.landed) {
         assert.equal(parted, undefined, `${label}: the live stack comes down whole, the path parts it at T+${parted?.t.toFixed(2)}`);
