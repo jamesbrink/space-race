@@ -122,7 +122,8 @@ flight's slider moves; the place (`site1/model/1961-04.glb`) is everything else.
 | OuterFence…, InnerFence… (North, East, South, West), LightPoles…, GuardTowers (`GuardTower_NW` …) | perimeter.py | the double fence, the light poles inside it, six guard towers | yes (the place) |
 | SouthBuilding_1, SouthStore_2, PumpHut_3, SouthTanks, VehicleShed_6, SouthBuilding_7, Tents_11, FencedYard_12 | south.py | what one photograph of July 1959 shows south of the embankment and outside the south fence, the CIA's item numbers in their names: two gable-roofed buildings, a pump hut, two pairs of tanks, a vehicle shed, a building with a mast, six tents, a boarded yard; doors shut, windows dark | yes (the place) |
 | Site51 | site51.py | the R-9's pad 415 m north-north-west, outside the north fence: an octagonal pad on its bank, a square building, the end of a rail spur; no rocket | yes (the place) |
-| AssemblyBuilding | [site2/mik.py](site2/mik.py) | Site 2's assembly and test building, 2 km west-south-west | built as a model of its own (`places/tyuratam/site2/1961-04.glb`), drawn round the site as scenery (`around` in site-1.ts) |
+| AssemblyBuilding, Yard… | [site2/mik.py](site2/mik.py), [site2/yard.py](site2/yard.py) | Site 2's assembly and test building, 2 km west-south-west, and the buildings of its yard | built as a model of its own (`places/tyuratam/site2/<date>.glb`), drawn round the site as scenery (`NEIGHBOURS` in ground.ts) |
+| Measuring…, Tracking… | [ip1/centre.py](ip1/centre.py) | the measuring point IP-1, 1.4 km south-west, and the tracking station south-east of it | the same (`places/tyuratam/ip1/<date>.glb`): "Beyond the fences" |
 | (the vehicle) | the flight's vehicle.glb | hung in the supports: `position` and `rotationY` in flight.ts | yes |
 | (the cosmonaut) | the flight's crew.glb | on the deck's west edge, 19.5 m west and 6.5 m south of the axis: on his way from the bus to the foot of the erector's stair; where he is stood is estimated | yes |
 
@@ -479,14 +480,65 @@ on it against the documented 160 ft): good to ten metres. Metres east and north 
 | Its pad | octagonal, about 190 by 120 ft, long axis north-west and south-east | documented (measured) | PIC/JR-8/61 |
 | What else is described | a road from the west; a rail spur ending at a building 50 ft square south of the pad; road and rail on a fan-shaped bank some 1,000 ft long and 350 ft wide at its east end | documented | the same. Built: the pad on a metre of bank (its height estimated), the building (47 m south of the pad's middle, clear of its bank, 4.5 m to its roof: estimated), the spur's last 40 m ([site1/site51.py](site1/site51.py)) |
 | Whether it stood on 12 April 1961 | yes: the first R-9 left it on 9 April 1961 (and failed), the next on 21 April | documented | ru.wikipedia, Р-9А; Zak, RussianSpaceWeb. No rocket stood on it on the 12th |
-| The assembly and test building of Site 2 (МИК 2-1; the CIA's "Missile Assembly and Checkout Facility No 1") | 395 by 105 ft, 70 ft high (120.4 by 32.0 by 21.3 m), a shed 30 ft broad along its west side, three tracks through it; its middle at (-1941, -641): 2.04 km on bearing 252°, long axis on 028° | documented (the size: measured, PIC/JR-2/60 p. 16; the place: OpenStreetMap way 173526300 less its extension of 1973 to 1974 at the north-north-east end) | accepted 11 May 1957. Its top 13 m shows over the land from the deck |
+| The assembly and test building of Site 2 (МИК 2-1; the CIA's "Missile Assembly and Checkout Facility No 1") | 395 by 105 ft, 70 ft high (120.4 by 32.0 by 21.3 m), a shed 30 ft broad along its west side, three tracks through it; its middle at (-1905, -574): 1.99 km on bearing 253°, long axis on 028° | documented (the size: measured, PIC/JR-2/60 p. 16; the place: OpenStreetMap way 173526300 less its extension, which is at the south-south-west end: a KH-7 photograph of 24 September 1964) | accepted 11 May 1957. **It was first built 77 m too far south-south-west, at the other end of today's outline** (site2/mik.py has the three things that say which end was added). Across its axis it is on today's centre line, which the photograph leaves open by some 9 m |
 | Its shed | along the whole of its west side, 30 ft broad | documented (measured: the breadth; drawn: its length) | PIC/JR-2/60 p. 16 and Figure 8, the CIA's plan of the place, which draws it as a strip from end to end. Its roof (8.0 m at the wall, 5.5 m at its eave), doors and windows are estimated. It was first built a bay short of each end |
 | Its gates | three in each end, a track through each, 40 ft apart, the middle one on the building's axis; the middle one 11.5 m broad and 10.5 m high, the two beside it 4.8 by 6.5 m | documented (three tracks through it); derived (their spacing: scaled off Figure 8, some 1.3 ft a pixel, where the middle one lies within 5 ft of the axis; that the middle one is on the axis: today's map has one track through the building, on its axis, OpenStreetMap way 676662204, the line the rocket was rolled out on; the middle gate's breadth: the rocket on its erector is 10.3 m across its four boosters); estimated (the gates' heights, the side gates' breadth, that the two ends are alike) | they were first three alike, 4.8 by 7.5 m and 8 m apart, which the assembled rocket could not have left by |
 | Its roof, walls, colour | a low double-pitched roof, pale render, a band of windows under the eaves, pilasters between twenty bays | estimated | no photograph of it from 1957 to 1961 was found |
-| On the plan and not built | a rectangle some 53 by 31 ft inside its outline, on its axis, 59 ft from its north-north-east end | | Figure 8 draws it and does not name it: something on the roof, or a part that stood higher. Nor the other buildings in its fenced yard (one 160 by 55 ft, one 125 by 35 ft) |
-| Where it is built | a model of its own, `public/models/ussr/places/tyuratam/site2/1961-04.glb` ([site2/mik.py](site2/mik.py), `pnpm model site2`), in Site 1's frame: 2,380 triangles in full; 1,276 without the windows' mullions and the gates' frames; 772 without the pilasters either. Its outline, windows, gates and the shed's doors are the same at all three | | drawn as scenery: site-1.ts `around` names the model, its node and what it wears; viewer/around.ts fetches it with the scene and sets it on the highest of the land under it (the land's swell there is under half a metre), out of the pad's shadow maps, which are fitted to the place's models |
-| The line it was rolled out on | from its north gate round to the centre track 1.32 km west of the pad: drawn on the land as the other tracks are | derived (that this was the line out in 1961: it is the one line from the gate toward the pad); its course is today's map's | OpenStreetMap way 676662205 (`railway=abandoned`) and the first 76 m of way 676662204 (the track through the building), which the extension of 1973 to 1974 stands over. Rolled out to the pad on 11 April 1961 |
-| Left out | the building 75 ft square 1.43 km north-west (not dated to April 1961); the measuring point IP-1, 1.43 km south-west (only its tops show); Site 2's housing and the cottages (hidden by some 30 m of land); Site 31, 19 km off | | the research's sight lines (SRTM, eye 1.7 m over the deck) |
+| On the plan and not built | a rectangle some 53 by 31 ft inside its outline, on its axis, 59 ft from its north-north-east end | | Figure 8 draws it and does not name it: something on the roof, or a part that stood higher. The KH-7 photograph of 1964 has a paler rectangle on the dark roof there: on the roof, then; what it was is not known |
+| Where it is built | a model of its own, `public/models/ussr/places/tyuratam/site2/1961-04.glb` ([site2/mik.py](site2/mik.py), `pnpm model site2`), in Site 1's frame, with the buildings of its yard ("Beyond the fences"): by itself 2,380 triangles in full; 1,276 without the windows' mullions and the gates' frames; 772 without the pilasters either. Its outline, windows, gates and the shed's doors are the same at all three | | drawn as scenery: ground.ts `NEIGHBOURS` names each model, its nodes and what they wear; viewer/around.ts fetches it with the scene and sets each thing on the highest of the land under it (the land's swell there is under half a metre), out of the pad's shadow maps, which are fitted to the place's models |
+| The line it was rolled out on | from its north gate round to the centre track 1.32 km west of the pad: drawn on the land as the other tracks are | derived (that this was the line out in 1961: it is the one line from the gate toward the pad); its course is today's map's | OpenStreetMap way 676662205 (`railway=abandoned`), which begins at the north-north-east end of today's building: the hall's own gable in 1961. Rolled out to the pad on 11 April 1961 |
+| Left out | the building 75 ft square 1.43 km north-west (not dated to April 1961); Site 2's housing and the cottages (hidden by some 30 m of land); Site 31, 19 km off | | the research's sight lines (SRTM, eye 1.7 m over the deck) |
+
+### Beyond the fences
+
+Site 2's yard and the measuring point IP-1, the buildings that stood round the assembly building and 1.4 km south-west of
+the pad. Nothing of them was built until three sources were laid over one another; each alone settles too little.
+
+| Source | What it gives | What it does not |
+| --- | --- | --- |
+| PIC/JR-2/60 (February 1960), **Figure 8** (p. 19) and **Figure 27** (p. 40): the CIA's line drawings of the launch support area and of the instrumentation control centre, from the U-2's photographs of July 1959 | every building's outline to scale (1.49 and 2.13 ft a pixel as scanned), a scale bar and a north arrow on each; five buildings dimensioned or measured in the text; which roofs were gabled | heights (only the assembly building's); what most of the buildings were |
+| NPIC/R-1440/63 (September 1963), pp. 9 and 35 to 37, Figures 6 and 24: the same places as of 1962 to 1963 | the yard's two shop buildings again, with their roofs ("hip-roofed", "gable-roofed"); the centre "1,160 by 640 feet" with "eight major buildings", "approximately doubled" | every date in it is blacked out; its drawings are a third the scale of 1960's |
+| CIA/PID memorandum M/EB 524/64 (10 November 1964) | the tracking station south-east of the centre: its buildings' sizes and **height**, the radome, the tower | its dates are blacked out too |
+| OpenStreetMap, today | where the buildings that survive stand, to a few metres, and the bearing of each | when anything was built |
+| KH-7 mission 4011, 24 September 1964, frame DZB00401100008H009001 (the copy on Wikimedia Commons, 21,700 by 12,945 px, some 0.65 m a pixel here) | what stood eighteen days before Voskhod 1 flew; shadows for heights | the copy is reduced from the USGS's scan |
+
+**How they were laid together.** The photograph was laid on Site 1's frame twice, by four buildings each time that are
+on it and on today's map: round the assembly building (to a metre or so) and round the measuring point (to some 3 m;
+30 m by the time the tracking station is reached, where today's map is used instead). The Sun stood some 44° up: the
+assembly building's shadow is 22 m long where the CIA measured it 70 ft high, so a shadow is 1.03 of a height, and every
+height below that is not the CIA's is read off a shadow that way, good to some 2 m.
+
+| Thing | Value | Confidence | Source |
+| --- | --- | --- | --- |
+| Workshop west of the assembly building (`YardWorkshop`) | 160 by 55 ft, hip-roofed, parallel to the hall across the tracks; at (-1955, -546); some 7 m to its ridge | documented (size, roof, place); derived (height) | Figure 8: "160' x 55'"; R-1440/63 p. 9; OpenStreetMap way 173526232 (159 by 55 ft); the photograph |
+| Store north-east of it (`YardStore`) | 125 by 35 ft, gable-roofed; at (-1814, -511); some 5 m | documented; derived (height) | Figure 8: "125' x 35'"; R-1440/63 p. 9; way 173526192 (133 by 33 ft) |
+| Tall building east of it (`YardTallBuilding`) | some 88 by 55 ft; at (-1834, -557); 12 m | derived (size: scaled off Figure 8, which gives no figure; height: its 13 m shadow) | Figure 8; the photograph; way 173526445 is larger today. What it was is not recorded; its flat roof is estimated |
+| Shop east of it (`YardShop`) | some 82 by 36 ft; at (-1880, -637) | derived (size: scaled off Figure 8); estimated (roof, height) | Figure 8; way 173526256 (108 by 37 ft today) |
+| Long building north of it (`YardLongBuilding`) | 64.4 by 15.5 m; at (-1906, -452); from September 1964 | documented (the photograph; today's map) | way 173526251. Not on Figure 8 nor on R-1440/63's Figure 6: built between 1963 and September 1964, when is not known |
+| The yard's fence | 770 by 545 ft, a tower at each corner | documented | R-1440/63 p. 9; Figure 8. **Not built** |
+| Headquarters building of IP-1 (`MeasuringHeadquarters`) | 32.4 by 15.3 m; at (-868, -1153), its length on 126°; two storeys, some 8.5 m | documented (place and outline: today's map, which agree with the drawing's 105 by 52 ft); derived (height) | Figure 27: "probable headquarters building"; way 172576987 |
+| Item 14 (`MeasuringBuilding14`) | 105 by 55 ft, gable-roofed; at (-689, -1333) | documented | PIC/JR-2/60 p. 40; way 172576984 (100 by 45 ft): where the drawing puts it from the headquarters building, within a metre |
+| Item 15 (`MeasuringBuilding15`) | 145 by 40 ft, gable-roofed, lying across the compound; at (-624, -1360) | documented (size); derived (place: its roof on the photograph) | p. 40; a larger building stands there today (way 172577013) |
+| Item 13 (`MeasuringBuilding13`) | 35 ft square, gable-roofed; at (-728, -1304) | documented (size); derived (place: off the drawing) | p. 40; a small roof there on the photograph |
+| Instrumentation building, generator building, building with a dome | some 52 by 31, 38 by 30 and 42 by 25 ft; the dome 20 ft across | derived (scaled off Figure 27, which names them and gives no size); documented (the dome's breadth) | Figure 27. Their heights and the dome's are estimated |
+| The centre's fence | 1,160 by 640 ft | documented | Figure 27; R-1440/63. **Not built** |
+| Tracking station: two instrumentation buildings (`TrackingBuildingWest`, `East`) | 24.6 by 19.9 and 25.4 by 19.0 m, **25 ft high**, 267 m apart on 125.5°; from September 1963 | documented (height: the CIA; outlines and places: today's map, which the photograph's roofs fit) | M/EB 524/64; NPIC/R-227/63 (September 1963): "two new identical structures"; ways 172576995 and 172576988. **The CIA made them 105 by 75 ft and 795 ft apart** from small-scale photographs: not used |
+| The radome on the western one, and the base for one on the eastern | 60 ft across; 55 to 60 ft; from September 1964 | documented | M/EB 524/64; the dome's shadow on the photograph. How much of a ball it was, and the base's height, are estimated |
+| Its support building (`TrackingSupportBuilding`) | one storey, 95 by 40 ft, midway between them; from September 1964 | documented | M/EB 524/64; way 172577009 (105 by 54 ft) |
+| Its lattice tower (`TrackingTower`) | "roughly 200 feet in height"; at (117, -1603), good to some 15 m | documented (height); derived (place: its shadow, 56 m long, on the photograph; the CIA: "approximately 600 feet northeast of the easternmost building") | M/EB 524/64. Its breadth and bracing are estimated |
+
+The walls, windows, plinths and doors of all of them are ours ([site2/blocks.py](site2/blocks.py)): no photograph of any
+of them from the ground in those years was found. Each is drawn at its coarsest level as its mass and roof alone.
+
+**Not built, and why.** In the yard: the "tall tower" in its south-east corner (a water tower: its diameter is blacked
+out; the photograph has something tall at (-1857, -662)), a building some 55 by 60 ft beyond the hall's south-south-west
+end, half a dozen huts. At IP-1: the "large probable bunker" (33 by 31 m on today's map, height not known), the
+"possible tracking antenna" (item 19), the stick masts, the mounded tanks, the interferometer 1,140 ft west-north-west
+(six radomes on a circle 1,000 ft across), and the dozen roofs the centre had gained by 1964 that no report measures.
+**The rest of Site 2** (the CIA's technical facilities, some thirty buildings on 20 acres, the headquarters, the
+barracks, the cottages, the transloading point, the construction camp): Figure 8 draws every one to scale and
+dimensions a dozen (150 by 45, 120 by 45, 80 by 55, 85 by 55 ft ...), and the same photograph has them all. They are
+not built because they were not got to, not because the sources fail: the method above carries over as it is.
 
 ## The land
 
@@ -640,8 +692,8 @@ The ways are drawn per pixel from a table (`uWorks`), sharp at any distance and 
 so a track is a line from 12 km and a band with ruts in it underfoot. The worked areas are in the cover's maps (2 m a
 texel within a kilometre, 16 m out to 8 km), which the plants read too: nothing grows on a way, little on worn ground.
 
-**Not drawn.** Buildings: Site 2's, the camp's, IP-1's and the settlement's footprints are on both frames (listed for
-a model in "What the model gets wrong"), and their ground is drawn as worked; no mass stands for them. Borrow pits and
+**Not drawn.** Buildings: Site 2's, the camp's, IP-1's and the settlement's footprints are on both frames, and their
+ground is drawn as worked; a dozen of Site 2's and IP-1's now stand on it as models ("Beyond the fences"), and no mass stands for the rest. Borrow pits and
 quarries: none could be told apart on the frames from the dark patches of damp ground (the 15 m sand pit the 1970s sheet
 has 1.2 km east and 1.6 km south is not dark on either frame). The strips along the fences and the cable trenches: not
 seen at 2 m a pixel (the double fences 48 m apart show on the U-2 photograph of 1959, not their ploughed strips).
@@ -846,20 +898,26 @@ opens: what was behind each is not recorded.
 | The people of 14 and 16 June 1963: the State Commission at the pad, the farewells, the back-ups suited (Volynov; Solovyeva) | each morning | not recorded | documented that they were there (Kamanin) | **not built**: the figures have no summer dress |
 | The bus on 12 October 1964 (Voskhod 1) | 08:15 Moscow time (10:15 by the range's clock: converted), with Komarov, Feoktistov and Yegorov in wool suits | not recorded (Voskhod 1's pad.ts: 10:00, estimated) | documented that it came; assumed that it was the same LAZ-695B; its place April 1961's, taken | Kamanin, 12 October 1964; road_vehicles.py `bus_days` |
 | The railway fillers on 12 October 1964 | not recorded | not recorded | **not found** | nothing read has a filler beside the rocket that morning: not built (tank_cars.py `DAYS` is unchanged) |
-| The service trusses, the erector and its lift, the cable mast, for the 11A57 (Voskhod 1, 12 October 1964) | not known | not known | **not found** | the 11A57 stood 44.16 m, 5.8 m taller than the 8K72K, its hatch and its third stage's connections as much higher. What was raised or added at Site 1 to serve it (the trusses' upper platforms, the lift's height, the cable mast's) is in nothing read. Built for 12 October 1964 as for the Vostoks: the lift stops short of the ship's hatch, which the model says ("What the model gets wrong or leaves out") |
+| The service trusses, the erector and its lift, the cable mast, for the 11A57 (Voskhod 1, 12 October 1964) | not known | not known | **not found** | the 11A57 stood 44.16 m, 5.8 m taller than the 8K72K, its hatch and its third stage's connections as much higher. What was raised or added at Site 1 to serve it (the trusses' upper platforms, the lift's height, the cable mast's) is in nothing read. **The CIA asked the same question and could not answer it**: CIA/PIR 61029 (September 1965) made isodensity traces of the "service tower at Pad A-1 ... to determine if the tower had been modified in 1964", and "the results ... were inconclusive ... due to the variations in photography and sun angles plus the complexity inherent in the design of the tower". Built for 12 October 1964 as for the Vostoks: the lift stops short of the ship's hatch, which the model says ("What the model gets wrong or leaves out") |
 | The people of 12 October 1964: the State Commission 200 m from the rocket at 08:00 by the range's clock, the crew's report, Korolev | that morning | not recorded | documented that they were there (Kamanin) | **not built**: the figures cannot be dressed as they were (no grey wool suits, no winter coats) |
 | What else had changed round the pad between June 1963 and October 1964 | | | **not looked for** beyond the above | Voskhod 1's surroundings are the site's model of August 1961 (`1961-08.glb`), as the Vostoks' |
 | The bus on 18 March 1965 (Voskhod 2) | | | **not found**: the crew's report has them suited by 07:00 and aboard by about 07:30, and says nothing of how they came | not built (road_vehicles.py `bus_days` ends on 12 October 1964) |
 | The night's snow of 17 to 18 March 1965 | the night before | | documented: «Снег лежит на вершине корабля, на фермах обслуживания» (Borisenko, p. 77) | **not built**: the site has no snow |
-| The launch system after the fire of 1 June 1962 | repaired within about a month: Vostok 3's rocket was brought out to it at 21:00 on 9 August 1962 (Kamanin, 10 August) | | documented that it was damaged and repaired; **what was replaced is not recorded** | Kamanin, 22 June 1962: «В результате пожара сильно пострадала стартовая установка, и ее восстановление займет около месяца» (issue #15); Siddiqi, *Challenge to Apollo*, p. 355: a Zenit-2's rocket "landed 300 meters from the launch site, while one of the strap-ons remained at the pad, seriously damaging the structure as a result of a fire". Built for 1962 and 1963 as it stood in 1961 |
-| A new room beside the bunker, where the State Commission met | by 11 August 1962 | not known | documented that it stood; where and how big, not | Kamanin, 12 August 1962: «в новом помещении по соседству с бункером». **Not built** |
-| Korolev's post under a small concrete canopy, 10 m from the rocket | by 11 August 1962 (whether it stood in 1961 is not said) | not known | documented | Kamanin, 12 August 1962 (issue #15). **Not built** |
+| The launch system after the fire of 1 June 1962 | repaired within about a month: Vostok 3's rocket was brought out to it at 21:00 on 9 August 1962 (Kamanin, 10 August) | | documented that it was damaged and repaired; **what was replaced is not recorded** | Kamanin, 22 June 1962: «В результате пожара сильно пострадала стартовая установка, и ее восстановление займет около месяца» (issue #15); Siddiqi, *Challenge to Apollo*, p. 355: a Zenit-2's rocket "landed 300 meters from the launch site, while one of the strap-ons remained at the pad, seriously damaging the structure as a result of a fire". Looked for again in the CIA's reports of 1963 ("Site 1 in 1962, looked for again", below): they say only that the pad "appears to have undergone very little change". Built for 1962 and 1963 as it stood in 1961 |
+| The gas receivers (the CIA's "probable cascade building") gone, and "a newly identified bunkered building ... just southwest of its former position" | between a photograph whose date is blacked out and the KEYHOLE photographs of late 1963 | not known | documented that it had changed by December 1963; **when, and so whether before Vostok 3 or after Vostok 6, is not recorded**, nor the new building's size | NPIC/R-315/63 (December 1963), p. 2. **Not built, and nothing taken away**: the receivers and their house stand for every date, as in 1961 (buildings.py `cascade`). Whether this was the repair of June 1962 is a guess no source makes |
+| A new room beside the bunker, where the State Commission met | by 11 August 1962 | not known | documented that it stood; where and how big, not | Kamanin, 12 August 1962: «в новом помещении по соседству с бункером». Not in the CIA's reports of 1963 and 1964, which describe the bunker as in 1959. **Not built** |
+| Korolev's post under a small concrete canopy, 10 m from the rocket | by 11 August 1962 (whether it stood in 1961 is not said) | not known | documented | Kamanin, 12 August 1962 (issue #15). Nothing 10 m from the rocket is in any CIA report or can be made out on the KH-7 photographs of 1963 and 1964, on which the platform is in shadow. **Not built** |
 | Support building | between August 1957 and 1959 | today | documented | PIC/JR-2/60 ("has been added"); OpenStreetMap |
 | Check-out shop, security building | 1957 | today | documented | HTA/JR-4/58; OpenStreetMap |
 | South of the embankment: two gable-roofed buildings, a pump hut, two pairs of tanks; outside the south fence: a vehicle shed, a building with a mast (items 1 to 7) | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | NPIC/B-24/61 |
 | Six tents; a solid-fenced yard (items 11, 12) | between August 1957 and July 1959 | not known (the tents "not permanent") | documented for July 1959; assumed for 1961, the tents least surely | NPIC/B-24/61 |
 | Site 51: its pad, a building 50 ft square, its spur | by 9 April 1961 (new on the photographs of 1961) | 3 August 1961, burnt out when an R-9 fell back on it (`until="1961-08-02"`); rebuilt later | documented | PIC/JR-8/61 pp. 13-14; the first R-9's launch; Chertok, vol. 3, pp. 131 and 187 ("the last launch from Site No. 51"). How it looked after the fire is not recorded: nothing is built there from August 1961 |
-| Assembly and test building of Site 2 | 11 May 1957 | today (extended 1973 to 1974) | documented | PIC/JR-2/60 p. 16; OpenStreetMap |
+| Assembly and test building of Site 2 | 11 May 1957 | today (extended at its south-south-west end after 1964) | documented | PIC/JR-2/60 p. 16; OpenStreetMap; KH-7 mission 4011, 24 September 1964, which has the hall alone |
+| The yard's workshop (160 by 55 ft), store (125 by 35 ft), tall building and shop | between August 1957 and July 1959 (`since="1959-07"`: the two measured ones are "added" in NPIC/R-1440/63, its dates blacked out) | today | documented for July 1959 and September 1964; assumed for 1961 to 1963 | PIC/JR-2/60 Figure 8; KH-7 mission 4011, 24 September 1964; OpenStreetMap ("Beyond the fences") |
+| The long building north of the assembly building | between 1963 and September 1964 (`since="1964-09"`) | today | documented | KH-7 mission 4011, 24 September 1964; not on NPIC/R-1440/63 Figure 6 |
+| IP-1: the headquarters building, items 13, 14 and 15, the instrumentation, generator and domed buildings | by July 1959 (the centre "expanded to four times its original area" between August 1957 and then) | the headquarters building and item 14 today; the rest not known | documented for July 1959; assumed for 1961 to 1963; those the photograph has, documented for September 1964 | PIC/JR-2/60 Figure 27 and p. 40; KH-7 mission 4011, 24 September 1964 |
+| The tracking station's two instrumentation buildings | by September 1963 (`since="1963-09"`) | today | documented | NPIC/R-227/63 (September 1963): "two new identical structures", "probably added sometime between" two dates that are blacked out; M/EB 524/64 |
+| Its radome, the base for a second, its support building and its lattice tower | by 24 September 1964 (`since="1964-09"`: the support building was "under construction" and the tower's footings were in on an earlier, undated photograph) | not known | documented | M/EB 524/64; their shadows on KH-7 mission 4011, 24 September 1964 |
 | Observation positions a to i | 1957 | not known | documented for 1957 and 1959; assumed for 1961 | HTA/JR-4/58; "remain unchanged" in PIC/JR-2/60 |
 | Spoil heap | 1957 | today | documented | HTA/JR-4/58; today's imagery; SRTM |
 | Cable conduit to the bunker | between August 1957 and 1959 | today (its line) | documented | PIC/JR-2/60 |
@@ -876,6 +934,19 @@ is `stood(..., since="1957")` with no end; a later flight that finds one gone gi
 
 The site's builders ask `sitelib.stood` of each of these, so a state of the place without a
 rocket can leave the erector out by its date.
+
+### Site 1 in 1962, and the cable masts, looked for again
+
+What issue #21 left open at the pad itself was looked for in November 2026 in two kinds of source not read before, and
+is still open. This is what was read, so that it is not read again, and what would settle each.
+
+| Looked for | Read | Found | Would settle it |
+| --- | --- | --- | --- |
+| Which side of the ring the cable masts stood on, and how the tall one shared it with the erector's boom | The CIA's later reports of the pad: NPIC/R-1440/63 (pp. 5 to 9, Figures 3 to 5), R-227/63, R-315/63, CIA/PIR 61029 (September 1965, eleven pages of isodensity traces of the "service tower"), NPIC/R-920/64 (KH-4A mission 1012-1, October 1964). Two KH-7 photographs of the pad, 7 September 1963 (mission 4002, frame DZB00400200008H014001) and 24 September 1964 (mission 4011, frame DZB00401100008H009001), from Wikimedia Commons, laid on the site's frame and enlarged | **Nothing.** R-1440/63 repeats 1961's reanalysis; R-227/63: "shadow and poor image quality have precluded determination of additional details"; R-315/63: "additional details of the launch tower at pad A1 cannot be determined because of shadow"; the 1965 traces "inconclusive". On both photographs the platform is a bright slab with the pit's shadow across it at some 0.65 m a pixel: no mast, and no shadow that can be told from the trusses', is made out. No rocket stood on the pad on either day | (1) The USGS's own scans of those two frames, of which the Commons copies are reductions (2.77 and 2.31 GB against 208 and 201 MB), or of a KH-7 frame with a rocket standing (missions 4002 to 4038, 1963 to 1967; EarthExplorer, "Declass 2", needs a login). (2) KBOM's drawing of the launch system with the masts named, of which Afanasyev and Lavrenov reproduce one small view. (3) A photograph of a Vostok on the pad taken from the north or the east |
+| The new room beside the command bunker (Kamanin, 12 August 1962) | the same reports' descriptions of the control bunker; the two photographs | the bunker is described in 1963 in the words of 1960 (145 by 110 ft, the corner vents, the conduit). Nothing new beside it is reported, and at 0.65 m a pixel a room of a few metres beside a mound cannot be told from the mound's own works | a ground photograph of the bunker's entrance of 1962 to 1965; Chertok's and Kamanin's texts were searched for it before (issue #15) |
+| Korolev's canopied post 10 m from the rocket | the same | nothing: 10 m from the axis is on the platform itself, in its shadow on both photographs | a film of a launch of 1962 to 1965 that shows the deck's west or south side (the reels read for the flights do not) |
+| What the repair after 1 June 1962 changed | the same; R-315/63's list of changes | "Launch pad A1 ... appears to have undergone very little change"; the one change it names beside the pad is the gas receivers' building gone and a "bunkered building" south-west of where it stood ("What stood when"), undated and unmeasured | the State Commission's or Barmin's report on the fire of 1 June 1962 (RGANTD; not published that we found); or the two photographs' full scans, on which a building of 55 by 40 ft and its absence would show |
+
 
 ## What the model gets wrong or leaves out
 
@@ -964,7 +1035,9 @@ rocket can leave the erector out by its date.
   the dust. The one KH-7 frame of the range found on Wikimedia Commons (mission 4018 of 1 June 1965, frame 11,
   14,310 by 14,504 px, from the category "PD US NRO") was fetched and read at full size: it shows a rail yard, a
   barracks grid and small pads, none with the three tracks and the great pit: Site 1 is not on it. The KH-4A frames of 1965 in
-  the same category are at some 2.7 m a pixel, on which a mast 1.5 m broad cannot be told from its shadow. And on the west the mast shares its side of the ring
+  the same category are at some 2.7 m a pixel, on which a mast 1.5 m broad cannot be told from its shadow. Two more KH-7 frames in that category do have the pad
+  (7 September 1963 and 24 September 1964) and were read for the masts in November 2026: nothing of them is made out ("Site 1 in 1962, and
+  the cable masts, looked for again"). And on the west the mast shares its side of the ring
   with the erector: a mast of two legs 2.7 m either side of the support there would have the boom between its
   legs, the lift's car within a hand's breadth of one leg and the walk beside the car through it. How the real
   mast and the real boom shared that side is not in anything read; moving the mast means rebuilding the mast,
@@ -1106,7 +1179,9 @@ rocket can leave the erector out by its date.
   for and changes level by the place's own fade (viewer/around.ts). From the pad it is 0.5 px a metre: the coarsest.
   They were measured by putting each level's geometry into the page by hand, since `lod-thresholds.mjs --measure`
   knows only models and the place's pieces. Its form beyond its size, its shed and its gates' places is estimated. The other lines and roads of Site 2
-  round it are not drawn. The camera cannot be taken to it: its pivot is held within reach of the place.
+  round it are not drawn. The camera cannot be taken to it: its pivot is held within reach of the place. **The yard's buildings, IP-1's and
+  the tracking station's have not been measured so**: each takes the viewer's own thresholds unmeasured, and the state of September 1964
+  (`site2/model/1964-09.py`, `ip1/model/*.py`) has no record of its levels.
 - The four crews at their posts leave between frames. The 12 April film establishes the escort’s walk and the wave at the stair. The paths away from the apron, individual stances and most identifications are estimates. The pilot’s path from the bus and up the steps can be walked by the visitor. Of the 688 people on the pad the model shows 49. The soldiers, fire crews and guards are omitted.
 - **After 07:10 the Commission is not drawn.** Korolev spoke to the pilot from a point on the pad until 08:40, when
   "the talking point moves to the bunker": where that point was is not recorded, and nobody stands for it.
@@ -1191,12 +1266,18 @@ rocket can leave the erector out by its date.
   dirt tracks are traced by eye to some 50 m and stop where the tracing stopped, 5 to 6 km out. Not drawn: borrow pits,
   quarries, the ploughed strips along the fences, the buried cables' scars and firebreaks (none could be made out), and
   the works 6.5 to 8.6 km east.
-- **Buildings the frames show, not modelled** (for a modelling agent; each footprint good to some 30 m, on both frames):
-  Site 2's station buildings and housing along the main line from (-2250, -400) to (-1950, -1300) m, with Gagarin's and
-  Korolev's cottages at (-2074, -1282) (each 9.8 m square, one storey, gable roof, white render: OpenStreetMap ways
-  172441886 and 172441887); the instrumentation centre IP-1's buildings round (-800, -1300), a fenced area 354 by
-  195 m with eight major buildings (NPIC/R-1440/63 p. 35); the camp of small buildings and tents round (-550, -2050);
-  three long sheds at (-1450, -1450) running south-east. Their ground is drawn as worked; nothing stands on it.
+- **Buildings beyond the fences, built and not** ("Beyond the fences"): of Site 2, the assembly building and five buildings of its yard
+  are built, and of IP-1 seven buildings of 1959 and the tracking station of 1963 to 1964. Not built, though the CIA's drawings of 1959
+  (PIC/JR-2/60 Figures 8, 9 and 27) have each to scale and a KH-7 photograph of 1964 shows them: Site 2's technical facilities, headquarters
+  and barracks (some thirty buildings west of the assembly building, from (-2500, -1100) to (-2000, -800)), with Gagarin's and Korolev's
+  cottages at (-2074, -1282) (each 9.8 m square: OpenStreetMap ways 172441886 and 172441887); the transloading point and the construction camp
+  north of it; the personnel and storage area round (-550, -2050), which Figure 9 dimensions (prefabricated buildings 105 by 50 ft in rows);
+  the fences, the water tower, IP-1's bunker, antennas and interferometer. Their ground is drawn as worked; nothing stands on it. Every
+  building that is built wears walls, windows and doors that are ours; the buildings' own are not known.
+- **The models beyond the fences are of two days, and the flights between take the earlier**: July 1959 (for every flight to Vostok 6) and 24
+  September 1964 (for the Voskhods and after). What the CIA reports standing by September 1963 (the tracking station's two buildings) is in
+  the model's dates (`stood`) and is first drawn for Voskhod 1; no crewed flight left Site 1 between those days. For the Soyuz flights from
+  1967 the model of 1964 is still drawn: the assembly building's extension and what else was built after 1964 are not.
 - The plants are eight species as designed forms in three variants each; the river's floodplain plants (tamarisk,
   reeds, the tugai) are not drawn, being 30 km off and on the region's map from height. How many tulips stood to a
   square metre is not recorded.

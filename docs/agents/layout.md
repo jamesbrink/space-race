@@ -65,7 +65,7 @@ missions/                             the record: one folder per nation, program
     <site>.ground.ts                  a pad's own ground where it is the origin (the Cape's ground.ts `PadGround`: lc-14.ground.ts; lc-19.ground.ts:
                                       `LC19_GROUND`): its clearing, roads, what is kept bare, where the land is let down for a pit or a flume
     <site>.md  <site>.py  <package>/  a pad's record and its Blender build, a package of modules (lc5/, lc14/, lc19/, site1/); what stands round it
-                                      the same (complexes/: the Cape's neighbouring complexes; site2/: Site 2's assembly building)
+                                      the same (complexes/: the Cape's neighbouring complexes; site2/: Site 2's assembly building and its yard; ip1/: the measuring point IP-1)
     <package>/model/<date>.py         a dated state of what stood there, built to public/models/<nation>/places/<place>/<package>/<date>.glb
     tyuratam-*.ts  aral-1960.ts       the land round Site 1 as data: its ground (takyr, salt), its lie (SRTM), the builders' works; the Aral Sea's 1960 shore
     ground.ts                         the place's ground as data (viewer/scenery/ground.ts `GroundSpec`): its land and plants, what stands round its pads
