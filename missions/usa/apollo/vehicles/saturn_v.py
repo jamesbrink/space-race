@@ -197,10 +197,10 @@ def tanks(parent, name, radius, domes, lining, metal, warm):
         mark_shells([mesh.build(name + label, mat, parent).name])
 
 
-def adapter(parent, white, carrying_lm=False):
+def adapter(parent, white, carrying_lm=False, designation=None):
     # SLA-11 four fixed panels and four jettisonable petals, each on its physical hinge.
     hinge = IU_TOP + (85.9 if carrying_lm else 7 * 12)
-    designation = "13A" if carrying_lm else "11"
+    designation = designation or ("13A" if carrying_lm else "11")
 
     def radius(z):
         return UPPER_RADIUS + (77 - UPPER_RADIUS) * (z - IU_TOP) / (SLA_TOP - IU_TOP)
@@ -338,7 +338,7 @@ def instrument_unit(parent, steel, metal):
         mark_shells([mesh.build("IU503_" + name, paint, parent).name])
 
 
-def build(*, lunar_module=None):
+def build(*, lunar_module=None, adapter_number=None):
     white = material("saturn-white", (0.86, 0.87, 0.83), roughness=0.64)
     black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
     steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
@@ -423,7 +423,7 @@ def build(*, lunar_module=None):
         third_tanks.location.z = third_engine.location.z
         structure.second_stage(third_tanks, metal, warm, steel)
         instrument_unit(equipment, steel, metal)
-    adapter(group("SpacecraftAdapter"), white, lunar_module is not None)
+    adapter(group("SpacecraftAdapter"), white, lunar_module is not None, adapter_number)
     if lunar_module is None:
         payload(group("LunarTestArticle"), steel, alloy)
     else:

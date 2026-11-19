@@ -104,3 +104,28 @@ def shade(groups, station):
             daylight.append(cabin_shade.disc(q, (q - p).normalized(), 2 * IN))
     blockers = [*solid, *cabin_shade.meshes_under(groups["SideHatch"])]
     cabin_shade.bake(solid, blockers, lamps, daylight, broad=("CM_PressureWall", "CM_AftPressureBulkhead"), flip=("CM_PressureWall",))
+
+
+def columbia_dispenser(parent, base):
+    """Left forward bay. TN D-6737, water-gas separator illustration; dimensions in inches."""
+    if not interior():
+        return
+    alloy = material("apollo-water-dispenser", (0.60, 0.63, 0.61), metallic=0.76, roughness=0.33)
+    dark = material("apollo-dispenser-grip", (0.19, 0.19, 0.17), roughness=0.65)
+    # The cartridge is six inches long. Location within the bay, diameter, and handpiece are estimated.
+    bracket, grip, pipe = MeshBuilder(), MeshBuilder(), MeshBuilder()
+
+    def point(x, y, z):
+        return Vector((x, y, z + base)) * IN
+
+    axis = Vector((0, 0, 1))
+    case = lathe_obj("CM107_WaterGasSeparator", prof([(0, 0), (0.63, 0), (0.76, 0.25), (0.76, 5.65), (0.6, 6), (0, 6)]), alloy, parent, segs=32)
+    case.matrix_local = frame(point(11, -33.5, 47), axis)
+    for z in (48.2, 51.8):
+        bracket.tube(point(11, -37, z), point(11, -34.3, z), 0.44 * IN, segs=12)
+    grip.tube(point(11, -33.5, 46.9), point(9.8, -33.5, 44.6), 0.56 * IN, segs=16)
+    pipe.tube(point(11, -33.5, 53), point(11, -33.5, 54.1), 0.32 * IN, segs=12)
+    pipe.tube(point(11, -33.5, 54.1), point(12.7, -33.5, 54.8), 0.29 * IN, segs=12)
+    bracket.build("CM107_DispenserStowageClips", alloy, parent)
+    grip.build("CM107_DispenserHandpiece", dark, parent)
+    pipe.build("CM107_DispenserNozzle", alloy, parent)

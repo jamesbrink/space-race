@@ -15,6 +15,13 @@ const ship = 'Spacecraft';
 const columbiaPort = probePort(107);
 const command = [
   cm(
+    'WaterDispenser',
+    'Drinking water dispenser',
+    'Columbia carried a new separator on the water dispenser in the left forward equipment bay.',
+    'The fuel cells produced the crew’s drinking water. A six-inch cartridge with two membranes separated out gas before the water reached the crew. The stowage clips, grip and nozzle are estimated.',
+    true,
+  ),
+  cm(
     'CommandModule',
     'Command module 107 · Columbia',
     'Collins flew this spacecraft alone while Eagle was away.',
@@ -85,7 +92,7 @@ const command = [
     'ForwardCompartment',
     'Forward tunnel and recovery equipment',
     'The docking passage ran through the centre of the parachute compartment.',
-    'A removable pressure hatch closed Columbia’s end. After hard docking the crew took the probe and drogue inside to clear the passage.',
+    'The forward hatch insulation was revised after flakes came loose on Apollo 10. A removable pressure hatch closed Columbia’s end. After hard docking the crew took the probe and drogue inside to clear the passage.',
     true,
   ),
   {
@@ -185,7 +192,7 @@ const launcher = [
   {
     ...part(
       'SpacecraftAdapter',
-      'Four-panel spacecraft adapter',
+      'SLA-14 spacecraft adapter',
       rocket,
       6,
       28,
@@ -201,7 +208,7 @@ const launcher = [
     7,
     24,
     'The Saturn guidance system rode above the third stage.',
-    'Its computer and stable platform belonged to the launch vehicle. Each spacecraft carried an independent guidance system.',
+    'Its computer and stable platform belonged to the launch vehicle. IU-6 stayed with the S-IVB. Each spacecraft carried its own guidance system.',
   ),
   part(
     'InstrumentUnitEquipment',
@@ -422,6 +429,8 @@ export const flight: Flight = {
           isolate: true,
           from: [0.3, -1, 0],
         },
+        { id: 'water', label: 'Drinking water dispenser', nodes: ['WaterDispenser'], isolate: true, span: 0.36, from: [0.45, 0.3, -1] },
+        { id: 'navigation', label: 'Navigation station', nodes: ['CabinEquipmentBays'], isolate: true, from: [1, 0.5, 0.3] },
         { id: 'dsky', label: 'DSKY', nodes: ['DSKYFrontWeb'], from: [0.3, -1, 0] },
         { id: 'couches', label: 'Crew couches', nodes: ['CrewCouches'], span: 2.1, from: [-1, 0.8, 0.6] },
         { id: 'sps', label: 'Service engine', nodes: ['ServiceEngine'], from: [-1, -0.35, 1] },
