@@ -107,7 +107,8 @@ for (const f of ballistic) {
 
 /** The Vostoks' records (vostok-record.ts: `stages`), and the Mercury-Atlases' (mercury-atlas-plan.ts: `atlas`). */
 const vostoks = orbital.filter((f) => 'stages' in recordFrom(f));
-const atlases = orbital.filter((f) => 'atlas' in recordFrom(f));
+// (a Mercury-Atlas: an Atlas and a capsule; a Gemini target's Atlas carries a payload, target-plan.ts)
+const atlases = orbital.filter((f) => 'atlas' in recordFrom(f) && !('payload' in recordFrom(f)));
 
 for (const f of vostoks) {
   const o = recordFrom(f);
@@ -493,3 +494,33 @@ test('a plan that names what is not there says so', () => {
   assert.ok(said.some((s) => s.includes("chute 'drogue'")));
   assert.ok(said.some((s) => s.includes('nothing arms it')));
 });
+
+/** The Gemini targets' records (target-plan.ts: `payload`): the Mercury flights' Atlas, and what it carried. */
+for (const f of orbital.filter((x) => 'payload' in recordFrom(x))) {
+  const o = recordFrom(f);
+  const c = craftOf(f.plan);
+  test(`${f.id}: the target's plan carries its record: the Atlas, its verniers alone, and what it carried`, () => {
+    assert.equal(c.mass, o.liftoffMass);
+    assert.equal(byId(c.bodies, 'atlas-booster-section').mass, o.atlas.booster.mass);
+    assert.equal(byId(c.tanks, 'atlas-propellant').load, o.atlas.tank.propellant);
+    assert.equal(byId(c.engines, 'verniers').thrust.vacuum, o.atlas.verniers.engine.thrust.vacuum);
+    const payload = c.bodies.at(-1);
+    assert.equal(payload.id, o.payload.id);
+    assert.equal(payload.mass, o.payload.mass);
+    assert.equal(byId(c.joints, 'target-separation').at, o.separation.at);
+    // (no braking burn and no parachutes: a target stays up, or falls)
+    assert.ok(!c.engines.some((e) => e.flown));
+    assert.equal(c.chutes.length, 0);
+    const engine = byId(c.engines, 'agena-engine');
+    assert.equal(Boolean(engine), Boolean(o.payload.engine), 'the Agena’s engine where it was lit');
+    if (engine) {
+      const cut = f.plan.events.find((e) => e.do.some((a) => a.cut === 'agena-engine'));
+      assert.equal(
+        cut.when.find((w) => 'speed' in w)?.speed,
+        o.payload.engine.speed?.value,
+        'cut at the planned speed, where it reached it',
+      );
+    }
+    assert.equal(Boolean(f.plan.planned), Boolean(o.planned), 'a failed flight carries its plan as planned');
+  });
+}

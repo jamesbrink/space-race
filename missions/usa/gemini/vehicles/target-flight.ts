@@ -3,6 +3,32 @@ import { LC14 } from '../../places/cape-canaveral/lc-14.ts';
 import { AGENA, ATDA, agenaDimensions, agenaMotors, agenaParts, atdaDimensions, atdaMotors, TARGET_GROUP } from './gemini-targets.ts';
 import { targetLaunches } from './target-launches.ts';
 import { targetSiteModels } from './target-pad.ts';
+import { type TargetRecord, targetPlan } from './target-plan.ts';
+
+/**
+ * How a target's launch is shown (`Flight.flies`): the Atlas stack off the pad, each of the Atlas's five chambers and the
+ * Agena's engine burning as the plan has them (all on the stack's exterior model, its origin at the booster exits'
+ * plane), and what leaves: the booster section, the Atlas with the adapter, the Agena's nose shroud.
+ */
+function targetFlies(o: TargetRecord): NonNullable<Flight['flies']> {
+  const atlas = o.atlas;
+  return {
+    model: 'vehicle',
+    datum: 0,
+    fires: [
+      { node: 'BoosterEngines_Nozzles', on: 'booster-engines', burns: 'kerosene-lox' },
+      { node: 'Sustainer_Nozzle', on: 'sustainer', burns: 'kerosene-lox' },
+      { node: 'Verniers_Nozzles', on: 'verniers', burns: 'kerosene-lox' },
+      ...(o.payload.engine ? [{ node: 'AgenaEngine', on: 'agena-engine', burns: 'amine-nitric' as const }] : []),
+    ],
+    drops: [
+      { at: atlas.booster.separation.value, nodes: ['AtlasBoosterSection', 'AtlasBoosterEngines'], on: 'booster-latch' },
+      { at: o.separation.at.value, nodes: atlas.tank.nodes, on: 'target-separation' },
+      ...(o.payload.shroud ? [{ at: o.payload.shroud.at.value, nodes: ['TargetAscentShroud'], on: 'shroud-band' }] : []),
+    ],
+    air: { frost: ['frost-lox'] },
+  };
+}
 
 /** The same hardware as the crew saw, now on the floor by itself at its own launch date. */
 export function encounterParts(encounter: Flight): Part[] {
@@ -53,7 +79,7 @@ export function lostParts(unit: '5002' | '5004'): Part[] {
   ]);
 }
 
-export function targetFlight(id: keyof typeof targetLaunches, parts: Part[]): Flight {
+export function targetFlight(id: keyof typeof targetLaunches, parts: Part[], orbital?: TargetRecord): Flight {
   const record = targetLaunches[id];
   const augmented = id === 'atda';
   return {
@@ -75,7 +101,13 @@ export function targetFlight(id: keyof typeof targetLaunches, parts: Part[]): Fl
       { label: 'Docking adapter', value: 'TDA ' + record.adapter },
       { label: 'Launch vehicle', value: 'Atlas ' + record.atlas },
     ],
-    timeline: [{ t: 0, event: record.name + ' leaves Complex 14 on Atlas ' + record.atlas }],
+    timeline: orbital
+      ? orbital.events.map((e) => ({
+          t: e.at.value,
+          event: e.id === 'liftoff' ? `${record.name} leaves Complex 14 on Atlas ${record.atlas}` : e.label,
+        }))
+      : [{ t: 0, event: record.name + ' leaves Complex 14 on Atlas ' + record.atlas }],
+    ...(orbital ? { plan: targetPlan(orbital), flies: targetFlies(orbital) } : {}),
     specs: (augmented ? atdaDimensions() : agenaDimensions()).map((s) => ({ ...s, group: 'Spacecraft' })),
     motors: augmented ? atdaMotors() : agenaMotors(),
     models: [

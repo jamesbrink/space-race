@@ -24,6 +24,12 @@ const FLIGHTS = {
   'ussr/voskhod/voskhod-1': ['Ignition', 'Drop the strap-ons'],
   'usa/gemini/gt-3': ['Ignition', 'Staging: the second stage lit through the interstage'],
   'ussr/voskhod/voskhod-2': ['Ignition', 'Drop the strap-ons'],
+  ...Object.fromEntries(
+    ['gatv-5002', 'gatv-5003', 'gatv-5004', 'atda', 'gatv-5005', 'gatv-5006', 'gatv-5001'].map((id) => [
+      `usa/gemini/${id}`,
+      ['Ignition', 'Booster engine cutoff'],
+    ]),
+  ),
 };
 const SIZES = [
   [1280, 800, false],

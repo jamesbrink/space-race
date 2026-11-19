@@ -18,13 +18,17 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
     const up = new Vector3(0, 1, 0);
     const model = flight.models.find((m) => m.id === flight.flies.model);
     const pad = new Quaternion().setFromAxisAngle(up, model.rotationY ?? 0);
-    const ids = flight.id.startsWith('ussr/')
-      ? ['stage:1', 'modules']
-      : flight.id.includes('/gemini/')
-        ? ['staging-nuts', 'equipment-section-release', 'retro-section-release']
-        : flight.id === 'usa/apollo/apollo-7'
-          ? ['sib-separation', 'les-jettison', 'cm-sm-separation', 'forward-shield-jettison']
-          : ['booster-latch', 'retropack-straps'];
+    // (a Gemini target's Atlas lets go of what it carried at `target-separation`: target-plan.ts)
+    const carrier = flight.plan.craft[0].joints.some((j) => j.id === 'target-separation');
+    const ids = carrier
+      ? ['booster-latch', 'target-separation']
+      : flight.id.startsWith('ussr/')
+        ? ['stage:1', 'modules']
+        : flight.id.includes('/gemini/')
+          ? ['staging-nuts', 'equipment-section-release', 'retro-section-release']
+          : flight.id === 'usa/apollo/apollo-7'
+            ? ['sib-separation', 'les-jettison', 'cm-sm-separation', 'forward-shield-jettison']
+            : ['booster-latch', 'retropack-straps'];
     for (const on of ids) {
       const body = run.sheds.get(on);
       const index = flight.flies.drops.findIndex((d) => d.on === on);
@@ -182,10 +186,15 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
       }
       return;
     }
-    const shed = run.sheds.all.find(
-      (s) => s.from === at?.t && (s.shedder.def.push || flight.plan.craft[0].joints.find((j) => j.id === s.shedder.def.on)?.push),
-    );
+    // (a Gemini target's Agena rides its own engine on after the Atlas has gone: the Atlas is the last stage it leaves)
+    const shed =
+      run.sheds.all.find(
+        (s) => s.from === at?.t && (s.shedder.def.push || flight.plan.craft[0].joints.find((j) => j.id === s.shedder.def.on)?.push),
+      ) ?? run.sheds.get('target-separation');
     assert.ok(shed, 'last stage with a separation speed');
+    // (GATV-5004 was let go falling back into the air, the Atlas tumbling: its broadside drag, estimated, slows the Agena more
+    // than the Atlas's, and the two are not on one axis: what the record has of them is not enough to hold a gap to)
+    if (flight.plan.planned && !flight.plan.craft[0].engines.some((e) => e.id === 'agena-engine')) return;
     const { t, q, centre } = shed.shedder.release;
     const axis = turn(q, [1, 0, 0]);
     const top = shed.shedder.def.to.value;

@@ -178,6 +178,12 @@ const FLIGHTS = {
     orbit: [1400, 50_000],
     coast: 1400,
   },
+  // (the Gemini targets: the Atlas, its verniers alone, the Agena's coast and its burn, the first orbit; the two lost ones
+  // to the sea)
+  g5003: { id: 'usa/gemini/gatv-5003', instants: [5, 60, 131, 200, 305, 340, 450, 600, 3000, 8000], orbit: [3000, 8000], coast: 3000 },
+  atda: { id: 'usa/gemini/atda', instants: [5, 60, 118, 200, 360, 400, 3000, 8000], orbit: [3000, 8000], coast: 3000 },
+  g5002: { id: 'usa/gemini/gatv-5002', instants: [5, 60, 131, 200, 305, 368, 400, 600, 900] },
+  g5004: { id: 'usa/gemini/gatv-5004', instants: [5, 60, 125, 140, 200, 300, 400] },
 };
 const VIEWS = ['chase', 'locked', 'onboard', 'far'];
 /** The window sizes: a laptop's, a tablet's upright and a phone's. */

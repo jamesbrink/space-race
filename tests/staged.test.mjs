@@ -9,6 +9,7 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { geminiTitanPlan } from '../missions/usa/gemini/vehicles/gemini-titan-plan.ts';
+import { targetPlan } from '../missions/usa/gemini/vehicles/target-plan.ts';
 import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { downOf } from '../src/sim/descent.ts';
@@ -52,6 +53,200 @@ const where = (f) => [siteFrame(f.site), frameOf(f), f.site.seaLevel.value];
  * 2's are Vostok 1's and every instant of the ascent besides, its record having none of its own (its mission.md).
  */
 const UNDOCUMENTED = {
+  // The Gemini targets' (target-plan.ts's record): the Atlas SLV-3's impulses (two derived from the report's weights, the
+  // sustainer's the MA-5's), its masses derived from the weights, the Agena's impulse (the 8247's, secondary), the shroud's
+  // mass (the standard Agena's), the targets' drag where they fall and in orbit, and the ascent's drag, pitch-over, turn and
+  // steering; GATV-5002's and 5004's weights Gemini VIII's, and 5004's pitch after control was lost
+  'usa/gemini/gatv-5002': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.guidance.turn',
+    'ascent.steering.authority',
+    'atlas.booster.engine.isp.seaLevel',
+    'atlas.booster.engine.isp.vacuum',
+    'atlas.booster.mass',
+    'atlas.tank.dry',
+    'atlas.tank.engine.isp.seaLevel',
+    'atlas.tank.engine.isp.vacuum',
+    'atlas.tank.mass',
+    'atlas.tank.propellant',
+    'atlas.verniers.engine.isp.seaLevel',
+    'atlas.verniers.engine.isp.vacuum',
+    'payload.aero.area',
+    'payload.aero.drag',
+    'payload.aero.rarefied',
+    'payload.engine.isp',
+    'payload.engine.propellant',
+    'payload.mass',
+    'payload.rarefied.area',
+    'payload.rarefied.drag',
+    'payload.rarefied.length',
+    'record.liftoffMass',
+    'separation.push',
+  ],
+  'usa/gemini/gatv-5003': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.guidance.turn',
+    'ascent.steering.authority',
+    'atlas.booster.engine.isp.seaLevel',
+    'atlas.booster.engine.isp.vacuum',
+    'atlas.booster.mass',
+    'atlas.tank.dry',
+    'atlas.tank.engine.isp.seaLevel',
+    'atlas.tank.engine.isp.vacuum',
+    'atlas.tank.mass',
+    'atlas.tank.propellant',
+    'atlas.verniers.engine.isp.seaLevel',
+    'atlas.verniers.engine.isp.vacuum',
+    'payload.aero.area',
+    'payload.aero.drag',
+    'payload.aero.rarefied',
+    'payload.engine.isp',
+    'payload.engine.propellant',
+    'payload.mass',
+    'payload.rarefied.area',
+    'payload.rarefied.drag',
+    'payload.rarefied.length',
+    'payload.shroud.mass',
+    'separation.push',
+  ],
+  'usa/gemini/gatv-5004': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.guidance.lost.tilt',
+    'ascent.guidance.turn',
+    'ascent.steering.authority',
+    'atlas.booster.engine.isp.seaLevel',
+    'atlas.booster.engine.isp.vacuum',
+    'atlas.booster.mass',
+    'atlas.tank.dry',
+    'atlas.tank.engine.isp.seaLevel',
+    'atlas.tank.engine.isp.vacuum',
+    'atlas.tank.mass',
+    'atlas.tank.propellant',
+    'atlas.verniers.engine.isp.seaLevel',
+    'atlas.verniers.engine.isp.vacuum',
+    'payload.aero.area',
+    'payload.aero.drag',
+    'payload.aero.rarefied',
+    'payload.mass',
+    'payload.rarefied.area',
+    'payload.rarefied.drag',
+    'payload.rarefied.length',
+    'record.liftoffMass',
+    'separation.push',
+  ],
+  'usa/gemini/atda': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.steering.authority',
+    'atlas.booster.engine.isp.seaLevel',
+    'atlas.booster.engine.isp.vacuum',
+    'atlas.booster.mass',
+    'atlas.tank.dry',
+    'atlas.tank.engine.isp.seaLevel',
+    'atlas.tank.engine.isp.vacuum',
+    'atlas.tank.mass',
+    'atlas.tank.propellant',
+    'atlas.verniers.engine.isp.seaLevel',
+    'atlas.verniers.engine.isp.vacuum',
+    'payload.aero.area',
+    'payload.aero.drag',
+    'payload.aero.rarefied',
+    'payload.mass',
+    'payload.rarefied.area',
+    'payload.rarefied.drag',
+    'payload.rarefied.length',
+  ],
+  'usa/gemini/gatv-5005': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.guidance.turn',
+    'ascent.steering.authority',
+    'atlas.booster.engine.isp.seaLevel',
+    'atlas.booster.engine.isp.vacuum',
+    'atlas.booster.mass',
+    'atlas.tank.dry',
+    'atlas.tank.engine.isp.seaLevel',
+    'atlas.tank.engine.isp.vacuum',
+    'atlas.tank.mass',
+    'atlas.tank.propellant',
+    'atlas.verniers.engine.isp.seaLevel',
+    'atlas.verniers.engine.isp.vacuum',
+    'payload.aero.area',
+    'payload.aero.drag',
+    'payload.aero.rarefied',
+    'payload.engine.isp',
+    'payload.engine.propellant',
+    'payload.mass',
+    'payload.rarefied.area',
+    'payload.rarefied.drag',
+    'payload.rarefied.length',
+    'payload.shroud.mass',
+    'separation.push',
+  ],
+  'usa/gemini/gatv-5006': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.guidance.turn',
+    'ascent.steering.authority',
+    'atlas.booster.engine.isp.seaLevel',
+    'atlas.booster.engine.isp.vacuum',
+    'atlas.booster.mass',
+    'atlas.tank.dry',
+    'atlas.tank.engine.isp.seaLevel',
+    'atlas.tank.engine.isp.vacuum',
+    'atlas.tank.mass',
+    'atlas.tank.propellant',
+    'atlas.verniers.engine.isp.seaLevel',
+    'atlas.verniers.engine.isp.vacuum',
+    'payload.aero.area',
+    'payload.aero.drag',
+    'payload.aero.rarefied',
+    'payload.engine.isp',
+    'payload.engine.propellant',
+    'payload.mass',
+    'payload.rarefied.area',
+    'payload.rarefied.drag',
+    'payload.rarefied.length',
+    'payload.shroud.mass',
+    'separation.push',
+  ],
+  'usa/gemini/gatv-5001': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.guidance.turn',
+    'ascent.steering.authority',
+    'atlas.booster.engine.isp.seaLevel',
+    'atlas.booster.engine.isp.vacuum',
+    'atlas.booster.mass',
+    'atlas.tank.dry',
+    'atlas.tank.engine.isp.seaLevel',
+    'atlas.tank.engine.isp.vacuum',
+    'atlas.tank.mass',
+    'atlas.tank.propellant',
+    'atlas.verniers.engine.isp.seaLevel',
+    'atlas.verniers.engine.isp.vacuum',
+    'payload.aero.area',
+    'payload.aero.drag',
+    'payload.aero.rarefied',
+    'payload.engine.isp',
+    'payload.engine.propellant',
+    'payload.mass',
+    'payload.rarefied.area',
+    'payload.rarefied.drag',
+    'payload.rarefied.length',
+    'payload.shroud.mass',
+    'separation.push',
+  ],
   // Friendship 7's: the Atlas D's weights and impulses (no figure for 109-D read), what is derived from them, the tower's
   // weight and the posigrades' push, the staging instant (the type's sequence), and the ascent's drag, pitch-over and steering
   'usa/mercury/ma-6-friendship-7': [
@@ -533,6 +728,56 @@ function atlasInputs(f, o, whole) {
 }
 
 /**
+ * A Gemini target's ascent inputs that are not documented (target-plan.ts's record: the Atlas, what it carried, the
+ * separation, the ascent's law, drag and steering), listed, and what each is worth, the law solved afresh each time on
+ * the plan `targetPlan` writes from a changed copy.
+ */
+function targetInputs(f, o, whole) {
+  const read = [];
+  const walk = (x, at) => {
+    if (!x || typeof x !== 'object' || at.endsWith('.checks') || at.endsWith('.sheds') || at.endsWith('.centre')) return;
+    if ('confidence' in x && ('value' in x || 'points' in x)) {
+      if (x.confidence !== 'documented') read.push(at);
+      return;
+    }
+    for (const [key, value] of Object.entries(x)) walk(value, `${at}.${key}`);
+  };
+  walk(o.atlas, 'atlas');
+  walk(o.payload, 'payload');
+  walk(o.separation, 'separation');
+  walk(o.ascent, 'ascent');
+  walk({ liftoffMass: o.liftoffMass }, 'record');
+  assert.deepEqual(read.sort(), UNDOCUMENTED[f.id], 'the inputs that are not documented, by flight (UNDOCUMENTED)');
+  const [site, dated, sea] = where(f);
+  const base = whole.ascent.summary;
+  const weigh = (label, change) => {
+    const copy = structuredClone(o);
+    change(copy);
+    let s;
+    try {
+      const plan = targetPlan(copy);
+      s = ascend(plan, site, dated, sea, steer(plan, site, dated, sea)).summary;
+    } catch (e) {
+      console.log(`  #   ${label.padEnd(58)} ${e.message}`);
+      return;
+    }
+    console.log(
+      `  #   ${label.padEnd(58)} cutoff ${(s.cutoffAt - base.cutoffAt).toFixed(1).padStart(6)} s, ${(s.cutoffSpeed - base.cutoffSpeed).toFixed(1).padStart(7)} m/s, ${(s.perigee / 1000).toFixed(0).padStart(5)} by ${(s.apogee / 1000).toFixed(0).padStart(5)} km`,
+    );
+  };
+  console.log('  #   what a change in an input moves (the law solved afresh each time):');
+  weigh('the drag curve x 1.3 (estimated)', (c) => c.ascent.drag.forEach((d) => d.curve.points.forEach((p) => (p[1] *= 1.3))));
+  weigh('the pitch-over 5 s longer (estimated)', (c) => (c.ascent.guidance.kick.value += 5));
+  weigh('the turn from 10 s later (assumed)', (c) => (c.ascent.guidance.turn.value += 10));
+  weigh('the sustainer’s vacuum impulse 2 % less (assumed)', (c) => (c.atlas.tank.engine.isp.vacuum.value *= 0.98));
+  if (o.payload.engine) {
+    weigh('the Agena’s impulse 2 % less (assumed)', (c) => (c.payload.engine.isp.value *= 0.98));
+    weigh('the Agena 2 % heavier as it leaves (derived)', (c) => (c.payload.mass.value *= 1.02));
+  }
+  if (o.payload.shroud) weigh('the shroud twice as heavy (assumed)', (c) => (c.payload.shroud.mass.value *= 2));
+}
+
+/**
  * A Gemini-Titan's ascent inputs that are not documented (gemini-titan-plan.ts's record: the Titan's two stages, their
  * engines and staging, the separation, the ascent's law, drag and steering), listed, and what each is worth, the law
  * solved afresh each time on the plan `geminiTitanPlan` writes from a changed copy.
@@ -665,12 +910,15 @@ for (const f of part(flown)) {
     assert.deepEqual(again.summary, whole.ascent.summary);
     const s = whole.ascent.summary;
     const g = guidance.target;
-    // (the height over the orbit's ball, or over the ellipsoid under the cutoff where the record's is that: `target.over`,
-    // read off the run's own sample at the cutoff, whose altitude is over the sea)
-    const high = g.over ? whole.ascent.samples.find((p) => p.t === s.cutoffAt).altitude + sea : s.cutoffAltitude;
-    assert.ok(Math.abs(high - g.altitude.value) < 1, `at the target height: ${high} for ${g.altitude.value}`);
-    assert.ok(Math.abs(s.cutoffClimb - g.climb.value) < 1e-3, 'at the target climb');
-    assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
+    // (a flight that went otherwise is flown on its planned flight's solution: its own target is never reached)
+    if (!f.plan.planned) {
+      // (the height over the orbit's ball, or over the ellipsoid under the cutoff where the record's is that: `target.over`,
+      // read off the run's own sample at the cutoff, whose altitude is over the sea)
+      const high = g.over ? whole.ascent.samples.find((p) => p.t === s.cutoffAt).altitude + sea : s.cutoffAltitude;
+      assert.ok(Math.abs(high - g.altitude.value) < 1, `at the target height: ${high} for ${g.altitude.value}`);
+      assert.ok(Math.abs(s.cutoffClimb - g.climb.value) < 1e-3, 'at the target climb');
+      assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
+    }
     const clock = (t) => new Date(Date.parse(f.launch) + t * 1000).toISOString().slice(11, 19);
     console.log(`  #   ${f.designation}: the ascent flown (times UTC)`);
     for (const [id, e] of Object.entries(whole.ascent.at))
@@ -694,9 +942,11 @@ for (const f of part(flown)) {
     if (s.perigee < 0)
       console.log(`  #   flown on from it, it does not go round: its perigee is ${(s.perigee / 1000).toFixed(0)} km, under the ground`);
     const r = shown.coast.results;
-    console.log(
-      `  #   flown on from the state the ascent left it in: apogee flown round ${(r.apogee / 1000).toFixed(1)} km; braking over ${r.retroLatitude.toFixed(2)} N ${r.retroLongitude.toFixed(2)} E; 7 km at ${clock(r.ejectionAt)} over ${r.ejectionLatitude.toFixed(3)} N ${r.ejectionLongitude.toFixed(3)} E; ${(r.alongTrack / 1000).toFixed(1)} km along the track and ${(r.crossTrack / 1000).toFixed(1)} km to the right of the record's landing`,
-    );
+    // (one that stays up has no braking and does not come down: an uncrewed target)
+    if (Number.isFinite(r.ejectionAt) && Number.isFinite(r.retroLatitude))
+      console.log(
+        `  #   flown on from the state the ascent left it in: apogee flown round ${(r.apogee / 1000).toFixed(1)} km; braking over ${r.retroLatitude.toFixed(2)} N ${r.retroLongitude.toFixed(2)} E; 7 km at ${clock(r.ejectionAt)} over ${r.ejectionLatitude.toFixed(3)} N ${r.ejectionLongitude.toFixed(3)} E; ${(r.alongTrack / 1000).toFixed(1)} km along the track and ${(r.crossTrack / 1000).toFixed(1)} km to the right of the record's landing`,
+      );
   });
 
   if (f.id.startsWith('ussr/'))
@@ -759,6 +1009,7 @@ for (const f of part(flown)) {
       assert.ok(Math.abs(changed.cutoffAltitude - whole.ascent.summary.cutoffAltitude) > 1000, 'the digitized pitch drives the ascent');
       return;
     }
+    if ('payload' in o) return targetInputs(f, o, whole);
     if ('atlas' in o) return atlasInputs(f, o, whole);
     if ('titan' in o) return titanInputs(f, o, whole);
     const read = [];
@@ -846,7 +1097,9 @@ for (const f of part(flown)) {
   test(`${f.designation}: the predicted path in orbit is the coast flown: from separation it comes down where the record's run does`, {
     skip: plan.record.coastFixes?.length
       ? 'The replay uses tracking fixes which predictive paths cannot apply. See descending.test.mjs for comparison after the last fix.'
-      : false,
+      : !Number.isFinite(coastOf(plan).on)
+        ? 'An uncrewed target: its coast has no burn and nothing comes down from it (target-plan.ts)'
+        : false,
   }, () => {
     const [site, dated, sea] = where(f);
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the record's coast forty
@@ -959,6 +1212,7 @@ for (const f of part(flown)) {
       assert.ok(cut && p.kind === 'guided', `from T+${t0}: the last cutoff is on the path`);
       assert.ok(Math.abs(cut.t - whole.ascent.stops.at(-1)) < 0.5, 'cutoff agrees with the batch run');
       if (guidance.attached && !parted) continue; // The predictor ends after one orbit; the stack stays attached into its second.
+      if (!Number.isFinite(seq.stages.at(-1).sep)) continue; // (the last stage is the spacecraft: an Agena, let go of by nothing)
       assert.ok(parted, `from T+${t0}: the parting is on the path`);
       // (the path's parting is the stack's state as it parts: the run's last sample of the ascent, before the joint's push)
       const sep = whole.ascent.samples.at(-1);

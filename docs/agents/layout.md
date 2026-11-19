@@ -18,7 +18,8 @@ missions/                             the record: one folder per nation, program
                                       mercury-capsule.ts, the capsule on either launch vehicle: `along`, the azimuths, `THRUST` and `lb`; mercury-afloat.ts, a capsule in the sea (`capsuleAfloat`),
                                       `stackParts`; mercury-atlas.ts, the capsule on its Atlas: `mercuryAtlasStack`, `mercuryAtlasParts`,
                                       `VIEW`, `SPEC`, `ATLAS`, `mercuryAtlasMotors`; mercury-atlas-plan.ts, a Mercury-Atlas's record
-                                      (`MercuryAtlasRecord`, its flight's orbital.ts) and the plan written from it (`mercuryAtlasPlan`);
+                                      (`MercuryAtlasRecord`, its flight's orbital.ts) and the plan written from it (`mercuryAtlasPlan`), the Atlas every
+                                      Atlas flight shares (`AtlasRecord`, `atlasPieces`);
                                       mercury-redstone-stack.ts, the capsule on its Redstone on the pad: `mercuryRedstoneStack`,
                                       `mercuryRedstoneParts`, `SPEC`, `mercuryRedstoneMotors` (the A-7's thrust each flight's own, as measured);
                                       gemini-titan.ts, a Gemini on its Titan: `geminiTitanStack` (each part's place, the views), the cabin, the type's
@@ -28,6 +29,11 @@ missions/                             the record: one folder per nation, program
                                       lifting entry); gemini-flies.ts, what its parts do in flight (`geminiFlies`, `geminiCommands`, the chutes);
                                       gemini-targets.ts, what a Gemini went up to meet: the Agena's and the ATDA's nodes, figures and motors,
                                       and the heading a target stands under beside its flight's vehicle (`TARGET_GROUP`, `lifted`);
+                                      target-flight.ts, target-launches.ts, target-pad.ts, an uncrewed target's flight (`targetFlight`, its
+                                      `flies`), its launch's identity and its dated Complex 14 stack; target-plan.ts, a target launch's record
+                                      (`TargetRecord`, `targetRecord` from its report's figures, its flight's orbital.ts; `PLANNED_GAATV`) and the
+                                      plan written from it (`targetPlan`: the Atlas SLV-3 from mercury-atlas-plan.ts `atlasPieces`, its verniers
+                                      alone, the Agena's coast and ascent burn or the ATDA put in orbit by the Atlas, a failed flight's `planned`);
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,
                                       the type's specs (`SPEC`) and engines (`vostokMotors`), `along` and the azimuths;
                                       voskhod-11a57.ts, a Voskhod on its 11A57: `voskhodStack`, `voskhodParts`, `VIEW`, `SPEC`,
