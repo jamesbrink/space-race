@@ -1,0 +1,18 @@
+{
+  "intervals": 128,
+  "spacing": [2, 8, 32, 128, 512],
+  "sites": {
+    "hadley": {
+      "mission": 15,
+      "landing": [26.13239, 3.6333],
+      "sunAt": "1971-08-01T11:48:48Z",
+      "lander": "models/usa/apollo/apollo-15/falcon.glb"
+    },
+    "descartes": {
+      "mission": 16,
+      "landing": [-8.9734, 15.5011],
+      "sunAt": "1972-04-22T16:33:35Z",
+      "lander": "models/usa/apollo/apollo-16/orion.glb"
+    }
+  }
+}

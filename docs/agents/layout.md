@@ -150,6 +150,7 @@ src/
   app/mem.ts                          `?mem`: every GPU allocation the page makes, counted by bytes and by who asked (`srMem.report()`)
   app/demo.ts                         the idle show: the day run round, a tour of the flight, a callout on each thing; given a host, the site's or the gallery's
   ui/ui.ts  ui/style.css              the panels: one class that renders from the flight's data, and the page's looks
+  ui/rover.ts  ui/rover.css           driving a lunar rover from its gallery, including touch controls and parking
   ui/gallery.ts  ui/gallery.css       the gallery: the vehicle alone on a stage of its own, its History tab; the switch between the places
   ui/history.ts  ui/history.css       the history's words as the page writes them, the same on the Lineup's card and in a gallery's History tab: the story, the name, the crew, a programme, a moment
   ui/fold.ts  ui/fold.css  ui/sheet.ts  ui/sheet.css  a place on a phone (the gallery and the launch site alike): the control block docked in the sheet's View pane,
@@ -244,6 +245,10 @@ src/
   viewer/moon.ts                      the Moon as a body (`MoonBody`): its relief at three sizes and colour from its bake, the apron round the site, its own light; the front page's, under its camera
   viewer/moonground.ts                the Moon's ground below what was measured, made by rule (estimated): the craters under 2 km and the soil's grain, in GLSL and the same sums here; the Moon's light law
   viewer/moonrocks.ts                 the blocks lying round the front page's site: instanced, four levels of detail, each with its shadow laid on the ground
+  viewer/lunar-driving-ground.ts      builds the rover's drivable surface and places the landing module and the Sun
+  viewer/lunar-rover.ts               drives and steers a four-wheel lunar rover over the surveyed ground
+  world/lunar-terrain.ts              samples the triangles of the LROC and LOLA terrain under a rover's wheels
+  world/lunar-rover-sites.json        grid spacings, landing coordinates and the second excursion's lighting instant
   viewer/moonsite.ts                  the altimeter's ground round the site, read whole in doubles (`SiteGround`): heights, places, how near the ground comes to the path
   viewer/space.ts                     the sky from above the air (Sun, Moon, stars) and its reflections, the Earth in them at the flight's height; the wear texture
   viewer/explode.ts                   exploded-view motion
@@ -391,11 +396,13 @@ tools/
   night-test.mjs                      browser check of the sites by night: stills, the light through dusk and dawn without a jump, and the eye walking off a floodlit apron and back
   winds-test.mjs                      browser check that the wind drawn (the plants, the low cloud's drift, the sea's waves) follows a flight's hours with the clock, and is the record's at liftoff
   path-test.mjs                       browser check of the predicted path's promises: flown live through the flights and by scripted hands, seen from each rig, from far out and in the map, measured frozen, on pages run at once; and on the pad by hand, the record's line with nothing predicted
+  lunar-rover-drive-test.mjs           browser check of the lunar rover driving controls and cameras
   seat-test.mjs                       browser check of every seat of every flight, sat in from the gallery by the control and by C, at 1280 and 390
   sheet-test.mjs                      browser check of a phone's sheet under a finger (the gallery, the site, the Lineup at 390 and 820): every line of buttons swiped to reach each, faded only where there is more, the sheet and the page left still
   sound-test.mjs                      browser check of what is heard on the ground, read off `sr.sound.voices`: a car driven and got out of, a machine worked by hand, a vehicle on the clock
   drive-test.mjs                      browser check that every vehicle at every site goes forward a car's length from where it stands, or says what holds it
   front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5
+  lunar-rover-terrain.py              bakes the drivable grids at Hadley and Descartes from the NAC stereo DTMs and LOLA
   front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows, the site's ground whole (`--find-site` lists the places the camera could start from)
   shot.mjs                            one screenshot of the viewer, for looking at a change
   browser.mjs                         the one browser every browser tool launches (Chrome, ANGLE's back end, headless or not, from SR_* in the environment: macOS and Linux), and the page opener, options and checks they share
