@@ -40,7 +40,7 @@ const EXTINCTION: f32 = 0.05;
 const SHAPE_TILE: f32 = 2300.0;
 const DETAIL_TILE: f32 = 430.0;
 // No cloud is marched beyond this, m.
-const REACH: f32 = 160000.0;
+const REACH: f32 = 700000.0;
 const PI: f32 = 3.14159265;
 // The light of the scattering orders that are not marched, as a gain on those that are: with it the sunlit side
 // of a thick cloud is about as bright as white paint in the same Sun, which is what a cumulus is. Estimated.
@@ -239,7 +239,8 @@ fn march(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, layer: vec4
         // (never so long that a whole cloud could stand between two of them)
         let long_stride = clamp(0.035 * t, 25.0, 0.28 * layer.w);
         let short_stride = max(0.006 * t, 9.0);
-        let height = h + mu * t + t * t * (1.0 - mu * mu) / (2.0 * radius);
+        // (the height there, exactly, and again with nothing large taken from anything large)
+        let height = h + (2.0 * radius * mu * t + t * t) / (radius + sqrt(radius * radius + 2.0 * radius * mu * t + t * t));
         let en = over + level * t;
         let d = density(en, height, layer, true, banked);
         if d <= 0.0 {
@@ -329,7 +330,9 @@ fn fragment(
 
     // The air between the eye and the cloud: distant cloud goes the colour of the horizon.
     let range = seen.range / seen.weight;
-    let haze = 1.0 - exp(-3.912 * range / frame.sun.w);
+    // (from above the haze only the last of the way to the cloud is through it: the air is thin above 9 km)
+    let hazy = select(range, min(range, 9000.0 / max(abs(mu), 0.05)), h > 9000.0);
+    let haze = 1.0 - exp(-3.912 * hazy / frame.sun.w);
     let veil = (frame.skylight.xyz * 1.3 + frame.sunlight.xyz * 0.035) * (1.0 - seen.through);
     let light = mix(seen.light, veil, haze * 0.85);
     return vec4(light * view.exposure, 1.0 - seen.through);

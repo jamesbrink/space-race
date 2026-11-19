@@ -97,7 +97,8 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     // The planet's own colour, by Earth-fixed direction.
     let fixed = earth.x.xyz * up.x + earth.y.xyz * up.y + earth.z.xyz * up.z;
     let marble = textureSample(colour_map, colour_sampler, fixed).rgb;
-    let marble_sea = smoothstep(1.25, 1.9, marble.b / max(marble.r, 0.004));
+    // (the map's sea is bluer than it is red, its land is not: a narrow step, so the sea is all sea)
+    let marble_sea = smoothstep(1.02, 1.22, marble.b / max(marble.r, 0.004));
 
     // The shore, sharp, where the region's map reaches; the cube map's beyond it.
     let half = earth.shore.x;
@@ -152,10 +153,10 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     slope += ripple * saturate(0.6 / seen - 0.2);
     let water_n = normalize(up - earth.east.xyz * slope.x - earth.north.xyz * slope.y);
     let depth_tint = mix(SEA, SHALLOWS, on_map * smoothstep(-900.0, -20.0, inland));
-    let water = mix(mix(marble, SEA, 0.75), depth_tint, near_land);
+    let water = mix(mix(marble, SEA, 0.8), depth_tint, on_map);
 
     pbr.material.base_color = vec4(mix(land, water, sea), 1.0);
-    pbr.material.perceptual_roughness = mix(0.95, clamp(0.07 + 1.6 * sqrt(lost), 0.07, 0.5), sea);
+    pbr.material.perceptual_roughness = mix(0.95, clamp(0.07 + 1.0 * sqrt(lost), 0.07, 0.3), sea);
     pbr.material.metallic = 0.0;
     pbr.material.reflectance = vec3(mix(0.3, 0.354, sea));
     pbr.N = normalize(mix(up, water_n, sea));

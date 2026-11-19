@@ -45,7 +45,7 @@ pub fn eye() -> impl Bundle {
 
 /// How far the eye opens once the sky has gone black, stops. Estimated: out of the air there is no sky filling
 /// the shade, and a camera set for the pad would leave the dark side of the vehicle and the limb too deep.
-const OPENS: f32 = 0.9;
+const OPENS: f32 = 0.35;
 /// The heights between which the sky goes from blue to black, m.
 const DARKENS: [f32; 2] = [18_000.0, 90_000.0];
 
