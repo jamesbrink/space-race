@@ -242,7 +242,11 @@ Simplified, and to be kept in mind by whoever uses it:
   250 MB).
 - A closed volume is a shell: nothing is inside it.
 - Before liftoff nothing is right: the simulator does not fly then, and no pose before it is kept.
-- What a hand has worked out of its programme on foot (a platform held open) is not known here.
+- What a hand has worked out of its programme on foot (a platform held open, a truck driven somewhere else) is not
+  known here: the simulator's world is the baked one, on the flight's clock. So a vehicle or a stage comes down
+  through a car that has been driven under it, and through people, who are not solid. On foot and at the wheel it is
+  the other way about and it holds: the walker's and the driver's world is the meshes as they are drawn, the flown
+  vehicle and what it has shed among them (walking.md, "The world is solid as posed").
 - People are not solid: a part whose people walk (`going`), and a node put out of sight by no machine.
 - A hull's spheres leave out what lies beyond its 95% radius (fins, aerials) and do not fill a cone to its rim. A
   ring is filled across: it has no hole. A node that is not round is a round one of its 95% radius.

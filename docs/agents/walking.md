@@ -166,6 +166,20 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   flight, its surroundings, the setting's scenery; not instanced plants) through its world matrix, with a `three-mesh-bvh`
   hierarchy built per geometry the first time something comes near. Nothing is baked, so a
   platform that has slid or a truck that has driven off is solid where it is this frame.
+  **The vehicle and what it has shed are solid too**: the flown model as it is posed (standing on its pad, or lying
+  where it came down), and each piece it has let go that is still drawn, in the holder it falls in
+  (`Stage.solidRoots`, FlightShow `debris`): a spent stage lying across the pad is walked round and driven round like
+  a wall. A figure that came down on a parachute is a person, and people are not solid. `pnpm test:impact` walks a
+  person square at a booster lying on Complex 5 from either side and holds that he stops at its skin, and sends a
+  person's sphere across the standing Redstone half way up its tank.
+  A sphere swept through them (`sweepSphere`: the Apollo escape's own sweep of its pad, stage.ts `padSweeper`; the
+  walker's body does not use it) meets a triangle whose face it goes right through. It did not: the nearest points
+  of a way and of a triangle's edges are side by side when the way crosses the face between them, which read as a
+  pass alongside, so a sweep longer than a skin is thick went through a tank wherever it did not happen to cross
+  an edge (`tests/walk.test.mjs`).
+  Not solid to a body, and it shows: **what is over a person's head is not a wall**. The body is pushed out
+  sideways only, so he walks under a tank whose underside is lower than his head (a stage propped on a pedestal by
+  one end) with his head in it.
 - **Feet and body are separate.** Rays straight down find the floor: anything up to `STEP`
   (0.3 m) above the feet is stepped onto, further down than that is a fall. A capsule from
   `STEP` above the feet to the top of the head is pushed sideways out of whatever it meets. So
