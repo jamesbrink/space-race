@@ -662,7 +662,20 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
     await page.waitForTimeout(300);
   };
   const toFly = async (page) => {
-    await page.locator(':is(.places [data-place=fly], .ways [data-way=fly]):visible').first().click();
+    // (from the gallery its own Resume where a flight is kept, or else the launch site's way and then Launch: the site's
+    // own ways stand under the gallery meanwhile)
+    const resume = page.locator('#gallery .ways [data-way=fly]:visible');
+    if ((await page.locator('#gallery').isVisible()) && (await resume.count())) {
+      await resume.first().click();
+      await page.waitForFunction(() => window.sr.cockpit.active, null, { timeout: 60000 });
+      await page.waitForTimeout(800);
+      return;
+    }
+    if (await page.locator('#gallery').isVisible()) {
+      await page.locator('#gallery :is(.places [data-place=site], .ways [data-way=site]):visible').first().click();
+      await page.waitForFunction(() => document.querySelector('#gallery')?.hidden !== false);
+    }
+    await page.locator('#ui :is(.places [data-place=fly], .ways [data-way=fly]):visible').first().click();
     await page.waitForFunction(() => window.sr.cockpit.active, null, { timeout: 60000 });
     await page.waitForTimeout(800);
   };
@@ -787,7 +800,8 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
       // the mark beside Fly asks, and throws it away
       await handFly(page, id);
       await stop(page);
-      await page.click('#ui :is(.places [data-place=gallery], .ways [data-way=gallery]):visible');
+      // (at the launch site: on a wide page the gallery's ways lead on only to the site, and its Fly and mark are the site's)
+      await page.click('#ui :is(.places [data-place=site], .ways [data-way=site]):visible');
       await page.locator('.kept-mark:visible').first().waitFor();
       await page.waitForTimeout(800);
       await page.locator('.kept-mark:visible').first().click();
