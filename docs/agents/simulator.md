@@ -959,6 +959,8 @@ read gives enough of to fly (issue #10).
   of the vehicle, and each chord is cut at a plane just past the near plane and fades in over the next doubling of the
   distance, so nothing is drawn behind the eye. A new prediction is eased in over 0.3 s from where the line was, instant
   by instant, its end with it, and a prediction made again of the same flight lies on the same curve, so nothing moves.
+  Between two predictions the curve on show is carried with the flight (by how far the flight has left it, and how fast:
+  rendering.md), so under thrust the line goes with the vehicle and does not stand and lunge three times a second.
   The line flown is not the path: from near the vehicle it is not drawn (a line behind the vehicle is read as the way it
   goes, whatever it is drawn in); from 300 km out it comes in, all of it from 1,500 km (the whole flight seen from
   space), a thin cool grey core with no casing or glow at half strength, the last revolution or so (points more than

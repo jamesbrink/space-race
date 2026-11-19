@@ -7,11 +7,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { apsides } from '../src/sim/predict.ts';
 import {
+  carried,
   clearOf,
   clipNear,
   curveAt,
   curveOf,
   DEPTH_LEAST,
+  departure,
   depthOf,
   ERROR_PX,
   fadeIn,
@@ -389,4 +391,43 @@ test('the line is deeper in the view the further it is from the eye, by the doub
   near(depthOf(1.2e7, 1e7, 1.2e7), Math.log(1.2) / Math.log(DEPTH_LEAST), 1e-12, 'over the least span');
   assert.equal(depthOf(1e7, 1e7, 1e7), 0);
   assert.ok(Number.isFinite(depthOf(5, 0, 0)));
+});
+
+test('a curve is carried with a flight that has left it: by where it is, and by how fast, for every second on', () => {
+  const at = kepler(R + 300e3, 0.01, 0.4);
+  const c = curveOf(kept(at, 0, 3000, 30));
+  const left = new Float64Array(6);
+  // a flight on the curve has not left it
+  const on = at(600);
+  assert.ok(departure(c, 600, on.r, on.v, left));
+  assert.ok(Math.hypot(...left.subarray(0, 3)) < 1 && Math.hypot(...left.subarray(3)) < 1e-2, 'on the curve: nothing to carry');
+  // one that has thrust for a moment: 40 m on and 9 m/s faster along its motion
+  const speed = Math.hypot(...on.v);
+  const r = on.r.map((x, k) => x + (40 * on.v[k]) / speed);
+  const v = on.v.map((x) => x * (1 + 9 / speed));
+  assert.ok(departure(c, 600, r, v, left));
+  // the curve carried starts at the flight, with its velocity, whatever the instant it is asked at
+  const p = [0, 0, 0];
+  curveAt(c, 600, p);
+  carried(p, 0, 600, left, 600);
+  near(Math.hypot(p[0] - r[0], p[1] - r[1], p[2] - r[2]), 0, 1e-6, 'it passes through the flight');
+  // and it is where a coast from the flight goes, to the first order: a minute on, within a hundredth of how far it was carried
+  const dt = 60;
+  // (the coast from the new state, by small steps of two-body gravity)
+  const s = [...r, ...v];
+  for (let i = 0; i < dt * 100; i++) {
+    const h = 0.01;
+    const d = Math.hypot(s[0], s[1], s[2]) ** 3;
+    for (let k = 0; k < 3; k++) s[3 + k] -= (MU * s[k] * h) / d;
+    for (let k = 0; k < 3; k++) s[k] += s[3 + k] * h;
+  }
+  curveAt(c, 600 + dt, p);
+  const before = Math.hypot(p[0] - s[0], p[1] - s[1], p[2] - s[2]);
+  carried(p, 0, 600 + dt, left, 600);
+  const after = Math.hypot(p[0] - s[0], p[1] - s[1], p[2] - s[2]);
+  assert.ok(before > 500, `uncarried, the curve is ${before.toFixed(0)} m from where the flight goes`);
+  assert.ok(after < 0.02 * before, `carried, ${after.toFixed(1)} m`);
+  // outside the curve's span there is nothing to measure against, and nothing is carried
+  assert.equal(departure(c, 3001, r, v, left), false);
+  assert.ok(left.every((x) => x === 0));
 });
