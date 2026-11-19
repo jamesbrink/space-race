@@ -395,6 +395,11 @@ export const orbital: VostokRecord = {
     ],
   },
   landing: {
+    aimed: {
+      confidence: 'assumed',
+      source:
+        "The descent cycle was begun on the ground's command, its instant worked for the landing in the planned region, as on every flight of the type; this flight's own figures for the planned place are not in anything read, so the place it came down is taken for the place its burn was timed for",
+    },
     latitude: doc(53 + 23 / 60 + 45 / 3600, 'spacefacts.de: 53°23′45″ N; McDowell to a hundredth of a degree. No survey is stated'),
     longitude: doc(67 + 36 / 60 + 41 / 3600, 'spacefacts.de: 67°36′41″ E; McDowell the same. TASS: 540 km north-west of Karaganda'),
     at: doc(MSK(19, 14, 6), `${TASS}: 14:06`),

@@ -530,6 +530,7 @@ export const orbital: VostokRecord = {
       },
     ],
   },
+  // (not `aimed`: its braking burn is flown at the instant the record has it lit, which is what this flight's record is of)
   landing: {
     latitude: doc(
       51 + 16 / 60,

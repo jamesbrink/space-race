@@ -451,6 +451,8 @@ export const orbital: VostokRecord = {
       },
     ],
   },
+  // (not `aimed`: the automatic descent failed and the crew fired the engine by hand a revolution later, when they could: the
+  // place it came down is where that put it, not a place a burn was timed for)
   landing: {
     latitude: doc(
       59 + 34 / 60 + 3 / 3600,
