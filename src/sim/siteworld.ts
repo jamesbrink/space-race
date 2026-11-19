@@ -15,8 +15,12 @@ import type { Flight, ModelDef } from '../types.ts';
 import { add, dot, length, scale, sub, type Vec3 } from '../world/frames.ts';
 import { BoxTree, into, outOf, type Pose, poseAt, type SolidModel, type SolidPiece, turnBy, within } from './solids.ts';
 
-/** Where a model's solids are kept, as its GLB's url is: beside it. */
-export const solidUrl = (url: string): string => url.replace(/\.glb$/, '.solid.bin');
+/**
+ * Where a flight's model's solids are kept, as a model's url is (under public/): in the flight's own folder, by the
+ * model's id. They are the flight's and not the GLB's: a pad that is one GLB for several flights is posed by each
+ * flight's own moves and clock (Complex 39's Pad A by Apollo 8 and by Apollo 9), so each has its own.
+ */
+export const solidUrl = (flight: { id: string }, def: { id: string }): string => `models/${flight.id}/${def.id}.solid.bin`;
 
 /**
  * The models of a flight that have solids, and as what: a `structure` stands at the site and is neither a person nor
@@ -85,11 +89,11 @@ export class SiteWorld {
     }
   }
 
-  /** A flight's world from its baked files: `load` gives a model's solids by its url (solidUrl), or nothing if it has none. */
+  /** A flight's world from its baked files: `load` gives a model's solids by their url (solidUrl), or nothing if it has none. */
   static of(flight: Flight, load: (url: string) => SolidModel | undefined): SiteWorld {
     const models = [];
     for (const { def, kind } of solidModels(flight)) {
-      const solids = kind === 'structure' ? load(solidUrl(def.url)) : undefined;
+      const solids = kind === 'structure' ? load(solidUrl(flight, def)) : undefined;
       if (solids)
         models.push({
           id: def.id,

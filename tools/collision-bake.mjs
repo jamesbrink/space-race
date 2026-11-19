@@ -6,16 +6,16 @@
 //   pnpm collision --stats         print each piece's boxes
 //
 // For a flight with a site, each model that stands there and is neither a person nor the vehicle that flies is a
-// structure: `<model>.solid.bin` beside its GLB holds its pieces as boxes and where each stands from liftoff on, read
-// from the viewer's own moves (viewer/explode.ts, run here against the GLB's nodes), so a piece is where the page
+// structure: `<model id>.solid.bin` in the flight's own folder under public/models holds its pieces as boxes and where
+// each stands from liftoff on, read from the viewer's own moves (viewer/explode.ts, run here against the GLB's nodes), so a piece is where the page
 // draws it. The model that flies gets its `hulls` in a file of its own the same way. A new flight or site is baked by
 // being in missions/index.ts: nothing here knows any of them.
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import * as THREE from 'three';
-import { solidModels } from '../src/sim/siteworld.ts';
+import { solidModels, solidUrl } from '../src/sim/siteworld.ts';
 import { decodeSolids, encodeSolids } from '../src/sim/solids.ts';
 import { readGlb } from './glb-geometry.mjs';
 
@@ -37,8 +37,8 @@ const BAKE = 1;
 const TRACK_SLACK = 0.002;
 const TURN_SLACK = 0.0005;
 
-/** Where a model's solids are kept: beside its GLB. */
-export const solidPath = (url) => join(root, 'public', url.replace(/\.glb$/, '.solid.bin'));
+/** Where a flight's model's solids are kept: in the flight's own folder under public/ (sim/siteworld.ts `solidUrl`). */
+export const solidPath = (flight, def) => join(root, 'public', solidUrl(flight, def));
 
 /** The nodes of its model a flight sheds (`flies.drops`): each has a hull of its own, wherever in the model it is. */
 const shedBy = (flight) => [...new Set((flight.flies?.drops ?? []).flatMap((d) => d.nodes))].sort();
@@ -71,7 +71,7 @@ export function sourceOf(def, kind, flight) {
 
 /** What is wrong with a model's baked file as it stands, or null if it is current. */
 export function staleness(def, kind, flight) {
-  const file = solidPath(def.url);
+  const file = solidPath(flight, def);
   if (!existsSync(file)) return 'missing';
   try {
     return decodeSolids(readFileSync(file)).source === sourceOf(def, kind, flight) ? null : 'stale';
@@ -573,22 +573,14 @@ async function main(args) {
   const { flights } = await import(pathToFileURL(join(root, 'missions/index.ts')).href);
   let wrong = 0;
   let bytes = 0;
-  // (a place's pad is one model for every flight from it: baked once, and two flights that would bake it differently
-  // cannot both be right, since there is one file)
+  // (a place's pad is one GLB for several flights, each with a file of its own: where two pose it alike, which their
+  // digests say, the second is the first's bytes and is not baked again)
   const made = new Map();
   for (const flight of flights) {
     if (wanted.length && !wanted.some((w) => flight.id.includes(w))) continue;
     for (const { def, kind } of solidModels(flight)) {
-      const file = solidPath(def.url);
+      const file = solidPath(flight, def);
       const source = sourceOf(def, kind, flight);
-      if (made.has(def.url)) {
-        if (made.get(def.url).source !== source)
-          throw new Error(
-            `${def.url} is posed one way by ${made.get(def.url).flight} and another by ${flight.id}: one file cannot be both`,
-          );
-        continue;
-      }
-      made.set(def.url, { source, flight: flight.id });
       const state = staleness(def, kind, flight);
       if (check) {
         if (state) {
@@ -600,7 +592,9 @@ async function main(args) {
       if (!state && !stats && !args.includes('--force')) continue;
       const started = performance.now();
       if (stats) console.log(`${flight.id} ${def.id} (${kind})`);
-      const out = await bake(def, kind, flight, stats);
+      const out = made.get(`${def.url} ${source}`) ?? (await bake(def, kind, flight, stats));
+      made.set(`${def.url} ${source}`, out);
+      mkdirSync(dirname(file), { recursive: true });
       writeFileSync(file, out);
       bytes += out.length;
       const model = decodeSolids(out);

@@ -339,7 +339,7 @@ src/
   sound/index.ts                      the joinery: the clock, the scene's run and the camera in; the speaker by the clock, U, the volume
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
-  collision-bake.mjs                  bakes each sited flight's solids beside its GLBs (`<model>.solid.bin`, `pnpm collision`; `--check` says what is stale), in node from the committed GLBs: no Blender
+  collision-bake.mjs                  bakes each sited flight's solids into its own folder (`public/models/<flight>/<model>.solid.bin`, `pnpm collision`; `--check` says what is stale), in node from the committed GLBs: no Blender
   glb-geometry.mjs                    a GLB's nodes and triangles decoded in node (Draco, by the page's own decoder in public/draco)
   lod-thresholds.mjs                  each model's and piece's own level-of-detail thresholds, kept in model/<name>.lod.json, put into the GLB's extras
   lod-measure.mjs                     the measuring behind lod-thresholds.mjs, in a browser: each model and piece, at each level, against distance

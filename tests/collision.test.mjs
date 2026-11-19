@@ -3,7 +3,7 @@
 // each structure's boxes lie where its GLB has that part; a flown vehicle has a hull for every node it sheds, inside
 // that node's own bounds; and one hull is held to a documented figure.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { flights } from '../missions/index.ts';
@@ -25,6 +25,10 @@ test('every model of every flight with a site has its solids, baked from the mod
       if (state) wrong.push(`${flight.id} ${def.id}: ${state}`);
     }
   assert.deepEqual(wrong, [], 'run `pnpm collision`');
+  // and there is no file that no flight's model names: one left behind by a model renamed or a flight removed
+  const named = new Set(sited.flatMap((flight) => solidModels(flight).map(({ def }) => `public/${solidUrl(flight, def)}`)));
+  const orphans = globSync('public/models/**/*.solid.bin', { cwd: root }).filter((file) => !named.has(file));
+  assert.deepEqual(orphans, [], 'files no model names: remove them');
 });
 
 test('the files are what the bake makes today: a flight’s pad and its vehicle, baked again, are the same bytes', async () => {
@@ -36,7 +40,7 @@ test('the files are what the bake makes today: a flight’s pad and its vehicle,
   for (const { def, kind } of models) {
     const again = await bake(def, kind, flight);
     assert.ok(
-      Buffer.from(again).equals(readFileSync(join(root, 'public', solidUrl(def.url)))),
+      Buffer.from(again).equals(readFileSync(join(root, 'public', solidUrl(flight, def)))),
       `${def.id}: the committed file is not what the bake makes`,
     );
   }
@@ -81,7 +85,7 @@ test('a structure’s boxes lie where its model has that part', () => {
   for (const flight of sited)
     for (const { def, kind } of solidModels(flight)) {
       if (kind !== 'structure') continue;
-      const solids = load(solidUrl(def.url));
+      const solids = load(solidUrl(flight, def));
       const frames = framesOf(join(root, 'public', def.url));
       // (a part nothing moves stands as it was built; one that moves is somewhere else by liftoff)
       const moved = new Set(def.parts.filter((p) => p.moves?.length || p.clocked?.length || p.explode.some(Boolean)).map((p) => p.node));
@@ -116,7 +120,7 @@ test('a piece that moves after liftoff has a track that starts at liftoff, runs 
   for (const flight of sited)
     for (const { def, kind } of solidModels(flight)) {
       if (kind !== 'structure') continue;
-      for (const piece of load(solidUrl(def.url)).pieces) {
+      for (const piece of load(solidUrl(flight, def)).pieces) {
         const track = piece.track;
         if (!track) continue;
         const where = `${flight.id} ${def.id} ${piece.node}`;
@@ -140,7 +144,7 @@ test('a flown vehicle has a hull for every node it sheds, within that node', () 
   for (const flight of sited) {
     const flown = solidModels(flight).find((m) => m.kind === 'vehicle');
     if (!flown) continue;
-    const solids = load(solidUrl(flown.def.url));
+    const solids = load(solidUrl(flight, flown.def));
     const frames = framesOf(join(root, 'public', flown.def.url));
     const absent = new Set(flown.def.absent ?? []);
     for (const node of flight.flies.drops.flatMap((d) => d.nodes)) {
@@ -168,7 +172,7 @@ test('a flown vehicle has a hull for every node it sheds, within that node', () 
 
 test('the Redstone’s hull is the Redstone’s: 70 in across', () => {
   const flight = flights.find((f) => f.id === 'usa/mercury/mr-3-freedom-7');
-  const tank = load(solidUrl(flight.models.find((m) => m.id === 'vehicle').url)).hulls.find((h) => h.node === 'RedstoneCenterUnit');
+  const tank = load(solidUrl(flight, { id: 'vehicle' })).hulls.find((h) => h.node === 'RedstoneCenterUnit');
   const radii = [];
   for (let i = 3; i < tank.beads.length; i += 4) radii.push(tank.beads[i]);
   radii.sort((a, b) => a - b);

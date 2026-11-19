@@ -60,7 +60,9 @@ runs. `pnpm test:separation` checks detached nodes in the running viewer.
 
 The simulator has no three.js and no GLB loader, so what stands at a site is baked for it. `pnpm collision`
 (tools/collision-bake.mjs) reads the committed GLBs in node (Draco, by the page's own decoder; no Blender) and writes
-`<model>.solid.bin` beside each model of every flight that has a site. Nothing is written by hand for a site: a new
+`models/<flight id>/<model id>.solid.bin` for each model of every flight that has a site. The file is the flight's,
+not the GLB's: a pad that is one GLB for several flights is posed by each flight's own moves and clock (Complex 39's
+Pad A by Apollo 8 and by Apollo 9), so each flight has its own. Nothing is written by hand for a site: a new
 flight or pad is baked by being in `missions/index.ts`, and `tests/collision.test.mjs` fails until the files are
 current with their GLBs and with the flight's moves (run `pnpm collision` after `pnpm model`). A file's digest knows
 its GLB and its flight's data, not the tool: change what the bake makes and bake everything again
@@ -90,12 +92,13 @@ Simplified, and to be kept in mind by whoever uses it:
 
 - Shapes are as fine as a cell. A piece that would be more than 16,000 boxes within 50 m of the launch axis, or 4,000
   beyond it, is cut twice as coarse, and again, until it fits, and records it (`SolidPiece.cell`). These budgets are
-  ours, chosen for the files' size (18 MB in 72 files for the 42 flights there are; without them, 256 MB), and they
+  ours, chosen for the files' size (22 MB in 84 files for the 42 flights there are; without them, over 250 MB), and they
   cost more than earthworks. As baked today: Site 1's flame pit is in cells of 4 m, under the rocket; Complex 34's
   roads 2 m, its blockhouse and propellant areas 1 m; Complex 19's ramp, Complex 14's 1965 service structure and
   Complex 39's storage spheres 1 m; and, at 0.5 m, towers that stand beside the vehicle: Mercury-Atlas's service
-  tower, Site 31's service trusses, Complex 39's umbilical tower and hardstand, Site 1's command bunker. A tower at
-  0.5 m is too coarse to judge a near miss by; raise the near budget before trusting one.
+  tower, Complex 39's umbilical tower and hardstand, and Site 1's command bunker for the Soyuz flights. A tower at
+  0.5 m is too coarse to judge a near miss by; raise the near budget before trusting one. (The list is as baked when
+  this was written: a pad rebuilt may fall on either side of its budget, and each file says, `SolidPiece.cell`.)
 - A closed volume is a shell: nothing is inside it.
 - Before liftoff nothing is right: the simulator does not fly then, and no pose before it is kept.
 - What a hand has worked out of its programme on foot (a platform held open) is not known here.
@@ -105,8 +108,6 @@ Simplified, and to be kept in mind by whoever uses it:
 - The place's own models round the pad (a neighbouring complex, a blockhouse of the place's model) and its land are
   not baked: they are set down by the place's code in the viewer.
 - A vehicle that no `flies` names (a flight with a launch site and no Fly) is baked as a structure standing there.
-- A pad that is one model for several flights (a place's own: Site 1 for the Soyuz flights) is one file. Flights that
-  posed it differently could not share it: the bake refuses, and the model wants a file a flight.
 
 ## The core
 
