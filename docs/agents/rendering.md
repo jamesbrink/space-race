@@ -978,6 +978,14 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   left out softens the cut (`cloudNoiseKept`, deckAt's `left`), so the cover is kept and a row far aslant is a soft
   band. Point-sampled, each row was another place: dashes along the horizon from the pad, and 1,700 pixels a frame
   flipping in the chase view at T+20 (now 6 over the scene's own). Measure the chase view with the clouds on.
+- **From far out the day's cloud is let go.** The weather is the place's and its day's: layers over the ground round
+  the site, which from a few hundred kilometres up is the sky as it was. From where the whole Earth is in the frame it
+  is a few layers wrapped round a globe whose weather that day nobody here has read, and it drew as bands and streaks
+  across continents. So it is drawn in full to an eye 1,000 km up and not at all from 2,500 km, by the height's
+  logarithm between (clouds.ts `CLOUDS_FROM`, `CLOUDS_TO`, estimated; air.ts `uCloudsLeft`): one number for the clouds
+  laid over the frame, for what is drawn under them (overlay.ts `cloudAhead`) and for their shadows on the globe
+  (globe.ts), so a cloud and its shadow go together and nothing is cut. No view of a flight reaches that height (the
+  chase view backs off 400 km at most); the map (camera.md) and a camera taken out by hand do.
 - **Far cloud is not hidden by the depth buffer's steps.** Hundreds of kilometres off one step is
   kilometres: far cloud is hidden only by what is nearer by a quarter of the way (`hidden`).
 - **The air is one model.** `atmosphere.ts` makes two tables once (transmittance, multiple scattering) and

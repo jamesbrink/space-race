@@ -16,7 +16,7 @@ import { EARTH as BODY, EARTH_SPHERE } from '../world/bodies.ts';
 import { planeAt, surfaceDirection } from '../world/region.ts';
 import { RELIEF_GLSL } from '../world/relief.ts';
 import { ellipsoidNormal, gaussianRadius, horizonDistance, seaPoint } from '../world/surface.ts';
-import { type Clouds, cloudCutGlsl, cloudMiddle } from './air.ts';
+import { type Clouds, cloudCutGlsl, cloudMiddle, uCloudsLeft } from './air.ts';
 import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { type Day, HIGH_HEIGHT } from './day.ts';
 import { fieldAs } from './field.ts';
@@ -607,6 +607,7 @@ export class Globe {
       uGlobeFlat: { value: blankLayers },
       uGlobeFlatShare: { value: [new THREE.Vector2(1, 1), new THREE.Vector2(1, 1), new THREE.Vector2(1, 1)] },
       uGlobeSun: { value: this.sun },
+      uCloudsLeft,
       // from the scene's frame to ECEF: the site's origin, and its axes as the columns of a matrix
       uGlobeOrigin: { value: new THREE.Vector3(o[0], o[1], o[2]) },
       uGlobeAxes: { value: new THREE.Matrix3().set(m[0][0], m[1][0], m[2][0], m[0][1], m[1][1], m[2][1], m[0][2], m[1][2], m[2][2]) },
@@ -1233,6 +1234,7 @@ export class Globe {
           varying vec3 vGlobeSite;
           varying vec3 vGlobeNormal;
           uniform vec3 uGlobeSun, uGlobeOrigin;
+          uniform float uCloudsLeft;   // how much of the day's cloud is drawn (air.ts): its shadows go with it
           uniform mat3 uGlobeAxes;
           uniform mat4 uGlobeHoles[${Math.max(1, this.holes.length)}];
           uniform vec2 uGlobeHoleSize[${Math.max(1, this.holes.length)}];   // each square's half side, and its ground's height
@@ -1350,8 +1352,8 @@ export class Globe {
               this.clouds || this.sheets
                 ? `#ifdef USE_FOG
             float footprint = length(fwidth(vFogWorld.xz));
-            sceneShade = airShade;   // (the shared chunk's own, just worked out)
-            sunShade = globeShade(vFogWorld, uGlobeSun, dot(normalize(vGlobeNormal), uGlobeSun), footprint);
+            sceneShade = airShade;   // (the shared chunk's own, just worked out: what is taken back out below is what it put in)
+            sunShade = mix(1.0, globeShade(vFogWorld, uGlobeSun, dot(normalize(vGlobeNormal), uGlobeSun), footprint), uCloudsLeft);
             #endif`
                 : ''
             }

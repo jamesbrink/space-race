@@ -104,7 +104,7 @@ export const cloudAheadGlsl = /* glsl */ `
   uniform sampler2D tCloudAhead, tCloudInfo;
   uniform float uCloudsAhead, uLastCel;
   float cloudAhead(vec2 uv, float d) {
-    if (uCloudsAhead < 0.5) return 0.0;
+    if (uCloudsAhead <= 0.0) return 0.0;
     ivec2 size = textureSize(tCloudAhead, 0);
     vec2 p = uv * vec2(size) - 0.5;
     vec2 i0 = floor(p), f = p - i0;
@@ -115,7 +115,7 @@ export const cloudAheadGlsl = /* glsl */ `
       vec4 info = texelFetch(tCloudInfo, at, 0);
       a += w * texelFetch(tCloudAhead, at, 0).a * smoothstep(info.x, info.y, d);
     }
-    return uLastCel > 0.5 ? smoothstep(0.45, 0.55, a) : a;
+    return (uLastCel > 0.5 ? smoothstep(0.45, 0.55, a) : a) * uCloudsAhead;
   }`;
 
 /**
@@ -129,7 +129,7 @@ export function drawsLast(
   scene: THREE.Scene,
   camera: THREE.PerspectiveCamera,
   depth: () => THREE.Texture | null,
-  clouds: () => { cloud: THREE.Texture | null; info: THREE.Texture | null; on: boolean; cel: boolean },
+  clouds: () => { cloud: THREE.Texture | null; info: THREE.Texture | null; on: boolean; left: number; cel: boolean },
 ): void {
   const alone = Object.assign(new THREE.Scene(), { matrixAutoUpdate: false, matrixWorldAutoUpdate: false });
   const shown: THREE.Object3D[] = [];
@@ -149,7 +149,8 @@ export function drawsLast(
     const c = clouds();
     uLast.tCloudAhead.value = c.cloud;
     uLast.tCloudInfo.value = c.info;
-    uLast.uCloudsAhead.value = Number(c.on && c.cloud !== null && c.info !== null);
+    // (as much of the cloud as is drawn: from far out it is let go, clouds.ts `CLOUDS_FROM`)
+    uLast.uCloudsAhead.value = c.on && c.cloud !== null && c.info !== null ? c.left : 0;
     uLast.uLastCel.value = Number(c.cel);
     alone.children = shown;
     alone.fog = scene.fog;
