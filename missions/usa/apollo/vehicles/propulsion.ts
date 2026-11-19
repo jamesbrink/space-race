@@ -1,5 +1,5 @@
-import type { Motor } from '../../../../src/types.ts';
 import { doc } from '../../../../src/measure.ts';
+import type { Motor } from '../../../../src/types.ts';
 
 const LBF = 4.4482216152605;
 const saturn = 'MSFC-MAN-503, Saturn V Flight Manual SA-503, fig. 1-3';
@@ -712,5 +712,114 @@ export const APOLLO16_THRUST: Motor[] = [
     propellant: 'Aerozine 50 / nitrogen tetroxide',
     confidence: 'assumed',
     note: 'Apollo 13 press kit, p. 89, LM attitude thruster rating applied to LM-11',
+  },
+];
+
+const seventeen = 'NASA Apollo 17 press kit, November 1972';
+export const APOLLO17_THRUST: Motor[] = [
+  {
+    name: 'F-1',
+    operation: 'At liftoff',
+    count: 5,
+    thrustN: (7665111 * LBF) / 5,
+    propellant: 'RP-1 / liquid oxygen',
+    confidence: 'derived',
+    note: `${seventeen}, p. 94, nominal stage liftoff thrust 7,665,111 lbf divided among five engines`,
+  },
+  {
+    name: 'First-stage retrorocket',
+    operation: 'First-stage separation',
+    count: 8,
+    thrustN: 75800 * LBF,
+    propellant: 'Solid',
+    confidence: 'documented',
+    note: 'Apollo 17 press kit, p. 94, 75,800 lbf per motor; corroborated by SA-510 manual fig. 4-20',
+  },
+  {
+    name: 'J-2 · second stage',
+    operation: 'Nominal average thrust',
+    count: 5,
+    thrustN: (1153712 * LBF) / 5,
+    propellant: 'Liquid hydrogen / liquid oxygen',
+    confidence: 'derived',
+    note: `${seventeen}, p. 94, average S-II thrust of 1,153,712 lbf divided among five engines`,
+  },
+  {
+    name: 'J-2 · third stage',
+    operation: 'Nominal average thrust',
+    count: 1,
+    thrustN: 208242 * LBF,
+    propellant: 'Liquid hydrogen / liquid oxygen',
+    confidence: 'documented',
+    note: `${seventeen}, p. 94, published average third-stage J-2 thrust`,
+  },
+  {
+    name: 'S-IVB attitude engine',
+    operation: 'Roll control under thrust and attitude control during coast',
+    count: 6,
+    thrustN: 150 * LBF,
+    propellant: 'MMH / nitrogen tetroxide',
+    confidence: 'assumed',
+    note: 'AS-512 flight evaluation, §7.12, three attitude engines per module; NASA NESC-IB-22-05, table D.2, 150 lbf per jet',
+  },
+  {
+    name: 'S-IVB auxiliary ullage engine',
+    operation: 'Propellant settling and lunar targeting',
+    count: 2,
+    thrustN: 70 * LBF,
+    propellant: 'MMH / nitrogen tetroxide',
+    confidence: 'assumed',
+    note: 'AS-512 flight evaluation, §7.12, one ullage engine per module; NASA NESC-IB-22-05, table D.2, 70 lbf per jet',
+  },
+  {
+    name: 'Service propulsion engine',
+    operation: 'Lunar orbit insertion and departure',
+    count: 1,
+    thrustN: 20500 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'documented',
+    note: `${seventeen}, p. 98, SM-114 service engine`,
+  },
+  {
+    name: 'SM attitude thruster',
+    count: 16,
+    thrustN: 100 * LBF,
+    propellant: 'MMH / nitrogen tetroxide',
+    confidence: 'assumed',
+    note: 'Apollo 13 press kit, p. 82, Block II service-module thruster rating applied to CSM-114',
+  },
+  {
+    name: 'CM attitude thruster',
+    count: 12,
+    thrustN: 93 * LBF,
+    propellant: 'MMH / nitrogen tetroxide',
+    confidence: 'assumed',
+    note: 'Apollo 13 press kit, p. 82, Block II command-module thruster rating applied to CSM-114',
+  },
+  {
+    name: 'Descent engine',
+    operation: 'Fixed-throttle portion of descent',
+    count: 1,
+    thrustN: 9839 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'assumed',
+    note: 'Apollo 16 Mission Report, supplement 4, §2, sister LM-11 fixed-throttle rating assumed for LM-12',
+  },
+  {
+    name: 'Ascent engine',
+    operation: 'Lunar ascent',
+    count: 1,
+    thrustN: 3544 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'assumed',
+    note: 'Apollo 16 Mission Report, supplement 3, §2, sister LM-11 average ascent thrust assumed for LM-12',
+  },
+  {
+    name: 'LM attitude thruster',
+    count: 16,
+    thrustN: 100 * LBF,
+    propellant: 'Aerozine 50 / nitrogen tetroxide',
+    confidence: 'assumed',
+    note: 'Apollo 13 press kit, p. 89, LM attitude thruster rating applied to LM-12',
   },
 ];

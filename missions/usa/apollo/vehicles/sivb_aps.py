@@ -1,4 +1,4 @@
-"""S-IVB-511 auxiliary propulsion modules. Inch envelopes estimated from NESC-IB-22-05, figs. D.1–D.3."""
+"""J-mission S-IVB auxiliary propulsion modules. Inch envelopes estimated from NESC-IB-22-05, figs. D.1–D.3."""
 
 import math
 
@@ -9,12 +9,12 @@ import saturn_structure as structure
 from srlib import IN, MeshBuilder, bore, frame, group, mark_shells, material, prof
 
 
-def propulsion_pods(stage, stage_radius, aft, white, steel, alloy):
+def propulsion_pods(stage, stage_radius, aft, white, steel, alloy, serial):
     tank_paint = material("sivb-aps-tank", (0.53, 0.48, 0.37), metallic=0.63, roughness=0.45)
     # A pitch jet looks radially out, two roll/yaw jets look across the stage, and one ullage jet looks aft.
     # Each fairing follows the stage skin until it tapers to a nose. Each engine looks through an opening.
     for number, sign in ((1, 1), (2, -1)):
-        prefix = f"SIVB511_APS{number}_"
+        prefix = f"SIVB{serial}_APS{number}_"
         position = (0, sign * (stage_radius - 1.6) * IN, aft * IN)
         azimuth = sign * math.pi / 2
         cover = group(prefix + "OuterCover", stage)

@@ -6,7 +6,7 @@ import { LunarRover } from '../src/viewer/lunar-rover.ts';
 import { LunarTerrain } from '../src/world/lunar-terrain.ts';
 import { hierarchy } from './glb.mjs';
 
-for (const mission of [15, 16]) {
+for (const mission of [15, 16, 17]) {
   test(`Apollo ${mission} drives, steers at both axles, brakes and keeps its tyres on the slope`, () => {
     const file = readFileSync(`public/models/usa/apollo/apollo-${mission}/rover.glb`);
     const model = hierarchy(JSON.parse(file.subarray(20, 20 + file.readUInt32LE(12)).toString('utf8')));
@@ -43,7 +43,7 @@ for (const mission of [15, 16]) {
   });
 }
 
-for (const mission of [15, 16]) {
+for (const mission of [15, 16, 17]) {
   test(`Apollo ${mission} independent suspension holds both ends of every moving link on uneven ground`, () => {
     const file = readFileSync(`public/models/usa/apollo/apollo-${mission}/rover.glb`);
     const model = hierarchy(JSON.parse(file.subarray(20, 20 + file.readUInt32LE(12)).toString('utf8')));

@@ -11,6 +11,7 @@ import lm7_equipment
 import lm8_equipment
 import lm10_equipment
 import lm11_equipment
+import lm12_equipment
 import lm_cabin
 import lm_propulsion
 import lm_systems
@@ -532,7 +533,7 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
 
 
 def build(iu_top=0, *, deployed=False, spacecraft=3):
-    if spacecraft not in (3, 4, 5, 6, 7, 8, 10, 11):
+    if spacecraft not in (3, 4, 5, 6, 7, 8, 10, 11, 12):
         raise ValueError(f"Unsupported lunar module LM-{spacecraft}")
     foil = material("lm3-blanket-gold", (0.64, 0.29, 0.042), metallic=0.68, roughness=0.43)
     amber = material("lm3-copper-blanket", (0.41, 0.132, 0.029), metallic=0.50, roughness=0.52)
@@ -587,6 +588,10 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
                 for name in ("LMRover", "LMRoverPallet", "LMFarUV", "LMCosmicRayDetector"):
                     parts[name] = group(name)
                 lm11_equipment.build(parts, silver, amber, dark, white, ivory)
+            elif spacecraft == 12:
+                for name in ("LMRover", "LMRoverPallet", "LMTraverseGravimeter", "LMSEP", "LMSeismicCargo", "LMCosmicRayDetector"):
+                    parts[name] = group(name)
+                lm12_equipment.build(parts, silver, amber, dark, white, ivory)
             elif spacecraft == 8:
                 for name in ("LMTransporter", "LMRetroreflector", "LMPortableMagnetometer"):
                     parts[name] = group(name)

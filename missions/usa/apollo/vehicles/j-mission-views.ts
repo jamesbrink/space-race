@@ -1,7 +1,7 @@
 import type { Part, ViewDef } from '../../../../src/types.ts';
 import { nodes } from './stack-gallery.ts';
 
-export function jMissionViews(name: string, command: Part[], service: Part[], probe: string): ViewDef[] {
+export function jMissionViews(name: string, command: Part[], service: Part[], probe: string, instruments?: ViewDef[]): ViewDef[] {
   return [
     {
       id: name.toLowerCase(),
@@ -13,7 +13,12 @@ export function jMissionViews(name: string, command: Part[], service: Part[], pr
     {
       id: 'sim-bay',
       label: 'Inside the SIM bay',
-      nodes: ['SIMBay', 'SIMCameras', 'SIMBooms', 'ReserveOxygen'],
+      nodes: [
+        'SIMBay',
+        'SIMCameras',
+        ...(instruments ? ['LunarSounder', 'FarUltraviolet', 'InfraredRadiometer', 'UVOptics', 'IROptics'] : ['SIMBooms']),
+        'ReserveOxygen',
+      ],
       isolate: true,
       from: [0.77, 0.07, -0.64],
     },
@@ -25,16 +30,19 @@ export function jMissionViews(name: string, command: Part[], service: Part[], pr
       isolate: true,
       from: [0.74, 0.09, -0.67],
     },
-    { id: 'spectrometers', label: 'Spectrometer shelf', nodes: ['SIMBooms'], onSelect: true, isolate: true, from: [0.8, 0.3, -0.6] },
-    {
-      id: 'subsatellite',
-      label: 'Particles and fields subsatellite',
-      nodes: ['Subsatellite'],
-      onSelect: true,
-      isolate: true,
-      from: [0.75, 0.35, 0.55],
-      span: 1.1,
-    },
+    ...(instruments ??
+      ([
+        { id: 'spectrometers', label: 'Spectrometer shelf', nodes: ['SIMBooms'], onSelect: true, isolate: true, from: [0.8, 0.3, -0.6] },
+        {
+          id: 'subsatellite',
+          label: 'Particles and fields subsatellite',
+          nodes: ['Subsatellite'],
+          onSelect: true,
+          isolate: true,
+          from: [0.75, 0.35, 0.55],
+          span: 1.1,
+        },
+      ] satisfies ViewDef[])),
     { id: 'sector-i', label: 'Sector I cryogenics', nodes: ['ReserveOxygen', 'ReserveHydrogen'], isolate: true, from: [0.12, 0.15, -1] },
     {
       id: 'sector-iv',

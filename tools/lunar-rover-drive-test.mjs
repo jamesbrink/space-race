@@ -14,6 +14,8 @@ try {
   for (const [mission, width] of [
     [15, 1280],
     [16, 390],
+    [17, 1280],
+    [17, 390],
   ]) {
     if (only && mission !== Number(only)) continue;
     const phone = width === 390;
@@ -44,7 +46,7 @@ try {
       await page.locator('.rover-instruments').waitFor({ timeout: 90000 });
     };
     const shot = async (view) => {
-      if (shots) await page.screenshot({ path: join(shots, 'apollo-' + mission + '-' + view + '.jpg'), type: 'jpeg', quality: 90 });
+      if (shots) await page.screenshot({ path: join(shots, `apollo-${mission}-${width}-${view}.jpg`), type: 'jpeg', quality: 90 });
     };
     await drive();
     assert.equal(await page.locator('#gallery-stage').evaluate((c) => c.clientHeight), 800);

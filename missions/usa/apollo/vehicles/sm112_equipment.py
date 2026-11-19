@@ -55,7 +55,7 @@ def build(groups, origin_xa, *, spacecraft):
     for bottom, top, radius in ((842, 868.5, 34), (870, 932, 56.2), (933, 954.5, 57)):
         width = 2 * radius * math.tan(math.radians(23))
         # The container penetrates the pallet: leave its launch channel open.
-        if bottom == 870:
+        if bottom == 870 and spacecraft != 114:
             box(liners, radius, 0, (889 + top) / 2, (0.45, width, top - 889))
             box(liners, radius, 8, (bottom + 889) / 2, (0.45, 22, 889 - bottom))
         else:
@@ -106,14 +106,15 @@ def build(groups, origin_xa, *, spacecraft):
             faces.append(tuple(range(n, 2 * n)))
         mesh.add(verts, faces)
 
-    compartment, handle = MeshBuilder(), MeshBuilder()
-    outline = [(-9, 0), (9, 0), (9, 13), (6, 18), (-6, 18), (-9, 13)]
-    housing(compartment, 36.2, 68, -14, 870, outline, open_front=True)
-    housing(compartment, 68.1, 68.6, -14, 870, outline)
-    for t in (-18, -14, -10):
-        handle.tube(container_point(68.85, t, 872), container_point(68.85, t, 882), 0.48 * IN)
-    compartment.build(f"SM{spacecraft}_SubsatelliteContainer", black, groups["SIMBay"], smooth=False)
-    handle.build(f"SM{spacecraft}_SubsatelliteContainerRibs", alloy, groups["SIMBay"])
+    if spacecraft != 114:
+        compartment, handle = MeshBuilder(), MeshBuilder()
+        outline = [(-9, 0), (9, 0), (9, 13), (6, 18), (-6, 18), (-9, 13)]
+        housing(compartment, 36.2, 68, -14, 870, outline, open_front=True)
+        housing(compartment, 68.1, 68.6, -14, 870, outline)
+        for t in (-18, -14, -10):
+            handle.tube(container_point(68.85, t, 872), container_point(68.85, t, 882), 0.48 * IN)
+        compartment.build(f"SM{spacecraft}_SubsatelliteContainer", black, groups["SIMBay"], smooth=False)
+        handle.build(f"SM{spacecraft}_SubsatelliteContainerRibs", alloy, groups["SIMBay"])
 
     # Reconstruct the EVA foot restraint beside the panoramic camera.
     rest = MeshBuilder()
@@ -169,6 +170,21 @@ def build(groups, origin_xa, *, spacecraft):
     body.build(f"SM{spacecraft}_SIMCameraPanels", white, groups["SIMCameras"], smooth=False)
     optics.build(f"SM{spacecraft}_CameraOpticalPorts", glass, groups["SIMCameras"])
     trim.build(f"SM{spacecraft}_CameraBezelsAndEVAHandles", black, groups["SIMCameras"])
+
+    if interior():
+        hydro = groups["ReserveHydrogen"]
+        centre = point(39, 0, 929) / IN
+        _ball(f"SM{spacecraft}_HydrogenThreeVacuumJacket", HYDROGEN_DIAMETER, centre, foil, hydro)
+        pipework = MeshBuilder()
+        pipe(pipework, (39, 0, 944.8), (39, 0, 946.9), 1)
+        pipe(pipework, (39, 0, 946.9), (48, 0, 946.9), 0.45)
+        pipework.build(f"SM{spacecraft}_HydrogenOutlet", alloy, hydro)
+
+    if spacecraft == 114:
+        from sm114_equipment import sounder_pallet
+
+        sounder_pallet(groups, point, box, pipe, alloy, white, black, glass, foil)
+        return
 
     # Heads and inboard reel drives; launch view keeps both booms retracted.
     ends, instruments, drives = MeshBuilder(), MeshBuilder(), MeshBuilder()
@@ -232,10 +248,3 @@ def build(groups, origin_xa, *, spacecraft):
         booms.tube(container_point(38.3, t, z), container_point(66.1, t, z), 0.23 * IN)
         booms.tube(container_point(64.9, t, z), container_point(66.1, t, z), 0.46 * IN)
     booms.build(f"SM{spacecraft}_ThreeFoldedSubsatelliteBooms", alloy, groups["Subsatellite"])
-    hydro = groups["ReserveHydrogen"]
-    centre = point(39, 0, 929) / IN
-    _ball(f"SM{spacecraft}_HydrogenThreeVacuumJacket", HYDROGEN_DIAMETER, centre, foil, hydro)
-    pipework = MeshBuilder()
-    pipe(pipework, (39, 0, 944.8), (39, 0, 946.9), 1)
-    pipe(pipework, (39, 0, 946.9), (48, 0, 946.9), 0.45)
-    pipework.build(f"SM{spacecraft}_HydrogenOutlet", alloy, hydro)
