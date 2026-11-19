@@ -52,7 +52,7 @@ function cutAt(f, t1, { sequence, guidance }) {
   const pilot = stagedPilot(v, x, site, frame, sea, { ...options, steps: () => asked.splice(0) });
   // (the same object read every tick, as the deck's switches are: begin with the record's, then the hands')
   const live = stagedPilot(v, x, site, frame, sea, Object.assign(options, { steps: () => asked.splice(0) }));
-  const first = stagesOf(f.plan).flatMap((st, i) => (sequenceOf(f.plan).stages[i].from <= 0 ? [{ kind: 'ignite', stage: i }] : []));
+  const first = sequenceOf(f.plan).stages.flatMap((k, i) => (k.from <= 0 ? [{ kind: 'ignite', stage: i }] : []));
   let s = v.tick(v.start(), { pitch: 0, yaw: 0, roll: 0, steps: first });
   while (s.t < t1 && !s.parted && !s.broke) s = v.tick(s, pilot);
   if (s.parted || s.broke) return null;
