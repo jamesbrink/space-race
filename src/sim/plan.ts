@@ -44,6 +44,12 @@ export interface FlightPlan {
   checks: PlanCheck[];
   /** What the record has that is not flown from but held to or shown: the published orbit, where it came down. */
   record?: PlanRecord;
+  /**
+   * The flight as it was to be flown, where the record's went otherwise (an engine that failed, control lost: a steering
+   * law's `lost`): the ascent's law is solved on it (sim/staged.ts `steer`), as the vehicle's guidance was set for it, and
+   * this plan is flown on that solution.
+   */
+  planned?: FlightPlan;
 }
 
 /** A craft: bodies held together by joints, and what is fixed to them. */

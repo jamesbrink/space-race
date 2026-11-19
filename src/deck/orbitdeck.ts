@@ -623,10 +623,11 @@ export class OrbitDeck extends Deck {
     el.innerHTML = `
       <div class="tank engine" title="What is burning, and what kind of engines they are"><span>Engine</span><b data-cell="engine"></b><i data-cell="engine-kind"></i></div>
       ${stagesOf(plan)
-        .map((s, i) =>
+        .map((s, i, all) =>
           tank(
             `stage-${i}`,
-            short(s.body.label),
+            // (two stages on one body, an Atlas's sustainer and its verniers, are told apart by their engines)
+            short(all.some((o, j) => j !== i && o.body.id === s.body.id) ? s.engine.label : s.body.label),
             s.shares.length > 1
               ? `${s.body.label}: propellant left in the tank it draws on with ${s.shares.length - 1 === 1 ? 'another stage' : 'other stages'}`
               : `${s.body.label}: propellant left of what it carries${s.count > 1 ? `, the ${s.count} together` : ''}`,
@@ -2305,6 +2306,8 @@ export class OrbitDeck extends Deck {
   }
   /** A time of the flight as a clock on the wall read it that day. */
   private wall(at: number): string {
+    // (an instant that never comes: a target's braking burn, which it has none of)
+    if (!Number.isFinite(at)) return 'never';
     const local = (t: number) => new Date(Date.parse(this.flight.launch) + t * 1000 + this.flight.site.zone.utcOffset * 3600_000);
     const when = local(at);
     // (on a flight that runs past midnight, a time on another day than the launch's says which)
@@ -2452,9 +2455,11 @@ export class OrbitDeck extends Deck {
         ? `By hand, ${this.wall(this.fired)}`
         : this.free
           ? 'Yours to fire'
-          : this.mine === null
-            ? `${onDay ? 'By hand on the day' : 'Timer'}, ${this.wall(command)}`
-            : 'Yours, once parted',
+          : !burnEvents.burn
+            ? 'None aboard'
+            : this.mine === null
+              ? `${onDay ? 'By hand on the day' : 'Timer'}, ${this.wall(command)}`
+              : 'Yours, once parted',
     );
     set('lock', this.free ? 'Free' : this.byPlan !== null ? 'Open, by plan' : 'Locked');
     for (const lamp of this.root.querySelectorAll<HTMLElement>('[data-digit]'))
