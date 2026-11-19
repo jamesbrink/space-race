@@ -10,6 +10,7 @@ for (const [number, letter, launcher] of [
   [8, 'A', 1],
   [9, 'A', 2],
   [10, 'B', 3],
+  [11, 'A', 1],
 ]) {
   const flight = flights.find((f) => f.id === `usa/apollo/apollo-${number}`);
   const vehicle = exhibit(flight);
@@ -33,7 +34,7 @@ for (const [number, letter, launcher] of [
         assert.ok(degrees(p, 0) > 72 && degrees(p, 0) < 90);
         assert.equal(Math.round(degrees(p, 1.77)), 90);
       } else assert.equal(Math.round(degrees(p, 0)), i < 3 || i === 8 ? 90 : 0);
-      assert.equal(Math.round(degrees(p, 9)), 90);
+      assert.equal(Math.round(degrees(p, pad.sequence.at(-1).at)), 90);
     }
   });
   test(`Apollo ${number} stands on ML-${launcher} at 39${letter} with its hatch at the white room`, () => {

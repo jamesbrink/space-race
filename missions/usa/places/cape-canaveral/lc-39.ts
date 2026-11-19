@@ -33,6 +33,7 @@ function site(pad: 'A' | 'B', latitude: number, longitude: number, zone: SiteDef
 }
 
 export const LC39A = site('A', 28.6084, -80.6043, { name: 'EST', utcOffset: -5 });
+export const LC39A_EDT: SiteDef = { ...LC39A, zone: { name: 'EDT', utcOffset: -4 } };
 export const LC39B = site('B', 28.6272, -80.6208, { name: 'EDT', utcOffset: -4 });
 
 function part(node: string, name: string, summary: string, detail: string): Part {
@@ -58,17 +59,35 @@ function armSwing(node: string, from: number, to: number, degrees = 90): Move {
 
 interface Countdown {
   ingress: number;
+  parkCommand?: number;
   parkedBy: number;
+  retractedBy?: number;
   pao: string;
   intertankClear: number;
   forwardRetract: number;
   terminalSource: string;
   intertankLatch?: number;
+  firstMotion?: number;
+  terminalConfidence?: 'assumed' | 'documented';
+  holdDowns?: 'as-506';
 }
 
 export function mobileLauncher(
   number: 1 | 2 | 3,
-  { ingress, parkedBy, pao, intertankClear, forwardRetract, terminalSource, intertankLatch }: Countdown,
+  {
+    ingress,
+    parkCommand,
+    parkedBy,
+    retractedBy,
+    pao,
+    intertankClear,
+    forwardRetract,
+    terminalSource,
+    intertankLatch,
+    firstMotion = 0,
+    terminalConfidence = 'assumed',
+    holdDowns,
+  }: Countdown,
 ): ModelDef {
   // Layout along the common countdown slider. Inflight sweeps share its final nine seconds.
   const arms: [string, number, number][] = [
@@ -93,26 +112,76 @@ export function mobileLauncher(
     key(-43200, 0, 'S-II aft access arm withdraws', 'estimated', MANUAL + ' Withdrawn as required. Time placed before crew ingress.'),
     key(-43170, 0.1, 'S-II aft arm clear', 'estimated', MANUAL + ' Travel duration reconstructed.'),
     key(ingress, 0.1, 'Commander enters the spacecraft', 'documented', pao),
-    key(parkedBy - 30, 0.1, 'Crew access arm leaves the hatch', 'estimated', pao + ' Travel placed before the standby report.'),
-    key(parkedBy, 0.2, 'Crew access arm in its 12° standby position', 'estimated', pao + ' Placed at the broadcast confirming standby.'),
+    key(
+      parkCommand ?? parkedBy - 30,
+      0.1,
+      'Crew access arm leaves the hatch',
+      parkCommand === undefined ? 'estimated' : 'documented',
+      parkCommand === undefined ? pao + ' Travel placed before the standby report.' : pao,
+    ),
+    key(parkedBy, 0.2, 'Crew access arm in its 12° standby position', 'estimated', pao + ' Arrival estimated from the standby exchanges.'),
     key(-300, 0.2, 'Crew access arm retracts from standby', 'documented', pao),
-    key(-270, 0.4, 'Crew access arm fully retracted', 'estimated', pao + ' Travel duration approximated from the countdown.'),
-    key(-30, 0.4, 'S-IC intertank arm withdraws', 'assumed', terminalSource),
-    key(intertankClear, 0.5, 'S-IC intertank arm clears the vehicle', 'assumed', terminalSource),
-    key(forwardRetract, 0.5, 'S-IC forward arm withdraws', 'assumed', terminalSource),
+    key(
+      retractedBy ?? -270,
+      0.4,
+      'Crew access arm fully retracted',
+      retractedBy === undefined ? 'estimated' : 'documented',
+      retractedBy === undefined ? pao + ' Travel duration approximated from the countdown.' : pao + ' First full-retraction report.',
+    ),
+    key(-30, 0.4, 'S-IC intertank arm withdraws', terminalConfidence, terminalSource),
+    key(
+      intertankClear,
+      0.5,
+      'S-IC intertank arm clears the vehicle',
+      terminalConfidence === 'documented' ? 'derived' : 'assumed',
+      terminalSource,
+    ),
+    key(forwardRetract, 0.5, 'S-IC forward arm withdraws', terminalConfidence, terminalSource),
     key(forwardRetract + 8, 0.6, 'S-IC forward arm clear', 'assumed', MANUAL + ' Eight-second withdrawal.'),
-    key(0, 0.6, 'First vehicle motion releases five inflight arms', 'assumed', MANUAL + ' Trigger within the first inch of rise.'),
+    key(
+      firstMotion,
+      0.6,
+      'First vehicle motion releases five inflight arms',
+      terminalConfidence,
+      terminalSource + ' ' + MANUAL + ' Trigger within the first inch of rise.',
+    ),
     ...(intertankLatch === undefined
       ? []
-      : [key(intertankLatch, 0.6 + (0.4 * intertankLatch) / 9, 'Intertank arm latchback confirmed', 'documented', terminalSource)]),
-    key(9, 1, 'Inflight arms clear', 'assumed', MANUAL + ' Nominal sweeps use the published maximum retraction times.'),
+      : [
+          key(
+            intertankLatch,
+            0.6 + (0.4 * (intertankLatch - firstMotion)) / 9,
+            'Intertank arm latchback confirmed',
+            'documented',
+            terminalSource,
+          ),
+        ]),
+    key(firstMotion + 9, 1, 'Inflight arms clear', 'assumed', MANUAL + ' Nominal sweeps use the published maximum retraction times.'),
   ];
+  // Position I faces east, position II north. The local horizontal hinge axes below are in viewer coordinates.
+  const hinges: [number, number, number][] = [
+    [1, 0, 0],
+    [0, 0, -1],
+    [-1, 0, 0],
+    [0, 0, 1],
+  ];
+  const release = hinges.flatMap((axis, index): Move[] => {
+    const arm = index + 1;
+    return [
+      { kind: 'swing', node: `Holddown_Link_${arm}`, axis, angle: (82 * Math.PI) / 180, from: firstMotion, to: firstMotion + 0.5 },
+      ...(arm === 1
+        ? []
+        : [
+            { kind: 'swing' as const, node: `Holddown_Hood_${arm}`, axis, angle: -Math.PI / 2, from: firstMotion + 1, to: firstMotion + 2 },
+          ]),
+    ];
+  });
   return {
     sequence,
     id: 'pad',
     name: 'Mobile launcher ' + number,
     backdrop: 'ground',
-    url: `models/usa/places/cape-canaveral/lc39/pad-${number === 3 ? 'b' : 'a'}.glb`,
+    url: `models/usa/places/cape-canaveral/lc39/pad-${holdDowns ? 'a-1969-07' : number === 3 ? 'b' : 'a'}.glb`,
     home: 'launcher',
     position: [0, -deck, 0],
     scale: '160 × 135 ft launcher base · 445 ft from hardstand to crane',
@@ -170,12 +239,17 @@ export function mobileLauncher(
         'Three masts connected to the base of the first stage.',
         'Two stood west of the engine opening and one to the east. Their steel supports and umbilical housings are simplified.',
       ),
-      part(
-        'Holddown_Arms',
-        'Hold-down arms',
-        'Four arms carry the Saturn over the exhaust opening.',
-        'Each holds a fitting at the foot of the first stage until release. Their geometry is reconstructed.',
-      ),
+      {
+        ...part(
+          'Holddown_Arms',
+          'Hold-down arms',
+          'Four arms carry the Saturn over the exhaust opening.',
+          holdDowns
+            ? 'All four released at T+0.3 s. Film showed the protective hood on No. 1 stayed open and the other three appeared to close late. The exhibit estimates their closing times and assumes No. 1 occupied position I.'
+            : 'Each holds a fitting at the foot of the first stage until release. Their geometry is reconstructed.',
+        ),
+        ...(holdDowns ? { clocked: release } : {}),
+      },
       {
         ...part(
           'Umbilical_Tower',
@@ -221,13 +295,24 @@ export function mobileLauncher(
             i === 8
               ? [armSwing(node, from, 0.2, 12), armSwing(node, 0.2, to, 78)]
               : i === 0 && intertankLatch !== undefined
-                ? [armSwing(node, from, to, 72), armSwing(node, to, 0.6 + (0.4 * intertankLatch) / 9, 18)]
+                ? [armSwing(node, from, to, 72), armSwing(node, to, 0.6 + (0.4 * (intertankLatch - firstMotion)) / 9, 18)]
                 : [armSwing(node, from, to)],
         };
       }),
     ],
     views: [
       { id: 'launcher', label: 'Mobile launcher', nodes: ['Launcher_Base', 'Umbilical_Tower', 'Hammerhead_Crane'], from: [-1, 0.18, 1] },
+      ...(holdDowns
+        ? [
+            {
+              id: 'hold-down',
+              label: 'No. 1 hold-down',
+              nodes: ['Holddown_Link_1', 'Holddown_Hood_1'],
+              span: 5.5,
+              from: [1, 0.45, 0.6] as [number, number, number],
+            },
+          ]
+        : []),
       { id: 'base', label: 'Launcher deck', nodes: ['Launcher_Base', 'Holddown_Arms'] },
       { id: 'crew-access', label: 'White room', nodes: ['Service_Arm_9'] },
     ],
