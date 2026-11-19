@@ -21,9 +21,9 @@ import super::clouds_frame::CloudFrame;
 
 const PI: f32 = 3.14159265;
 // Readings along the way to the Sun.
-const SAMPLES: i32 = 48;
+const SAMPLES: i32 = 32;
 // How much each reading counts against the one before it, on the way out from the pixel.
-const DECAY: f32 = 0.99;
+const DECAY: f32 = 0.985;
 // How far toward the Sun the readings reach, as a share of the way.
 const REACH: f32 = 1.0;
 // How wide the bright sky round the Sun is that the rays are of, radians (a glow, not the disc).
