@@ -257,10 +257,51 @@ test('a last stage that runs dry short of its orbit still lets the spacecraft go
   assert.ok(Math.abs(s.parted.t - whole.ascent.separation.t) < 0.5, `parted at T+${s.parted.t}, the run at T+${whole.ascent.separation.t}`);
 });
 
+// The loop is closed on the live state, not on a solution made beforehand: the live vehicle steered by its pilot (a rigid
+// body a tick behind its law, where the batch run's attitude is placed), and with a hand leaning the law a degree up range
+// and to the left for a minute, still has its last stage cut where the orbit reached has the record's period. Four seconds
+// of period, which is two metres a second at the cutoff: a tick of the last stage's push and the pilot's lag.
+for (const id of ['ussr/voskhod/voskhod-1', 'usa/gemini/gt-3', 'usa/mercury/ma-7-aurora-7']) {
+  const f = orbital.find((x) => x.id === id);
+  test(`${f.designation}: steered live, and leaned by a hand, the guidance still cuts on the record's orbit`, () => {
+    const frame = frameOf(f);
+    const site = siteFrame(f.site);
+    const sea = f.site.seaLevel.value;
+    const plan = f.plan;
+    const o = plan.record.orbit;
+    const x = orbitalFlown(f).ascent.solved;
+    for (const lean of [0, 0.02]) {
+      const v = stagedVehicle(plan, site, frame, sea, x);
+      const trim = { pitch: 0, yaw: 0 };
+      const pilot = stagedPilot(v, x, site, frame, sea, { guidance: true, sequence: true, trim });
+      let s = v.tick(v.start(), {
+        pitch: 0,
+        yaw: 0,
+        roll: 0,
+        steps: sequenceOf(plan).stages.flatMap((st, i) => (st.from <= 0 ? [{ kind: 'ignite', stage: i }] : [])),
+      });
+      while (!s.parted && !s.broke && !s.landed && s.t < 2000) {
+        const leaning = s.t > 200 && s.t < 260;
+        trim.pitch = leaning ? -lean : 0;
+        trim.yaw = leaning ? lean : 0;
+        s = v.tick(s, pilot);
+      }
+      assert.ok(s.parted, `leaned ${lean} rad: the spacecraft parts`);
+      const m = meanOf({ r: frame.toDate(s.parted.r), v: frame.toDate(s.parted.v) });
+      const period = periodsOf(m.a, m.e, m.i, m.argp)[o.kind?.is ?? 'nodal'];
+      const radius = heightsBall(plan, site);
+      console.log(
+        `  #   ${f.id}, leaned ${lean} rad: parted at T+${s.parted.t.toFixed(2)} on ${((m.a * (1 - m.e) - radius) / 1000).toFixed(0)} by ${((m.a * (1 + m.e) - radius) / 1000).toFixed(0)} km, ${(period / 60).toFixed(3)} min (the record: ${(o.period.value / 60).toFixed(3)})`,
+      );
+      assert.ok(Math.abs(period - o.period.value) < 4, `leaned ${lean} rad: left on ${period} s, the record's ${o.period.value}`);
+    }
+  });
+}
+
 // Changed copies: the guidance closes the loop on whatever vehicle it is given. One flight of each way of solving the law
-// (the plane solved; the azimuth given; a stored programme first), its last stage 3 per cent weaker and stronger and its
-// spacecraft 2 per cent heavier, the law solved afresh: the orbit left on is still the record's, the cutoff has moved the
-// way the change says, and the state is still one state.
+// (the plane solved; the azimuth given; a stored programme first), its last stage 3 per cent weaker and stronger, the law
+// solved afresh: the orbit left on is still the record's, the cutoff has moved the way the change says, and the state is
+// still one state.
 const varied = ['ussr/voskhod/voskhod-1', 'usa/gemini/gt-3', 'usa/apollo/apollo-7'];
 for (const f of part(orbital.filter((x) => varied.includes(x.id)))) {
   test(`${f.designation}: changed, the guidance still reaches the orbit, by physics alone`, () => {
