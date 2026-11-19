@@ -26,6 +26,8 @@ import {
   DEPTH_DIM,
   DEPTH_LEAST,
   DEPTH_THIN,
+  departure,
+  carried,
   limbPx,
   overHorizon,
   type Ribbon,
@@ -116,6 +118,12 @@ import { disposeTree } from './dispose.ts';
  *   ellipsoid is the globe's (WGS 84): a point on the ground seen from above is never behind it.
  * - **Still when nothing changes, eased when it does**: a new prediction is eased in from where the last one had each
  *   instant over `EASE` seconds; a prediction made again of the same flight lies on the same curve, so nothing moves.
+ * - **With the flight between predictions**: under thrust the flight leaves the curve on show at once, and the next
+ *   prediction is a third of a second off. Each frame the curve on show (and the one it is eased from) is drawn carried
+ *   with the flight (pathline.ts `departure`, `carried`: moved by how far the flight has left it, and by how much faster
+ *   it goes for every second on, which is where a coast from the flight lies to the first order), its markers and ring
+ *   with it. So the line goes on with the vehicle and does not stand and lunge with each prediction, which from the
+ *   chase view was the line shaking along itself. A path flown under guidance is held to its programme and not carried.
  * - **Drawn from the eye** (origin.ts): points are kept in doubles and given to the GPU as offsets from the vehicle,
  *   where the mesh stands; what the fragment shader tests (the limb, the eye, the vehicle) is given it in the view's
  *   own frame, worked out in doubles.
@@ -535,6 +543,13 @@ interface Shown {
   /** How far round the Earth the curve has gone at each of its points, and the greatest distance from the Earth's centre it reaches (for where an orbit's line stops: `endOf`), once asked. */
   sweep?: Sweep;
   top?: number;
+  /**
+   * How far the flight on show has left this curve (pathline.ts `departure`: its place's part, then its velocity's), and
+   * the instant that was measured at: the curve is drawn carried with the flight by that much (`alongAt`), so under
+   * thrust the line goes with the vehicle from one prediction to the next. All zero while the flight keeps to the curve.
+   */
+  left: Float64Array;
+  leftAt: number;
 }
 
 /** A line's buffers on the GPU and in doubles: the ribbon's, and the points it was last sampled at (scene frame). */
@@ -1201,6 +1216,8 @@ export class FlightPath {
       frame,
       curve: curveOf(n ? result.points : []),
       hint: 0,
+      left: new Float64Array(6),
+      leftAt: result.from,
       began: performance.now(),
       // (eased from the line on show as it is drawn now: from the one it was itself eased from, if that is still going)
       was: ease && old && old.curve.n > 1 && n > 0 ? old : null,
@@ -1400,6 +1417,7 @@ export class FlightPath {
   /** Where the line on show puts instant `t` in the scene now, eased from the one before (and that from its own, held). */
   private alongAt(shown: Shown, t: number, out: Float64Array, o: number, mix: number): void {
     shown.hint = curveAt(shown.curve, t, this.at3, 0, shown.hint);
+    carried(this.at3, 0, t, shown.left, shown.leftAt);
     this.sceneOf(this.at3, 0, t + this.shift, shown.frame, this.now + this.shift, out, o);
     const was = shown.was;
     if (was && mix < 1 && t >= was.curve.t[0]! && t <= was.curve.t[was.curve.n - 1]!) {
@@ -1544,6 +1562,12 @@ export class FlightPath {
     // is now can be made: the curve is gone round again, whole revolutions on, so the line still starts at the vehicle;
     // its slow turn in a revolution, the Earth's bulge, is taken up where it is taken onto the vehicle)
     this.shift = shown.result.outcome === 'orbit' ? turnsPast(s.t, t0, t1) : 0;
+    // how far the flight has left the curve on show, and the one it is eased from: each is drawn carried with it by that
+    // much (a path flown under guidance is held to its programme instead, and made again as soon as the flight leaves it)
+    for (let x: Shown | null = shown; x; x = x.was) {
+      if (x.result.kind === 'guided' || !departure(x.curve, s.t, s.centre ?? s.r, s.v, x.left)) x.left.fill(0);
+      x.leftAt = s.t;
+    }
     let now = Math.min(t1, Math.max(t0, s.t - this.shift));
     const p = this.at3b;
     const q = new Float64Array(3);
@@ -1619,9 +1643,21 @@ export class FlightPath {
     put(19, flown ? flown.t[flown.n - 1]! : 0);
     // the markers where the line has them now
     const a = this.markAt;
+    const from = this.at3;
     for (const mk of this.marks) {
-      this.sceneOf(mk.r, 0, mk.t + this.shift, shown.frame, now + this.shift, a, 0);
+      from.set(mk.r);
+      carried(from, 0, mk.t, shown.left, shown.leftAt);
+      this.sceneOf(from, 0, mk.t + this.shift, shown.frame, now + this.shift, a, 0);
       mk.at.set(a[0]!, a[1]!, a[2]!);
+    }
+    // (and the ring where it comes down)
+    const impact = shown.result.impact;
+    const ringAt = this.ringMesh.userData.at as THREE.Vector3 | null;
+    if (impact && ringAt) {
+      from.set(impact.r);
+      carried(from, 0, impact.t, shown.left, shown.leftAt);
+      this.sceneOf(from, 0, impact.t, 'surface', 0, a, 0);
+      ringAt.set(a[0]!, a[1]!, a[2]!);
     }
     if (same) return;
     this.sampledFor = shown.key + shown.frame;
@@ -1685,7 +1721,6 @@ export class FlightPath {
     this.mesh.quaternion.identity();
     this.flownMesh.position.set(0, 0, 0);
     this.flownMesh.quaternion.identity();
-    const ringAt = this.ringMesh.userData.at as THREE.Vector3 | null;
     if (ringAt) this.ringMesh.position.copy(ringAt).sub(this.mesh.position);
     // how deep the line goes into the view (pathline.ts depthOf): from the vehicle, or the nearest of it, to the furthest of it
     let nearest = Number.POSITIVE_INFINITY;

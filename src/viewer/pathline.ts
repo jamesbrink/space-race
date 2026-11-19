@@ -498,6 +498,33 @@ export const DEPTH_LEAST = 2;
 export const DEPTH_THIN = 0.5;
 export const DEPTH_DIM = 0.6;
 
+/**
+ * How far a flight has left a curve: its place `r` and velocity `v` at `t`, less the curve's there, into `out` (place,
+ * then velocity; zero outside the curve's span). A coast begun again from the flight lies, to the first order, where the
+ * curve does moved by the place's part and by the velocity's part for every second on (`carried`): path.ts draws the
+ * curve on show so, each frame, so under thrust the line goes with the vehicle between one prediction and the next
+ * (drawn where it was predicted until the next came, and eased to that, it stood and lunged three times a second, and
+ * seen from a camera that goes with the vehicle it shook back and forth).
+ */
+export function departure(c: Curve, t: number, r: ArrayLike<number>, v: ArrayLike<number>, out: Float64Array): boolean {
+  out.fill(0, 0, 6);
+  if (c.n < 2 || !(t >= c.t[0]!) || !(t <= c.t[c.n - 1]!)) return false;
+  const at = [0, 0, 0];
+  const vel = [0, 0, 0];
+  curveAt(c, t, at, 0, 0, vel);
+  for (let k = 0; k < 3; k++) {
+    out[k] = r[k]! - at[k]!;
+    out[3 + k] = v[k]! - vel[k]!;
+  }
+  return out.every(Number.isFinite);
+}
+
+/** A place of the curve at instant `t` (`p` at `o`), carried with a flight that left the curve by `left` (`departure`) at instant `at`. */
+export function carried(p: Float64Array | number[], o: number, t: number, left: Float64Array, at: number): void {
+  const dt = t - at;
+  for (let k = 0; k < 3; k++) p[o + k] = p[o + k]! + left[k]! + left[3 + k]! * dt;
+}
+
 /** How much of the line is drawn `px` pixels from the vehicle's outline on the screen, which it keeps `w` pixels off: none within, all of it `margin` further out. */
 export function clearOf(px: number, w: number, margin: number): number {
   if (!(w > 0)) return 1;

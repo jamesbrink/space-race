@@ -206,6 +206,16 @@ rules are the screen's, the same for every path, never tuned to a flight:
 - **Clear of the vehicle by the screen**: nothing within a gap of its middle (a little more than half its length, and
   3 px), then in from nothing over the vehicle's length, or 40 px as seen at it where that is more: the
   same at every zoom, so it is seen to leave the vehicle and is never a hole round it.
+- **Carried with the flight between predictions**: under thrust the flight leaves the curve on show within a frame or
+  two, and a prediction comes three or four times a second. So each frame the curve on show, and the one it is eased
+  from, is drawn moved by how far the flight has left it (pathline.ts `departure`, `carried`: by its place's part, and
+  by its velocity's part for every second on, which is where a coast begun again from the flight lies to the first
+  order), its markers and its ring with it. The line then goes with the vehicle continuously, and a new prediction
+  moves it only by what the first order leaves out. Drawn where it was predicted until the next came, and eased to
+  that, the line stood and lunged with every prediction, and from a camera that goes with the vehicle it shook back and
+  forth along itself: a point of it a minute ahead turned back on the screen 19 times in four seconds of Friendship 7's
+  sustainer burn at life's rate, and 28 times at T+100 (none, carried). A path flown under guidance to its cutoff (K) is
+  held to its programme instead and is not carried.
 - **Predicted again only when it would be seen to move**: a prediction is worked in slices of 1.5 ms a frame, the path
   put at its own instants in a slice of its own; the curve on show stands while a prediction made again from the
   flight would lie within half a pixel of it wherever it is drawn (path.ts `holds`: the flight's departure from the
