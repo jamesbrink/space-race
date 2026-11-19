@@ -125,7 +125,9 @@ test('head-on, the blow takes the motion into the surface and nothing else; glan
   // sideways at 100 m/s and rising at 2: struck at 2 m/s, and of the sideways speed the deck's drag takes no more than
   // friction's share of that blow
   const oblique = scale(add(scale(toward([1, 0, 0], 10 + dt), 100), scale(toward([0, 1, 0], 10 + dt), 2)), 1);
-  const glance = contact.meet(pose([0, 4.9, 0], 10), pose([10, 5.1, 0], 10 + dt, { v: oblique }));
+  // (a vehicle that had not just struck the deck: one already touching it is settling on it, and a knock so gentle is not said)
+  const fresh = contactOn(world({ node: 'Deck', boxes: [[-30, TOP + 5, -30, 30, TOP + 6, 30]] }));
+  const glance = fresh.meet(pose([0, 4.9, 0], 10), pose([10, 5.1, 0], 10 + dt, { v: oblique }));
   assert.equal(glance.hits.length, 1);
   near(glance.hits[0].speed, 2, 0.05, 'the speed into it, not the speed along it');
   const dragged = dot(glance.hits[0].dv, toward([1, 0, 0], 10 + dt));

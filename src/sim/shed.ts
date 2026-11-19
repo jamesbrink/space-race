@@ -53,7 +53,7 @@ import { ballisticOf, MEAN_RADIUS } from './fly.ts';
 import { airForces, floorAt, pieceOf, type Release, type Shape } from './forces.ts';
 import type { FlightPlan } from './plan.ts';
 import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, rotateFor, spin, turn, unturn } from './rigid.ts';
-import { type HullBead, Lying, type SiteStrike, type SiteSurfaces } from './sitecontact.ts';
+import { type HullBead, Lying, SETTLING, type SiteStrike, type SiteSurfaces } from './sitecontact.ts';
 import { TICK, type Vehicle, type VehicleState } from './vehicle.ts';
 
 /** Under this dynamic pressure, Pa, the air is left out of a coarse step; and how many ticks such a step is. */
@@ -362,7 +362,8 @@ export class ShedRun {
     const coming = surfaces.coming(before, before.t);
     const rest = this.lying.note(next.t, met.touched, surfaces.placed({ ...met, t: next.t }, site.round), coming.down, coming.along);
     if (!met.touched) return null;
-    this.struck.push(...met.hits);
+    // (lying down on what it struck, it knocks on it again and again: those are not said)
+    this.struck.push(...(this.lying.touching ? met.hits.filter((h) => h.speed >= SETTLING) : met.hits));
     const left: ShedState = { ...next, r: met.r, v: met.v, q: met.q, w: met.w, ticks: (next.t - this.from) / TICK, landing: null };
     return rest ? this.shedder.rests(left, next.t, rest.vertical, rest.horizontal) : left;
   }
