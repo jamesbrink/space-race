@@ -205,6 +205,106 @@ try {
       await close();
     }
   }
+  // What is shed comes down on the site: Freedom 7 aborted six seconds up. The escape rocket takes the capsule; the
+  // booster, its engine cut, goes on up, falls back on its pad and the land round it, and lies there. The page's own
+  // deck flies it on the solids and the land the page has; the drawn booster ends on the ground, not in it. Both looks.
+  {
+    const { page, close, errors } = await open(browser, address, { timeout: 180000, viewport: [1100, 680] });
+    try {
+      const result = await page.evaluate(async () => {
+        const { cockpit, stage, clock } = window.sr;
+        const source = (path) => import(new URL(path, document.baseURI).href);
+        const { autopilot } = await source('src/sim/autopilot.ts');
+        clock.pause();
+        const solids = cockpit.pageHost.solids?.();
+        if (!solids?.ground) throw new Error('the page has no land for the site');
+        const pilot = autopilot(cockpit.vehicle);
+        let state = cockpit.state;
+        while (state.t < 6) state = cockpit.tick(state, pilot);
+        const on = cockpit.roles.separation.id;
+        const hands = { throttle: 0, pitch: 0, yaw: 0, roll: 0 };
+        state = cockpit.tick(state, { ...hands, events: [cockpit.roles.abort.id] });
+        const said = [];
+        const say = cockpit.host.say;
+        cockpit.host.say = (title, line) => {
+          said.push(`${title}: ${line}`);
+          say?.(title, line);
+        };
+        const booster = () => cockpit.run.sheds.get(on);
+        while (state.t < 90 && !state.landing && !booster()?.now.landing) state = cockpit.tick(state, hands);
+        cockpit.host.say = say;
+        cockpit.state = state;
+        const down = booster()?.now.landing ?? null;
+        stage.setAutoRotate(false);
+        // (seen from beside the pad, which the capsule has left)
+        stage.setCamera('orbit', true);
+        stage.pose(205, 7, 46, 4);
+        stage.frozen = true;
+        return {
+          down,
+          end: state.t,
+          said,
+          nodes: cockpit.flight.flies.drops.find((d) => d.on === on).nodes,
+          struck: [...cockpit.lastImpact.keys()].filter((k) => k.startsWith(`${on}/`)),
+        };
+      });
+      assert.ok(result.down, `the booster did not come down in ${result.end} s: ${JSON.stringify(result.said)}`);
+      assert.ok(result.struck.length >= 1, `the deck said nothing of what the booster struck: ${JSON.stringify(result.said)}`);
+      console.log(
+        `shed: the booster let go at T+6 s was down at T+${result.down.t.toFixed(2)} s, having come down at ${result.down.speed.toFixed(1)} m/s; it struck ${result.struck.join(', ')}`,
+      );
+      for (const look of ['real', 'cel']) {
+        await page.evaluate((look) => window.sr.stage.setLook(look), look);
+        for (const [i, t] of [result.down.t - 1.5, result.down.t - 0.5, result.down.t + 2].entries()) {
+          await page.evaluate((t) => window.sr.clock.seek(t), t);
+          await page.waitForFunction((t) => Math.abs(window.sr.stage.lifted.t - t) < 1e-6, t);
+          if (i === 2) {
+            // where the drawn booster lies: the lowest and highest of its meshes' corners, against the land under its middle
+            const lies = await page.evaluate((nodes) => {
+              const { stage } = window.sr;
+              const corner = stage.main.position.clone();
+              let [low, high, x, z, n] = [Infinity, -Infinity, 0, 0, 0];
+              for (const d of stage.debris) {
+                if (!nodes.includes(d.node.name) || !d.holder.visible) continue;
+                d.holder.updateWorldMatrix(true, true);
+                d.holder.traverse((o) => {
+                  if (!o.isMesh) return;
+                  o.geometry.computeBoundingBox();
+                  const b = o.geometry.boundingBox;
+                  for (let k = 0; k < 8; k++) {
+                    corner.set(k & 1 ? b.max.x : b.min.x, k & 2 ? b.max.y : b.min.y, k & 4 ? b.max.z : b.min.z).applyMatrix4(o.matrixWorld);
+                    low = Math.min(low, corner.y);
+                    high = Math.max(high, corner.y);
+                    x += corner.x;
+                    z += corner.z;
+                    n++;
+                  }
+                });
+              }
+              return { low, high, x: x / n, z: z / n, land: stage.land.at(x / n, z / n), n };
+            }, result.nodes);
+            assert.ok(lies.n > 0, `${look}: the booster is drawn`);
+            // (the land lies a hand's breadth under the paving; a box's corner is outside the mesh it bounds)
+            assert.ok(lies.low > lies.land - 0.6, `${look}: the drawn booster is in the ground: ${JSON.stringify(lies)}`);
+            assert.ok(lies.low < lies.land + 8, `${look}: the drawn booster is in the air: ${JSON.stringify(lies)}`);
+            if (look === 'real')
+              console.log(
+                `shed: drawn from ${lies.low.toFixed(2)} to ${lies.high.toFixed(2)} m, ${Math.hypot(lies.x, lies.z).toFixed(1)} m from the pad's middle, over land at ${lies.land.toFixed(2)} m`,
+              );
+          }
+          if (frames) {
+            await page.addStyleTag({ content: '#ui { display: none !important }' });
+            const dir = join(frames, 'shed');
+            await mkdir(dir, { recursive: true });
+            await page.screenshot({ path: join(dir, `${look}-${i + 1}.png`) });
+          }
+        }
+      }
+      assert.deepEqual(errors, []);
+    } finally {
+      await close();
+    }
+  }
 } finally {
   await browser.close();
 }
