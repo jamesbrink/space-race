@@ -298,11 +298,16 @@ export function integral(curve: Curve | undefined, a: number, b: number): number
  * stage cut on its velocity (a `speed` trigger) stops here only when it runs dry: the run finds when it reaches its
  * speed, and that is its stop if it comes first.
  */
-export function schedule(plan: FlightPlan, seq = sequenceOf(plan)): { from: number; to: number; dry: boolean }[] {
+export function schedule(
+  plan: FlightPlan,
+  seq = sequenceOf(plan),
+  stopped: readonly (number | undefined)[] = [],
+): { from: number; to: number; dry: boolean }[] {
   const stages = stagesOf(plan);
   // (a stage cut on its velocity burns until it is dry at the latest: its load over its flow, at the least throttle there
-  // is, past that; one with no cut of its own is shut down as it is let go)
+  // is, past that; one with no cut of its own is shut down as it is let go; one the run has already seen stop, `stopped`, stops then)
   const cutoffOf = (i: number) => {
+    if (stopped[i] !== undefined) return stopped[i]!;
     const k = seq.stages[i]!;
     return k.speed || k.orbit ? k.from + (10 * stages[i]!.load) / flowOf(stages[i]!.engine) : (k.cut ?? k.sep);
   };
@@ -449,6 +454,7 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 => {
     // a stored programme is the first part of the law, the gyros' own: it is flown open, as it was, until the tangent takes over
     if (g.programme && m !== 'tangent') return tilted(along(g.programme, t) * DEG);
+    if (g.lost && t >= g.lost.at.value) return tilted(along(g.lost.tilt, t) * DEG);
     if (m === 'vertical') return up0;
     if (m === 'turn') {
       // along the motion over the ground, in the plane (the turn the programme was made for: in calm air the motion through
@@ -580,6 +586,9 @@ export function ascend(
   const short = orbitShort(fp, site);
   /** How far past its guidance's cut a stage cut on the state is: its space-fixed speed over its setting, m/s, or the orbit's period over the record's, s. */
   const past = (i: number, s: State): number => (seq.stages[i]!.orbit ? -short!(s.r, s.v) : length(s.v) - cutAt[i]!);
+  // (a last stage that is itself the spacecraft, an Agena putting itself in orbit, is let go of by nothing: the ascent ends
+  // as its engine stops, which the run finds where it is cut on its speed)
+  const own = !Number.isFinite(lastOf.sep) && lastOf.wait === null;
   // a stage cut on its apparent velocity: the instant its integrator reaches its setting, found here from the mass flown
   // (the rocket's own thrust over its mass, summed from its ignition; in vacuum, with nothing else pushing, that is all an
   // accelerometer along the axis senses), before anything is flown. The stage's own thrust in vacuum: it is lit above the air
@@ -670,6 +679,7 @@ export function ascend(
       ...drops.map((d) => d.at),
       ...fp.craft[0]!.drag.map((d) => d.until.value),
       ...(g.programme?.points ?? []).map(([at]) => at),
+      ...(g.lost ? [g.lost.at.value, ...g.lost.tilt.points.map(([at]) => at)] : []),
       ...(g.attached ? [...g.attached.align.map((t) => t.value), g.attached.freeze.value] : []),
       ...seq.instants.map((x) => x.at),
       ...(fp.record?.coastFixes ?? []).map((fix) => fix.at.value),
@@ -736,6 +746,16 @@ export function ascend(
       state = step(before, t0, h * k1, (q, tt) => forces(q, tt, m, gone, t0).accel);
       t = t0 + h * k1;
       plan[crossing]!.to = t;
+      // (a tank it shares runs dry later now it has stopped: the stages that draw on it with it burn on to their own cut)
+      const shares = stages[crossing]!.shares;
+      if (shares.length > 1) {
+        const again = schedule(
+          fp,
+          seq,
+          plan.map((p, i) => (i !== crossing && t < p.to && (seq.stages[i]!.speed || p.dry) ? undefined : p.to)),
+        );
+        for (const j of shares) if (j !== crossing && !seq.stages[j]!.speed && plan[j]!.to > t) plan[j] = again[j]!;
+      }
     }
     // the last stage has stopped: the spacecraft is let go so long after, where the plan has it follow the stop
     if (tPart === Infinity && lastOf.wait !== null && t >= plan[plan.length - 1]!.to) {
@@ -743,6 +763,8 @@ export function ascend(
       marks.push(tPart);
       marks.sort((p, q) => p - q);
     }
+    // (one that is itself the spacecraft: the ascent ends as its engine stops)
+    if (own && tPart === Infinity && t >= plan[plan.length - 1]!.to) tPart = t;
     const s = sample(state, t);
     // the loads, as they stand before whatever happens at this instant
     if (s.q > summary.maxQ) [summary.maxQ, summary.maxQAt] = [s.q, t];
@@ -775,7 +797,7 @@ export function ascend(
   // (and the last stage, as it lets the spacecraft go, takes what it weighed fuelled less what it burned)
   const last = stages.length - 1;
   const lastBody = stages[last]!.body;
-  const lastLeft = lastBody.count * (lastBody.mass.value - drawnFrom(stages, lastBody.id, (j) => burned(j, tPart)));
+  const lastLeft = own ? 0 : lastBody.count * (lastBody.mass.value - drawnFrom(stages, lastBody.id, (j) => burned(j, tPart)));
   summary.massLeft = liftoff - droppedBy(tPart - 1e-9) - stages.reduce((sum, st, i) => sum + st.count * burned(i, tPart), 0) - lastLeft;
   return {
     samples,
@@ -801,6 +823,7 @@ export function ascend(
  * does not converge: a law that cannot reach its target is a finding, not something to paper over.
  */
 export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel = 0): Solved {
+  if (plan.planned) return steer(plan.planned, site, frame, seaLevel);
   const g = guidanceOf(plan);
   const radius = heightsBall(plan, site);
   const want = [radius + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
@@ -838,6 +861,9 @@ export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLe
     // a damped step: never more than two degrees of any angle at once
     const most = Math.max(...angles.map((i) => Math.abs(d[i]!) / (2 * DEG)), 1);
     x = of(v.map((y, i) => y + d[i]! / most));
+    // (a plane inclined less than the pad's latitude does not pass over it: a step that would leave the planes that do is
+    // held at their edge, so the solve goes on from one it can fly)
+    x.plane = Math.max(x.plane, Math.abs(site.latitude) * DEG + 1e-4);
   }
   throw new Error('the ascent’s steering law did not reach its target');
 }
@@ -1028,17 +1054,20 @@ export function recordSamples(
   // (over a minute, or as long as there is before the burn: a Mercury capsule's retrosequence is thirty seconds)
   const turning = Math.min(60, ship.on - oriented);
   const burnAt = whole.coast.samples.find((x) => x.t >= ship.on) ?? whole.coast.samples[0]!;
-  const aimed = lie(
-    ship.aim.aim === 'fixed'
-      ? scale(unit(burnAt.v), ship.aim.sense)
-      : aimOf(
-          plan,
-          burnAt.r,
-          burnAt.v,
-          () => sunAt(ship.on),
-          () => frame.upOver(burnAt, burnAt.t),
-        ),
-  );
+  // (a coast with no burn is never turned to one: it keeps the attitude it was let go in)
+  const aimed = ship.aim
+    ? lie(
+        ship.aim.aim === 'fixed'
+          ? scale(unit(burnAt.v), ship.aim.sense)
+          : aimOf(
+              plan,
+              burnAt.r,
+              burnAt.v,
+              () => sunAt(ship.on),
+              () => frame.upOver(burnAt, burnAt.t),
+            ),
+      )
+    : held;
   const parts = ship.parted;
   const toward = (from: Quat, to: Quat, k: number): Quat => {
     const sign = from[0] * to[0] + from[1] * to[1] + from[2] * to[2] + from[3] * to[3] < 0 ? -1 : 1;

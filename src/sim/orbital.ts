@@ -82,6 +82,12 @@ export interface Guidance {
    * aimed at: the orbit's inclination is then a result, and a check.
    */
   azimuth?: Measure;
+  /**
+   * Control lost, as the record has it: from `at`, s, the axis is where the vehicle turned, its tilt in the launch plane
+   * from the launch vertical (as the turn's: toward downrange, past 180 back over the top), degrees against seconds, in
+   * place of the law; flat beyond its last point. The law's own unknowns are then the planned flight's (`FlightPlan.planned`).
+   */
+  lost?: { at: Measure; tilt: import('../types.ts').Curve };
   vertical: Measure;
   kick: Measure;
   turn: Measure;
@@ -786,7 +792,9 @@ export function aimFor(a: Extract<Hold, { aim: unknown }>, r: Vec3, v: Vec3, sun
  * the predicted path's.
  */
 export function aimOf(plan: FlightPlan, r: Vec3, v: Vec3, sun: () => Vec3, up: () => Vec3 = () => unit(r)): Vec3 {
-  return aimFor(shipOf(plan).aim, r, v, sun, up);
+  const aim = shipOf(plan).aim;
+  if (!aim) throw new Error('this plan’s coast has no burn to aim');
+  return aimFor(aim, r, v, sun, up);
 }
 
 /**
@@ -899,17 +907,20 @@ export function shipOf(plan: FlightPlan): Ship {
   const c = plan.craft[0]!;
   const orbit = plan.record!.orbit!;
   const coast = coastOf(plan);
-  const burn = c.engines.find((e) => e.flown)!;
+  // (a flight whose coast has no burn of the record's, an uncrewed target, stays up: nothing is lit, nothing parts, and
+  // what it flies is what it is; one that never reached orbit is down where it meets the sea)
+  const burn = c.engines.find((e) => e.flown);
   const manoeuvres = movesOf(plan);
-  const ignition = coastEvents(plan).on?.do.find((a) => 'ignite' in a && a.ignite === burn.id);
-  const prior = manoeuvres.filter((m) => m.engine === burn.id && m.on < coast.on);
+  const ignition = burn && coastEvents(plan).on?.do.find((a) => 'ignite' in a && a.ignite === burn.id);
+  const prior = manoeuvres.filter((m) => m.engine === burn?.id && m.on < coast.on);
   const used = prior.reduce((sum, m) => sum + (m.fuel ?? 0), 0);
   const burnMass = (ignition && 'ignite' in ignition ? ignition.massAtIgnition?.value : undefined) ?? orbit.mass.value - used;
-  const available = coastTank(plan, burn) - used;
-  const velocity = burn.flown!.value;
-  const fuel = burn.tanks.length ? Math.max(0, Math.min(available, rocketFuel(burn, burnMass, velocity))) : 0;
-  const joint = c.joints.find((j) => j.gone.includes(burn.body))!;
-  const entry = c.bodies.find((b) => b.aero)!;
+  const available = burn ? coastTank(plan, burn) - used : 0;
+  const velocity = burn?.flown?.value ?? 0;
+  const fuel = burn?.tanks.length ? Math.max(0, Math.min(available, rocketFuel(burn, burnMass, velocity))) : 0;
+  const joint = burn && c.joints.find((j) => j.gone.includes(burn.body));
+  const entry = c.bodies.find((b) => b.aero) ?? c.bodies[c.bodies.length - 1]!;
+  if (!entry.aero) throw new Error(`the plan's '${entry.id}' has no air of its own to fly its coast on`);
   // (the aim the burn lights in: the one an event turns it to at or before its lighting, else the plan's last aim)
   let aim: AttitudeDef | undefined;
   for (const a of plan.attitude) if ('aim' in a.hold) aim = a;
@@ -933,13 +944,13 @@ export function shipOf(plan: FlightPlan): Ship {
     orbit,
     mass: orbit.mass.value,
     ...coast,
-    flown: burn.tanks.length ? -G0 * burn.isp!.vacuum.value * Math.log1p(-fuel / burnMass) : velocity,
+    ...(burn ? {} : { floor: Math.max(coast.floor, 0) }),
+    flown: burn?.tanks.length ? -G0 * burn.isp!.vacuum.value * Math.log1p(-fuel / burnMass) : velocity,
     fuel,
-    aim: aim!.hold as Extract<Hold, { aim: unknown }>,
-    aimId: aim!.id,
-    entry: { id: entry.id, mass: joint.after!.value, aero: entry.aero! },
+    ...(aim ? { aim: aim.hold as Extract<Hold, { aim: unknown }>, aimId: aim.id } : {}),
+    entry: { id: entry.id, mass: joint?.after?.value ?? orbit.mass.value, aero: entry.aero },
     ...(c.rarefied ? { rarefied: c.rarefied } : {}),
-    landing: plan.record!.landing!,
+    ...(plan.record!.landing ? { landing: plan.record!.landing } : {}),
     moves: manoeuvres,
     banks,
   };
@@ -960,14 +971,15 @@ export interface Ship {
   /** The impulse the record's coast flies, m/s, evenly from `on` to `off`, along `aim`. */
   flown: number;
   fuel: number;
-  aim: Extract<Hold, { aim: unknown }>;
-  /** The attitude that holds it, by id. */
-  aimId: string;
+  /** Where the burn is aimed, and the attitude that holds it, by id: none where the coast has no burn. */
+  aim?: Extract<Hold, { aim: unknown }>;
+  aimId?: string;
   /** What comes down: its id, its mass once parted, kg, and its own air. */
   entry: { id: string; mass: number; aero: AeroDef };
   /** The joined ship in the free-molecule flow of its orbit (`Craft.rarefied`), where the plan gives it. */
   rarefied?: NonNullable<Craft['rarefied']>;
-  landing: NonNullable<NonNullable<FlightPlan['record']>['landing']>;
+  /** Where the record has it come down: none for one that stays up, or whose end the record does not place. */
+  landing?: NonNullable<NonNullable<FlightPlan['record']>['landing']>;
   /** The coast's manoeuvres, in the order lit (`movesOf`). */
   moves: Move[];
   /** The banks the plan's events hold the entry body at, from their instants, degrees, in order (`Hold.bank`). */
@@ -1273,7 +1285,8 @@ export function flyOrbit(
   let gate: Vec3 | null = null;
   // (six hours past the last thing planned, or past now with nothing planned: a day in orbit is flown round to its burn)
   const LIMIT = Math.min(stopAt, Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER)) + 6 * 3600);
-  const target = geodeticToEcef({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value, height: 0 });
+  const target =
+    ship.landing && geodeticToEcef({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value, height: 0 });
 
   const impulses: { at: number; dv: Vec3 }[] = [];
   const rememberImpulse = (at: number, dv: Vec3): void => {
@@ -1361,7 +1374,7 @@ export function flyOrbit(
       results.ejectionLongitude = end.longitude;
       results.ejectionSpeed = -dot(airOf(state, t).wind, upAt(end));
       const under = geodeticToEcef({ latitude: end.latitude, longitude: end.longitude, height: 0 });
-      if (gate) {
+      if (gate && ship.landing && target) {
         const axes = enuAxes({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value });
         const level = (d: Vec3): Vec3 => sub(d, scale(axes.up, dot(d, axes.up)));
         const track = unit(level(sub(under, gate)));
