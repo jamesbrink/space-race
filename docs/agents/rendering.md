@@ -232,8 +232,46 @@ rules are the screen's, the same for every path, never tuned to a flight:
   (`LIMB`: the circle in which the cone from the eye touches a ball 40 km over the equatorial radius), because its
   night side is black on a black sky and an orbit over it otherwise reads as a line hung in space beside a crescent.
   The map's own markers are places: their glyphs are drawn wherever they are in view, their names where the layout has
-  room for them. With nothing predicted (down, or on the pad with guidance off) the map shows only the Earth: nothing
-  of the flight is drawn without a path.
+  room for them. With nothing predicted (down, or on the pad with guidance off) the map still shows the Earth and its
+  outline, the vehicle's marker, the line flown and the record's line: none of them needs a prediction (path.ts
+  `layBare`; standing on the pad the stage has no vehicle that flies to give, and the marker stands where the flight is).
+- **The record's flight is a line of reference, there from the pad** (`viewer/pathref.ts`, path.ts `layRef`): the run
+  the record itself makes of the flight (sim/run.ts `recordOf`, or the deck's own, `PathSource.intended`), for a flight
+  flown by hand to be held to. One rule for any flight, from the run's samples and events alone.
+  - *Its look*: a thin core (`REF_CORE`, 0.9 px against the prediction's 1.3) in a magenta of its own (`plan`: the
+    colour a flight plan's course has on a navigation display, and nothing like the amber, the grey, the blue-white or
+    the Earth under it), cased in ink so it reads over cloud and sea, with no glow, and dashed; in the cel look a flat
+    core with an ink edge. The dashes are cut in the record's own seconds, a power of two of them chosen at each pixel
+    so a dash and its gap are about `REF_DASH` pixels wherever they are seen from, each octave faded into the next: they
+    stand in the world, never crawl along the line as the eye moves, and never cut or leap as it zooms.
+  - *Where*: in the frame the prediction on show is drawn in, so the two lie against each other (an orbit as the
+    prediction's is drawn: among the stars on the map); with nothing predicted, over the turning ground. From
+    `REF_BACK` (40 degrees round the Earth) behind the instant on show, which is all of a lob or an ascent and an arc of
+    an orbit, to where the record ends or has gone once round less what the prediction's own line stops short by
+    (pathref.ts `windowOf`), going out before that. What the flight has passed is drawn only from far out and on the
+    map, as the line flown is. The depth rule and the map's are the path's own (narrower and fainter with depth, by a
+    depth of its own so the prediction beside it does not change it; three tenths where the Earth hides it); the
+    vehicle's clearance is the path's too. It is nearer than it is by 5 cm at most, not a hundredth: standing on the pad
+    it runs up through the vehicle from its middle, where no clearance applies (nothing flies), and the vehicle's own
+    skin must hide it.
+  - *It does not move*: its curve is made once (a few hundred points kept by curvature, `referenceCurve`: where the way
+    turns 3 degrees or the speed changes a tenth, at every engine event, and wherever a sample let go would lie over
+    2 m off; at most 4,096, 1,024 chords drawn), its chords are cut between instants on a 64 s grid and again only when
+    the eye moves (or, among the stars, the Earth turns), and how much of it is drawn follows the clock in its shader.
+    Nothing of the live flight or its prediction reaches it (`pnpm test:path` holds it to the millimetre from the pad
+    into a flight by hand).
+  - *Its events, sparingly* (`recordMarks`): only what lights or stops an engine, taken together within 20 s and named
+    by what the run does there (under the launch vehicle's power before and after: Staging; before and not after:
+    Cutoff; lit in a coast: Retrofire if the run then comes down, else Burn, and where such a burn ends is not
+    marked), the next highest point ahead (`apsesOf`) and where it came down. A small open diamond and thin words in
+    the line's magenta, never a chip, laid out after everything of the prediction's and round it (path.ts `layout`:
+    what is laid already is in their way as a panel is), and fewer the smaller the record's line is on the screen, by
+    the same ranks as the prediction's own.
+  - *Its switch* is the path's (J), and on the map it is drawn whatever that says, as the path is. The key beside the
+    navball names it while it is drawn.
+  - Simplified: a strap-on or a tower let go with no engine event of its own is not marked; `REF_AIR` (120 km) and
+    `REF_AFTER` (60 s), by which a burn is called a retrofire, are estimated; a record whose own run misses the
+    published figures (sim/misses.ts) is drawn where the run goes, not where the flight went.
 - **Predicted again only when it would be seen to move**: a prediction is worked in slices of 1.5 ms a frame, the path
   put at its own instants in a slice of its own; the curve on show stands while a prediction made again from the
   flight would lie within half a pixel of it wherever it is drawn (path.ts `holds`: the flight's departure from the
