@@ -218,6 +218,17 @@ try {
         clock.pause();
         const solids = cockpit.pageHost.solids?.();
         if (!solids?.ground) throw new Error('the page has no land for the site');
+        // On foot, the vehicle standing on its pad is solid: a person's sphere sent across the launch axis half way up
+        // the tank meets the tank's skin, on either side of it (the walker's own solids: viewer/onfoot/walk.ts).
+        const V = stage.main.position.constructor;
+        const walked = stage.walk.solids;
+        stage.scene.updateMatrixWorld(true);
+        walked.set(stage.solidRoots());
+        walked.gather(new V(0, 9, 0), 20, 20);
+        const across = [0.4, -0.3].map((z) => {
+          const hit = walked.sweepSphere(new V(-15, 9, z), new V(15, 9, z), 0.26);
+          return hit ? -15 + 30 * hit.fraction : null;
+        });
         const pilot = autopilot(cockpit.vehicle);
         let state = cockpit.state;
         while (state.t < 6) state = cockpit.tick(state, pilot);
@@ -235,6 +246,27 @@ try {
         cockpit.host.say = say;
         cockpit.state = state;
         const down = booster()?.now.landing ?? null;
+        // where it lies, in the site's frame: its centre of mass, its long axis, and how far along it each end is
+        let lying = null;
+        if (down) {
+          const { ecefToSite, siteFrame, sub } = await source('src/world/frames.ts');
+          const { frameOf } = await source('src/world/earthframe.ts');
+          const { turn } = await source('src/sim/rigid.ts');
+          const [site, frame] = [siteFrame(cockpit.flight.site), frameOf(cockpit.flight)];
+          const run = booster();
+          const at = run.at(down.t + 2);
+          const place = (r) => ecefToSite(site, frame.toFixed(r, down.t + 2));
+          const middle = place(at.r);
+          const tip = place(at.r.map((v, i) => v + turn(at.q, [1, 0, 0])[i]));
+          const { def, release } = run.shedder;
+          lying = {
+            middle,
+            along: sub(tip, middle),
+            from: def.from.value - release.centre,
+            to: def.to.value - release.centre,
+            radius: def.radius.value,
+          };
+        }
         stage.setAutoRotate(false);
         // (seen from beside the pad, which the capsule has left)
         stage.setCamera('orbit', true);
@@ -242,12 +274,20 @@ try {
         stage.frozen = true;
         return {
           down,
+          lying,
+          across,
           end: state.t,
           said,
           nodes: cockpit.flight.flies.drops.find((d) => d.on === on).nodes,
           struck: [...cockpit.lastImpact.keys()].filter((k) => k.startsWith(`${on}/`)),
         };
       });
+      // (the Redstone's tank is 0.89 m in radius and the person's sphere 0.26: met a little over a metre short of the axis)
+      for (const x of result.across)
+        assert.ok(x !== null && x < -0.9 && x > -1.3, `a person passes through the standing vehicle: met at ${x}`);
+      console.log(
+        `on foot: a person's sphere sent across the launch axis 9 m up meets the tank ${result.across.map((x) => (-x).toFixed(2)).join(' and ')} m short of it`,
+      );
       assert.ok(result.down, `the booster did not come down in ${result.end} s: ${JSON.stringify(result.said)}`);
       assert.ok(result.struck.length >= 1, `the deck said nothing of what the booster struck: ${JSON.stringify(result.said)}`);
       console.log(
@@ -284,6 +324,50 @@ try {
               return { low, high, x: x / n, z: z / n, land: stage.land.at(x / n, z / n), n };
             }, result.nodes);
             assert.ok(lies.n > 0, `${look}: the booster is drawn`);
+            // On foot, what has come down is solid where it lies: a person walked square at it from 8 m off on
+            // either side, where its axis is at the height of his chest, by the walker's own body (viewer/onfoot/walk.ts
+            // `Body`), is stopped at its skin and does not come out the other side.
+            const walk = await page.evaluate(
+              async ({ nodes, lying }) => {
+                const { stage } = window.sr;
+                const { Body } = await import(new URL('src/viewer/onfoot/walk.ts', document.baseURI).href);
+                const roots = stage.solidRoots();
+                const held = stage.debris
+                  .filter((d) => nodes.includes(d.node.name) && d.holder.visible)
+                  .every((d) => roots.includes(d.holder));
+                stage.walk.solids.set(roots);
+                // the place along it where its axis is nearest a metre over the land
+                let best = null;
+                for (let k = lying.from + lying.radius; k <= lying.to - lying.radius; k += 0.25) {
+                  const c = lying.middle.map((v, i) => v + lying.along[i] * k);
+                  const up = c[1] - stage.land.at(c[0], c[2]);
+                  if (!best || Math.abs(up - 1) < Math.abs(best.up - 1)) best = { c, up };
+                }
+                const flat = Math.hypot(lying.along[0], lying.along[2]);
+                const side = [-lying.along[2] / flat, lying.along[0] / flat];
+                const ends = [];
+                for (const sign of [1, -1]) {
+                  const [dx, dz] = [side[0] * sign, side[1] * sign];
+                  const from = [best.c[0] - 8 * dx, best.c[2] - 8 * dz];
+                  const body = new Body(stage.walk.solids);
+                  body.groundAt = (px, pz) => stage.land.at(px, pz);
+                  body.place(from[0], stage.land.at(from[0], from[1]) + 0.3, from[1]);
+                  // (ten seconds at a walk: it would be 6 m beyond the axis if nothing lay there)
+                  for (let i = 0; i < 600; i++) body.move((dx * 1.4) / 60, (dz * 1.4) / 60, 1 / 60);
+                  ends.push((best.c[0] - body.position.x) * dx + (best.c[2] - body.position.z) * dz);
+                }
+                return { held, ends, up: best.up, radius: lying.radius };
+              },
+              { nodes: result.nodes, lying: result.lying },
+            );
+            assert.ok(walk.held, `${look}: what has come down is not among the walker's solids`);
+            // (short of its axis by its own radius, give or take the person's and what else lies in the way there)
+            for (const short of walk.ends)
+              assert.ok(short > walk.radius - 0.1, `${look}: a person walks through the booster where it lies: ${JSON.stringify(walk)}`);
+            if (look === 'real')
+              console.log(
+                `on foot: walked square at the fallen booster where its axis is ${walk.up.toFixed(2)} m up, a person stops ${walk.ends.map((e) => e.toFixed(2)).join(' and ')} m short of its axis (its radius is ${walk.radius.toFixed(2)} m)`,
+              );
             // (the land lies a hand's breadth under the paving; a box's corner is outside the mesh it bounds)
             assert.ok(lies.low > lies.land - 0.6, `${look}: the drawn booster is in the ground: ${JSON.stringify(lies)}`);
             assert.ok(lies.low < lies.land + 8, `${look}: the drawn booster is in the air: ${JSON.stringify(lies)}`);
