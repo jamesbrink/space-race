@@ -139,11 +139,14 @@ const sameRun = (fixed, dated, turn, what) => {
 };
 /**
  * Every figure of two runs' results within rounding of itself (and a NaN a NaN). (The true anomaly where the ascent cuts
- * off is that of an orbit all but round, so its rounding is in millionths of a degree: given as `loose`, degrees.)
+ * off is that of an orbit all but round, so its rounding is in millionths of a degree: given as `loose`, degrees; and it
+ * is an angle, the same a whole turn on: cut off level, it is as soon a hair under 360 as a hair over nothing.)
  */
 const sameResults = (a, b, what, loose = {}) => {
   for (const [k, x] of Object.entries(a))
     if (typeof x !== 'number') continue;
+    else if (k === 'anomaly' && Number.isFinite(x))
+      near(((((b[k] - x + 180) % 360) + 360) % 360) - 180, 0, loose[k] ?? 1e-9, `${what}: ${k}: ${b[k]} against ${x}`);
     else if (Number.isFinite(x)) near(b[k], x, loose[k] ?? 1e-9 * Math.max(1, Math.abs(x)), `${what}: ${k}`);
     else assert.equal(String(b[k]), String(x), `${what}: ${k}`);
 };
@@ -172,13 +175,15 @@ test('Vostok 1 flown whole in both frames: the law solved, the ascent, the coast
   const xb = steer(plan, site, dated, sea);
   near(xa.kick, xb.kick, 1e-12, 'the law solved the same: its pitch-over');
   near(xa.rate, xb.rate, 1e-15, 'and its tangent');
-  const a = flyWhole(plan, site, fixed, sea, xb, 10, 'published');
-  const b = flyWhole(plan, site, dated, sea, xb, 10, 'published');
+  const a = flyWhole(plan, site, fixed, sea, xb, 10);
+  const b = flyWhole(plan, site, dated, sea, xb, 10);
   const turn = between(dated, fixed);
   const up = sameRun(a.ascent.samples, b.ascent.samples, turn, 'ascent');
   const round = sameRun(a.coast.samples, b.coast.samples, turn, 'coast');
   t.diagnostic(`ascent at most ${up.toExponential(2)} m apart, coast ${round.toExponential(2)} m`);
   sameResults(a.ascent.summary, b.ascent.summary, 'ascent', { anomaly: 1e-5 });
-  sameResults(a.coast.results, b.coast.results, 'coast');
+  // (the landing's miss across the track is a few hundred metres left of two places thousands of kilometres off: its
+  // rounding is the places', a millimetre, not a part in a thousand million of itself)
+  sameResults(a.coast.results, b.coast.results, 'coast', { crossTrack: 1e-3, alongTrack: 1e-3 });
   for (const id of Object.keys(b.down.landed)) sameResults(a.down.landed[id], b.down.landed[id], `${id} down`);
 });

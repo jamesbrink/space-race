@@ -6,10 +6,10 @@
  */
 
 import type { ShedBody, Signal, SitedFlight } from '../types.ts';
-import { G0 } from '../world/bodies.ts';
+import { EARTH_ROTATION_RATE, G0, WGS84_A } from '../world/bodies.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import { add, cross, dot, geodeticToEcef, length, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
+import { add, cross, DEG, dot, geodeticToEcef, length, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
 import type { State } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { type Afloat, afloatAt, floatOn } from './afloat.ts';
@@ -489,17 +489,14 @@ export function firesOf(
 const orbitalWholes = new WeakMap<object, FlownWhole>();
 /**
  * An orbital flight's record flown once (sim/staged.ts flyWhole, the coast kept every second), whoever asks first: the scene and the Flown panel show the
- * same run. The ascent is the one flown; from the spacecraft's separation it is the published orbit, begun where the ascent left it (staged.ts `published`),
- * since the ascent as flown falls short of it (the flight's mission.md, section 6).
+ * same run. One state from the pad to the ground: the coast begins from the state the ascent left the spacecraft in, and
+ * the published orbit is what the run is held against (the flight's mission.md), not what it is put on.
  */
 export function orbitalFlown(flight: SitedFlight): FlownWhole {
   const plan = flight.plan!;
   let whole = orbitalWholes.get(plan);
   if (!whole)
-    orbitalWholes.set(
-      plan,
-      (whole = flyWhole(plan, siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1, 'published')),
-    );
+    orbitalWholes.set(plan, (whole = flyWhole(plan, siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1)));
   return whole;
 }
 export function orbitalRecord(flight: SitedFlight): Run {
@@ -516,7 +513,11 @@ export function orbitalRecord(flight: SitedFlight): Run {
   // (what the pilot's ejection lets go, by the joints it parts, leaves at the run's own instant of it)
   const ejection = eventOf(plan, downOf(plan)?.ejection ?? '');
   const ejecting = new Set(ejection?.do.flatMap((a) => ('separate' in a ? [a.separate] : [])) ?? []);
-  const dropped = flight.flies!.drops.map((d) => (d.on && ejecting.has(d.on) && Number.isFinite(ejected) ? ejected : d.at));
+  // (and what a joint lets go that the run itself times, so long after a cut its guidance made on the state, leaves then)
+  const own = partedBy(plan, whole);
+  const dropped = flight.flies!.drops.map((d) =>
+    d.on && ejecting.has(d.on) && Number.isFinite(ejected) ? ejected : (own.get(d.on?.split('/')[0] ?? '') ?? d.at),
+  );
   const sheds = new Sheds(plan, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
   for (const def of plan.craft[0]!.sheds ?? []) {
     const i = flight.flies!.drops.findIndex((d) => d.on === def.on);
@@ -559,6 +560,21 @@ export function orbitalRecord(flight: SitedFlight): Run {
 }
 
 /**
+ * The joints a run parts at an instant of its own, by id: a stage let go so long after a cut its guidance made on the state
+ * (the orbit reached: staged.ts `sequenceOf`'s `wait`) is let go that long after the run stopped it, not at the record's
+ * instant, which is a figure the run is held to.
+ */
+export function partedBy(plan: FlightPlan, whole: FlownWhole): Map<string, number> {
+  const out = new Map<string, number>();
+  sequenceOf(plan).stages.forEach((stage, i) => {
+    const stop = whole.ascent.stops[i];
+    if (stage.orbit && stage.wait !== null && stage.joint && stop !== undefined && Number.isFinite(stop))
+      out.set(stage.joint, stop + stage.wait);
+  });
+  return out;
+}
+
+/**
  * When each event of an orbital flight's record happens on a run of it, by the record's ids (the plan's events' `record`
  * and its marks): the record's instants, but for what the run itself decides. The event that sets the pilot loose is when
  * the run came down through its height, and a body's landing (a mark that `lands` it) where the run put it down. With
@@ -578,6 +594,22 @@ export function orbitalEvents(
   };
   for (const e of plan.events) if (e.record && e.at) out[e.record.id] = e.at.value;
   for (const m of plan.record?.marks ?? []) out[m.id] = m.at.value;
+  // A stage its guidance cuts on the state (the orbit reached) stops when the run has it stop, and what the plan lets go so
+  // long after that stop follows from there: the record's instants of them are figures the run is held to.
+  sequenceOf(plan).stages.forEach((stage, i) => {
+    const stop = whole.ascent.stops[i];
+    if (!stage.orbit || stop === undefined || !Number.isFinite(stop)) return;
+    const engine = stagesOf(plan)[i]!.engine.id;
+    put(
+      plan.events.find((e) => e.automatic && e.do.some((a) => 'cut' in a && a.cut === engine)),
+      stop,
+    );
+  });
+  for (const [joint, at] of partedBy(plan, whole))
+    put(
+      plan.events.find((e) => e.automatic && e.do.some((a) => 'separate' in a && a.separate === joint)),
+      at,
+    );
   const k = coastEvents(plan);
   if (hand) {
     if (hand.burn !== undefined) {
@@ -754,9 +786,27 @@ export function signalsOf(plan: FlightPlan, run: Run): Partial<Record<Signal, nu
   };
 }
 
-/** The bearing the plan flies along, degrees from north: a ballistic flight's tilt programme's; 0 for a plan that gives none. */
-export function bearingOf(plan: FlightPlan | undefined): number {
-  return plan?.kind === 'ballistic' ? ballisticOf(plan).programme.azimuth.value : 0;
+/**
+ * The bearing the plan flies along as it leaves its pad, degrees from north: a ballistic flight's tilt programme's; a flight
+ * into orbit's aiming azimuth, or (where its law solves for the launch plane) the one its orbit's inclination asks of a pad
+ * at `latitude`, degrees, on a turning Earth (derived: the plane of that inclination through the pad, the pad's own
+ * eastward motion taken from an orbital speed of 7.8 km/s along it); 0 for a plan that gives none of these.
+ */
+export function bearingOf(plan: FlightPlan | undefined, latitude?: number): number {
+  if (!plan) return 0;
+  if (plan.kind === 'ballistic') return ballisticOf(plan).programme.azimuth.value;
+  const law = plan.attitude.flatMap((a) => ('law' in a.hold ? [a.hold.law] : []))[0];
+  if (law?.azimuth) return law.azimuth.value;
+  const orbit = plan.record?.orbit;
+  if (!orbit || latitude === undefined) return 0;
+  const lat = latitude * DEG;
+  const sine = Math.cos(orbit.inclination.value * DEG) / Math.cos(lat);
+  if (!(Math.abs(sine) <= 1)) return 0;
+  const inertial = Math.asin(sine);
+  const speed = 7800;
+  const east = speed * Math.sin(inertial) - EARTH_ROTATION_RATE * WGS84_A * Math.cos(lat);
+  const north = speed * Math.cos(inertial) * (orbit.injection.heading === 'north' ? 1 : -1);
+  return (((Math.atan2(east, north) / DEG) % 360) + 360) % 360;
 }
 
 /**

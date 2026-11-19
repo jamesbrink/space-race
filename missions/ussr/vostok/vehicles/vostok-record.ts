@@ -48,6 +48,13 @@ export interface StageRecord {
    */
   velocity?: { speed: Measure; over?: Measure; apparent?: boolean };
   /**
+   * Cut off by the vehicle's control system when the orbit reached is the record's (sim/plan.ts: a trigger `{ orbit }`), on
+   * the state as flown: for a last stage whose own setting has not been found. `cutoff` is then the record's instant of it,
+   * a figure the run is held to and not flown to, and the stage lets the spacecraft go as long after it stops as the record
+   * has between the two. How sure it is that it was cut so, and from what.
+   */
+  orbit?: { confidence: Confidence; source: string };
+  /**
    * How its engines can be started (sim/stagedlive.ts): how many times, and whether only on the ground (igniters put up
    * the nozzles from the pad). Left out: once, anywhere. A hand that asks for more is told why not.
    */

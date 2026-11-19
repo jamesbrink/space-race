@@ -152,8 +152,9 @@ export const orbital: MercuryAtlasRecord = {
         at: 'seco',
         altitude: derived(
           527_900 * FT,
-          `the plan's 528,400 ft at cutoff (${KIT}, "Events during powered flight") less the "500 feet low in altitude" of the burnout (${LV})`,
+          `the plan's 528,400 ft at cutoff (${KIT}, "Events during powered flight") less the "500 feet low in altitude" of the burnout (${LV}). Taken over the oblate earth under the cutoff, as Friendship 7's is (its orbital.ts: the table's own speed then gives the table's own orbit)`,
         ),
+        over: 'ellipsoid',
         climb: derived(
           -0.005,
           `the plan's level flight at cutoff ("an Earth-referenced horizontal flight path", ${KIT}, "Events during powered flight") and the burnout "0.005° low in flight path angle" (${LV})`,

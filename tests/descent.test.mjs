@@ -7,7 +7,7 @@ import { test } from 'node:test';
 import { flight } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { coastOf, decay } from '../src/sim/orbital.ts';
 import { downOf } from '../src/sim/descent.ts';
-import { byHand, flyOn, partingAt, published } from '../src/sim/staged.ts';
+import { byHand, flyOn, partingAt } from '../src/sim/staged.ts';
 import { downVerdict } from '../src/sim/verdict.ts';
 import { orbitalFlown } from '../src/sim/run.ts';
 import { siteFrame } from '../src/world/frames.ts';
@@ -20,7 +20,7 @@ const site = siteFrame(flight.site);
 const dated = frameOf(flight);
 const sea = flight.site.seaLevel.value;
 const shown = orbitalFlown(flight);
-const from = published(flight.plan, site, shown.ascent.separation);
+const from = shown.ascent.separation;
 const fly = (plan, hands) => flyOn(plan, site, dated, sea, shown.ascent, from, hands);
 const wall = (t) => new Date(Date.parse(flight.launch) + t * 1000 + 3 * 3600_000).toISOString().slice(11, 19);
 const field = (at) => {

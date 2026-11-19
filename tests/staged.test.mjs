@@ -24,7 +24,6 @@ import {
   guidanceOf,
   integral,
   lawOf,
-  published,
   recordSamples,
   schedule,
   sequenceOf,
@@ -609,9 +608,9 @@ for (const f of part(flown)) {
   const checksOf = (of) => plan.checks.filter((c) => c.of === of);
   /** The record's events' ids, as the plan keeps them: each an event's `record`, or a mark. */
   const recordIds = new Set([...plan.events.flatMap((e) => (e.record ? [e.record.id] : [])), ...record.marks.map((m) => m.id)]);
-  // `whole`: the flight flown from the pad, ascent and coast and descent, as the physics has it; `shown`: the ascent flown,
-  // then the published orbit from where it left the spacecraft (staged.ts `published`), which is what the scene shows and
-  // what the coast's and the descent's checks are held to, since the ascent as flown does not reach the published orbit
+  // `whole`: the flight flown from the pad, ascent and coast and descent, one state changed only by what pushes it
+  // (docs/agents/simulator.md): what the scene shows and what every check is held to. `shown` is the same run, under the
+  // name the coast's and the descent's misses are kept by (src/sim/misses.ts)
   let whole;
   let shown;
 
@@ -661,16 +660,17 @@ for (const f of part(flown)) {
       `  #   solved: ${guidance.azimuth ? `the plane through the aiming azimuth, ${guidance.azimuth.value.toFixed(4)} deg (given)` : `the launch plane inclined ${(x.plane / DEG).toFixed(3)} deg`}; pitched over ${(x.kick / DEG).toFixed(3)} deg; tangent falling ${(x.rate * 1000).toFixed(4)} per 1000 s`,
     );
     whole = flyWhole(f.plan, site, dated, sea, x);
-    shown = flyWhole(f.plan, site, dated, sea, x, 10, 'published');
+    shown = whole;
     const again = ascend(f.plan, site, dated, sea, x);
     assert.deepEqual(again.summary, whole.ascent.summary);
     const s = whole.ascent.summary;
     const g = guidance.target;
-    if (!guidance.programme) {
-      assert.ok(Math.abs(s.cutoffAltitude - g.altitude.value) < 1, 'at the target height');
-      assert.ok(Math.abs(s.cutoffClimb - g.climb.value) < 1e-3, 'at the target climb');
-      if (!guidance.azimuth) assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
-    }
+    // (the height over the orbit's ball, or over the ellipsoid under the cutoff where the record's is that: `target.over`,
+    // read off the run's own sample at the cutoff, whose altitude is over the sea)
+    const high = g.over ? whole.ascent.samples.find((p) => p.t === s.cutoffAt).altitude + sea : s.cutoffAltitude;
+    assert.ok(Math.abs(high - g.altitude.value) < 1, `at the target height: ${high} for ${g.altitude.value}`);
+    assert.ok(Math.abs(s.cutoffClimb - g.climb.value) < 1e-3, 'at the target climb');
+    assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
     const clock = (t) => new Date(Date.parse(f.launch) + t * 1000).toISOString().slice(11, 19);
     console.log(`  #   ${f.designation}: the ascent flown (times UTC)`);
     for (const [id, e] of Object.entries(whole.ascent.at))
@@ -695,7 +695,7 @@ for (const f of part(flown)) {
       console.log(`  #   flown on from it, it does not go round: its perigee is ${(s.perigee / 1000).toFixed(0)} km, under the ground`);
     const r = shown.coast.results;
     console.log(
-      `  #   the published orbit from where the ascent left it: apogee flown round ${(r.apogee / 1000).toFixed(1)} km; braking over ${r.retroLatitude.toFixed(2)} N ${r.retroLongitude.toFixed(2)} E; 7 km at ${clock(r.ejectionAt)} over ${r.ejectionLatitude.toFixed(3)} N ${r.ejectionLongitude.toFixed(3)} E; ${(r.alongTrack / 1000).toFixed(1)} km along the track and ${(r.crossTrack / 1000).toFixed(1)} km to the right of the record's landing`,
+      `  #   flown on from the state the ascent left it in: apogee flown round ${(r.apogee / 1000).toFixed(1)} km; braking over ${r.retroLatitude.toFixed(2)} N ${r.retroLongitude.toFixed(2)} E; 7 km at ${clock(r.ejectionAt)} over ${r.ejectionLatitude.toFixed(3)} N ${r.ejectionLongitude.toFixed(3)} E; ${(r.alongTrack / 1000).toFixed(1)} km along the track and ${(r.crossTrack / 1000).toFixed(1)} km to the right of the record's landing`,
     );
   });
 
@@ -752,7 +752,9 @@ for (const f of part(flown)) {
       const copy = structuredClone(plan);
       const law = guidanceOf(copy);
       const [site, dated, sea] = where(f);
-      law.programme.points = law.programme.points.map(([t, tilt]) => [t, t > law.turn.value ? tilt + 0.5 : tilt]);
+      // (the stored programme is the first stage's: tilted half a degree further from a minute up, with the law's solution
+      // held, the last cutoff comes somewhere else)
+      law.programme.points = law.programme.points.map(([t, tilt]) => [t, t >= 60 ? tilt + 0.5 : tilt]);
       const changed = ascend(copy, site, dated, sea, whole.ascent.solved, Infinity).summary;
       assert.ok(Math.abs(changed.cutoffAltitude - whole.ascent.summary.cutoffAltitude) > 1000, 'the digitized pitch drives the ascent');
       return;
@@ -835,7 +837,7 @@ for (const f of part(flown)) {
           1 / (heightsBall(plan, site) + (record.orbit.perigee.value + record.orbit.apogee.value) / 2)),
     );
     console.log(
-      `  #   at the last cutoff ${base.cutoffSpeed.toFixed(1)} m/s, ${(base.cutoffSpeed - need).toFixed(1)} m/s against what the record's orbit needs there (${need.toFixed(1)})`,
+      `  #   at the last cutoff ${base.cutoffSpeed.toFixed(1)} m/s, ${(base.cutoffSpeed - need).toFixed(1)} m/s against what the record's heights alone ask there by vis-viva (${need.toFixed(1)}; the orbit it is left on is read as mean elements: tests/onestate.test.mjs)`,
     );
     // The comparison that stays: the first reading (13 November 2026), every stage burned to the record's instants at rated
     // thrust, on Soyuz-ST's loads: 142 m/s fast, 180 by 844 km. Kept as a figure; its inputs are no longer the record's.
@@ -849,7 +851,7 @@ for (const f of part(flown)) {
     const [site, dated, sea] = where(f);
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the record's coast forty
     // minutes before it, which the propagator, going once round, then carries down
-    const sep = published(f.plan, site, whole.ascent.separation);
+    const sep = whole.ascent.separation;
     const late = coastOf(plan).on - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= coastOf(plan).on - 2400) : null;
     const start = late ? { t: late.t, r: late.r, v: late.v } : { t: sep.t, r: sep.r, v: sep.v };
     const job = propagate(spacecraft(f.plan, dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });
@@ -958,7 +960,8 @@ for (const f of part(flown)) {
       assert.ok(Math.abs(cut.t - whole.ascent.stops.at(-1)) < 0.5, 'cutoff agrees with the batch run');
       if (guidance.attached && !parted) continue; // The predictor ends after one orbit; the stack stays attached into its second.
       assert.ok(parted, `from T+${t0}: the parting is on the path`);
-      const sep = whole.ascent.separation;
+      // (the path's parting is the stack's state as it parts: the run's last sample of the ascent, before the joint's push)
+      const sep = whole.ascent.samples.at(-1);
       const off = Math.hypot(...sep.r.map((q, k) => q - parted.r[k]));
       const dv = Math.hypot(...sep.v.map((q, k) => q - parted.v[k]));
       console.log(
@@ -1024,7 +1027,7 @@ for (const f of part(flown)) {
         s.t,
         s.v.map((c) => -c / Math.hypot(...s.v)),
       );
-      const down = flyWhole(back, site, dated, sea, x, 10, 'published');
+      const down = flyWhole(back, site, dated, sea, x, 10);
       assert.equal(down.coast.samples.at(-1).phase, 'down', 'straight against the motion at the record’s instant, it comes down');
       // (the body he lands in: his own, where he leaves the ship, or the first that comes down, where he rides it down)
       const his = plan.craft[0].crew?.alone ?? downOf(plan).bodies[0].id;
@@ -1040,7 +1043,6 @@ for (const f of part(flown)) {
         sea,
         x,
         10,
-        'published',
       );
       assert.notEqual(along.coast.samples.at(-1).phase, 'down', 'along the motion it does not');
       const l = down.down.landed[his];

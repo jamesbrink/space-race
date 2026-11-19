@@ -285,12 +285,16 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
       sequence.push({
         id: `${stageId(i)}:cut`,
         label: `Cut off the ${word(s.name).toLowerCase()}`,
-        when: v ? [{ speed: v.speed.value + (v.over?.value ?? 0), ...(v.apparent ? { apparent: stageId(i) } : {}) }] : atTime(s.cutoff),
+        when: v
+          ? [{ speed: v.speed.value + (v.over?.value ?? 0), ...(v.apparent ? { apparent: stageId(i) } : {}) }]
+          : s.orbit
+            ? [{ orbit: 'published' }]
+            : atTime(s.cutoff),
         do: [{ cut: stageId(i) }],
         automatic: true,
         at: s.cutoff,
         ...record(s.cutoff),
-        source: v ? v.speed.source : s.cutoff.source,
+        source: v ? v.speed.source : s.orbit ? s.orbit.source : s.cutoff.source,
         order: 1,
       });
     }
@@ -303,7 +307,11 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
             : `Drop the ${word(s.name)
                 .toLowerCase()
                 .replace(/^strap-on boosters$/, 'strap-ons')}`,
-        when: atTime(s.separation),
+        // (a stage its control system cuts on the orbit is let go as long after it stops as the record has between the two)
+        when:
+          s.orbit && !s.velocity && s.cutoff.value < sep - 1e-9
+            ? [{ after: `${stageId(i)}:cut`, wait: s.separation.value - s.cutoff.value }]
+            : atTime(s.separation),
         do: [{ separate: stageId(i) }],
         automatic: true,
         at: s.separation,

@@ -138,7 +138,11 @@ export const orbital: MercuryAtlasRecord = {
       turn: as6(F7.ascent.guidance.turn),
       target: {
         at: 'seco',
-        altitude: doc(527_859 * FT, `${TABLE_XVII}: 527,859 ft at cutoff (86.87 nautical miles, the perigee's)`),
+        altitude: doc(
+          527_859 * FT,
+          `${TABLE_XVII}: 527,859 ft at cutoff (86.87 nautical miles, the perigee's). Taken over the oblate earth under the cutoff, as Friendship 7's is (its orbital.ts: the table's own speed then gives the table's own orbit)`,
+        ),
+        over: 'ellipsoid',
         climb: doc(-0.0004, `${TABLE_XVII}: space-fixed flight-path angle −0.0004° at cutoff (planned −0.0006)`),
         inclination: doc(32.55, `${TABLE_XVII}: 32.55° (planned 32.52)`),
       },

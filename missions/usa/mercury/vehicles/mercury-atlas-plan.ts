@@ -317,16 +317,23 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
     timed('booster-engines:cut', 'Booster engine cutoff', b.cutoff, [{ cut: 'booster-engines' }]),
     timed('booster-latch:separate', 'Drop the booster section', b.separation, [{ separate: 'booster-latch' }]),
     timed('tower-clamp:separate', 'Release the escape tower', o.tower.separation, [{ separate: 'tower-clamp' }]),
+    // The sustainer is shut down by the ground guidance when the insertion it computes is the orbit wanted, not at an instant
+    // and not at a speed set beforehand: the run cuts it on the state it has flown, when the orbit it will be on once the
+    // posigrades have pushed it off has the record's period (plan.ts `{ orbit }`). The recorded speed and instant at cutoff
+    // are figures the run is held to (`cutoffSpeed`, below; `at`). The spacecraft parts as long after as the record has.
     {
       id: 'sustainer:cut',
       label: 'Sustainer engine cutoff',
-      when: [{ speed: k.velocity.value }],
+      when: [{ orbit: 'published' }],
       do: [{ cut: 'sustainer' }],
       automatic: true,
       at: k.cutoff,
       source: k.velocity.source,
     },
-    timed('adapter-clamp:separate', 'Separate the spacecraft', o.separation.at, [{ separate: 'adapter-clamp' }]),
+    {
+      ...timed('adapter-clamp:separate', 'Separate the spacecraft', o.separation.at, [{ separate: 'adapter-clamp' }]),
+      when: [{ after: 'sustainer:cut', wait: o.separation.at.value - k.cutoff.value }],
+    },
     timed('retrosequence', 'Retrosequence: to retrofire attitude', r.sequence, [{ attitude: 'retrofire-attitude' }]),
     fire,
     pack,
@@ -381,6 +388,20 @@ export function mercuryAtlasPlan(o: MercuryAtlasRecord): FlightPlan {
         : {};
   const checks: PlanCheck[] = [
     ...o.ascent.checks.map((c): PlanCheck => ({ ...c, of: 'ascent', ...ascentWhen(c.id) })),
+    // The recorded speed at the sustainer's cutoff: flown to until November 2026, and since then what the guidance's cutoff
+    // on the orbit is held against. Ten feet a second either way, the scale of the guidance's own miss (Friendship 7's
+    // cutoff was "seven feet per second below nominal"): set as the cutoff became the guidance's, when the run cut on this
+    // speed was known to leave the orbit within 5 m/s of the published one.
+    {
+      id: 'cutoffSpeed',
+      label: 'Space-fixed speed at sustainer cutoff',
+      value: k.velocity.value,
+      unit: 'm/s',
+      tolerance: 10 * 0.3048,
+      confidence: k.velocity.confidence,
+      source: k.velocity.source,
+      of: 'ascent',
+    },
     ...o.checks.map((c): PlanCheck => ({ ...c, of: 'orbit' })),
     ...o.descent.checks.map((c): PlanCheck => ({ ...c, of: 'descent' })),
   ];

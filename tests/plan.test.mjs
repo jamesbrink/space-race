@@ -140,10 +140,17 @@ for (const f of vostoks) {
     for (const e of o.events) assert.ok(named.has(e.id), `the record's ${e.id} is in the plan`);
     assert.equal(eventOf(plan, 'retro-on').at, o.retro.on);
     assert.equal(eventOf(plan, 'retro-off').at, o.retro.off);
-    // every event the clock sets off at a record instant is set off at it to the bit, chained or not
+    // every event the clock sets off at a record instant is set off at it to the bit, chained or not (one that follows a cut
+    // the guidance makes on the orbit is not the clock's: it comes as long after that cut as the record has between them)
     for (const e of plan.events)
-      if (e.at && e.when.some((w) => 'time' in w || 'after' in w))
+      if (e.at && e.when.some((w) => 'time' in w || 'after' in w) && Number.isFinite(clockAt(plan, e)))
         assert.equal(clockAt(plan, e), e.at.value, `${e.id} at its record instant`);
+    for (const e of plan.events) {
+      const follows = e.when.find((w) => 'after' in w);
+      const root = follows && eventOf(plan, follows.after);
+      if (e.at && root?.at && !Number.isFinite(clockAt(plan, e)))
+        assert.ok(Math.abs(root.at.value + (follows.wait ?? 0) - e.at.value) < 1e-9, `${e.id} as long after ${root.id} as the record has`);
+    }
     assert.equal(c.engines.find((e) => e.flown).flown, o.retro.deltaV);
     assert.equal(byId(c.joints, 'modules').after, o.entry.mass);
     assert.equal(eventOf(plan, downOf(plan).ejection).when.find((w) => 'height' in w).height, o.ejection.altitude.value);
@@ -230,7 +237,8 @@ for (const f of atlases) {
     assert.equal(cut.at, o.atlas.booster.cutoff);
     // the sustainer is cut on the ground guidance's speed, and its record instant is a mark
     const seco = plan.events.find((e) => e.do.some((a) => 'cut' in a && a.cut === sustainer.engine.id));
-    assert.equal(seco.when[0].speed, o.atlas.tank.velocity.value);
+    assert.deepEqual(seco.when, [{ orbit: 'published' }]);
+    assert.equal(plan.checks.find((c) => c.id === 'cutoffSpeed').value, o.atlas.tank.velocity.value);
     assert.ok(plan.record.marks.some((m) => m.at.value === o.atlas.tank.cutoff.value));
     // a shared tank runs dry for both at once, on both their flows: with the booster engines cut at their instant, later
     const burns = schedule(plan);
@@ -240,9 +248,9 @@ for (const f of atlases) {
     const named = new Set([...plan.events.flatMap((e) => (e.record ? [e.record.id] : [])), ...plan.record.marks.map((m) => m.id)]);
     for (const e of o.events) assert.ok(named.has(e.id), `the record's ${e.id} is in the plan`);
     for (const e of plan.events)
-      if (e.at && e.when.some((w) => 'time' in w || 'after' in w))
+      if (e.at && e.when.some((w) => 'time' in w || 'after' in w) && Number.isFinite(clockAt(plan, e)))
         assert.equal(clockAt(plan, e), e.at.value, `${e.id} at its record instant`);
-    assert.equal(plan.checks.length, o.ascent.checks.length + o.checks.length + o.descent.checks.length);
+    assert.equal(plan.checks.length, o.ascent.checks.length + 1 + o.checks.length + o.descent.checks.length);
   });
   test(`${f.id}: the retrofire is three solids as one burn, spent and not cut; the pack goes so long after, and a hand's burn is the same burn`, () => {
     const k = coastEvents(plan);

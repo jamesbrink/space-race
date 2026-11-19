@@ -6,7 +6,7 @@ import { apparentBy, guided, spacecraft, stack } from '../src/sim/fliers.ts';
 import { fly, sampleAt } from '../src/sim/fly.ts';
 import { coastOf } from '../src/sim/orbital.ts';
 import { predict, propagate } from '../src/sim/predict.ts';
-import { flyWhole, guidanceOf, published, sequenceOf, steer } from '../src/sim/staged.ts';
+import { flyWhole, guidanceOf, sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedVehicle } from '../src/sim/stagedlive.ts';
 import { add, cross, ecefToGeodetic, ecefToInertial, enuAxes, inertialToEcef, length, siteFrame, sub } from '../src/world/frames.ts';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -75,12 +75,12 @@ export function predictions(flight) {
   if (!plan.attitude.some((a) => 'law' in a.hold)) return list;
   const seq = sequenceOf(plan);
   const x = steer(plan, site, frame, sea);
-  const shown = flyWhole(plan, site, frame, sea, x, 10, 'published');
+  const shown = flyWhole(plan, site, frame, sea, x, 10);
   const a = shown.ascent;
   const where = (turn) => ({ site, seaLevel: sea, frame: turned(frame, turn) });
   // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the coast forty minutes
   // before it (as tests/staged.test.mjs)
-  const sep = published(plan, site, a.separation);
+  const sep = a.separation;
   const on = coastOf(plan).on;
   const late = on - sep.t > 5000 ? shown.coast.samples.find((p) => p.t >= on - 2400) : null;
   const from = late ?? sep;

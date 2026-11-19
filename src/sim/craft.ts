@@ -52,6 +52,8 @@ export interface Sense {
   apparent: (engine: string) => number;
   /** What an accelerometer reads, g. */
   g: number;
+  /** How far the orbit it is on is short of the record's (world/meanelements.ts `shortOfPublished`: nothing or less, reached). Left out: never reached. */
+  short?: number;
   /** Still standing on the pad. */
   held: boolean;
   /** The hands' commands at this instant. */
@@ -222,6 +224,7 @@ export function holds(w: Trigger, s: CraftState, x: Sense): boolean {
   }
   if ('height' in w) return w.going === 'down' ? x.falling && x.height <= w.height : !x.falling && x.height >= w.height;
   if ('speed' in w) return (w.apparent ? x.apparent(w.apparent) : x.speed) >= w.speed;
+  if ('orbit' in w) return x.short !== undefined && x.short <= 0;
   if ('g' in w) return w.going === 'up' ? x.g >= w.g : x.g <= w.g;
   if ('command' in w) return x.commands?.has(w.command) ?? false;
   return x.falling;

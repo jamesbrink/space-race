@@ -1318,7 +1318,9 @@ export class Cabin {
       .toArray();
     const up = this.host.upAt(g.position, new THREE.Vector3());
     // level along the bearing flown: the site's +X is its stated bearing, +Z a quarter turn clockwise of it
-    const bearing = THREE.MathUtils.degToRad(bearingOf(this.flight.plan) - (this.flight.site?.bearingX.value ?? 0));
+    const bearing = THREE.MathUtils.degToRad(
+      bearingOf(this.flight.plan, this.flight.site?.latitude?.value) - (this.flight.site?.bearingX.value ?? 0),
+    );
     const a = attitudeOf(nose, head, up.toArray(), [Math.cos(bearing), 0, Math.sin(bearing)]);
     Object.assign(r, a);
     const dt = t - this.last.t;

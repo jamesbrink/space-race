@@ -31,18 +31,7 @@ const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site);
 const planOf = (orbital) =>
   'atlas' in orbital ? mercuryAtlasPlan(orbital) : 'titan' in orbital ? geminiTitanPlan(orbital) : vostokPlan(orbital);
 /** The coast of a flight's plan, or of the plan of its record with an input changed. */
-const fly = (f, orbital) =>
-  flyOrbit(
-    orbital ? planOf(orbital) : f.plan,
-    siteFrame(f.site),
-    frameOf(f),
-    f.site.seaLevel.value,
-    10,
-    undefined,
-    undefined,
-    undefined,
-    Boolean(f.plan.record.coastFixes?.length),
-  );
+const fly = (f, orbital) => flyOrbit(orbital ? planOf(orbital) : f.plan, siteFrame(f.site), frameOf(f), f.site.seaLevel.value, 10);
 /** A flight's orbital record with one input changed: for weighing inputs, never for flying the record. */
 const withInput = (o, path, value) => {
   const copy = structuredClone(o);

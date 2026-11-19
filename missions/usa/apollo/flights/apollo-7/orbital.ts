@@ -603,6 +603,19 @@ export const apollo7Plan: FlightPlan = {
         },
       ],
       thrusters: [
+        // What turns the stack going up: without it the live vehicle has no steering at all, and a flight taken over rose
+        // straight up and was left behind by the turning Earth (until November 2026).
+        {
+          id: 'saturn-steering',
+          label: 'Steering',
+          body: 'sivb',
+          does: ['rotation'],
+          mode: 'automatic',
+          authority: estimated(
+            8,
+            'deg/s² at full throw, about each axis: NOT FOUND. The S-IB’s four outboard H-1 engines gimballed, the S-IVB’s J-2 gimballed with its auxiliary propulsion modules for roll: taken as the Atlas’s 8 (Friendship 7’s orbital.ts), as Gemini-Titan 3’s is',
+          ),
+        },
         {
           id: 'sm-manual-rate',
           label: 'SM RCS proportional rate',
@@ -719,29 +732,18 @@ export const apollo7Plan: FlightPlan = {
               [100, 43.4],
               [120, 52.2],
               [134.26, 59.3],
-              [170, 59.3],
-              [183, 51],
-              [220, 55],
-              [270, 61],
-              [320, 67],
-              [370, 73],
-              [420, 79],
-              [470, 86],
-              [520, 93],
-              [570, 100],
-              [600, 104],
-              [616.75, 105.5],
             ],
             confidence: 'estimated',
-            source: `${ASCENT}, Figs. 12-1 and 12-4, approximate digitization of space-fixed vehicle pitch; thrust assumed along pitch axis and yaw departures omitted`,
+            source: `${ASCENT}, Fig. 12-1, approximate digitization of the first stage’s space-fixed pitch programme, flown open as it was and held from its end to the J-2’s start; thrust assumed along the pitch axis and yaw departures omitted. The S-IVB’s attitude (Fig. 12-4) is not flown: it was the iterative guidance’s answer to the flight as it went, and the law’s closed loop takes its place`,
           },
           turn: doc(146.97, `${ASCENT}, §9 and §11, S-IVB power phase represented by tangent steering`),
           target: {
             at: 'sivb-cutoff',
             altitude: doc(
               748_374 * FT,
-              `${REPORT}, Table 3-II, Fischer ellipsoid height at cutoff; unused with the documented pitch programme`,
+              `${REPORT}, Table 3-II, Fischer ellipsoid height at cutoff (${LV_TRAJ}, Table XIII, p. 74, has the same place 6,600.454 km from the Earth's centre)`,
             ),
+            over: 'ellipsoid',
             climb: doc(0, `${REPORT}, Table 3-II, space-fixed flight path at cutoff`),
             inclination: doc(31.58, `${REPORT}, Table 2-II`),
           },
@@ -760,7 +762,8 @@ export const apollo7Plan: FlightPlan = {
     timed('sib-separation', 'S-IB separates', 145.6, [{ separate: 'sib-separation' }]),
     timed('sivb-ignition', 'J-2 ignition', 146.97, [{ ignite: 'sivb-j2' }], `${ASCENT}, Fig. 9-2, engine start command`),
     timed('les-jettison', 'Escape tower and boost cover jettison', 166.5, [{ separate: 'les-jettison' }]),
-    timed('sivb-cutoff', 'J-2 cutoff', J2_OFF, [{ cut: 'sivb-j2' }], `${ASCENT}, §9.1, guidance cutoff command`),
+    // (the guidance's own cutoff: flown where the orbit reached has the record's period; the recorded instant is held as a figure)
+    timed('sivb-cutoff', 'J-2 cutoff', J2_OFF, [{ cut: 'sivb-j2' }], `${ASCENT}, §9.1, guidance cutoff command`, [{ orbit: 'published' }]),
     timed('spacecraft-separation', 'CSM separates from S-IVB', SEPARATION, [{ separate: 'spacecraft-separation' }], `${LV_TRAJ}, Table VI`),
     ...rcsEvents,
     ...spsEvents,

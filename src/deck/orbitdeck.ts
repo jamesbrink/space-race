@@ -6,6 +6,7 @@ import {
   type EscapeState,
   type EscapeSweep,
   launchEscape,
+  ORBIT_SLACK,
   planAfterEscape,
   withEscapeTranslation,
   withServiceAbort,
@@ -62,7 +63,6 @@ import {
   movedTo,
   partingAt,
   passiveSpherePose,
-  published,
   recordSamples,
   sequenceOf,
   stagesOf,
@@ -110,7 +110,7 @@ import { pack } from './tape.ts';
  * at that instant and flown on: guidance on, the law flies it and W S A D lean the law; off, the keys are the steering;
  * the sequencer on, the record's steps come at its times, off, Space sets off each in turn (a stage lit, cut, let go; the
  * fairing; the spacecraft parted), whenever it is pressed. Parted, the spacecraft coasts from where this ascent left it
- * (orbital.ts flyOrbit), short of an orbit or not: no handover to the published orbit. Its hand controls are the user's
+ * (orbital.ts flyOrbit), short of an orbit or not, as the record's own run does. Its hand controls are the user's
  * without the lock, and the braking burn is Space. The attitude in orbit is turned as a hand turns it, not flown as a
  * rigid body: the jets, their gas and the tumbles of the record are not modelled.
  */
@@ -149,7 +149,17 @@ const ORBITING: Figure[] = [
 /** A stage's name, short: before its first comma ('Strap-on boosters, Blocks B, V, G, D' is 'Strap-ons'). */
 const short = (name: string) => name.split(',')[0]!.replace('Strap-on boosters', 'Strap-ons');
 /** The record's stages as a plan has them, base first: when each is lit, cut (its own cut's record instant, or its letting go where it has none) and let go, s. */
-const recordStages = (plan: FlightPlan) => sequenceOf(plan).stages.map((k) => ({ from: k.from, cut: k.cutAt ?? k.sep, sep: k.sep }));
+/**
+ * Each stage as the record's run has it: lit, stopped and let go. A stage its guidance cuts on the state (its speed, the
+ * orbit reached) stops when the run stops it (`stops`, the run's own), and one let go so long after such a stop is let go
+ * that long after; every other instant is the record's.
+ */
+const recordStages = (plan: FlightPlan, stops?: readonly number[]) =>
+  sequenceOf(plan).stages.map((k, i) => {
+    const stop = stops?.[i];
+    const own = (k.orbit || k.speed !== null) && stop !== undefined && Number.isFinite(stop);
+    return { from: k.from, cut: own ? stop : (k.cutAt ?? k.sep), sep: own && k.wait !== null ? stop + k.wait : k.sep };
+  });
 const ENTER = 'Fly this flight: as flown, or take it over (L)';
 /** The months, for a time on another day than the launch's ('10:18:00 on 7 August'). */
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -335,7 +345,7 @@ export class OrbitDeck extends Deck {
       // the record's vehicle as it stood at the instant (each stage lit, stopped and let go at the run's instants), or the user's
       const record = this.flight.plan!;
       const stood = live ?? {
-        stages: recordStages(record).map((st, i) => ({
+        stages: recordStages(record, flown.stops).map((st, i) => ({
           from: st.from <= start.t ? st.from : Number.POSITIVE_INFINITY,
           to: flown.stops[i]! <= start.t ? flown.stops[i]! : Number.POSITIVE_INFINITY,
           gone: st.sep <= start.t ? st.sep : Number.POSITIVE_INFINITY,
@@ -420,7 +430,7 @@ export class OrbitDeck extends Deck {
   private goneAt(t: number): number {
     const s = this.mine !== null ? this.state : null;
     let at = 0;
-    recordStages(this.flight.plan!).forEach((st, i) => {
+    recordStages(this.flight.plan!, orbitalFlown(this.flight).ascent.stops).forEach((st, i) => {
       const gone = s ? s.stages[i]!.gone : st.sep;
       if (gone <= t) at = Math.max(at, Number.isFinite(st.sep) ? st.sep : st.cut);
     });
@@ -464,7 +474,7 @@ export class OrbitDeck extends Deck {
       const t = this.clock.t;
       const plan = this.flight.plan!;
       if (st.kind === 'drop') return (sequenceOf(plan).drops.find((d) => d.joint === st.id)?.at ?? -Infinity) > t;
-      const g = recordStages(plan)[st.stage];
+      const g = recordStages(plan, orbitalFlown(this.flight).ascent.stops)[st.stage];
       if (!g || g.sep <= t) return false;
       if (st.kind === 'ignite') return g.from > t;
       if (st.kind === 'cut') return g.from <= t && g.cut > t;
@@ -569,7 +579,7 @@ export class OrbitDeck extends Deck {
   /** When the spacecraft leaves the last stage on the flight on show, s. */
   private get parting(): number {
     if (this.mine !== null) return this.ascended?.separation.t ?? Infinity;
-    return recordStages(this.flight.plan!).at(-1)?.sep ?? Infinity;
+    return recordStages(this.flight.plan!, orbitalFlown(this.flight).ascent.stops).at(-1)?.sep ?? Infinity;
   }
   /** Whether the record's own braking burn was fired by hand: its command within one of the record's periods of orientation by hand. */
   private get burnByHand(): boolean {
@@ -1120,12 +1130,6 @@ export class OrbitDeck extends Deck {
       s = v.tick(s, caught);
       tally.note(was, s);
     }
-    if (this.flight.plan!.record?.coastFixes?.length && !s.broke && !s.parted) {
-      // The ticks reconstruct stage and engine state. Hand over the trajectory and attitude actually on screen.
-      const samples = this.record!.samples as readonly LiveSample[];
-      const [a, b, k] = either(samples, s.t);
-      s = { ...s, ...between(samples, s.t), q: attitudeBetween(a, b, k) };
-    }
     s = { ...s, controls: { pitch: 0, yaw: 0, roll: 0 } };
     this.begin(s, t, tally);
   }
@@ -1297,7 +1301,7 @@ export class OrbitDeck extends Deck {
     const sea = this.flight.site.seaLevel.value;
     const user = this.mine !== null ? this.ascended : null;
     const ascent = user ?? orbitalFlown(this.flight).ascent;
-    const from = this.handover ?? (user ? ascent.separation : published(plan, site, ascent.separation));
+    const from = this.handover ?? ascent.separation;
     const baseline = flyOn(plan, site, this.frame, sea, ascent, from, hands);
     const samples = this.samplesOf(plan, baseline);
     this.handSamples(samples, shipOf(plan));
@@ -1401,6 +1405,7 @@ export class OrbitDeck extends Deck {
       stops: stagesOf(this.flight.plan!).map((_, i) => Math.min(s.stages[i]!.to, v.dry(i, s.stages[i]!.from, s), s.stages[i]!.gone)),
       left: v.left(s),
       separation: s.parted!,
+      parted: { kept: tally.summary.massLeft, gone: s.parted!.stageMass },
       plane: v.plane,
       thetaTurn: this.options.memo?.thetaTurn ?? orbitalFlown(this.flight).ascent.thetaTurn,
     };
@@ -1462,7 +1467,9 @@ export class OrbitDeck extends Deck {
       );
     if (solved && service) {
       const orbit = service.goal.kind === 'orbit';
-      const reached = orbit ? solved.achieved >= service.goal.target.value : Math.abs(solved.achieved - service.goal.target.value) < 1852;
+      const reached = orbit
+        ? solved.achieved >= service.goal.target.value - ORBIT_SLACK
+        : Math.abs(solved.achieved - service.goal.target.value) < 1852;
       const reading = Number.isFinite(solved.achieved) ? `${(solved.achieved / KM).toFixed(0)} km` : 'outside this trajectory’s reach';
       const firing = solved.duration > 0 ? `SPS firing ${solved.duration.toFixed(1)} s` : 'Already at the contingency orbit';
       this.host.say?.(
@@ -2194,7 +2201,7 @@ export class OrbitDeck extends Deck {
       }));
     }
     const stops = orbitalFlown(this.flight).ascent.stops;
-    const staged = recordStages(plan);
+    const staged = recordStages(plan, stops);
     /** What one of them has burned by `t`, all its units. */
     const burnedBy = (j: number) => {
       const from = staged[j]!.from;
@@ -2351,7 +2358,6 @@ export class OrbitDeck extends Deck {
                         ? 'Under the parachutes'
                         : 'Falling';
     set('phase', struck ? 'Structure strike' : phase);
-    // (from the spacecraft's separation the record's run is the published orbit begun where the simulated ascent left it: said, so it is not taken for a result)
     const leant = (x: number, plus: string, minus: string) =>
       Math.abs(x) < 0.05 * DEG ? '' : ` ${(Math.abs(x) / DEG).toFixed(1)}° ${x > 0 ? plus : minus}`;
     const leans = !alone && this.guidance ? leant(this.trim.pitch, 'downrange', 'back') + leant(this.trim.yaw, 'left', 'right') : '';
@@ -2363,11 +2369,9 @@ export class OrbitDeck extends Deck {
           ? `Not the record’s: the descent by hand`
           : this.free
             ? `Manual descent: not the flight of ${this.day}`
-            : alone
-              ? 'On the published orbit: the simulated ascent fell short (Flown)'
-              : onDay && t >= command
-                ? 'As flown: the braking burn by hand'
-                : 'As flown: automatic',
+            : onDay && t >= command
+              ? 'As flown: the braking burn by hand'
+              : 'As flown: automatic',
     );
     const guidance = this.root.querySelector<HTMLButtonElement>('[data-do=guidance]')!;
     guidance.setAttribute('aria-pressed', String(this.guidance && !this.free));

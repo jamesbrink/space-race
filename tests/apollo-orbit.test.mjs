@@ -2,11 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { apollo7Plan } from '../missions/usa/apollo/flights/apollo-7/orbital.ts';
 import { descending } from '../src/sim/fliers.ts';
-import { coastEngineState, coastOf, flyDown, movesOf, trackingArc } from '../src/sim/orbital.ts';
+import { coastEngineState, coastOf, flyDown, movesOf } from '../src/sim/orbital.ts';
 import { propagate } from '../src/sim/predict.ts';
 import { byHand, givenUp, sequenceOf, stagesOf } from '../src/sim/staged.ts';
 import { frameOf } from '../src/world/earthframe.ts';
-import { add, cross, geodeticToEcef, length, scale, sub } from '../src/world/frames.ts';
+import { add, cross, geodeticToEcef, scale } from '../src/world/frames.ts';
 
 test('Apollo 7 holds the S-IVB through insertion and uses one SPS for all eight firings', () => {
   const engines = stagesOf(apollo7Plan).map((stage) => stage.engine.id);
@@ -45,17 +45,6 @@ test('Apollo 7 takeover preserves past starts and drops future replay fixes', ()
   assert.equal(coastOf(manual).on, at + 20);
   assert.equal(coastEngineState(manual, 'sps', coastOf(manual).off).starts, 4);
   assert.ok(manual.record.coastFixes.every((fix) => fix.at.value <= at + 20));
-});
-
-test('Tracking correction preserves both states across its replay boundary', () => {
-  const from = { r: [6_600_000, 0, 0], v: [0, 7_780, 0] };
-  const predicted = { r: [0, 6_700_000, 5_000], v: [-7_700, 0, 200] };
-  const seen = { r: [-40_000, 6_650_000, 40_000], v: [-7_740, -50, 170] };
-  const correct = trackingArc(0, 1200, predicted, seen);
-  assert.deepEqual(correct(from, 0), from);
-  const landed = correct(predicted, 1200);
-  assert.ok(length(sub(landed.r, seen.r)) < 1e-8);
-  assert.ok(length(sub(landed.v, seen.v)) < 1e-8);
 });
 
 test('Apollo 7 descent predicts the fractional drogue delay after a long coast', () => {

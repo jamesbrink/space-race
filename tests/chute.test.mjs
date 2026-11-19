@@ -223,7 +223,7 @@ for (const v of FLIGHTS.filter((f) => f.plan?.kind === 'orbital' && downOf(f.pla
     const { siteFrame } = await import('../src/world/frames.ts');
     const { frameOf } = await import('../src/world/earthframe.ts');
     const dated = frameOf(v);
-    const whole = flyWhole(v.plan, siteFrame(v.site), dated, v.site.seaLevel.value, undefined, 10, 'published');
+    const whole = flyWhole(v.plan, siteFrame(v.site), dated, v.site.seaLevel.value, undefined, 10);
     const drawn = descentOf(whole, dated, (v.flies.datum ?? 0) + (v.plan.record.centre?.value ?? 0));
     assert.ok(drawn, 'the record’s run comes down from the ejection height');
     for (const c of v.flies.chutes.filter((c) => c.body)) {
