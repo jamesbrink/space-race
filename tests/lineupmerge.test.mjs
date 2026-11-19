@@ -4,10 +4,43 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { backFacingMarkings, BESIDE, CORNERS, drawn, join, PAINTS, paintMaterial, paintOf } from '../src/app/lineup/merge.ts';
+import { BESIDE, backFacingMarkings, CORNERS, drawn, join, PAINTS, paintMaterial, paintOf } from '../src/app/lineup/merge.ts';
 import { keyOf } from '../src/app/lineup/shelf.ts';
-import { floorPlates, showPlates } from '../src/app/lineup/stand.ts';
+import { floorPlates, sharedPaint, showPlates, showSharedPaint } from '../src/app/lineup/stand.ts';
 import { Looks } from '../src/viewer/look.ts';
+
+test('shared coarse paint batches only visible copies at rest, using their transforms and current look', () => {
+  const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
+  const frustum = new THREE.Frustum().setFromProjectionMatrix(camera.projectionMatrix);
+  const geometry = new THREE.BoxGeometry();
+  const material = new THREE.MeshStandardMaterial({ name: 'lineup-paint' });
+  const stands = Array.from({ length: 7 }, (_, i) => {
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.position.set(i === 3 ? 100 : i, 0, -20);
+    const root = new THREE.Group().add(mesh);
+    root.updateMatrixWorld(true);
+    return { levels: [root], coarsest: 0, shown: 0, fading: i === 2, standing: i !== 4, mesh };
+  });
+  stands[5].shown = 1;
+  stands[6].mesh.visible = false;
+  const groups = sharedPaint(stands);
+  const toon = new THREE.MeshToonMaterial({ name: 'lineup-paint' });
+  for (const { mesh } of stands) mesh.material = toon;
+  const originals = [];
+  showSharedPaint(groups, frustum, originals);
+  const [{ batch }] = groups;
+  assert.equal(batch.count, 2);
+  assert.equal(batch.material, toon);
+  assert.deepEqual(
+    originals,
+    stands.slice(0, 2).map(({ mesh }) => mesh),
+  );
+  originals.forEach((mesh, i) => {
+    const matrix = new THREE.Matrix4();
+    batch.getMatrixAt(i, matrix);
+    assert.ok(matrix.equals(mesh.matrixWorld));
+  });
+});
 
 test('the shared plate draw keeps each visible stand’s scale, tint and back-to-front order', () => {
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);

@@ -18,7 +18,7 @@ import { Hall } from './hall.ts';
 import { backFacingMarkings } from './merge.ts';
 import { allot, craftNodes, type Entry, layOutRow } from './row.ts';
 import { Shelf } from './shelf.ts';
-import { dress, fitTo, floorPlates, Stand, scaleFigures, showFigures, showPlates } from './stand.ts';
+import { dress, fitTo, floorPlates, Stand, scaleFigures, sharedPaint, showFigures, showPlates, showSharedPaint } from './stand.ts';
 
 /**
  * The Lineup's scene: every vehicle the flights have built, standing in one row on one floor at one scale, in the
@@ -142,6 +142,7 @@ export class LineupScene {
   private readonly rowGroup = new THREE.Group();
   private readonly figures: ReturnType<typeof scaleFigures>;
   private readonly plates: ReturnType<typeof floorPlates>;
+  private shared: ReturnType<typeof sharedPaint> = [];
   private readonly timer = new THREE.Timer();
   private readonly raycaster = new THREE.Raycaster();
   private readonly frustum = new THREE.Frustum();
@@ -383,6 +384,8 @@ export class LineupScene {
       }),
     );
     if (!this.stands.some((s) => s.here)) throw new Error('no vehicle arrived');
+    this.shared = sharedPaint(this.stands);
+    for (const { batch } of this.shared) this.scene.add(batch);
     this.form();
     return missing;
   }
@@ -827,12 +830,14 @@ export class LineupScene {
     this.ink.range(this.camera);
     this.renderer.info.reset();
     const hidden = backFacingMarkings(this.rowGroup, this.camera.position);
-    for (const marking of hidden) marking.visible = false;
+    showSharedPaint(this.shared, this.frustum, hidden);
+    for (const mesh of hidden) mesh.visible = false;
     try {
       this.composer.render();
     } finally {
       // Shadows are cast from the light; picking and bounds also use the full model.
-      for (const marking of hidden) marking.visible = true;
+      for (const mesh of hidden) mesh.visible = true;
+      for (const { batch } of this.shared) batch.visible = false;
     }
     if (this.composer.readBuffer !== this.frameTarget) this.composer.swapBuffers(); // (the ink pass changed them over: see the constructor)
     this.drawnFrames++;

@@ -135,6 +135,45 @@ export function showFigures(
   figures.instanceMatrix.needsUpdate = true;
 }
 
+/** Coarsest levels stay resident. Where the shelf supplies the same painted piece to several stands,
+ * their geometry and paint table are identical. Keep one instance matrix per copy. */
+export function sharedPaint(stands: readonly Stand[]) {
+  const pieces = new Map<THREE.BufferGeometry, { stand: Stand; mesh: THREE.Mesh }[]>();
+  for (const stand of stands) {
+    for (const child of stand.levels[stand.coarsest]?.children ?? []) {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh || Array.isArray(mesh.material) || mesh.material.name !== 'lineup-paint') continue;
+      const copies = pieces.get(mesh.geometry) ?? [];
+      copies.push({ stand, mesh });
+      pieces.set(mesh.geometry, copies);
+    }
+  }
+  return [...pieces.entries()]
+    .filter(([, copies]) => copies.length > 1)
+    .map(([geometry, copies]) => {
+      const batch = new THREE.InstancedMesh(geometry, copies[0]!.mesh.material, copies.length);
+      batch.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      batch.frustumCulled = false;
+      batch.visible = false;
+      return { batch, copies };
+    });
+}
+
+/** Submit only the copies the camera would draw. A fading stand has its own shader and stays in its own draw. */
+export function showSharedPaint(groups: ReturnType<typeof sharedPaint>, frustum: THREE.Frustum, hidden: THREE.Mesh[]): void {
+  for (const { batch, copies } of groups) {
+    batch.count = 0;
+    for (const { stand, mesh } of copies) {
+      if (!stand.standing || stand.shown !== stand.coarsest || stand.fading || !mesh.visible || !frustum.intersectsObject(mesh)) continue;
+      batch.material = mesh.material; // the current real or cel paint
+      batch.setMatrixAt(batch.count++, mesh.matrixWorld);
+      hidden.push(mesh);
+    }
+    batch.visible = batch.count > 0;
+    batch.instanceMatrix.needsUpdate = true;
+  }
+}
+
 /** Glass, as the row sees it: a pane has almost no colour of its own (the stage's window glass, without its glazing pass). */
 function pane(own: THREE.Material): THREE.Material {
   const visor = own.name.startsWith('glass-visor');
