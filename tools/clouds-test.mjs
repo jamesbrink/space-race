@@ -10,7 +10,7 @@
 //    cloud too, at that distance (to 3 %, the march's own tolerance); and of those the move shifts by four pixels or
 //    more, no more than 0.5 % may be drawn unchanged at the pixel they were at (cloud kept in the camera's frame).
 //  - each sheet (the middle deck, the high cloud): the same place of it looked at straight down from 300 m above its
-//    layer and from 2,000 m above, and straight up from as far under: the frame's middle is the same place of the
+//    layer and from 2,000 m above, and straight up from as far under (the two eyes stay between the same cloud layers): the frame's middle is the same place of the
 //    sheet in both, and where it is cloud from far off it must be cloud from near (one place, or under 10 % of them,
 //    may be 40 levels darker from near: one may be at the cel look's cut). It was cut away within 3 and 8 km of the eye: a hole that went up with the vehicle.
 //  - crossing each sheet's layer straight up, nothing steps: where 25 m of climb changes the frame by more than 3
@@ -43,6 +43,7 @@ const FLIGHTS = [
   'usa/mercury/ma-6-friendship-7',
   'usa/apollo/apollo-7',
   'usa/apollo/apollo-12',
+  'usa/apollo/apollo-13',
 ].filter((f) => !only || f === only);
 const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */
@@ -395,8 +396,26 @@ for (const id of FLIGHTS) {
         ['over', -89.9],
         ['under', 89.9],
       ]) {
+        // Both eyes must be in the same clear air. A farther eye inside the next layer
+        // sees its mist in front of the sheet being checked (on Apollo 13 the gap is 1,435 m).
+        const neighbours = day.cumulus ? [...layers, { lo: day.cumulus.base, hi: day.cumulus.top }] : layers;
+        const gaps = neighbours
+          .filter((other) => other !== layer)
+          .map((other) => {
+            if (other.lo < layer.hi && other.hi > layer.lo) return 0; // The clouds overlap.
+            return el < 0 ? other.lo - layer.hi : layer.lo - other.hi;
+          })
+          .filter((gap) => gap >= 0);
+        if (el > 0) gaps.push(layer.lo); // stay above the ground
+        const room = Math.min(...gaps);
+        if (room <= 2) {
+          console.log(`  ${where}: ${layer.sheet} from ${side}: insufficient clear air to isolate this sheet for a near/far comparison`);
+          continue;
+        }
+        const farGap = Math.min(2000, room - 1);
+        const nearGap = Math.min(300, farGap / 2);
         const got = await page.evaluate(
-          async ([lo, hi, el]) => {
+          async ([lo, hi, el, farGap, nearGap]) => {
             const T = window.cloudsTest;
             // (straight down or up the middle of the view is one line, near or far: the same place of the sheet, and the
             // same of everything behind it. So only the middle is compared, at places 230 m apart over 1.6 km.)
@@ -417,20 +436,20 @@ for (const id of FLIGHTS) {
                   await T.at(230 * i + 11, T.y(el < 0 ? hi + gap : lo - gap), 230 * j + 7, el);
                   return middle(T.grab());
                 };
-                const far = await look(2000),
-                  near = await look(300);
+                const far = await look(farGap),
+                  near = await look(nearGap);
                 if (far < 170) continue;
                 bright++;
                 if (near < far - 40) lost++;
               }
             return { bright, lost };
           },
-          [layer.lo, layer.hi, el],
+          [layer.lo, layer.hi, el, farGap, nearGap],
         );
         const share = got.lost / Math.max(got.bright, 1);
         check(
           got.lost <= 1 || share < 0.1,
-          `${where}: ${layer.sheet} from ${side} it, near and far: ${got.lost} of ${got.bright} places of cloud from 2 km gone from 300 m (${(100 * share).toFixed(1)} %)`,
+          `${where}: ${layer.sheet} from ${side} it, near and far: ${got.lost} of ${got.bright} places of cloud from ${farGap.toFixed(0)} m gone from ${nearGap.toFixed(0)} m (${(100 * share).toFixed(1)} %)`,
         );
       }
       // and crossed straight up at a vehicle's speed, looking level and down: nothing steps. Where a frame changes from
