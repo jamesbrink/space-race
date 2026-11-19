@@ -1,5 +1,5 @@
 /* The gallery (gallery.ts): the vehicle alone in the studio. Its panels are the site's own classes (style.css), so they are the same glass;
-   what is here is what the gallery has that the site has not, and the switch between a flight's places, which every place carries. */
+   what is here is what the gallery has that the site has not, and the ways between a flight's places, which every place carries. */
 
 /* --- the gallery's own canvas and page, over the site's while it is up --------------- */
 /* it fades in over the site's canvas and out again (gallery.ts FADE): going between the places is not a cut */
@@ -18,13 +18,7 @@ body.gallery-settled #stage { visibility: hidden; }
 #gallery .legend-keys:not(.folded) .legend-body { display: block; }
 #gallery .legend-keys { bottom: var(--edge); }
 
-/* --- the switch between the places: in the title card, in every place --------------- */
-.places { pointer-events: auto; display: inline-flex; flex-wrap: wrap; margin-top: 14px; border: 1px solid var(--line); border-radius: 2px; }
-.places button { padding: 7px 12px 6px; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); white-space: nowrap; border-bottom: 1px solid transparent; }
-.places button + button { border-left: 1px solid var(--line); }
-.places i { font-style: normal; }
-.places-home { display: none; }
-/* the steps from here (gallery on to the launch site; the site back to the gallery and on to the launch): plain buttons, which on a wide page stand where the switch was */
+/* --- the ways between the places: in the title card on a wide page, the top line's one control on a phone (fold.css) ---- */
 .ways { pointer-events: auto; display: flex; gap: 8px; margin-top: 14px; }
 .ways[hidden], .ways [hidden] { display: none; }
 .ways { flex-wrap: wrap; }
@@ -35,6 +29,9 @@ body.gallery-settled #stage { visibility: hidden; }
 .ways .icon { margin: 0; font-size: 15px; }
 .ways i[aria-hidden] { font-style: normal; font-size: 16px; }
 .ways i:not([aria-hidden]) { font-style: normal; }
+.ways b { font-weight: inherit; }
+/* (a way named at length on a wide page, and as its place is on a phone's top line) */
+.ways .way-short { display: none; }
 .ways .way-back .icon { margin-right: 8px; }
 .ways .way-back .icon { vertical-align: -2px; }
 :is(#gallery, #ui) .ways .way-on { flex: 1; color: #14110a; background: var(--amber); }
@@ -43,36 +40,18 @@ body.gallery-settled #stage { visibility: hidden; }
 :is(#gallery, #ui) .ways .way-on[aria-disabled='true'] { color: var(--faint); background: none; border: 1px dashed var(--line); cursor: help; white-space: normal; text-align: left; line-height: 1.4; font-weight: 400; }
 .ways .way-back { color: var(--dim); border: 1px solid var(--line); }
 .ways .way-back:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--faint); }
-/* a wide page has the steps and no switch; a narrow one keeps its one folded control (fold.css) and has no room for the steps */
-@media (min-width: 960px) and (min-height: 520px) { .places { display: none; } }
-@media (max-width: 959px), (max-height: 519px) { .ways { display: none; } }
-.places button:hover:not(:disabled) { color: var(--ink); }
-/* where you are: as the open tab of the panel is, amber and underlined */
-.places button[aria-pressed='true'] { color: var(--amber); border-bottom-color: var(--amber); background: rgba(255, 196, 107, 0.08); }
-/* a place the flight does not have yet: there, dimmed, and it says why when pointed at or pressed */
-.places button[aria-disabled='true'] { color: var(--faint); opacity: 0.55; cursor: help; }
-/* a flight flown by hand and kept (deck.ts leave): a lamp on Fly, and its time beside it with the way to end it */
-.places button.kept::before { content: ''; display: inline-block; width: 6px; height: 6px; margin: 0 7px 1px 0; border-radius: 50%; background: var(--amber); }
-.places .kept-mark { display: inline-flex; align-items: center; gap: 7px; color: var(--amber); font-variant-numeric: tabular-nums; }
-.places .kept-mark i { color: var(--dim); font-size: 13px; line-height: 1; }
-.places .kept-mark:hover i, .places .kept-mark:focus-visible i { color: var(--ink); }
-.places { position: relative; }
-.places p { position: absolute; left: -1px; top: calc(100% + 6px); z-index: 3; width: max-content; max-width: 260px; padding: 6px 10px 7px; font-size: 12px; color: var(--ink); background: rgba(10, 11, 14, 0.94); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 2px; }
 .crumbs span { color: var(--amber); }
 /* (three steps on one line of the card: set a little closer than two were) */
 .crumbs:has(span) { font-size: 10px; letter-spacing: 0.08em; }
 /* (five steps now, which may take two lines: kept clear of the card's chevron in its corner) */
 .title > .crumbs { padding-right: 26px; }
 
-/* on the flight deck the title card makes way, and the switch stays: alone, in the corner the card had */
-#ui.piloting > .title:has(.places, .ways) { display: block; left: auto; right: var(--edge); width: auto; max-width: none; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
-#ui.piloting > .title > :not(.places, .ways) { display: none; }
-/* (on a wide page the ways out stand there, in the switch's corner) */
+/* on the flight deck the title card makes way, and the ways stay: alone, in the corner the card had */
+#ui.piloting > .title:has(.ways) { display: block; left: auto; right: var(--edge); width: auto; max-width: none; padding: 0; background: none; border: 0; box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; }
+#ui.piloting > .title > :not(.ways) { display: none; }
+/* (the ways out stand there, in the title card's corner) */
 #ui.piloting > .title .ways { margin: 0; flex-wrap: nowrap; }
 #ui.piloting > .title .ways button { padding: 9px 12px; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); }
-#ui.piloting > .title .places { position: static; flex-direction: row; width: auto; height: auto; margin: 0; background: var(--glass); backdrop-filter: blur(16px) saturate(1.25); -webkit-backdrop-filter: blur(16px) saturate(1.25); }
-#ui.piloting > .title .places button { flex: none; padding: 7px 12px 6px; border-top: 0; text-align: center; }
-#ui.piloting > .title .places button + button { border-left: 1px solid var(--line); border-top: 0; }
 
 /* --- what stands there, part by part ------------------------------------------------- */
 #gallery .buttons .switch[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.55); }
@@ -123,7 +102,7 @@ body.gallery-settled #stage { visibility: hidden; }
 .alone i::before { content: ''; display: inline-block; width: 5px; height: 5px; margin: 0 6px 1px 0; border: solid var(--amber); border-width: 0 0 1.5px 1.5px; transform: rotate(45deg); }
 .alone:is(:hover, :focus-visible) { border-color: rgba(255, 196, 107, 0.6); }
 /* (a phone's pieces: the chip's way back, the place control, the captions in the sheet, the handle's own controls; shown in the narrow block below) */
-.alone .x, .places-now, #gallery .slot-name { display: none; }
+.alone .x, #gallery .slot-name { display: none; }
 
 /* part by part: under the list, where the part is being read */
 #gallery .panel section { flex: 1; min-height: 0; }

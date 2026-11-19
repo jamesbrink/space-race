@@ -4,7 +4,7 @@
 @media (max-width: 960px), (max-height: 520px) {
   :is(#gallery, #ui) { --top: calc(8px + env(safe-area-inset-top)); --left: calc(10px + env(safe-area-inset-left)); --right: calc(10px + env(safe-area-inset-right)); --handle-h: 60px; --line-h: 46px; }
 
-  /* the top line: the way back (the heading), the flight's name small, and the one control for the place */
+  /* the top line: the way back (the heading), the flight's name small, and the ways on from here */
   :is(#gallery, #ui) .title, :is(#gallery, #ui) .title.tucked { top: var(--top); left: var(--left); right: var(--right); width: auto; max-width: none; height: var(--line-h); min-height: 0; max-height: none;
     display: flex; flex-direction: row; align-items: center; gap: 10px; padding: 0 0 0 4px; overflow: visible; pointer-events: auto !important; z-index: 5; }
   :is(#gallery, #ui) .title > :is(.crumbs, .lede, .facts, .facts-toggle, .tuck) { display: none; }
@@ -12,30 +12,19 @@
     pointer-events: auto; cursor: pointer; }
   :is(#gallery, #ui) .title > h1::before { content: ''; display: inline-block; width: 0.42em; height: 0.42em; margin: 0 0.55em 0.1em 0.1em; border: solid var(--amber); border-width: 0 0 2px 2px; transform: rotate(45deg); }
   :is(#gallery, #ui) .title > .sub { display: block; flex: 0 1 auto; min-width: 0; font-size: 9.5px; letter-spacing: 0.1em; overflow: hidden; text-overflow: ellipsis; }
-  /* the place: one button that says where you are, and opens to the three */
-  :is(#gallery, #ui) .title .places { position: relative; inset: auto; flex: none; display: flex; flex-direction: row; align-self: stretch; width: auto; height: auto; margin: 0 0 0 auto; padding: 0;
-    background: none; backdrop-filter: none; -webkit-backdrop-filter: none; border: 0; border-left: 1px solid var(--line); border-radius: 0; }
-  :is(#gallery, #ui) .places-home, :is(#gallery, #ui) .places > [data-place] { display: none; }
-  :is(#gallery, #ui) .places-now { display: flex; align-items: center; gap: 9px; min-width: 44px; padding: 0 14px; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--amber); white-space: nowrap; }
-  :is(#gallery, #ui) .places-now .chevron { display: block; width: 10px; }
-  /* (a menu drops: its chevron points down until it is open) */
-  :is(#gallery, #ui) .places-now[aria-expanded='false'] > .chevron::before { transform: rotate(225deg); margin-top: -4px; }
-  :is(#gallery, #ui) .places-now[aria-expanded='true'] > .chevron::before { transform: rotate(45deg); margin-top: 4px; }
-  :is(#gallery, #ui) .places.open > [data-place] { display: block; position: absolute; right: -1px; z-index: 6; width: 230px; height: 54px; padding: 11px 16px 0; flex: none; white-space: nowrap; text-align: left; line-height: 1.3;
-    font-size: 11px; color: var(--ink); background: rgb(10, 11, 14); border: 1px solid var(--line); border-top-width: 0; border-radius: 0; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); }
-  :is(#gallery, #ui) .places.open > [data-place='gallery'] { top: calc(100% + 6px); border-top-width: 1px; border-radius: 3px 3px 0 0; }
-  :is(#gallery, #ui) .places.open > [data-place='site'] { top: calc(100% + 61px); }
-  :is(#gallery, #ui) .places.open > [data-place='fly'] { top: calc(100% + 115px); border-radius: 0 0 3px 3px; }
-  :is(#gallery, #ui) .places.open > [data-place][aria-pressed='true'] { color: var(--amber); background: rgb(34, 28, 16); box-shadow: inset 3px 0 var(--amber), 0 10px 30px rgba(0, 0, 0, 0.35); }
-  :is(#gallery, #ui) .places.open > [data-place]::after { content: attr(data-short); display: block; margin-top: 2px; font: 12px/1.3 var(--sans); letter-spacing: 0; text-transform: none; color: var(--faint); overflow: hidden; text-overflow: ellipsis; }
-  :is(#gallery, #ui) .places.open > [data-place][aria-pressed='true']::after { content: 'You are here'; }
-  /* one the flight does not have yet is listed, dimmed, and says why under its name */
-  :is(#gallery, #ui) .places.open > [data-place][aria-disabled='true'] { opacity: 1; color: var(--faint); }
-  :is(#gallery, #ui) .places i { display: inline; }
-  :is(#gallery, #ui) .places.short i:not(.chevron) { display: none; }
-  /* (and where the top line is short of room the place's button gives up its icon before the flight's name gives up a letter: the menu keeps them) */
-  :is(#gallery, #ui) .places.short .places-now .icon { display: none; }
-  :is(#gallery, #ui) .title .places p { display: none; }
+  /* the ways (gallery.ts nextStep): at the right of the line, the one way on, and at the site the way back beside it */
+  :is(#gallery, #ui) .title .ways { flex: none; flex-wrap: nowrap; align-self: center; gap: 6px; margin: 0 4px 0 auto; }
+  :is(#gallery, #ui) .title .ways button { height: 36px; padding: 0 12px; gap: 8px; font-size: 11px; letter-spacing: 0.12em; }
+  :is(#gallery, #ui) .title .ways .way-on { flex: none; }
+  :is(#gallery, #ui) .title .ways .way-on[aria-disabled='true'] { white-space: nowrap; }
+  :is(#gallery, #ui) .title .ways .way-long { display: none; }
+  :is(#gallery, #ui) .title .ways .way-short { display: inline; }
+  :is(#gallery, #ui) .title .ways .way-back .icon { margin-right: 0; }
+  :is(#gallery, #ui) .title .ways .kept-mark { height: 36px; padding: 0 10px; }
+  /* (short of room, the programme's line goes first, then the way back keeps only its chevron: gallery.ts fitWays) */
+  :is(#gallery, #ui) .title:has(> .ways.tight) > .sub { display: none; }
+  :is(#gallery, #ui) .title .ways.tighter .way-back > span, :is(#gallery, #ui) .title .ways.tighter .way-on .icon { display: none; }
+  :is(#gallery, #ui) .title .ways.tighter .way-back { padding: 0 14px; }
 
   /* nothing else stands on the view: the control block is in the sheet (its View pane) */
   :is(#gallery, #ui) > .controls { display: none; }

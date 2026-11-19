@@ -12,7 +12,6 @@ import {
   kept,
   lacks,
   PLACE_NAME,
-  PLACES,
   programmeName,
   type Place,
   type Plinth,
@@ -95,30 +94,46 @@ const PLACE_SAYS: Record<Place, string> = {
 };
 
 /**
- * The ways from a place, as plain buttons where the switch was on a wide page: from a flight's gallery (its page) on to
- * its launch site; from the site back to the gallery and on to the launch; from the flight deck back to either. A way
- * the flight has not got yet is there all the same, and says why (address.ts `lacks`). `at` tells the site's which of
- * its two places the page is in; a flight kept by hand is marked on the way to it (`markKept`).
+ * The ways from a place, as plain buttons, on every page: from a flight's gallery (its page) on to its launch site; from
+ * the site back to the gallery and on to the launch; from the flight deck back to either. On a phone they are the top
+ * line's one control: the way on, and at the site the way back beside it (fold.css). A way the flight has not got yet is
+ * there all the same, and says why (address.ts `lacks`), in the notes when it is pressed. `at` tells the site's which
+ * of its two places the page is in; a flight kept by hand is marked on the way to it (`markKept`).
  */
-export function nextStep(flight: Flight, here: 'gallery' | 'site', go: (to: Place) => void): HTMLElement & { at?: (place: Place) => void } {
+export function nextStep(
+  flight: Flight,
+  here: 'gallery' | 'site',
+  go: (to: Place) => void,
+  scope: Scope,
+): HTMLElement & { at?: (place: Place) => void } {
   const nav: HTMLElement & { at?: (place: Place) => void } = document.createElement('nav');
   nav.className = 'ways';
   nav.setAttribute('aria-label', 'Where to go from here');
   const back = (to: Place): string =>
-    `<button class="way-back" data-way="${to}" title="${esc(PLACE_SAYS[to])}"><i aria-hidden="true">‹</i><span>${shortName(to)}</span></button>`;
-  const on = (to: Place, name: string): string => {
+    `<button class="way-back" data-way="${to}" title="${esc(PLACE_SAYS[to])}" aria-label="Back to the ${esc(PLACE_NAME[to].toLowerCase())}"><i aria-hidden="true">‹</i><span>${shortName(to)}</span></button>`;
+  // (`short`: what a phone's top line has room for, where the name is longer than the place's own)
+  const on = (to: Place, name: string, short = name): string => {
     const why = lacks(flight, to);
-    const says = why ? why.replace(/^[^:]*:\s*/, '').replace(/^./, (c) => c.toUpperCase()) : name;
-    return `<button class="way-on" data-way="${to}"${why ? ' aria-disabled="true"' : ''} title="${esc(why ?? PLACE_SAYS[to])}">${icon(to)}<span>${esc(says)}</span>${why ? '' : '<i aria-hidden="true">›</i>'}</button>`;
+    const says = why
+      ? esc(why.replace(/^[^:]*:\s*/, '').replace(/^./, (c) => c.toUpperCase()))
+      : short === name
+        ? esc(name)
+        : `<b class="way-long">${esc(name)}</b><b class="way-short">${esc(short)}</b>`;
+    return `<button class="way-on" data-way="${to}"${why ? ' aria-disabled="true"' : ''} title="${esc(why ?? PLACE_SAYS[to])}">${icon(to)}<span>${says}</span>${why ? '' : '<i aria-hidden="true">›</i>'}</button>`;
   };
   // (from the gallery the way is to the site; a flight kept by hand can be taken up from here too, and only then is that way there)
   nav.innerHTML =
     here === 'gallery'
-      ? `${on('site', 'Go to the launch site')}${lacks(flight, 'fly') ? '' : on('fly', 'Resume').replace('data-way=', 'data-kept-only data-way=')}`
+      ? `${on('site', 'Go to the launch site', 'Launch site')}${lacks(flight, 'fly') ? '' : on('fly', 'Resume').replace('data-way=', 'data-kept-only data-way=')}`
       : `${back('gallery')}${back('site')}${on('fly', 'Launch')}`;
   nav.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-way]');
-    if (b && b.getAttribute('aria-disabled') !== 'true') go(b.dataset.way as Place);
+    if (!b) return;
+    if (b.getAttribute('aria-disabled') !== 'true') return go(b.dataset.way as Place);
+    // (a way not there yet says why where the passing notes are, for a finger that cannot point at its title)
+    const notes = nav.closest('#gallery, #ui')?.querySelector<HTMLElement>('.notes');
+    const why = lacks(flight, b.dataset.way as Place);
+    if (notes && why) sayIn(notes, PLACE_NAME[b.dataset.way as Place], why.replace(/^[^:]*:\s*/, '').replace(/^./, (c) => c.toUpperCase()));
   });
   // (at the site the ways are back to the gallery and on to the launch; flying, back to the site or the gallery)
   nav.at = (place) => {
@@ -126,74 +141,64 @@ export function nextStep(flight: Flight, here: 'gallery' | 'site', go: (to: Plac
     paintKept(nav);
   };
   nav.at(here);
+  fitWays(nav, scope);
   return nav;
 }
 
 /**
- * The places as a switch: the same three, in the same order, in the same spot, for every flight
- * and in every place. One the flight does not have yet is there all the same, dimmed, and says why
- * when it is pointed at or pressed. `go` is told a place the flight has that is not this one.
+ * On a phone's top line the ways stand beside the flight's name. Where they do not fit whole, the programme's line under
+ * the name goes first (`tight`), then the way back keeps only its chevron (`tighter`): the way on keeps its words, and the
+ * name its letters as long as it can (fold.css). On a wide page, where the ways are in the title card, neither is set.
  */
-export function placesNav(flight: Flight, here: Place, go: (to: Place) => void, scope: Scope): HTMLElement {
-  const nav = document.createElement('nav');
-  nav.className = 'places';
-  nav.setAttribute('aria-label', 'Places');
-  const button = (place: Place): string => {
-    const why = lacks(flight, place);
-    // ("site" alone where there is no room for more: beside "gallery" and "fly" it can be nothing else)
-    const label = shortName(place);
-    // (on a phone's menu a line under each name says what it is, or why it is not there yet, without the name again: gallery.css)
-    const short = why ? why.replace(/^[^:]*:\s*/, '') : PLACE_SAYS[place].replace(/:.*/, '');
-    const absent = why ? ` aria-disabled="true" data-why="${esc(why)}"` : '';
-    return `<button data-place="${place}" aria-pressed="${place === here}"${absent} data-short="${esc(short.charAt(0).toUpperCase() + short.slice(1))}" title="${esc(why ?? PLACE_SAYS[place])}">${label}</button>`;
+function fitWays(nav: HTMLElement, scope: Scope): void {
+  const fit = (): void => {
+    const title = nav.parentElement;
+    nav.classList.remove('tight', 'tighter');
+    if (!title || !narrow() || getComputedStyle(title).flexDirection !== 'row') return;
+    const size = (sel: string): number => {
+      const el = title.querySelector<HTMLElement>(sel);
+      return el && getComputedStyle(el).display !== 'none' ? el.scrollWidth : 0;
+    };
+    const need = (): number => {
+      const gap = parseFloat(getComputedStyle(title).columnGap) || 0;
+      const kids = [...title.children].filter((c) => getComputedStyle(c).display !== 'none').length;
+      return size(':scope > h1') + size(':scope > .sub') + nav.offsetWidth + gap * Math.max(0, kids - 1) + parseFloat(getComputedStyle(title).paddingLeft);
+    };
+    if (need() <= title.clientWidth) return;
+    nav.classList.add('tight');
+    if (need() > title.clientWidth) nav.classList.add('tighter');
   };
-  // (and, for a page with no room for a title card or crumbs, the way out to the front page: gallery.css shows it there)
-  const out = '<button class="places-home" data-home title="Front page">Flights</button>';
-  // (on a phone the switch is one control that says where you are, and opens to the three: fold.ts)
-  const now = `<button class="places-now" aria-haspopup="true" aria-expanded="false" title="The places of this flight: ${PLACES.map((p) => PLACE_NAME[p]).join(', ')}"><span>${shortName(here)}</span><i class="chevron"></i></button>`;
-  nav.innerHTML = `${now}${out}${PLACES.map(button).join('')}<p role="status" hidden></p>`;
-  fitPlaceName(nav, scope);
-  const says = nav.querySelector('p')!;
-  const toggle = nav.querySelector<HTMLElement>('.places-now')!;
-  const unfold = (open: boolean): void => {
-    nav.classList.toggle('open', open);
-    toggle.setAttribute('aria-expanded', String(open));
-  };
-  toggle.addEventListener('click', () => unfold(!nav.classList.contains('open')));
-  // (open, it shuts on a press anywhere else: it is a menu)
-  scope.on(window, 'pointerdown', (e) => nav.classList.contains('open') && !nav.contains(e.target as Node) && unfold(false), true);
-  let away = 0;
-  nav.addEventListener('click', (e) => {
-    const to = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-place]');
-    if (!to) return;
-    if (!to.dataset.why) unfold(false);
-    // a place that is not built says so where it was asked for, for a few seconds
-    says.hidden = !to.dataset.why;
-    says.textContent = to.dataset.why ?? '';
-    clearTimeout(away);
-    if (to.dataset.why) away = window.setTimeout(() => (says.hidden = true), 4000);
-    else if (to.getAttribute('aria-pressed') !== 'true') go(to.dataset.place as Place);
+  // (its own size changes with the words in it, and the title's with the page)
+  let pending = false;
+  const watch = scope.observer(() => {
+    if (nav.parentElement) watch.observe(nav.parentElement);
+    if (pending) return;
+    pending = true;
+    // (measuring can resize what is watched: done outside the observer's delivery)
+    scope.frame(() => {
+      pending = false;
+      fit();
+    });
   });
-  paintKept(nav);
-  return nav;
+  watch.observe(nav);
 }
 
-/** The flight kept by hand (deck.ts `leave`), as the places' switches say it: its mission time, what it was doing, and the way to end it. Null: none is kept. */
+/** The flight kept by hand (deck.ts `leave`), as the ways between the places say it: its mission time, what it was doing, and the way to end it. Null: none is kept. */
 let keptMark: { at: string; phase: string; end: () => void } | null = null;
 
-/** Say, in every switch of places there is and in those made after, that a flight is kept (or no longer): a mark beside Fly that ends it. */
+/** Say, in every way between the places there is and in those made after, that a flight is kept (or no longer): a mark beside Fly that ends it. */
 export function markKept(at: string | null, end: () => void, phase = 'In flight'): void {
   keptMark = at === null ? null : { at, phase, end };
-  for (const nav of document.querySelectorAll('nav.places, nav.ways')) paintKept(nav);
+  for (const nav of document.querySelectorAll('nav.ways')) paintKept(nav);
 }
 
 function paintKept(nav: Element): void {
   nav.querySelector('.kept-mark')?.remove();
-  const fly = nav.querySelector<HTMLElement>('[data-place=fly], [data-way=fly]');
+  const fly = nav.querySelector<HTMLElement>('[data-way=fly]');
   if (fly?.hasAttribute('data-kept-only')) fly.hidden = keptMark === null;
   fly?.classList.toggle('kept', keptMark !== null);
   // (the way to a kept flight says what it now does)
-  const says = fly?.matches('[data-way]') ? fly.querySelector('span') : null;
+  const says = fly?.querySelector('span');
   if (says && fly?.getAttribute('aria-disabled') !== 'true') says.textContent = keptMark ? 'Resume' : 'Launch';
   if (!fly || !keptMark || fly.hidden) return;
   const mark = document.createElement('button');
@@ -210,57 +215,10 @@ function paintKept(nav: Element): void {
 }
 
 /**
- * "Launch site" is "site" only where the whole name does not fit on the top line beside the flight's name (`short`: fold.css
- * hides the "Launch " in the button and in the menu's list alike, so the one word is used in both). Wherever it fits it is whole.
- */
-function fitPlaceName(nav: HTMLElement, scope: Scope): void {
-  const fit = (): void => {
-    const title = nav.parentElement;
-    const now = nav.querySelector<HTMLElement>('.places-now');
-    nav.classList.remove('short');
-    if (!title || !now || getComputedStyle(now).display === 'none') return;
-    const size = (sel: string): number => {
-      const el = title.querySelector<HTMLElement>(sel);
-      return el && getComputedStyle(el).display !== 'none' ? el.scrollWidth : 0;
-    };
-    const gap = parseFloat(getComputedStyle(title).columnGap) || 0;
-    const kids = [...title.children].filter((c) => getComputedStyle(c).display !== 'none').length;
-    const need =
-      size(':scope > h1') +
-      size(':scope > .sub') +
-      nav.offsetWidth +
-      gap * Math.max(0, kids - 1) +
-      parseFloat(getComputedStyle(title).paddingLeft);
-    if (need > title.clientWidth) nav.classList.add('short');
-  };
-  // (its own size changes with the words in it, and the title's with the page)
-  let pending = false;
-  const watch = scope.observer(() => {
-    if (nav.parentElement) watch.observe(nav.parentElement);
-    if (pending) return;
-    pending = true;
-    // Measuring the full label can resize the observed header. Do that outside observer delivery.
-    scope.frame(() => {
-      pending = false;
-      fit();
-    });
-  });
-  watch.observe(nav);
-}
-
-/**
  * A place's icon and name, with what may go where there is no room for it ("Launch site" is "site" beside "gallery" and
  * "fly"). The icon dims with the name where the flight lacks the place: it is drawn in the name's colour.
  */
 const shortName = (place: Place): string => `${icon(place)}${place === 'site' ? '<i>Launch </i>site' : PLACE_NAME[place]}`;
-
-/** Mark which place a switch is in (the site's shows the launch site or the flight deck). */
-export function markPlace(nav: Element | null, here: Place): void {
-  for (const b of nav?.querySelectorAll<HTMLElement>('[data-place]') ?? [])
-    b.setAttribute('aria-pressed', String(b.dataset.place === here));
-  const now = nav?.querySelector('.places-now span');
-  if (now) now.innerHTML = shortName(here);
-}
 
 /** The way back, as the title card's crumbs say it: the front page, the flight (its gallery), the place. */
 export const crumbs = (flight: Flight, here: Place): string =>
@@ -677,8 +635,7 @@ export class Gallery {
       <div class="notes"></div>
       <div class="tip" hidden><b></b><span></span></div>
       ${CURTAIN}`;
-    this.q('.title .sub').after(placesNav(f, 'gallery', (to) => this.host.go(to), this.scope));
-    this.q('.title .places').after(nextStep(f, 'gallery', (to) => this.host.go(to)));
+    this.q('.title .sub').after(nextStep(f, 'gallery', (to) => this.host.go(to), this.scope));
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-plinth]'))
       b.setAttribute('aria-pressed', String(b.dataset.plinth === this.plinth.id));
     this.fill();
