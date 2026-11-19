@@ -146,7 +146,10 @@ export class Cockpit extends Deck {
     const roles = rolesOf(flight);
     this.vehicle =
       roles?.craft.rigid && flight.flies
-        ? vehicle(flight.plan!, siteFrame(flight.site), flight.site.seaLevel.value, { frame: frameOf(flight) })
+        ? vehicle(flight.plan!, siteFrame(flight.site), flight.site.seaLevel.value, {
+            frame: frameOf(flight),
+            floor: this.atSiteOf(() => this.vehicle!.start().q).floor,
+          })
         : null;
     this.flow = roles ? roles.flow : 0;
     this.mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
@@ -353,6 +356,7 @@ export class Cockpit extends Deck {
     this.hands.clear();
     this.rateChanges = [{ t: 0, out: this.rate }];
     this.unsequenced = this.sequence ? [] : [{ from: Number.NEGATIVE_INFINITY, to: Infinity }];
+    const stands = this.atSiteOf(() => v.start().q);
     this.run = runOf(this.flight, {
       samples: [v.sample(this.state)],
       duration: Infinity,
@@ -363,6 +367,9 @@ export class Cockpit extends Deck {
       out: { drogue: Infinity, main: Infinity },
       sheds: new Sheds(this.flight.plan!, siteFrame(this.flight.site), this.flight.site.seaLevel.value, {
         frame: frameOf(this.flight),
+        site: stands.site,
+        names: stands.names,
+        floor: stands.under,
       }),
     }) as Run & { samples: LiveSample[] };
     this.maxQ = 0;
@@ -455,7 +462,7 @@ export class Cockpit extends Deck {
       // down: the flight is over at this instant, and the clock goes on from it at life's pace for a few seconds more (`AFTER`)
       this.run.duration = state.landing.t;
       // in the sea (sim/afloat.ts): with its hatch blown on the way the sea comes in over the sill at once
-      if (!this.run.afloat) {
+      if (!this.run.afloat && !state.landing.lies) {
         afterwards(this.flight, this.run, { hatch: this.hatchAt });
         const hatch = this.flight.flies?.hatch;
         if (hatch && this.hatchAt <= state.landing.t && this.run.afloat) this.host.say?.(hatch.label, hatch.afloat);
@@ -512,7 +519,29 @@ export class Cockpit extends Deck {
     const released = new Set(state.released.map((r) => r.on));
     const left = new Set(this.flight.flies!.drops.filter((d) => d.on !== undefined && released.has(d.on)).flatMap((d) => d.nodes));
     const met = site.meet(pose(before), pose(state), (node) => left.has(node));
-    return { state: met.r === state.r ? state : { ...state, r: met.r, v: met.v, q: met.q, w: met.w }, hits: met.hits };
+    let next = met.r === state.r ? state : { ...state, r: met.r, v: met.v, q: met.q, w: met.w };
+    // the first blow hard enough breaks parts free, as one from something shed does (sim/shed.ts `ballistic`)
+    const sheds = this.run.sheds!;
+    for (const hit of met.hits) {
+      if (!hit.activeBroken) continue;
+      if (!sheds.broke(hit)) delete hit.activeBroken;
+      else {
+        const parted = v.impactRelease(next);
+        if (parted !== next) {
+          const out = parted.released.at(-1)!;
+          sheds.add(out);
+          sheds.activeReleased = hit.activeReleased = out.on;
+          next = parted;
+        }
+      }
+    }
+    // lying still on what it met, it is down there: as fast as the hardest it struck on the way (sitecontact.ts `Lying`)
+    if (met.rest)
+      next = {
+        ...next,
+        landing: { t: next.t, vertical: met.rest.vertical, horizontal: met.rest.horizontal, ...site.lies(next, next.t), lies: true },
+      };
+    return { state: next, hits: met.hits };
   }
 
   /** A tick has been flown: keep its sample for the scene, and the times of what happened in it. */

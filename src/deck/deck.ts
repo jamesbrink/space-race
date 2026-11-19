@@ -1,6 +1,7 @@
 import type { Impact } from '../sim/contact.ts';
 import type { Quat } from '../sim/rigid.ts';
-import { SiteContact } from '../sim/sitecontact.ts';
+import { floorAt } from '../sim/forces.ts';
+import { floorOver, type Ground, SiteContact } from '../sim/sitecontact.ts';
 import type { SiteWorld } from '../sim/siteworld.ts';
 import type { SolidModel } from '../sim/solids.ts';
 import type { EscapeSweep } from '../sim/launchescape.ts';
@@ -51,7 +52,7 @@ export interface CockpitHost {
    * What stands at the flight's site and the flown model's hull (the baked solids: sim/siteworld.ts, sim/solids.ts), once
    * the page has them; null until then, and then nothing at the site is struck.
    */
-  solids?(): { world: SiteWorld; hull: SolidModel } | null;
+  solids?(): { world: SiteWorld; hull: SolidModel; ground?: Ground | null } | null;
   /** The flight deck has been taken, or left: the page makes way and gives the view to the vehicle. */
   piloting(on: boolean): void;
   /** Something to say across the page: a title and a line (a mechanism worked by hand says where it is sent). */
@@ -282,8 +283,36 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     if (this.siteMade) return this.siteMade;
     const solids = this.pageHost.solids?.();
     if (!solids || !this.flight.site) return null;
-    this.siteMade = new SiteContact(this.flight, solids.world, solids.hull, siteFrame(this.flight.site), frameOf(this.flight), standing());
+    this.siteMade = new SiteContact(
+      this.flight,
+      solids.world,
+      solids.hull,
+      siteFrame(this.flight.site),
+      frameOf(this.flight),
+      standing(),
+      solids.ground ?? null,
+    );
     return this.siteMade;
+  }
+
+  /**
+   * What a flight's shed bodies and its simulators' floors need of the site (sim/shed.ts `ShedOptions`, sitecontact.ts
+   * `floorOver`): the site's surfaces once the page has them, what its pieces are called, and the floor under the land
+   * for what comes down on the land by contact.
+   */
+  protected atSiteOf(standing: () => Quat) {
+    if (!this.flight.site) throw new Error('a flight with no site has none to meet');
+    const site = siteFrame(this.flight.site);
+    const flat = floorAt(site, this.flight.site.seaLevel.value);
+    const contact = () => this.siteContact(standing);
+    return {
+      site: () => contact()?.surfaces ?? null,
+      names: new Map(this.flight.models.flatMap((m) => m.parts.map((p) => [`${m.id}/${p.node}`, p.name] as const))),
+      /** The vehicle's own floor: the land where it lies lower than the pad's level. */
+      floor: floorOver(contact, flat),
+      /** And what it sheds: under the land, which it meets by contact. */
+      under: floorOver(contact, flat, 1),
+    };
   }
 
   protected impact(hit: Impact): void {
