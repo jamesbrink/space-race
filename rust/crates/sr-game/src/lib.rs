@@ -9,6 +9,7 @@ pub mod debrief;
 pub mod diag;
 pub mod flight;
 pub mod hud;
+pub mod navball;
 pub mod options;
 pub mod rig;
 pub mod script;
@@ -71,6 +72,7 @@ pub fn run(options: Options) -> AppExit {
         .insert_resource(if options.reference { Look::Reference } else { Look::Film })
         .insert_resource(options)
         .add_plugins((RenderPlugins, clock::ClockPlugin, stage::StagePlugin, flight::FlightPlugin))
+        .add_plugins(navball::NavballPlugin)
         .add_plugins((
             rig::RigPlugin,
             hud::HudPlugin,

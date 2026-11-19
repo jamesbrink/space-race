@@ -20,10 +20,12 @@ const ALARM: Color = Color::srgb(1.0, 0.72, 0.3);
 /// The structure's strain is called out from this much of its limit.
 const NEAR: f64 = 0.75;
 
-const KEYS: &str = "W S  pitch    A D  yaw    Q E  roll    T  hold the attitude\n\
-Space  the next step    Z X  engine on, off    B  abort    G  as flown (on the pad)\n\
-P  stop the clock    [ ]  slower, faster\n\
-C  camera (1 2 3 4)    L  the grade    I  diagnostics    H  hide these\n\
+const KEYS: &str = "W S  pitch    A D  yaw    Q E  roll\n\
+T  hold the attitude    B  abort\n\
+Space  the next step    Z X  engine on, off\n\
+G  as flown (on the pad)    P  stop the clock\n\
+[ ]  slower, faster    C  camera (1 2 3 4)\n\
+L  the grade    I  diagnostics    H  hide these\n\
 drag  turn    wheel  zoom";
 
 /// Everything the readout draws: what H puts away.
@@ -128,7 +130,9 @@ fn lay(mut commands: Commands, showing: Res<Showing>) {
                 card.spawn((Line::Figures, line(14.0, INK)));
             });
         });
-        page.spawn(panel(corner(Node { bottom: px(14), left: px(14), ..default() }))).with_children(|card| {
+        // (kept narrow: the attitude ball has the middle of the foot)
+        let keys = Node { bottom: px(14), left: px(14), max_width: px(400), ..default() };
+        page.spawn(panel(corner(keys))).with_children(|card| {
             card.spawn((Line::Modes, line(12.0, INK)));
             card.spawn(words(KEYS, 12.0, FAINT));
         });
