@@ -966,10 +966,14 @@ const OVER = /* glsl */ `
       tone += w * info.zw;
     }
     if (uCel > 0.5) {
-      // drawn: the fire in three flat tones by how bright it is, the smoke cut where it is two fifths opaque, in two
+      // drawn: the fire in three flat tones by how bright it is, the smoke cut where it is two fifths opaque, in two;
+      // and where it is thinner than that but still seen (0.15), the same tones as a wash a third opaque. Cut at
+      // two fifths alone, the trail low over the pad, which the real look draws thin and continuous down to the cloud
+      // there, was not drawn at all: an R-7's ended 100 px over its ground cloud in broken pieces (#24)
       float fire = tone.x / uBright, wf = max(fwidth(fire) * 0.7, 1e-3);
       float sa = c.a * step(1e-3, tone.y);   // (the fire takes a little light back too: that is not smoke)
-      float smoke = smoothstep(0.4 - max(fwidth(sa), 1e-3), 0.4 + max(fwidth(sa), 1e-3), sa);
+      float ws = max(fwidth(sa), 1e-3);
+      float smoke = mix(0.35 * smoothstep(0.15 - ws, 0.15 + ws, sa), 1.0, smoothstep(0.4 - ws, 0.4 + ws, sa));
       vec3 grey = mix(uSkyLight * 1.1 + uSunLight * 0.35, uSunLight * 0.95 + uSkyLight, smoothstep(0.55, 0.6, tone.y / max(c.a, 1e-3)));
       vec3 flame = mix(vec3(1.0, 0.48, 0.16) * 1.8, vec3(1.0, 0.82, 0.31) * 3.0, smoothstep(0.9 - wf, 0.9 + wf, fire));
       flame = mix(flame, vec3(1.0, 0.96, 0.86) * 5.0, smoothstep(2.6 - wf, 2.6 + wf, fire));
