@@ -850,11 +850,14 @@ const FIXTURE = (nature) =>
   );
 const FLOW = B.engine.thrust.seaLevel.value / (G0 * B.engine.isp.seaLevel.value);
 
-test('a fixed-thrust engine (the A-7) is on or off: any lever above nothing is full thrust', () => {
+test('a fixed-thrust engine (the A-7) has the game’s range (sim/lever.ts `handRange`): within it the lever, under it off', () => {
   const full = until(whole, whole.start(), { ...HANDS_OFF, throttle: 1 }, 5);
-  const some = until(whole, whole.start(), { ...HANDS_OFF, throttle: 0.3 }, 5);
-  assert.equal(some.throttle, 1, 'it does not throttle');
-  assert.deepEqual(some.r, full.r, 'the same flight');
+  const some = until(whole, whole.start(), { ...HANDS_OFF, throttle: 0.8 }, 5);
+  const none = until(whole, whole.start(), { ...HANDS_OFF, throttle: 0.3 }, 5);
+  assert.equal(full.throttle, 1, 'full: as flown');
+  assert.equal(some.throttle, 0.8, 'eight tenths, which the real engine could not do');
+  assert.ok(some.mass > full.mass, 'and burns less');
+  assert.ok(!none.ignited, 'under the least it is not lit');
   assert.equal(RIGID.engine.kind, 'liquid');
   assert.equal(RIGID.engine.throttle, undefined);
   assert.equal(RIGID.engine.starts, 1);

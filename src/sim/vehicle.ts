@@ -74,6 +74,7 @@
  * a few parts in a thousand, is left out), the tower's centre of mass and inertia are scaled with
  * its weight as the propellant goes, not moved, and the booster is left to itself.
  */
+import { handRange } from './lever.ts';
 import type { MassPart } from '../types.ts';
 import { clamp } from '../util/math.ts';
 import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
@@ -262,6 +263,11 @@ export interface LiveSample extends Sample {
   /** The stack's bending load as a fraction of its limit (sim/loads.ts), and the load across the long axis, g. */
   strain: number;
   lateral: number;
+  /**
+   * Each engine burning off its full setting by a hand's lever, by the plan's id: its throttle, of rated thrust (the fires
+   * are drawn at it: viewer/ascent.ts `fireLevels`). Left out where none is: the record's settings are the plan's own.
+   */
+  throttles?: Readonly<Record<string, number>>;
 }
 
 export type Pilot = (state: VehicleState) => Controls;
@@ -528,9 +534,10 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   /** The fraction of rated thrust the engine gives for a lever at `u`: what its nature allows. */
   const allowed = (u: number): number => {
     if (!(u > 0)) return 0;
-    const range = solid ? undefined : engine.throttle?.range;
+    // (every liquid engine has a hand's lever: its own range, or the game's where it ran at one thrust: lever.ts)
+    const range = handRange(engine);
     if (!range) return 1;
-    return u < range[0] - 1e-12 ? 0 : Math.min(u, range[1]);
+    return u < range.least - 1e-12 ? 0 : Math.min(u, range.most);
   };
   /**
    * The thrust of the spacecraft's motors burning at `at`, N, and how many: each lit on the machine, still aboard, and
@@ -1235,6 +1242,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
         }),
       ],
       rcs: s.rcs,
+      ...(burning(s) && throttleOf(s) < 1 ? { throttles: { [engine.id]: throttleOf(s) } } : {}),
       tanks:
         tanks && !hasLeft(s.craft, roles.booster.id)
           ? tanksLeft((hasLeft(s.craft, roles.tower) ? towerless : whole).fixed + whole.fluid - s.mass)
