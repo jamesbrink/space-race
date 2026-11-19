@@ -60,6 +60,14 @@ export interface Clouds {
  */
 const DRIFT = { x: 0, y: 1e5, z: 0, w: 1e5 };
 export const cloudUniform: THREE.IUniform<typeof DRIFT> = { value: DRIFT };
+
+/**
+ * How much of the day's cloud is drawn, 0 to 1: all of it from where a flight is seen, none from far out, where the
+ * whole Earth is in the frame and its weather that day is not known (clouds.ts `CLOUDS_FROM`, which sets it each
+ * frame). One number for the clouds laid over the frame, for what is drawn under them (overlay.ts) and for their
+ * shadows on the globe (globe.ts), so a cloud and its shadow go together.
+ */
+export const uCloudsLeft: THREE.IUniform<number> = { value: 1 };
 for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uCloudDrift = cloudUniform;
 
 /**

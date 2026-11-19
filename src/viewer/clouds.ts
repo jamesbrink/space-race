@@ -12,6 +12,7 @@ import {
   hazeAboveUniform,
   veilGlow,
   veilLightUniform,
+  uCloudsLeft,
 } from './air.ts';
 import { ATMOSPHERE_COARSE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { billowsData, DETAIL_SIDE, detailData, NOISE } from './cloudnoise.ts';
@@ -1318,8 +1319,9 @@ const composite = (over: string) => /* glsl */ `
   ${over}
   in vec2 vUv;
   out vec4 oColour;
+  uniform float uCloudsLeft;
   void main() {
-    oColour = cloudsOver(vUv);
+    oColour = cloudsOver(vUv) * uCloudsLeft;
     if (oColour.a <= 0.0) discard;
   }`;
 
@@ -1423,6 +1425,10 @@ export class DepthMark extends Pass {
  * adopted them (`adopt`). It goes after the ink; `mark` goes straight after the scene. Does nothing
  * where no air with clouds is installed (air.ts) or the scene has no haze (a studio, orbit).
  */
+/** The eye's height, m, from which the day's cloud begins to be let go, and by which it is gone (`CloudPass.render`): the whole Earth seen from far out has none. */
+export const CLOUDS_FROM = 1_000_000;
+export const CLOUDS_TO = 2_500_000;
+
 export class CloudPass extends Pass {
   readonly mark = new DepthMark();
   /** The cel look: cut at half opacity, two flat tones. */
@@ -1537,6 +1543,7 @@ export class CloudPass extends Pass {
     tVeilDepth: { value: this.veil.depthTexture },
     uVeils: { value: 0 },
     uClouds: { value: 0 },
+    uCloudsLeft,
     uEyeXZ: { value: new THREE.Vector2() },
     uAbove: { value: 0 },
     uVeilLeft: { value: 1 },
@@ -1606,9 +1613,9 @@ export class CloudPass extends Pass {
    * half opaque), whether any was laid, and the look: for what is drawn over the finished frame, which the cloud in front
    * of it hides (overlay.ts `cloudAhead`).
    */
-  laid(): { cloud: THREE.Texture | null; info: THREE.Texture | null; on: boolean; cel: boolean } {
+  laid(): { cloud: THREE.Texture | null; info: THREE.Texture | null; on: boolean; left: number; cel: boolean } {
     const u = this.uniforms;
-    return { cloud: u.tCloud.value, info: u.tInfo.value, on: u.uClouds.value > 0.5, cel: this.cel };
+    return { cloud: u.tCloud.value, info: u.tInfo.value, on: u.uClouds.value > 0.5, left: u.uCloudsLeft.value, cel: this.cel };
   }
 
   /**
@@ -1666,11 +1673,11 @@ export class CloudPass extends Pass {
       glow = 'if (uBloom > 0.5) gl_FragColor.rgb += texture2D(tBloom, vUv).rgb;';
     const after = material.fragmentShader.includes(glow) ? glow : read;
     material.fragmentShader = material.fragmentShader
-      .replace('varying vec2 vUv;', `in vec2 vUv;\nout highp vec4 oOutput;\n${DEPTH}\n${over}\nuniform float uClouds;`)
+      .replace('varying vec2 vUv;', `in vec2 vUv;\nout highp vec4 oOutput;\n${DEPTH}\n${over}\nuniform float uClouds, uCloudsLeft;`)
       .replace(
         after,
         `${after}
-        if (uClouds > 0.5) { vec4 clouds = cloudsOver(vUv); gl_FragColor.rgb = gl_FragColor.rgb * (1.0 - clouds.a) + clouds.rgb; }`,
+        if (uClouds > 0.5) { vec4 clouds = cloudsOver(vUv) * uCloudsLeft; gl_FragColor.rgb = gl_FragColor.rgb * (1.0 - clouds.a) + clouds.rgb; }`,
       )
       .replaceAll('texture2D(', 'texture(')
       .replaceAll('gl_FragColor', 'oOutput');
@@ -1748,6 +1755,18 @@ export class CloudPass extends Pass {
     const fog = this.scene.fog as THREE.FogExp2 | null;
     this.uniforms.uClouds.value = 0;
     if (!air || !(clouds || sheets) || !fog || !this.mark.texture) return;
+    // The day's weather is the place's: its cloud is drawn as layers over the ground round the site, which from a few
+    // hundred kilometres up is the sky as it was. From far out, where the whole Earth is in the frame, it is a few
+    // layers wrapped round a globe whose weather that day nobody here has read, and is let go: all of it from
+    // `CLOUDS_FROM` m up, none from `CLOUDS_TO`, by the height's logarithm, so nothing of it is cut.
+    {
+      const o = uOrigin.value;
+      const y = this.camera.position.y + o.y - (air.base - EARTH);
+      const height = Math.hypot(this.camera.position.x + o.x, y, this.camera.position.z + o.z) - EARTH;
+      const k = THREE.MathUtils.clamp(Math.log(Math.max(height, 1) / CLOUDS_FROM) / Math.log(CLOUDS_TO / CLOUDS_FROM), 0, 1);
+      this.uniforms.uCloudsLeft.value = 1 - k * k * (3 - 2 * k);
+      if (k >= 1) return;
+    }
     if (this.dressed && this.dressedFor !== air.day) this.forget(renderer);
     this.dress(air.day);
     this.fit(renderer, readBuffer);
