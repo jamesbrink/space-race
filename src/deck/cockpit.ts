@@ -5,6 +5,7 @@ import { handRange } from '../sim/lever.ts';
 import { standing } from '../sim/loads.ts';
 import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
 import { MISSES } from '../sim/misses.ts';
+import { programmeAxis } from '../sim/predict.ts';
 import type { EventDef } from '../sim/plan.ts';
 import { afterwards, blownAloft, grown, keepContact, type Run, runOf } from '../sim/run.ts';
 import { type ContactPose, Sheds } from '../sim/shed.ts';
@@ -12,10 +13,25 @@ import type { SiteStrike } from '../sim/sitecontact.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from '../sim/vehicle.ts';
 import { landsOf, verdict } from '../sim/verdict.ts';
 import type { Command, MechanismDef, SitedFlight } from '../types.ts';
-import type { Clock } from '../world/clock.ts';
+import { type Clock, missionTime } from '../world/clock.ts';
 import { frameOf } from '../world/earthframe.ts';
-import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
-import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, GUARD, KEEP, MOST, type ThrottleView, TRIM, TRIM_MOST, tank } from './deck.ts';
+import { angleBetween, DEG, siteFrame, type Vec3 } from '../world/frames.ts';
+import {
+  ABORT_ARMED,
+  type CockpitHost,
+  Deck,
+  type DeckSpec,
+  FINE,
+  GUARD,
+  KEEP,
+  MOST,
+  START,
+  type ThrottleView,
+  TRIM,
+  TRIM_MOST,
+  tank,
+} from './deck.ts';
+import type { NavSample } from './navball.ts';
 import { pack } from './tape.ts';
 
 /**
@@ -121,8 +137,8 @@ export class Cockpit extends Deck {
   private tally = new Tally();
   /** How many of the run's samples are kept: one past them is the head, replaced each frame. */
   private kept = 0;
-  private guidance = true;
-  private sequence = true;
+  private guidance = START.guidance;
+  private sequence = START.sequence;
   /** The capsule's rate command mode, where it has one (types.ts `rcs.rate`): on, the stick asks for rates on the spacecraft alone. */
   private rate = false;
   /** What the hands are asking: axes while keys are held, the plan's events once asked for (each asked every tick until it is done). */
@@ -226,6 +242,18 @@ export class Cockpit extends Deck {
       );
   }
 
+  /**
+   * The flight director: the record's tilt programme now (leaned by the trim while guidance flies it), on the pad and while
+   * the booster burns: what the mission intended, to be flown by hand.
+   */
+  override director(s: NavSample): Vec3 | null {
+    const st = this.state;
+    const v = this.vehicle;
+    if (!v || !st || st.abortAt !== null || hasLeft(st.craft, this.roles.booster.id)) return null;
+    if (!(s.powered || !st.ignited)) return null;
+    return programmeAxis(v, s.t, this.guidance ? this.trim : { pitch: 0, yaw: 0 });
+  }
+
   /** What the lever works: the booster's engine while it is aboard, from the live state (or the sample looked back at). */
   protected override throttled(): ThrottleView | null {
     const s = this.state;
@@ -253,6 +281,8 @@ export class Cockpit extends Deck {
       isp: (engine.isp?.vacuum ?? engine.isp?.seaLevel)?.value ?? 0,
       mass: s.mass,
       ...(lit ? {} : { doing }),
+      // (the record's: full from lighting to its cutoff)
+      ...(s.t < roles.cutoff ? { record: 1 } : {}),
       ...(s.abortAt !== null ? { not: 'aborted: the lever is let go' } : {}),
     };
   }
@@ -288,9 +318,16 @@ export class Cockpit extends Deck {
     if (!this.vehicle || this.on) return;
     this.opened();
     if (this.keeping) this.resume();
-    else this.fresh();
+    else {
+      this.switches({}); // (each entry by hand: `START`)
+      this.fresh();
+    }
   }
 
+  /** Either switch off: the flight is the hands' in that part. */
+  private get byHandNow(): boolean {
+    return !this.guidance || !this.sequence;
+  }
   /** Taken over: guidance or the sequencer off, or a hand to the controls (the stick, a key of the six, the abort). */
   protected get byHand(): boolean {
     return !this.guidance || !this.sequence || this.touched;
@@ -332,8 +369,8 @@ export class Cockpit extends Deck {
   }
   protected switches(to?: Record<string, boolean>): Record<string, boolean> {
     if (to) {
-      this.guidance = to.guidance ?? true;
-      this.sequence = to.sequence ?? true;
+      this.guidance = to.guidance ?? START.guidance;
+      this.sequence = to.sequence ?? START.sequence;
       this.rate = to.rate ?? false;
     }
     return { guidance: this.guidance, sequence: this.sequence, rate: this.rate };
@@ -389,14 +426,15 @@ export class Cockpit extends Deck {
       roll: this.guidance,
       trim: () => this.trim,
     });
-    // (a key is all or nothing; a finger's stick is as far as it is pushed)
-    const stick = (plus: string, minus: string, finger: number): number =>
-      Math.max(-1, Math.min(1, Number(this.held.has(plus)) - Number(this.held.has(minus)) + finger));
+    // (a key is all or nothing, at `FINE` of full throw on a booster flown by hand; a finger's stick is as far as it is pushed)
+    const stick = (plus: string, minus: string, finger: number, fine: number): number =>
+      Math.max(-1, Math.min(1, fine * (Number(this.held.has(plus)) - Number(this.held.has(minus))) + finger));
     return (s) => {
       // W tips the nose down the range and S back; A swings it left of the azimuth; E rolls right
-      const pitch = stick('w', 's', this.finger.pitch);
-      const yaw = stick('a', 'd', this.finger.yaw);
-      const roll = stick('e', 'q', this.finger.roll);
+      const fine = !this.guidance && !hasLeft(s.craft, this.roles.booster.id) ? FINE : 1;
+      const pitch = stick('w', 's', this.finger.pitch, fine);
+      const yaw = stick('a', 'd', this.finger.yaw, fine);
+      const roll = stick('e', 'q', this.finger.roll, fine);
       // On the booster with guidance on, the stick leans the programme the platform holds (TRIM a second) and the
       // platform does the steering: the vanes at full throw would turn the stack end over end in four seconds.
       // Otherwise (guidance off, or the spacecraft alone on its gentle jets) the stick is the control itself.
@@ -996,11 +1034,26 @@ export class Cockpit extends Deck {
     }
     if (state.abortAt !== null && !hasLeft(state.craft, this.roles.tower) && !this.sequence && coming)
       due.push('Tower jettison is due: no parachute comes out past it');
+    // flown by hand, what the record did next and when (from the plan): the parachutes have their heights above
+    if (!this.sequence && !replay && !state.landing && state.ignited && state.abortAt === null && !due.length) {
+      const step = this.next();
+      const at: Partial<Record<Step, number | undefined>> = {
+        cutoff: roles.cutoff,
+        tower: roles.towerJoint?.at?.value,
+        separate: roles.separation.at?.value,
+        retro: roles.retroAt,
+        retropack: roles.packJoint?.at?.value,
+      };
+      const when = step ? at[step] : undefined;
+      if (step && when !== undefined && Number.isFinite(when)) cues.push(`Next: ${STEPS[step].toLowerCase()} at ${missionTime(when)}`);
+    }
     // waiting on the pilot to begin: said, and the button asks (cockpit.css `waiting`)
     const waiting = !state.ignited && state.abortAt === null && !replay;
     if (waiting)
       cues.push(
-        matchMedia('(hover: none), (pointer: coarse)').matches ? 'Ready: Ignition lights the engine' : 'Ready: Space lights the engine',
+        matchMedia('(hover: none), (pointer: coarse)').matches
+          ? `Ready: Ignition lights the engine${this.byHandNow ? ' · by hand: the switches have the record fly it' : ''}`
+          : `Ready: Space lights the engine${this.byHandNow ? ' · by hand: G and B have the record fly it' : ''}`,
       );
     this.root.classList.toggle('waiting', waiting);
     const prompt = this.cells.get('prompt')!;

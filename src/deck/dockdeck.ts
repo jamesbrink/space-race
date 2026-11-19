@@ -9,7 +9,7 @@ import { WGS84_A } from '../world/bodies.ts';
 import { type Clock, missionTime } from '../world/clock.ts';
 import { add, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { elementsOf } from '../world/orbit.ts';
-import { type CockpitHost, Deck } from './deck.ts';
+import { type CockpitHost, Deck, START } from './deck.ts';
 import { pack } from './tape.ts';
 import '../ui/navball.css';
 import { Navball, type NavSample } from './navball.ts';
@@ -51,7 +51,7 @@ export class DockDeck extends Deck<Flight> {
   private faultEnabled = true;
   private inhibitCapture = false;
   private crewInTarget = false;
-  private automatic = true;
+  private automatic = START.sequence;
   private hand = false;
   private tickCount = 0;
   private pulse: Vec3 = [0, 0, 0];
@@ -122,7 +122,7 @@ export class DockDeck extends Deck<Flight> {
   }
   readonly able = true;
   readonly craft = null;
-  private guided = true;
+  private guided = START.guidance;
   get steering() {
     return { guidance: this.guided, sequence: this.automatic, trim: { pitch: 0, yaw: 0 } };
   }
@@ -164,8 +164,8 @@ export class DockDeck extends Deck<Flight> {
   }
   protected switches(to?: Record<string, boolean>) {
     if (to) {
-      this.automatic = to.sequence ?? true;
-      this.guided = to.guidance ?? true;
+      this.automatic = to.sequence ?? START.sequence;
+      this.guided = to.guidance ?? START.guidance;
       this.redock = to.redock ?? false;
       this.rendezvous = to.rendezvous ?? false;
       this.transfer = to.transfer ?? false;
@@ -206,7 +206,12 @@ export class DockDeck extends Deck<Flight> {
     if (this.on) return;
     this.opened();
     if (this.keeping) this.resume();
-    else this.fresh();
+    else {
+      // (each entry by hand, `START`: the scenario's own switches as they were)
+      this.automatic = START.sequence;
+      this.guided = START.guidance;
+      this.fresh();
+    }
   }
   protected fresh() {
     this.clock.pause();

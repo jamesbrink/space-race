@@ -9,7 +9,7 @@ import type { TowerEscape } from '../sim/plan.ts';
 import '../ui/cockpit.css';
 import { prefs } from '../app/prefs.ts';
 import { leftWhen, runs } from '../app/runs.ts';
-import type { Run } from '../sim/run.ts';
+import { recordOf, type Run } from '../sim/run.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import { type HandRange, Lever, NOTCH } from '../sim/lever.ts';
 import type { Command, Flight, SitedFlight } from '../types.ts';
@@ -19,8 +19,9 @@ import { Scope } from '../util/scope.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import { type Clock, missionTime, Clock as Own } from '../world/clock.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
-import { DEG, siteFrame } from '../world/frames.ts';
+import { DEG, siteFrame, type Vec3 } from '../world/frames.ts';
 import { ask } from './ask.ts';
+import type { NavSample } from './navball.ts';
 import { inProgress, type Stake, verdict } from './leaving.ts';
 import { type Entry, type EntryKind, pack, readTape, replay, SAVE, stampOf, type Taped } from './tape.ts';
 
@@ -110,6 +111,8 @@ export interface ThrottleView {
   not?: string;
   /** What the engines are doing when none burns ('not lit', 'cut off', 'out of propellant'): 'not lit' unless given. */
   doing?: string;
+  /** Where the record had the lever at this instant (its throttle curve; 1 where it ran at full): a tick on the slider. */
+  record?: number;
 }
 
 /** What a flight kind puts in the deck when it is built (the rest it fills as it flies). */
@@ -130,6 +133,23 @@ export interface DeckSpec {
   /** The way in's tooltip. */
   enter: string;
 }
+
+/**
+ * How every flight is flown as its deck is taken: by hand. Guidance (G) and the sequencer (B) are off, and the player
+ * lights, steers, throttles, stages, cuts and fires; each switch, turned on, has the record's guidance or its sequence fly
+ * that part for them. Each entry to Fly starts so (nothing remembers it); a kept run resumes with the switches it had. The
+ * launch site's own clock, the idle show and every batch run are still the record's (AGENTS.md: the flight deck).
+ */
+export const START: Readonly<{ guidance: boolean; sequence: boolean }> = { guidance: false, sequence: false };
+
+/**
+ * How far a key held steers a launch vehicle flown by hand, of its full throw: KSP's fine controls. A key is all or
+ * nothing, and at full throw the Redstone's vanes turn the stack end over end in four seconds: a pilot holding the
+ * flight director by keys alone (a degree's deadband, 0.15 s to react) breaks it up by bending at T+49 s at full throw,
+ * and flies it whole to its cutoff at a tenth. The finger's stick asks as far as it is pushed. The game's, not a figure
+ * of any vehicle's: a spacecraft's own jets are worked at their own throw.
+ */
+export const FINE = 0.1;
 
 /** The keys that steer: W S pitch, A D yaw, Q E roll (keys.ts `deck.steer`). Held, each is a hand on its axis. */
 export const STEER = [...keysOf('deck.steer')];
@@ -361,7 +381,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       `<button data-press="${slot('clock.rate', i)}" title="${about} (${capOf(slot('clock.rate', i))})"><kbd>${capOf(slot('clock.rate', i))}</kbd></button>`;
     const rate = (i: number, about: string, label: string) =>
       `<button data-press="${slot('clock.rate', i)}" title="${about} (${capOf(slot('clock.rate', i))})"><kbd>${capOf(slot('clock.rate', i))}</kbd>${label}</button>`;
-    const { steering, events, restart } = spec.labels ?? { steering: 'Steering', events: 'Events', restart: 'Restart as flown' };
+    const { steering, events, restart } = spec.labels ?? { steering: 'Steering', events: 'Events', restart: 'Restart' };
     // The deck is three panels: the navball's (navball.ts puts it in), this one in the middle, the systems on the right.
     root.innerHTML = `
       <section class="deck-main">
@@ -400,7 +420,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
           <button data-do="abort" class="cockpit-abort" title="Abort: the escape the spacecraft had at this instant, while it is on its launch vehicle: press twice (${capsOf('deck.abort').join(' ')}, ${capsOf('deck.abort').join(' ')})">${kbd('deck.abort')}${kbd('deck.abort')}<span data-cell="abort">Abort</span></button>
         </div>
         <p class="deck-foot">
-          <span class="deck-steer for-keys">${hold(pitchDown, 'Pitch the nose downrange')}${hold(pitchUp, 'Pitch the nose back')}<em>pitch</em>${hold(yawLeft, 'Yaw left')}${hold(yawRight, 'Yaw right')}<em>yaw</em>${hold(rollLeft, 'Roll left')}${hold(rollRight, 'Roll right')}<em>roll</em></span>
+          <span class="deck-steer for-keys" title="W S pitch, A D yaw, Q E roll. On a launch vehicle flown by hand a key is a tenth of full throw (fine control); with guidance on it leans the programme">${hold(pitchDown, 'Pitch the nose downrange')}${hold(pitchUp, 'Pitch the nose back')}<em>pitch</em>${hold(yawLeft, 'Yaw left')}${hold(yawRight, 'Yaw right')}<em>yaw</em>${hold(rollLeft, 'Roll left')}${hold(rollRight, 'Roll right')}<em>roll</em></span>
           <span class="for-touch">Stick steers · ⟲ ⟳ roll</span>
           <span class="deck-turn deck-warp for-keys" title="How fast time runs: slower, faster (${capsOf('clock.rate').join(' ')})">${warp(0, 'Time runs slower')}${warp(1, 'Time runs faster')}<em data-cell="warp">1×</em></span>
           <button data-do="keys" aria-expanded="false" title="Every key and control of the flight deck"><span class="for-keys">Keys</span><span class="for-touch">More</span><i class="chevron"></i></button>
@@ -821,6 +841,24 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   }
   /** The lever has moved from `from`: the kind's to give to its engines (and to take the flight over, where that is what it does). */
   protected levered(_from: number): void {}
+  /**
+   * Where the record's guidance would point the nose at a sample on show, or null where it has nothing to say: the
+   * navball's flight-director cue (session.ts gives it to `Navball.target`), shown whether guidance flies or not, so a
+   * hand can fly the mission as intended.
+   */
+  director(_s: NavSample): Vec3 | null {
+    return null;
+  }
+  /**
+   * The record's run, its samples in order of time (sim/run.ts `recordOf`, made once a flight): what the mission intended,
+   * for the predicted path to draw as a reference line beside the way ahead (viewer/path.ts `PathSource.intended`). Empty
+   * for a flight with nothing to fly.
+   */
+  intended(): readonly { t: number; r: Vec3; centre?: Vec3 }[] {
+    const flight = this.flight as Flight & Partial<SitedFlight>;
+    if (!flight.site) return [];
+    return (recordOf(flight as SitedFlight)?.samples ?? []) as readonly { t: number; r: Vec3; centre?: Vec3 }[];
+  }
   /** What the lever works now (`ThrottleView`), or null where there is nothing a lever could work. */
   protected throttled(): ThrottleView | null {
     return null;
@@ -860,18 +898,20 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         : r.real
           ? `The engine throttles ${pct(r.least)} to ${pct(r.most)} % of its rated thrust; under ${pct(r.least)} it is cut`
           : `${pct(r.least)} to ${pct(r.most)} % is the game’s range (${r.confidence}). ${r.source}`;
-    const key = [lever, what, left, tip, at, r?.least].join('|');
+    const record = view.record;
+    const key = [lever, what, left, tip, at, r?.least, record].join('|');
     if (key === this.throttleKey) return;
     this.throttleKey = key;
     this.put('lever', lever);
     const game = r && !r.real ? (r.fixed ? ' · real: fixed thrust' : ' · range: the game’s') : '';
     this.put('lever-engine', `${what}${view.not ? ` · ${view.not}` : game}`);
-    this.put('lever-left', left);
+    this.put('lever-left', `${record !== undefined && record < 0.995 ? `record ${pct(record)} % · ` : ''}${left}`);
     row.title = tip;
     row.classList.toggle('solid', !r);
     row.classList.toggle('cut', cut);
     row.classList.toggle('idle', Boolean(view.not));
     row.style.setProperty('--least', `${(r?.least ?? 0) * 100}%`);
+    row.style.setProperty('--record', record === undefined ? '-10%' : `${record * 100}%`);
   }
 
   /**
@@ -924,7 +964,8 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   get stake(): Stake {
     const over = this.on && this.runOver;
     return {
-      byHand: this.byHand,
+      // (by hand from the start, a run is at stake once it is flown: one still standing on its pad untouched is not)
+      byHand: this.byHand && this.ticks > 0,
       over,
       since: over && this.endedAt !== null ? (performance.now() - this.endedAt) / 1000 : 0,
       saved: !this.unsaved && runs.usable(),
@@ -1199,7 +1240,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       if (what === 'again' || what === 'resume') {
         this.restoring?.stop();
         this.settle(false);
-        this.switches({}); // (on the pad as flown)
+        this.switches({}); // (on the pad, by hand: `START`)
         this.command('again');
         this.sync();
         return;
@@ -1209,7 +1250,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     if (what === 'again' && verdict(this.stake, 'again') === 'ask')
       return void this.question(
         () => {
-          this.switches({}); // (on the pad as flown: the run thrown away, and how it was being flown with it)
+          this.switches({}); // (on the pad by hand, `START`: the run thrown away, and how it was being flown with it)
           this.command('again');
           this.sync();
         },

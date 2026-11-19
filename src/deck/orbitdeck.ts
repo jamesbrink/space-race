@@ -25,6 +25,7 @@ import {
   type Move,
   shipOf,
 } from '../sim/orbital.ts';
+import { skyOf } from '../sim/air.ts';
 import { handRange } from '../sim/lever.ts';
 import { targetAt } from '../sim/orbital-target.ts';
 import { type AbortMode, abortAt, clockAt, eventOf, type FlightPlan, flownByHand, type TowerEscape } from '../sim/plan.ts';
@@ -58,8 +59,10 @@ import {
   flowOf,
   flyOn,
   givenUp,
+  airOf,
   guidanceOf,
   held,
+  lawOf,
   integral,
   movedTo,
   partingAt,
@@ -85,9 +88,9 @@ import type { SitedFlight } from '../types.ts';
 import { is } from '../util/keys.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import { EARTH_SPHERE, G0 } from '../world/bodies.ts';
-import { type Clock, COAST_RATES, RATES } from '../world/clock.ts';
+import { type Clock, COAST_RATES, missionTime, RATES } from '../world/clock.ts';
 import { sunPosition } from '../world/ephemeris.ts';
-import { angleBetween, cross, DEG, dot, length, scale, siteFrame, sub, type Vec3 } from '../world/frames.ts';
+import { angleBetween, cross, DEG, dot, length, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import {
@@ -96,14 +99,17 @@ import {
   Deck,
   type DeckSpec,
   type Figure,
+  FINE,
   GUARD,
   KEEP,
   MOST,
+  START,
   type ThrottleView,
   TRIM,
   TRIM_MOST,
   tank,
 } from './deck.ts';
+import type { NavSample } from './navball.ts';
 import { pack } from './tape.ts';
 
 /**
@@ -160,6 +166,24 @@ const ORBITING: Figure[] = [
   },
   { id: 'period', label: 'Period', unit: 'min', about: 'Once round the orbit now' },
 ];
+/**
+ * Above the air on the launch vehicle, as KSP's: the orbit it would be on were it cut now (its osculating apsides), with
+ * the space-fixed speed, so a hand can fly it to the record's orbit and cut it there.
+ */
+const CLIMBING: Figure[] = [
+  RISING[0]!,
+  ORBITING[1]!,
+  RISING[2]!,
+  { id: 'apogee', label: 'Apogee', unit: 'km', about: 'The highest point of the orbit it would be on were it cut now' },
+  {
+    id: 'perigee',
+    label: 'Perigee',
+    unit: 'km',
+    about: 'The lowest point of the orbit it would be on were it cut now: under the ground, it comes down',
+  },
+];
+/** The height above which the deck shows the orbit going up (`CLIMBING`): where the air's push has fallen away, m. */
+const ABOVE_AIR = 60_000;
 /** A stage's name, short: before its first comma ('Strap-on boosters, Blocks B, V, G, D' is 'Strap-ons'). */
 const short = (name: string) => name.split(',')[0]!.replace('Strap-on boosters', 'Strap-ons');
 /** The record's stages as a plan has them, base first: when each is lit, cut (its own cut's record instant, or its letting go where it has none) and let go, s. */
@@ -202,8 +226,8 @@ export class OrbitDeck extends Deck {
   /** The plan as this flight now has it: the record's own, its burn given up (hands free, nothing fired), or the hand's burn. */
   private planned: FlightPlan | null = null;
   /** How it is flown: the two switches, and how far the hands have leaned the law. */
-  private guidance = true;
-  private sequence = true;
+  private guidance = START.guidance;
+  private sequence = START.sequence;
   private trim = { pitch: 0, yaw: 0 };
   /** When the flight became the user's (0 from the pad), or null while it is the record's. */
   private mine: number | null = null;
@@ -543,7 +567,10 @@ export class OrbitDeck extends Deck {
     if (!this.able || this.on) return;
     this.opened();
     if (this.keeping) this.resume();
-    else this.fresh();
+    else {
+      this.switches({}); // (each entry by hand: `START`)
+      this.fresh();
+    }
   }
 
   /** Taken over: not the record's flight any more (a hand on the ascent, the lock opened, a burn, a descent given). */
@@ -587,8 +614,8 @@ export class OrbitDeck extends Deck {
   }
   protected switches(to?: Record<string, boolean>): Record<string, boolean> {
     if (to) {
-      this.guidance = to.guidance ?? true;
-      this.sequence = to.sequence ?? true;
+      this.guidance = to.guidance ?? START.guidance;
+      this.sequence = to.sequence ?? START.sequence;
       this.options.guidance = this.guidance;
       this.options.sequence = this.sequence;
     }
@@ -1090,7 +1117,7 @@ export class OrbitDeck extends Deck {
   }
 
   /** The next step of the record's sequence this flight has not taken: on the record's run, the next in time; on the user's, the first not done. */
-  private nextStep(): { step: Step; label: string } | null {
+  private nextStep(): { step: Step; label: string; at: number } | null {
     const v = this.vehicleOf();
     if (this.mine === null) return v.sequence.find((k) => k.at > this.clock.t + 1e-9) ?? null;
     const s = this.state;
@@ -1176,8 +1203,9 @@ export class OrbitDeck extends Deck {
     this.options.memo ??= { thetaTurn: null };
     // (the pilot is given the deck's own options, not a copy: the switches thrown after this are read every tick)
     const options = this.options;
+    // (keys at `FINE` of full throw on the launch vehicle flown by hand, as the ballistic deck's)
     options.hands = () => {
-      const p = this.push();
+      const p = this.push(this.guidance ? 1 : FINE);
       return this.guidance ? { pitch: 0, yaw: 0, roll: p.roll } : p;
     };
     options.steps = () => this.asked.splice(0);
@@ -1268,6 +1296,33 @@ export class OrbitDeck extends Deck {
     if (!this.clock.running) this.clock.play(true);
   }
 
+  /** The law's angle as the tangent took over, for the director: kept from the first instant it is asked in that part. */
+  private directorTheta: number | null = null;
+  /** The record's steering law and its air, made once (staged.ts `lawOf`, `airOf`). */
+  private lawNow: { law: ReturnType<typeof lawOf>; air: ReturnType<typeof airOf> } | null = null;
+  /**
+   * The flight director: the attitude the record's steering law asks for at a sample on the launch vehicle (staged.ts
+   * `lawOf`, the axis the live vehicle's guidance steers to, leaned by the trim while it flies), on the pad and while
+   * anything burns, as flown or by hand: what the mission intended.
+   */
+  override director(s: NavSample): Vec3 | null {
+    if (this.ejected || this.aborted || s.t > this.parting || this.ascended || !(s.powered || s.t <= 0)) return null;
+    const plan = this.flight.plan!;
+    this.lawNow ??= {
+      law: lawOf(plan, siteFrame(this.flight.site), this.frame, orbitalFlown(this.flight).ascent.solved),
+      air: airOf(this.flight.site.seaLevel.value, this.frame, skyOf(plan)),
+    };
+    const { law, air } = this.lawNow;
+    const st = { r: s.r, v: s.v };
+    const mode = law.modeAt(s.t);
+    if (mode !== 'tangent') this.directorTheta = null;
+    else this.directorTheta ??= this.options.memo?.thetaTurn ?? law.thetaAt(st, s.t, air(st, s.t).ground);
+    let aim = law.axisAt(st, s.t, mode, air(st, s.t).ground, this.directorTheta ?? 0);
+    if (this.guidance && this.trim.pitch) aim = turn(aboutAxis(law.n, this.trim.pitch), aim);
+    if (this.guidance && this.trim.yaw) aim = turn(aboutAxis(unit(s.r), this.trim.yaw), aim);
+    return aim;
+  }
+
   /** The lever under a burning liquid stage's least: it is asked to be cut (once), whenever it is lit. */
   private leverCuts(s: StagedState, v = this.vehicleOf()): void {
     if (this.lever.at >= 1) return;
@@ -1340,8 +1395,25 @@ export class OrbitDeck extends Deck {
       isp: rated > 0 ? on.reduce((sum, i) => sum + vac(i), 0) / (G0 * rated) : 0,
       mass: s.mass,
       ...(!lit.length && live && Number.isFinite(live.stages[on[0]!]!.from) ? { doing: 'cut off' } : {}),
+      // (the record's setting of the first of them now: its throttle curve, full where it has none)
+      record: stages[on[0]!]!.throttle ? along(stages[on[0]!]!.throttle!, t) : 1,
       ...(this.mine === null && t > 0 ? { not: 'as flown: the lever takes it over' } : {}),
     };
+  }
+
+  /**
+   * When the record had a step and on what (plan.ts: its trigger), for a hand flying it: at its instant, or on reaching its
+   * speed (space-fixed, or its integrator's), or on the record's orbit (the guidance's cut). From the plan, never written.
+   */
+  private whenIntended(next: { step: Step; at: number }): string {
+    const at = `at ${missionTime(next.at)}`;
+    if (next.step.kind !== 'cut') return at;
+    const k = sequenceOf(this.flight.plan!).stages[next.step.stage];
+    if (k?.speed) return `${at}, on ${k.speed.value.toFixed(0)} m/s${k.speed.apparent ? ' on its integrator' : ''}`;
+    const orbit = this.flight.plan!.record?.orbit;
+    if (k?.orbit && orbit)
+      return `${at}, on the record’s orbit: ${(orbit.perigee.value / KM).toFixed(0)} by ${(orbit.apogee.value / KM).toFixed(0)} km`;
+    return at;
   }
 
   /** The control the user has just taken over. */
@@ -2111,9 +2183,9 @@ export class OrbitDeck extends Deck {
   }
 
   /** Which way the hands push, each -1 to 1: the keys held, and the finger's stick and roll laid over them. */
-  private push(): { pitch: number; yaw: number; roll: number } {
+  private push(fine = 1): { pitch: number; yaw: number; roll: number } {
     const axis = (plus: string, minus: string, finger: number) =>
-      Math.max(-1, Math.min(1, Number(this.held.has(plus)) - Number(this.held.has(minus)) + finger));
+      Math.max(-1, Math.min(1, fine * (Number(this.held.has(plus)) - Number(this.held.has(minus))) + finger));
     return { pitch: axis('w', 's', this.finger.pitch), yaw: axis('a', 'd', this.finger.yaw), roll: axis('e', 'q', this.finger.roll) };
   }
 
@@ -2412,9 +2484,10 @@ export class OrbitDeck extends Deck {
     const down = t >= this.run.duration && !broken;
     const alone = t > this.parting && !down && !struck;
     const orbit = el.e < 1;
-    this.figures(alone ? ORBITING : RISING);
+    const high = !alone && !down && s.altitude > ABOVE_AIR;
+    this.figures(alone ? ORBITING : high ? CLIMBING : RISING);
     set('altitude', down ? '0.00' : (Math.max(0, s.altitude) / KM).toFixed(s.altitude < 99_950 ? 2 : 1));
-    set('speed', (alone ? s.speed : t > 0 && !down ? s.groundSpeed : 0).toFixed(0));
+    set('speed', (alone || high ? s.speed : t > 0 && !down ? s.groundSpeed : 0).toFixed(0));
     set('climb', (t > 0 && !down ? s.groundSpeed * Math.sin(s.groundClimb * DEG) : 0).toFixed(0));
     set('g', t > 0 && !down ? s.g.toFixed(2) : '1.00'); // (on the pad it stands on the launch system, and on the ground: one g)
     set('mach', down ? '0.00' : s.mach.toFixed(2));
@@ -2626,7 +2699,7 @@ export class OrbitDeck extends Deck {
         : waiting
           ? this.mine === null
             ? `Ready: ${lights} the engines · as flown until ${takes.replace(' takes it over', ' takes it')}`
-            : `Ready: ${lights} the engines · the flight is yours`
+            : `Ready: ${lights} the engines · by hand: ${touch ? 'the switches have' : 'G and B have'} the record fly it`
           : broken
             ? 'Broken up: the card says by what, against which limit'
             : !alone
@@ -2636,11 +2709,13 @@ export class OrbitDeck extends Deck {
                   : `As flown: ${takes}`
                 : due && step
                   ? `${step.label} is due${hot ? ' · hot staging' : ''}`
-                  : hot
-                    ? 'Next: hot staging, as it flew'
-                    : this.guidance
-                      ? 'Guidance flying · steer to lean its aim'
-                      : 'Hands only · steer while an engine burns'
+                  : !this.sequence && step
+                    ? `Next: ${step.label.charAt(0).toLowerCase()}${step.label.slice(1)} ${this.whenIntended(step)}${hot ? ' · hot staging' : ''}`
+                    : hot
+                      ? 'Next: hot staging, as it flew'
+                      : this.guidance
+                        ? 'Guidance flying · steer to lean its aim'
+                        : 'Hands only · steer while an engine burns'
               : descending && (!auto || this.downMine !== null)
                 ? !descent
                   ? t >= this.over()

@@ -90,7 +90,11 @@ export const KEYS = {
   'work.done': { slots: ['e'], does: 'done', when: 'on foot, working a function by hand' },
   // ---- the flight deck (deck/deck.ts) and its instruments
   'deck.toggle': { slots: ['l'], does: 'fly it yourself', when: 'a site with a flight to fly: in, and out again' },
-  'deck.steer': { slots: ['w', 's', 'a', 'd', 'q', 'e'], does: 'pitch · yaw · roll', when: 'the flight deck, flown by hand' },
+  'deck.steer': {
+    slots: ['w', 's', 'a', 'd', 'q', 'e'],
+    does: 'pitch · yaw · roll',
+    when: 'the flight deck, flown by hand: on a launch vehicle a key is a tenth of full throw (deck.ts `FINE`), the stick as far as pushed',
+  },
   'deck.next': { slots: [' '], does: 'the next event now', when: 'the flight deck' },
   'deck.guidance': { slots: ['g'], does: 'guidance', when: 'the flight deck' },
   'deck.sequence': { slots: ['b'], does: 'sequencer', when: 'the flight deck' },
