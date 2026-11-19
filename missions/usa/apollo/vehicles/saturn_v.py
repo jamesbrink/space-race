@@ -385,7 +385,7 @@ def lunar_impact_radio(iu, white, black, alloy, steel, serial):
     fittings.build(prefix + "BatteryAndRadioFittings", alloy, mount, smooth=False)
 
 
-def build(*, lunar_module=None, adapter_number=None, impact_radio=None):
+def build(*, lunar_module=None, adapter_number=None, impact_radio=None, detailed_aps=False):
     white = material("saturn-white", (0.86, 0.87, 0.83), roughness=0.64)
     black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
     steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
@@ -433,11 +433,16 @@ def build(*, lunar_module=None, adapter_number=None, impact_radio=None):
     third_engine = group("ThirdStageEngine")
     third_engine.location.z = (THIRD_TOP - saturn_ib.SIVB_TOP) * IN
     structure.j2_engine(third_engine, steel, alloy, saturn_ib.J2_EXIT_INNER_RADIUS, BELL_RIM)
-    for i in range(2):
-        a = i * math.pi + math.pi / 2
-        mesh = MeshBuilder()
-        mesh.box((27 * IN, 30 * IN, 59 * IN), Matrix.Translation(radial(u + 6, a, TAPER_TOP + 44)) @ Matrix.Rotation(a, 4, "Z"))
-        mesh.build(f"SIVB_APSPod_{i}", white, third)
+    if detailed_aps:
+        from sivb_aps import propulsion_pods
+
+        propulsion_pods(third, u, TAPER_TOP, white, steel, alloy)
+    else:
+        for i in range(2):
+            a = i * math.pi + math.pi / 2
+            mesh = MeshBuilder()
+            mesh.box((27 * IN, 30 * IN, 59 * IN), Matrix.Translation(radial(u + 6, a, TAPER_TOP + 44)) @ Matrix.Rotation(a, 4, "Z"))
+            mesh.build(f"SIVB_APSPod_{i}", white, third)
 
     first_tanks = group("FirstStageTankStructure")
     second_tanks = group("SecondStageTankStructure")
@@ -540,17 +545,20 @@ def sii_external_equipment(stage_number=7, *, ullage=True):
         cover(f"SII{stage_number}_SystemsTunnel_{i + 1}", stage, angle, [(lo, 8, 5), (hi, 8, 5)], paint)
 
 
-def sic10_retrorockets():
-    """SA-510 flight manual §IV, fig. 4-20: two forward-exhausting motors inside each of fairings A and C."""
+def sic_retrorockets(stage_number):
+    """SA-510 manual fig. 4-20 and AS-511 evaluation §10.6: restore the B and D pairs on S-IC-11."""
     case = material("sic10-retro-case", (0.32, 0.34, 0.29), metallic=0.45, roughness=0.55)
     rim = bpy.data.materials["saturn-machined-alloy"]
     nozzle = bpy.data.materials["saturn-engine-steel"]
     # The case and end fittings are scaled from the figure. The 7.5-degree cant is documented.
-    for fin, azimuth in (("A", -45), ("C", 135)):
+    for i, fin in enumerate("ABCD"):
+        if stage_number == 10 and fin in "BD":
+            continue
+        azimuth = -45 + 90 * i
         pair = group(f"FirstStageRetros{fin}", lineup_enclosed=True)
         pair.rotation_euler.z = math.radians(azimuth)
         for i, lateral in enumerate((-12, 12), 1):
-            prefix = f"SIC10_Retro{fin}{i}_"
+            prefix = f"SIC{stage_number}_Retro{fin}{i}_"
             motor = group(prefix + "Mount", pair)
             motor.location = (205 * IN, lateral * IN, station(100) * IN)
             motor.rotation_euler.y = math.radians(7.5)
