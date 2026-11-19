@@ -41,6 +41,7 @@ const internal = new Set([
   'LMDescentStructure',
   'LMControlPanels',
   'LMStations',
+  'LMHammocks',
   'LMDPSTanks',
   'LMAPSTanks',
   'LMReactionSupply',

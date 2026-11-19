@@ -63,8 +63,8 @@ class Console(InchPanel):
 
 
 def _layout(spacecraft):
-    # CM-107 uses its sister ship’s registered layout until control positions can be resolved individually.
-    if spacecraft in (106, 107):
+    # CM-107 and CM-108 use their sister ship’s registered layout until control positions can be resolved individually.
+    if spacecraft in (106, 107, 108):
         # CM-106 coordinates are rectified to the CM-104 crop. Only the recorded
         # differences replace the common controls. Each call loads fresh data.
         layout = _layout(104)
@@ -271,6 +271,8 @@ def equipment(parent, base, *, spacecraft=101):
     for kind in ("toggle_rows", "rotary_rows"):
         for row in layout[kind]:
             for x in row["xs"]:
+                if spacecraft == 108 and row["id"] == "telemetry" and x in (1512, 1533):
+                    continue  # These two switches are drawn on the flight-specific telemetry power panel.
                 u, v = c.xy(x, row["y"])
                 c.box("SwitchBases", "panel", u, v, 0.74, 0.78, -0.10, 0.14)
                 c.lathe("SwitchNuts", "metal", u, v, [(0, 0.10), (0.21, 0.10), (0.21, 0.30), (0, 0.30)], segs=6)
@@ -365,3 +367,28 @@ def equipment(parent, base, *, spacecraft=101):
     objects = c.flush()
     _validate(parent, base)
     return objects
+
+
+def telemetry_power(parent, base):
+    """Panel 3 lower row, SCE and PMP, as drawn in the Apollo 12 Flight Journal panel diagram."""
+    if not interior():
+        return
+    source = json.loads((FOLDER / "apollo-main-console.json").read_text())
+    c = Console(parent, base, source, _layout(108))
+    c.prefix = "CM108_TelemetryPower"
+    # Use the two existing registered control places in the CM-106 drawing.
+    # The housing and toggle dimensions are estimates. Both toggles are in NORMAL for launch.
+    u, v = c.xy(1512, 736)
+    right, _ = c.xy(1533, 736)
+    middle = (u + right) / 2
+    c.box("Panel", "panel", middle, v, right - u + 0.94, 1.90, -0.12, 0.08)
+    for x, label in ((u, "SCE"), (right, "PMP")):
+        c.lathe("Nuts", "metal", x, v, [(0, 0.10), (0.21, 0.10), (0.21, 0.32), (0, 0.32)], segs=6)
+        lever = c.mesh("Toggle", "metal")
+        f = c.frame(x, v, 0.32)
+        lever.tube(f.translation, f @ Vector((0, 0.25 * IN, 0.43 * IN)), 0.07 * IN, segs=12)
+        c.text(label, x, v + 0.69, 0.12, w=0.08 + PRINT)
+    c.text("NORM", middle, v + 0.44, 0.11, w=0.08 + PRINT)
+    c.text("AUX", middle, v - 0.55, 0.11, w=0.08 + PRINT)
+    c.flush()
+    _validate(parent, base)

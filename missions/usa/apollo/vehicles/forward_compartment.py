@@ -107,3 +107,20 @@ def build(parent, base, *, combined_hatch=False, hatch_setback=0):
             segs=32,
         )
         part.matrix_local = Matrix.Translation(Vector((radius * math.cos(a), radius * math.sin(a), base + 82)) * IN)
+
+
+def recovery_loop(parent, base):
+    """CM-108 single nylon lifting loop, shown stowed in the forward recovery quadrant (estimated)."""
+    if not interior():
+        return
+    web = material("apollo-recovery-nylon", (0.75, 0.70, 0.54), roughness=0.93, double_sided=True)
+    metal = material("apollo-recovery-fittings", (0.26, 0.29, 0.28), metallic=0.6, roughness=0.5)
+    # Two attachment cheeks with the folded sling lying between the drogue canisters.
+    strap, cheeks = MeshBuilder(), MeshBuilder()
+    path = [(19.2, -0.8), (21.7, -1.7), (25.4, -1.7), (26.1, -0.8), (26.1, 0.8), (25.4, 1.7), (21.7, 1.7), (19.2, 0.8)]
+    for x, y in (path[0], path[-1]):
+        cheeks.box((1.2 * IN, 0.6 * IN, 1.2 * IN), Matrix.Translation(Vector((x, y, base + 90.6)) * IN))
+    vertices = [(x * IN, y * IN, (base + z) * IN) for x, y in path for z in (90.2, 91.0)]
+    strap.add(vertices, [(2 * i, 2 * i + 1, 2 * i + 3, 2 * i + 2) for i in range(len(path) - 1)])
+    strap.build("CM108_NylonRecoveryLoop", web, parent, smooth=False)
+    cheeks.build("CM108_RecoveryLoopAnchors", metal, parent)

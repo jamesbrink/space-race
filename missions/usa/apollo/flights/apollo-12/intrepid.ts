@@ -1,0 +1,226 @@
+import type { Part } from '../../../../../src/types.ts';
+import { lower, upper, lunarGallery, lmPort } from '../../vehicles/lunar-gallery.ts';
+const stageParts: [string, string, string, string, string][] = [
+  [
+    'LMPlumeDeflectors',
+    'Four plume deflectors',
+    lower,
+    'Look below each downward-firing jet for a curved shield on a truss.',
+    'The shields protected the descent stage from hot exhaust. At lunar liftoff all four stayed in the Ocean of Storms. The thrusters rose with the ascent stage.',
+  ],
+  [
+    'LMSurfaceEquipment',
+    'MESA and lunar television camera',
+    lower,
+    'The modular equipment stowage assembly folded out beside the ladder.',
+    'Conrad pulled a lanyard from the porch. The rack carried a white Westinghouse color television camera and two sample return boxes. Its zoom lens looked across the ladder for the first steps. Bean later lifted the camera onto a tripod.',
+  ],
+  [
+    'LMScienceBay',
+    'Scientific equipment bay',
+    lower,
+    'Two packages occupied the rear quadrant diagonally opposite the MESA.',
+    'Two pull-out pallets carried the first full Apollo Lunar Surface Experiments Package. One held the central station, seismometer, magnetometer and solar wind spectrometer. The other carried the generator, suprathermal ion detector and tools. The narrow door swung left and the broad door lifted.',
+  ],
+  [
+    'LMFuelCask',
+    'SNAP-27 fuel cask',
+    lower,
+    'A separate cask rode upright outside the experiment bay.',
+    'The astronauts tilted the cradle on the surface to transfer the fuel capsule into the generator. The generator itself travelled inside the scientific equipment bay.',
+  ],
+  [
+    'LMHammocks',
+    'Two crew hammocks',
+    upper,
+    'Conrad and Bean each had a hammock for the rest period between their moonwalks.',
+    'One hammock hung fore and aft and the other crossed the cabin. These rolls show their stowed envelopes. The placement and folds are estimated.',
+  ],
+  [
+    'LMDescentPower',
+    'Four descent batteries',
+    lower,
+    'Four silver-zinc batteries supplied the descent buses.',
+    'The four descent batteries are shown in two pairs. Their locations follow LM-4 (Apollo 10 Mission Report A.2.1). Open the blankets to inspect their cases, covers, terminals and leads. Installed envelopes are estimated.',
+  ],
+  [
+    'LMAscentPower',
+    'Ascent battery bay',
+    upper,
+    'Two silver-zinc batteries, each rated at 296 ampere-hours, travelled with the ascent stage.',
+    'They could share propulsion manoeuvre loads with the descent batteries before staging. The cases, terminals and cabling represent the installation.',
+  ],
+  [
+    'LMDescentConsumables',
+    'Descent water and oxygen stores',
+    lower,
+    'One oxygen vessel and one water vessel remained with the descent stage.',
+    'Water supplied the crew and the cooling system. The vessels and fittings are reconstructed from the mission report system diagrams.',
+  ],
+  [
+    'LMAscentLifeSupport',
+    'Oxygen, water and suit circuit',
+    upper,
+    'Two oxygen tanks and two water tanks stayed with the crew after staging.',
+    'The cabin suit circuit removed moisture and carbon dioxide. The model includes the storage vessels, a suit-circuit assembly, cartridges and ducts.',
+  ],
+  [
+    'LMLandingRadar',
+    'Landing radar antenna',
+    lower,
+    'The antenna looked down from beneath Intrepid’s descent stage.',
+    'Over the Moon this radar measured height above the terrain under Intrepid. Range and velocity measurements updated the guidance computer during powered descent. Its antenna and electronics enclosure are reconstructed.',
+  ],
+  [
+    'LMDescent',
+    'Thermal blankets and outriggers',
+    lower,
+    'The octagonal lower stage carried the whole spacecraft at launch.',
+    'Gold, copper and black blanket panels wrapped the stage. Four outriggers carried its loads into the adapter and supported the deployed legs. Blanket colours and seams are estimated from the lunar-orbit photographs.',
+  ],
+  [
+    'LMPorch',
+    'Forward porch and handrails',
+    lower,
+    'The porch projected over the ladder beneath the forward hatch.',
+    'Twin handrails bordered the platform. Conrad stepped from this platform onto the ladder; Bean followed.',
+  ],
+  [
+    'LMLandingGear',
+    'Landing gear, ladder and probes',
+    lower,
+    'Three probes signalled surface contact. The leg under the ladder had none.',
+    'A ladder ran along the forward primary strut. In the launch stack the four assemblies fold inward beneath the outriggers. Metallic shielding covered the secondary struts. Part of the shield over each deployment truss had been removed for this flight. Hinge positions and illustrated deployment paths are estimated from NASA TN D-6850.',
+  ],
+  [
+    'LMDescentStructure',
+    'Cruciform thrust structure',
+    lower,
+    'Two pairs of beams divided the descent stage into bays.',
+    'The central compartment held the engine. Four neighbouring bays held its propellants. Cut away the blankets or isolate the propulsion system to see the beam layout.',
+  ],
+  [
+    'LMDescentEngine',
+    'Throttleable descent engine',
+    lower,
+    'A short firing lowered Intrepid’s orbit. On the next pass the engine throttled through the descent to the Ocean of Storms.',
+    'Below its gimbal, the insulated chamber flares into a thin crushable nozzle extension. The engine view exposes the chamber jacket, mounting ring, attachments and external fittings. Their local shapes are reconstructed.',
+  ],
+  [
+    'LMDPSTanks',
+    'Descent propellant and helium tanks',
+    lower,
+    'Four tanks fed Intrepid’s descent engine.',
+    'Two held fuel and two held oxidizer. The model includes the helium vessels, tank bands and representative feed and pressurization lines. Routing and tank centres are estimated.',
+  ],
+  [
+    'LMAscent',
+    'Crew compartment and docking tunnel',
+    upper,
+    'Conrad and Bean flew standing up behind two triangular windows.',
+    'A third window above the commander looked up toward the docking target. Yankee Clipper’s probe met the conical drogue in the tunnel atop the midsection.',
+  ],
+  [
+    lmPort.part,
+    'Docking ring and drogue',
+    upper,
+    'Intrepid carried the receiving half of the docking system above its overhead hatch.',
+    'The cone guided Yankee Clipper’s probe into the capture socket. Retraction drew the rings together, and the crew removed the probe and drogue to open the transfer passage.',
+  ],
+  [
+    'LMStations',
+    'Two standing flight stations',
+    upper,
+    'Armrests and restraints held each pilot in position.',
+    'Conrad stood on the left and Bean on the right. The deck, side lockers, armrests, restraints and eye positions are reconstructed. Enter either station to look through the glazing.',
+  ],
+  [
+    'LMControlPanels',
+    'Displays and hand controllers',
+    upper,
+    'Conrad and Bean shared the central guidance keyboard. The computer ran Luminary.',
+    'The instrument boards, attitude displays and hand controllers are static. Panel relief and positions are estimated from the LM handbook.',
+  ],
+  [
+    'LMAscentEngine',
+    'Fixed ascent engine',
+    upper,
+    'A separate engine powered the ascent stage back to Yankee Clipper.',
+    'The bell sits above a recessed blast deflector in the descent deck. As the stages part, the deflector stays below. Its chamber, jacket, mount and external feed fittings leave with the cabin. Its nominal thrust was 3,500 lbf.',
+  ],
+  [
+    'LMAPSTanks',
+    'Ascent propellant and helium tanks',
+    upper,
+    'Two spherical tanks supplied the pressure-fed ascent engine.',
+    'One held fuel and the other oxidizer. Two smaller helium vessels supplied pressurization. Their external envelopes and feed runs are reconstructed.',
+  ],
+  [
+    'LMEquipment',
+    'Attitude thrusters, radar and antennas',
+    upper,
+    'Sixteen thrusters let Intrepid turn and translate independently.',
+    'Four outriggers stand at 45° to the pitch and roll axes. Each cluster carries two opposed vertical jets and two horizontal jets at right angles. The rendezvous radar tracked Yankee Clipper. The 26-inch S-band antenna provided a separate link to Earth.',
+  ],
+  [
+    'LMReactionSupply',
+    'Reaction-control tankage',
+    upper,
+    'Two independent systems supplied the four thruster clusters.',
+    'Each system had a fuel tank, an oxidizer tank and a helium vessel. External envelopes and installed positions are approximate.',
+  ],
+];
+const facts: Record<string, Part['facts']> = {
+  LMFuelCask: [['Cask length × diameter', '23 × 8 in · Apollo 12 press kit pp. 43–44']],
+  LMScienceBay: [['SNAP-27 generator', '18 in tall × 16 in across the fins · Apollo 12 press kit pp. 43–44']],
+  LMDescent: [['Width across flats', '166 in · assumed from LM-3 fig. A.2-2']],
+  LMLandingGear: [
+    ['Pads', '4 × 37 in · Apollo 12 press kit, Lunar Module Landing Gear'],
+    ['Tread radius', '167.57 in · NASA TN D-6850 p. 6'],
+  ],
+  LMDescentEngine: [
+    ['Overall length / exit diameter', 'Approx. 85 / 58 in · NASA engine specifications, table I'],
+    ['Mount', 'Two-axis gimbal · Apollo 12 press kit, Descent Propulsion System'],
+  ],
+  LMAscentEngine: [['Overall length / exit diameter', 'Approx. 51 / 31 in · NASA engine specifications, table I']],
+  LMAscent: [
+    ['Crew compartment', '92 in diameter × 42 in deep · LM handbook, crew compartment; assumed'],
+    ['Forward hatch', '32 in square · LM handbook, crew compartment; assumed'],
+  ],
+};
+
+export { lmPort as intrepidPort };
+export const {
+  model: intrepidModel,
+  stackParts: intrepidStackParts,
+  views: intrepidViews,
+} = lunarGallery(
+  'apollo-12',
+  'Intrepid',
+  'LM-6 Intrepid',
+  [
+    {
+      node: 'LM_CommanderStation',
+      label: 'Conrad’s standing station',
+      from: 'LMAscent',
+      open: [107 * 3600 + 54 * 60 + 2, 145 * 3600 + 36 * 60 + 20],
+    },
+    {
+      node: 'LM_PilotStation',
+      label: 'Bean’s standing station',
+      from: 'LMAscent',
+      open: [107 * 3600 + 54 * 60 + 2, 145 * 3600 + 36 * 60 + 20],
+    },
+  ],
+  stageParts,
+  facts,
+  false,
+);
+
+intrepidViews.push(
+  { id: 'deflectors', label: 'Plume deflectors', nodes: ['LMPlumeDeflectors', 'LMEquipment'], isolate: true, from: [1, 0.15, -0.45] },
+  { id: 'mesa', label: 'MESA and TV camera', nodes: ['LMSurfaceEquipment'], onSelect: true, isolate: true, from: [1, 0.5, 0.65] },
+  { id: 'cask', label: 'External fuel cask', nodes: ['LMFuelCask'], onSelect: true, isolate: true, from: [1, 0.5, 0.35] },
+  { id: 'hammocks', label: 'Crew hammocks', nodes: ['LMHammocks'], onSelect: true, isolate: true, from: [1, 0.5, 0.35] },
+  { id: 'seq', label: 'Scientific equipment bay', nodes: ['LMScienceBay'], onSelect: true, isolate: true, from: [-1, 0.62, -0.65] },
+);

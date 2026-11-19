@@ -19,7 +19,7 @@ def tube(mesh, a, b, radius):
     mesh.tube(point(*a), point(*b), radius * IN, segs=12)
 
 
-def ladder(hinge, silver, dark):
+def ladder(hinge, silver, dark, prefix="LM5"):
     """The tube and covered plaque travel with the ladder. AS11-40-5900."""
     carrier, straps, cover = MeshBuilder(), MeshBuilder(), MeshBuilder()
     # Coordinates relative to the +X deployment hinge. Brackets sit by the left rail.
@@ -28,17 +28,17 @@ def ladder(hinge, silver, dark):
     for t in (0.14, 0.85):
         x, y, z = (lo + t * (hi - lo) for lo, hi in zip(a, b))
         tube(straps, (x, y, z), (x, -6.9, z), 1.0)
-    carrier.build("LM5_FlagContainer", silver, group("FlagKit", hinge))
-    straps.build("LM5_FlagBrackets", dark, hinge)
+    carrier.build(f"{prefix}_FlagContainer", silver, group("FlagKit", hinge))
+    straps.build(f"{prefix}_FlagBrackets", dark, hinge)
     # A thin curved cover around the primary strut, behind the rungs.
     for j in range(8):
         angles = [math.radians(45 + 90 * k / 8) for k in (j, j + 1)]
         verts = [point(x + 4 * math.sin(a), 6 * math.cos(a), z) for x, z in [(30, -65), (36, -77)] for a in angles]
         cover.add(verts, [(0, 1, 3, 2)])
-    cover.build("LM5_PlaqueCover", silver, group("CommemorativePlaque", hinge), smooth=False)
+    cover.build(f"{prefix}_PlaqueCover", silver, group("CommemorativePlaque", hinge), smooth=False)
 
 
-def deflectors(parent, alloy, dark):
+def deflectors(parent, alloy, dark, prefix="LM5"):
     """Four truss-mounted shields beneath the downward jets, AS11-44-6574 and Grumman LV-9."""
     for sx, sy in ((1, 1), (-1, 1), (-1, -1), (1, -1)):
         radial = Vector((sx, sy, 0)).normalized()
@@ -57,8 +57,8 @@ def deflectors(parent, alloy, dark):
                 )
             for anchor in ((80, side * 14, 121), (79, side * 17, 105)):
                 tube(stays, vertex(*anchor), vertex(95, side * (7 if anchor[2] == 121 else 10), 149), 0.53)
-        sheet.build(f"LM5_PlumeShield_{sx}_{sy}", dark, parent, smooth=False)
-        stays.build(f"LM5_PlumeTruss_{sx}_{sy}", alloy, parent)
+        sheet.build(f"{prefix}_PlumeShield_{sx}_{sy}", dark, parent, smooth=False)
+        stays.build(f"{prefix}_PlumeTruss_{sx}_{sy}", alloy, parent)
 
 
 def mesa_contents(bay, alloy, ivory, dark):
@@ -75,6 +75,10 @@ def mesa_contents(bay, alloy, ivory, dark):
     lens.build("LM5_LunarTVLens", dark, bay)
     bracket.build("LM5_TVCameraCarrier", alloy, bay)
 
+    sample_cases(bay, alloy, dark)
+
+
+def sample_cases(bay, alloy, dark, prefix="LM5"):
     cases, lids, hardware, seals = (MeshBuilder() for _ in range(4))
     for x in (-12, 12):
         # Two hinged lids with the two latches on their forward edge, S69-31076/31080.
@@ -89,10 +93,10 @@ def mesa_contents(bay, alloy, ivory, dark):
             tube(hardware, (x + dx, 3.25, 76.6), (x + dx, 2.0, 75.7), 0.32)
         tube(hardware, (x - 2.8, 2.0, 75.7), (x + 2.8, 2.0, 75.7), 0.33)
     sample = group("SampleContainers", bay)
-    cases.build("LM5_SampleReturnBoxes", alloy, sample)
-    lids.build("LM5_ContainerLids", alloy, sample)
-    seals.build("LM5_ContainerLidSeals", dark, sample)
-    hardware.build("LM5_ContainerFittings", alloy, sample)
+    cases.build(f"{prefix}_SampleReturnBoxes", alloy, sample)
+    lids.build(f"{prefix}_ContainerLids", alloy, sample)
+    seals.build(f"{prefix}_ContainerLidSeals", dark, sample)
+    hardware.build(f"{prefix}_ContainerFittings", alloy, sample)
 
 
 def science_contents(bay, alloy, ivory, dark):
@@ -137,15 +141,17 @@ def science_contents(bay, alloy, ivory, dark):
     fittings.build("LM5_ReflectorAlignmentHardware", alloy, reflector)
 
 
-def surface_bays(mesa, science, skin, alloy, amber, dark, ivory):
+def surface_bays(mesa, science, skin, alloy, amber, dark, ivory, *, mesa_load=mesa_contents, prefix="LM5"):
     # Quad IV faces forward/right in the LM axes, Quad II diagonally opposite.
     # Local x is along each bay face; y runs into the bay. The cabinet envelopes
     # and supports are estimated from the closed and open mission photographs.
     for owner, sign in ((mesa, 1), (science, -1)):
-        bay = group("LM5_QuadIV" if sign == 1 else "LM5_QuadII", owner)
+        if owner is None:
+            continue
+        bay = group(f"{prefix}_QuadIV" if sign == 1 else f"{prefix}_QuadII", owner)
         bay.location = point(sign * 58.5, -sign * 58.5, 0)
         bay.rotation_euler.z = math.radians(45 if sign == 1 else 225)
-        closure = group("LM5_MESAClosure" if sign == 1 else "LM5_SEQClosure", skin)
+        closure = group(f"{prefix}_MESAClosure" if sign == 1 else f"{prefix}_SEQClosure", skin)
         closure.location = bay.location
         closure.rotation_euler = bay.rotation_euler
         framebars, door = MeshBuilder(), MeshBuilder()
@@ -177,7 +183,7 @@ def surface_bays(mesa, science, skin, alloy, amber, dark, ivory):
             tube(rack, (x, 16, 69), (x, 16, 113), 0.85)
         rack.build(f"{owner.name}_Rack", alloy, bay)
         if sign == 1:
-            mesa_contents(bay, alloy, ivory, dark)
+            mesa_load(bay, alloy, ivory, dark)
         else:
             science_contents(bay, alloy, ivory, dark)
 
