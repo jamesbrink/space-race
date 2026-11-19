@@ -63,7 +63,7 @@ def underseat_bags(seat, mission, m):
         canvas.add(rings[0], [tuple(range(12))])
         for i in range(12):
             binding.tube(rings[-1][i], rings[-1][(i + 1) % 12], 0.17 * IN, caps=False)
-        if mission == 16:
+        if mission >= 16:
             # Close the dust cover around the mouth. Subdued edge folds show that it is fabric.
             lip = rim(22.82, 6.86, 8.48)
             crown = rim(22.98, 6.1, 7.85)
@@ -72,7 +72,7 @@ def underseat_bags(seat, mission, m):
                 straps.ribbon([point(-4.12, cy + y, 23.11), point(-3.47, cy + y, 22.89), point(-3.47, cy + y, 21.88)], (0, 1, 0), 0.85 * IN)
     canvas.build("LRV_UnderseatStowage", m["web"], bags)
     binding.build("LRV_BagSeams", m["belt"], bags)
-    if mission == 16:
+    if mission >= 16:
         lids.build("LRV_StowageDustCovers", m["ivory"], bags)
         straps.build("LRV_StowageTabs", m["belt"], bags)
 
@@ -117,7 +117,7 @@ def seats(mission, m):
             1.45 * IN,
         )
         box(buckles, (-7.8, cy + 2.45, 24.60), (1.95, 1.70, 0.26))
-        if mission == 16:
+        if mission >= 16:
             # Over-centre tightening lever on the revised restraint (MSC-07230 A.3.2e).
             for y in (cy + 1.97, cy + 2.93):
                 tube(buckles, (-8.24, y, 24.6), (-7.42, y, 25.02), 0.105)
@@ -151,7 +151,7 @@ def batteries(mission, m):
         lid = group(f"LRV_BatteryCover_{number}", part)
         cover = MeshBuilder()
         box(cover, (39.5, y, 28.29), (20.86, 13.10, 0.46))
-        if mission == 16:
+        if mission >= 16:
             # The second flight added reflective tape and hook-and-loop closure to the covers.
             tape = MeshBuilder()
             # Subdivide the top skin so the silver tape is part of the surface it covers.
@@ -295,7 +295,7 @@ def build(mission):
         )
     }
     chassis(m)
-    build_wheels(m)
+    build_wheels(m, mission)
     seats(mission, m)
     batteries(mission, m)
     controls(m)
