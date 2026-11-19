@@ -4,7 +4,7 @@ import { emblem, flag, icon } from './icons.ts';
 import { logo } from './logo.ts';
 import type { Flight } from '../types.ts';
 import { esc } from '../util/dom.ts';
-import { is, which } from '../util/keys.ts';
+import { doesOf, is, kbd, which } from '../util/keys.ts';
 import { runs } from '../app/runs.ts';
 import { missionTime } from '../world/clock.ts';
 
@@ -79,12 +79,12 @@ export class Title {
           </div>
           <nav class="title-menu" aria-label="Main menu">
             ${kept && keptNote ? item('▸', `class="resume" data-resume="${esc(kept.id)}"`, icon('fly'), 'Continue', `${esc(kept.callsign)} · ${esc(keptNote.phase)} at ${missionTime(keptNote.t)}`, 'In flight') : ''}
-            ${item('01', 'data-nation="" aria-pressed="true"', icon('fly'), 'All missions', '', `${this.flown.length} flights`)}
+            ${item('01', 'data-nation="" aria-pressed="true"', '', 'All missions', '', `${this.flown.length} flights`)}
             ${ordered.map(([key, n], i) => item(String(i + 2).padStart(2, '0'), `data-nation="${esc(key)}" aria-pressed="false"`, flag(key), esc(n.name), '', `${n.n} flights`)).join('')}
             ${lineup && built > 1 ? item(String(ordered.length + 2).padStart(2, '0'), 'data-lineup', icon('lineup'), 'Explore', 'Every vehicle side by side, to scale', `${built} vehicles`) : ''}
           </nav>
           ${document.fullscreenEnabled ? '<p class="title-set"><button class="switch" data-full aria-pressed="false">Full screen</button></p>' : ''}
-          <p class="title-keys"><span><kbd>↑</kbd><kbd>↓</kbd>Choose</span><span><kbd>→</kbd>Missions</span><span><kbd>Enter</kbd>Go</span></p>
+          <p class="title-keys">${(['front.step', 'front.into', 'front.back'] as const).map((k) => `<span>${kbd(k)}${doesOf(k)}</span>`).join('')}</p>
           <p class="title-foot">Every figure marked documented, assumed, derived or estimated.</p>
           <p class="title-rights">Copyright © 2026 James Brink</p>
         </div>
@@ -106,10 +106,10 @@ export class Title {
           </nav>
           <nav class="title-flights" aria-label="Flights">
             ${all
-              .map((f, i) => {
+              .map((f) => {
                 const { nation, programme } = browseOf(f.id);
                 // (the number, then the programme's emblem: the list reads by programme down its left edge)
-                const n = `<span class="n">${String(i + 1).padStart(2, '0')}</span><span class="mark">${emblem(programme)}</span>`;
+                const n = `<span class="n"></span><span class="mark">${emblem(programme)}</span>`;
                 const day = `<span class="day">${flag(nation)}${esc(f.nation)} · ${date(f.launch)}</span>`;
                 // (one that is to come is a line, not a way in: it says what will be here and when it flew)
                 if (!('callsign' in f))
@@ -139,7 +139,16 @@ export class Title {
       const resumed = on('[data-resume]')?.dataset.resume;
       const by = on('[data-nation], [data-programme]');
       if (on('[data-full]'))
-        void (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
+        void (
+          document.fullscreenElement
+            ? document.exitFullscreen()
+            : document.documentElement
+                .requestFullscreen()
+                // (full screen, the browser would take Escape to leave it before the page heard it: kept for the page, where it can be)
+                .then(() =>
+                  (navigator as Navigator & { keyboard?: { lock?: (keys: string[]) => Promise<void> } }).keyboard?.lock?.(['Escape']),
+                )
+        ).catch(() => {});
       else if (resumed) enter(resumed, 'fly');
       else if (id) enter(id, 'gallery');
       else if (on('[data-lineup]')) lineup?.();
@@ -151,6 +160,10 @@ export class Title {
             : { nation: this.at.nation, programme: by.dataset.programme || null };
         this.narrow(to);
         browse?.to(to);
+        // (where the missions lie under the menu, a nation chosen by hand brings them up into view)
+        const select = this.root.querySelector<HTMLElement>('.title-select')!;
+        if (e.detail > 0 && select.getBoundingClientRect().top > innerHeight * 0.6)
+          select.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     });
     // (the switch says what the window is, however it came to be so: Escape and the browser's own key leave full screen too)
@@ -166,7 +179,10 @@ export class Title {
       if (step >= 0) {
         const all = [...this.root.querySelectorAll<HTMLElement>(group)];
         const i = at ? all.indexOf(at) : -1;
-        all[Math.max(0, Math.min(all.length - 1, i < 0 ? 0 : i + (step ? 1 : -1)))]?.focus();
+        const to = all[Math.max(0, Math.min(all.length - 1, i < 0 ? 0 : i + (step ? 1 : -1)))];
+        to?.focus();
+        // (the cursor is the choice: a nation come to by the arrows narrows the missions as it is come to)
+        if (to?.dataset.nation !== undefined && to.dataset.nation !== (this.at.nation ?? '')) to.click();
         e.preventDefault();
       } else if (is(e, 'front.into') && at?.closest('.title-menu')) {
         this.root.querySelector<HTMLElement>('.title-flights [data-flight]:not([hidden])')?.focus();
@@ -232,7 +248,7 @@ export class Title {
       this.root.hidden = true;
       this.root.classList.remove('leaving');
     };
-    this.root.addEventListener('transitionend', done, { once: true });
+    this.root.addEventListener('transitionend', (e) => e.target === this.root && done());
     setTimeout(done, 700); // if no transition runs (reduced motion), still go
   }
 }

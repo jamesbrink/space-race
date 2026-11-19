@@ -205,7 +205,11 @@ await scenario('steady', async () => {
     const { page, errors, context } = await open('', { phone, size: [width, height] });
     await front(page);
     await page.evaluate(() => {
-      const t = document.querySelector('#title');
+      // (what scrolls: the missions' panel on a wide page, the whole menu on a narrow one)
+      const t =
+        [...document.querySelectorAll('.title-select, .title-home')].find((e) => e.scrollHeight > e.clientHeight + 1) ??
+        document.querySelector('#title');
+      window.__scroller = t;
       const things = [
         t,
         document.querySelector('.title-mark'),
@@ -231,7 +235,11 @@ await scenario('steady', async () => {
       tick();
     });
     // as many strokes as the list is long, and a few more: the list grows with every flight
-    const room = await page.evaluate(() => document.querySelector('#title').scrollHeight - innerHeight);
+    const room = await page.evaluate(() => window.__scroller.scrollHeight - window.__scroller.clientHeight);
+    const over = await page.evaluate(() => {
+      const r = window.__scroller.getBoundingClientRect();
+      return [r.left + r.width / 2, r.top + r.height * 0.7];
+    });
     if (phone) {
       // (a finger dragged, its touches sent one at a time: Chrome on Linux scrolls nothing for a synthesized touch gesture)
       const cdp = await context.newCDPSession(page);
@@ -246,7 +254,7 @@ await scenario('steady', async () => {
         await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
       }
     } else {
-      await page.mouse.move(width / 2, height * 0.7);
+      await page.mouse.move(over[0], over[1]);
       for (const dy of [60, -60])
         for (let i = 0; i < Math.ceil(room / 60) + 10; i++) {
           await page.mouse.wheel(i % 3 ? -2 : 4, dy);
@@ -256,7 +264,7 @@ await scenario('steady', async () => {
     await page.waitForTimeout(300);
     const s = await page.evaluate(() => {
       cancelAnimationFrame(window.__steadyFrame);
-      return { ...window.__steady, room: document.querySelector('#title').scrollHeight - innerHeight };
+      return { ...window.__steady, room: window.__scroller.scrollHeight - window.__scroller.clientHeight };
     });
     const at = `${width}x${height}${phone ? ', by touch' : ''}`;
     check(s.top >= s.room - 1, `${at}: the list scrolls end to end (${s.top.toFixed(0)} of ${s.room} px)`);

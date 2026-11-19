@@ -20,7 +20,7 @@ body.titled #ui { visibility: hidden; }
 @media (prefers-reduced-motion: reduce) { .title-home { transition: none; } #title.leaving .title-home { transform: none; } }
 
 /* the menu's column: the mark, what there is to do, the small print at its foot */
-.title-side { padding-top: clamp(40px, 9vh, 90px); display: grid; grid-template-rows: auto 1fr auto auto auto auto; gap: clamp(14px, 3vh, 30px); min-height: 0; align-content: center; }
+.title-side { padding-top: clamp(40px, 9vh, 90px); overflow-y: auto; scrollbar-width: none; display: grid; grid-template-rows: auto 1fr auto auto auto auto; gap: clamp(14px, 3vh, 30px); min-height: 0; align-content: center; }
 .title-mark { position: relative; width: 100%; }
 .logo { display: block; width: 100%; height: auto; overflow: visible; color: var(--ink); filter: drop-shadow(0 6px 28px rgba(0, 0, 0, 0.6)); }
 .logo-trail { stroke-dasharray: 1; stroke-dashoffset: 1; animation: logo-fly 1.5s cubic-bezier(0.3, 0, 0.2, 1) 0.25s forwards; }
@@ -28,26 +28,27 @@ body.titled #ui { visibility: hidden; }
 .logo-goal { opacity: 0; animation: logo-arrive 0.6s ease 1.5s forwards; }
 @keyframes logo-fly { to { stroke-dashoffset: 0; } }
 @keyframes logo-arrive { to { opacity: 1; } }
-.title-line { margin: clamp(10px, 2.4vh, 20px) 0 0; font: clamp(9px, 1vw, 12px)/1.5 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
+.title-line { margin: clamp(10px, 2.4vh, 20px) 0 0; white-space: nowrap; font: clamp(8px, 0.82vw, 12px)/1.5 var(--mono); letter-spacing: 0.2em; text-transform: uppercase; color: var(--dim); }
 .title-line i { font-style: normal; color: var(--amber); margin: 0 0.5em; }
 
 
 /* the main menu: four things to do, each a line of the menu and not a card; the one pointed at or chosen is lit by its amber edge */
-.title-menu { display: grid; align-content: center; gap: 2px; counter-reset: none; }
+.title-menu { display: grid; align-content: center; gap: 2px; }
 .title-menu button { position: relative; display: grid; grid-template-columns: 26px 30px 1fr auto; align-items: center; gap: 14px; width: 100%; padding: 15px 16px 15px 18px; text-align: left; border-left: 2px solid transparent; border-bottom: 1px solid var(--line);
   transition: background 0.18s, border-color 0.18s; }
 .title-menu button:first-child { border-top: 1px solid var(--line); }
-.title-menu .n { font: 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--faint); }
+.title-menu .n { font: 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--dim); }
 .title-menu .glyph { display: flex; font-size: 22px; color: var(--dim); transition: color 0.18s; }
 .title-menu .glyph .icon { margin: 0; }
 .title-menu .what { grid-column: 3; display: grid; gap: 4px; min-width: 0; }
-.title-menu .what b { font: 600 clamp(20px, 2.1vw, 27px)/1.05 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); transition: color 0.18s, letter-spacing 0.25s; }
+.title-menu .what b { font: 600 clamp(20px, 2.1vw, 27px)/1.05 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); transition: color 0.18s; }
 .title-menu .what em { font-style: normal; font-size: 13px; line-height: 1.35; color: var(--dim); }
-.title-menu .tally { font: 10px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.title-menu .tally { font: 10px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); white-space: nowrap; }
 .title-menu button:is(:hover, :focus-visible, [aria-pressed='true']) { background: linear-gradient(90deg, rgba(255, 196, 107, 0.16), rgba(255, 196, 107, 0)); border-left-color: var(--amber); outline: none; }
 .title-menu button:is(:hover, :focus-visible, [aria-pressed='true']) :is(.glyph, .what b, .n) { color: var(--amber); }
-.title-menu button:is(:hover, :focus-visible, [aria-pressed='true']) .what b { letter-spacing: 0.18em; }
-.title-menu button:is(:hover, :focus-visible, [aria-pressed='true']) .tally { color: var(--dim); }
+.title-menu button:is(:hover, :focus-visible, [aria-pressed='true']) .tally { color: var(--ink); }
+/* (the keyboard's place among them is its own mark: a caret before the line, whichever is chosen) */
+.title-menu button:focus-visible::after { content: '›'; position: absolute; left: -14px; top: 50%; translate: 0 -50%; font: 18px/1 var(--mono); color: var(--amber); }
 /* a kept flight, offered first: its lamp is lit */
 .title-menu .resume { margin-bottom: 10px; border: 1px solid rgba(255, 196, 107, 0.4); border-left: 2px solid var(--amber); border-radius: 2px; }
 .title-menu .resume :is(.n, .tally) { color: var(--amber); }
@@ -63,18 +64,21 @@ body.titled #ui { visibility: hidden; }
 .title-keys span { margin-right: 14px; white-space: nowrap; }
 @media (hover: none) { .title-keys { display: none; } }
 
-/* the flights to choose from, once the menu has been asked for something: a panel of dark glass beside the menu, which scrolls by itself */
-.title-select { align-self: stretch; justify-self: end; width: min(680px, 100%); min-height: 0; display: grid; grid-template-rows: auto auto 1fr; align-content: start; gap: 14px; padding: 20px 20px 0; overflow-y: auto;
+/* the missions to choose from: a panel of dark glass at the far side from the menu, the Earth between them, which scrolls by itself */
+.title-select { align-self: stretch; justify-self: end; width: min(540px, 100%); min-height: 0; display: grid; grid-template-rows: auto auto 1fr; align-content: start; gap: 14px; padding: 20px 20px 0; overflow-y: auto;
   background: rgba(8, 9, 12, 0.72); backdrop-filter: blur(18px) saturate(1.15); -webkit-backdrop-filter: blur(18px) saturate(1.15); border: 1px solid var(--line); border-top: 2px solid var(--amber); border-radius: 3px; animation: title-in 0.28s ease; }
 .title-select[hidden] { display: none; }
 @keyframes title-in { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce) { .title-select { animation: none; } }
 .title-select header { display: grid; gap: 4px; }
-.title-select h2 { display: flex; align-items: center; gap: 12px; margin: 0; font: 600 22px/1.1 var(--sans); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
-.title-select h2 .icon { margin: 0; font-size: 22px; }
-.title-says { grid-column: 1; margin: 0; font-size: 13px; color: var(--dim); }
-.title-back { grid-column: 2; grid-row: 1 / 3; font: 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); padding: 9px 12px; border: 1px solid var(--line); border-radius: 2px; }
-.title-back:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--faint); }
+.title-select h2 { padding: 0; display: flex; align-items: center; gap: 12px; margin: 0; font: 600 22px/1.1 var(--sans); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
+.title-says { margin: 0; font-size: 13px; color: var(--dim); }
 .title-select .title-flights { align-content: start; padding-bottom: 20px; }
+/* (a row in the panel: the name and its line, the way in beside them, and the day and what is built on a line of their own under them) */
+.title-select .title-flights button { grid-template-columns: auto auto 1fr auto; gap: 8px 12px; }
+.title-select .title-flights .to-come { grid-template-columns: auto auto 1fr auto; gap: 2px 12px; }
+.title-select .title-flights .when { grid-column: 3 / -1; grid-row: 2; display: flex; flex-wrap: wrap; align-items: center; justify-items: start; gap: 4px 14px; text-align: left; white-space: normal; }
+.title-select .title-flights .go { grid-column: 4; grid-row: 1; }
 .title-select :is(.title-browse button, .title-flights button, .to-come) { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(20, 21, 26, 0.7); }
 .title-browse { display: grid; gap: 8px; }
 .title-browse:not(:has(p:not([hidden]))) { display: none; }
@@ -90,7 +94,11 @@ body.titled #ui { visibility: hidden; }
   background: var(--title-glass); backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; }
 /* pointed at, a row is lit where it stands (its amber edge thickens inside it): one that moved would slide to and fro under a still pointer as the list scrolled past it */
 .title-flights button:is(:hover, :focus-visible) { background: rgba(28, 24, 16, 0.9); border-color: rgba(255, 196, 107, 0.6); box-shadow: inset 3px 0 0 var(--amber); }
+.title-flights { counter-reset: row; }
+.title-flights > :not([hidden]) { counter-increment: row; }
 .title-flights .n { font: 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--faint); }
+/* (a row's number is its place in the list as it stands, narrowed or not) */
+.title-flights .n::before { content: counter(row, decimal-leading-zero); }
 .title-flights .what { display: grid; gap: 3px; min-width: 0; grid-column: 3; }
 .title-flights .title-lineup .what { grid-column: 2; }
 .title-flights .what b { font: 600 20px/1.15 var(--sans); color: var(--ink); letter-spacing: 0.01em; }
@@ -118,6 +126,12 @@ body.titled #ui { visibility: hidden; }
 .title-foot { margin: 0; font-size: 12px; color: var(--faint); }
 .title-rights { margin: 0; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
 
+/* a short window: the small print makes way, and the column scrolls if it still must */
+@media (max-height: 760px) and (orientation: landscape) and (min-width: 861px) {
+  .title-side { padding-top: clamp(28px, 6vh, 60px); gap: 12px; }
+  .title-menu button { padding-top: 10px; padding-bottom: 10px; }
+  .title-side .title-keys { display: none; }
+}
 /* a narrow or upright window: the picture has the top of the page, then the mark and the menu; a thing chosen puts its flights where the menu was */
 @media (orientation: portrait), (max-width: 860px) {
   .title-home { display: block; overflow-y: auto; padding-top: 38vh; }
@@ -126,11 +140,13 @@ body.titled #ui { visibility: hidden; }
   .title-line { letter-spacing: 0.14em; }
   /* (the small print goes under the missions, which come straight after the menu) */
   .title-side { grid-template-rows: auto auto; }
-  .title-side :is(.title-foot, .title-rights, .title-keys, .title-set) { display: none; }
+  .title-side { overflow: visible; }
+  .title-side .title-keys { display: none; }
+  .title-line { font-size: clamp(8px, 2.4vw, 12px); }
   .title-select { width: 100%; max-width: 680px; margin: 18px auto 0; overflow: visible; padding: 16px 14px 0; }
 }
 @media (max-width: 620px) {
-  .title-menu button { grid-template-columns: 22px 26px 1fr; padding: 14px 12px; gap: 12px; }
+  .title-menu button { grid-template-columns: 22px 38px 1fr; padding: 14px 12px; gap: 12px; }
   .title-menu .tally { grid-column: 3; grid-row: 2; }
   .title-flights button { grid-template-columns: auto auto 1fr auto; padding: 14px; gap: 8px 12px; }
   .title-flights .to-come { grid-template-columns: auto auto 1fr auto; padding: 7px 14px; gap: 2px 12px; }
