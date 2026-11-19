@@ -8,3 +8,6 @@
 #fullscreen[aria-pressed='true'] { color: var(--amber); }
 /* (the front page's menu has the switch itself: the corner's is for coming out, once full) */
 body.titled #fullscreen[aria-pressed='false'] { display: none; }
+/* a narrow page's top line runs corner to corner (the title, the place's switch): no margin there for the button, which would lie on the switch.
+   The front page's menu has full screen's own switch; once full, the browser's own gesture or key comes out */
+@media (max-width: 959px), (max-height: 519px) { #fullscreen { display: none; } }
