@@ -10,7 +10,7 @@
 //
 // COLOR_0 is dropped: on these models it is the cabin's baked lamp shade (src/viewer/shade.ts), not a colour, and
 // an engine that met it would multiply the paint by it.
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { standAtLiftoff } from './pose.mjs';
@@ -97,7 +97,8 @@ function writer() {
 }
 
 function unpack(d, file) {
-  const glb = readFileSync(join(from, file));
+  const native = join(root, 'rust/models', file);
+  const glb = readFileSync(existsSync(native) ? native : join(from, file));
   const jsonLength = glb.readUInt32LE(12);
   const gltf = JSON.parse(glb.subarray(20, 20 + jsonLength).toString('utf8'));
   const bin = glb.subarray(20 + jsonLength + 8);

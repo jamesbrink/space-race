@@ -59,7 +59,7 @@ if (detail && !outDir) {
   process.exit(2);
 }
 if (!args.length) {
-  console.log('usage: build-model.mjs <target> ... | --all   [--only <name>] [--preview <dir>] [--detail <0..1> --out-dir <dir>]');
+  console.log('usage: build-model.mjs <target> ... | --all   [--only <name>] [--preview <dir>] [--detail <level> --out-dir <dir>]');
   console.log(`targets:\n  ${allFlights().join('\n  ')}`);
   process.exit(0);
 }

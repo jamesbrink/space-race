@@ -63,6 +63,7 @@
     "front:moon": "node tools/front-moon.mjs",
     "globe:weather": "node tools/globe-weather.mjs",
     "era5:aloft": "node tools/era5-aloft.mjs",
+    "rust:models:build": "node tools/build-model.mjs mr-3 --only vehicle --detail 2 --out-dir rust/models && node tools/build-model.mjs mr-3 --only pad --detail 2 --out-dir rust/models",
     "rust:models": "node rust/tools/unpack-models.mjs",
     "rust:run": "cd rust && cargo run --release -p space-race --",
     "rust:check": "cd rust && cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings && cargo test --workspace",

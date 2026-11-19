@@ -8,7 +8,8 @@ and flown by a native engine. It is a proof of concept on a long-running branch.
 
 ```sh
 pnpm install          # once: the model unpacker runs the web build's own code
-pnpm rust:models      # once, and after any model is rebuilt: public/models/*.glb -> rust/assets/models/ (not committed)
+pnpm rust:models:build # rebuild the native Freedom 7 vehicle and pad from Blender sources (optional)
+pnpm rust:models      # unpack rust/models/ where present, public/models/ for the rest, into rust/assets/models/
 pnpm rust:run         # build (release) and open the game; arguments after -- go to it
 pnpm rust:check       # format check, clippy with warnings as errors, every test: must pass before a commit
 pnpm rust:fmt         # rewrite files in place
