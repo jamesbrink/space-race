@@ -41,7 +41,7 @@ import { type State, step } from '../world/orbit.ts';
 import { airDrag, skyOf } from './air.ts';
 import { sensed, trapezoid } from './apparent.ts';
 import { act, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
-import { MEAN_RADIUS, RIDING } from './fly.ts';
+import { along as alongCurve, MEAN_RADIUS, RIDING } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { type Strain, strain, UNSTRAINED } from './loads.ts';
 import type { Action, FlightPlan } from './plan.ts';
@@ -64,6 +64,9 @@ import {
   stackOf,
 } from './staged.ts';
 import { hotStage, pressed } from './staging.ts';
+import type { Curve } from '../types.ts';
+import { handRange } from './lever.ts';
+import { nozzleThrust } from './thrust.ts';
 import { type LiveSample, TICK } from './vehicle.ts';
 
 /** Something set off by a hand or the sequencer: a stage lit, cut off or let go, a drop (`ascent.drops`) let go. The last stage's 'separate' parts the spacecraft. */
@@ -77,6 +80,13 @@ export interface StagedControls {
   /** What to set off at this tick: a hand's steps, then the plan's events by id (`FlightPlan.events`: the record's pilot gives these). */
   steps?: readonly Step[];
   events?: readonly string[];
+  /**
+   * The throttle lever, as a hand has it, for each stage (by index; left out, or a stage's left undefined: as it was), of
+   * rated thrust. It is held to the engine's hand range (sim/lever.ts `handRange`; a solid has none and is not touched)
+   * and caps the record's setting (`Stage.throttle`): at 1 the stage burns as the record has it. Cutting by the lever is
+   * the caller's step, as it is a hand's: below the engine's least the deck asks for the stage to be cut.
+   */
+  lever?: readonly (number | undefined)[];
   /**
    * Not a control: the long axis put where this says at every instant of the tick, as staged.ts's law puts it, and the
    * body's turning ignored. Only for holding the live vehicle's forces to the batch run's (tests/stagedlive.test.mjs).
@@ -123,6 +133,11 @@ export interface StagedState {
   said: readonly Said[];
   /** The steering last applied. */
   controls: StagedControls;
+  /**
+   * Each stage's lever as the hands have set it, in order: from each instant, s, the share of rated thrust it is held to
+   * (`StagedControls.lever`). Left out until a hand first moves it: the record's throttle alone.
+   */
+  hand?: readonly (readonly (readonly [t: number, k: number])[])[];
 }
 
 /** The launch vehicle broke up: at `t`, by its bending load, its load along the axis, or a jet fired into the stage below. */
@@ -167,6 +182,9 @@ export interface StagedVehicle {
   thrust(state: StagedState): number;
   /** When a stage lit at `from` runs dry, s: of a tank it shares with others (`Stage.shares`), as they stand in `state`, where it is given. */
   dry(i: number, from: number, state?: StagedState): number;
+  /** Where the hands' lever holds stage `i` now (1: not held), and the stage's throttle at `at` under it, of rated thrust. */
+  lever(state: StagedState, i: number): number;
+  throttle(state: StagedState, i: number, at?: number): number;
   /** The spacecraft's share of its final joint's separation speed for these two masses, m/s. */
   separationSpeed(kept: number, gone: number): number;
   /** The record's sequence of steps, in order, with the instants the record has them (a stage cut on its velocity: its recorded cutoff), each the plan's `event`. */
@@ -197,6 +215,27 @@ const along1 = (x: Vec3, n: Vec3): Quat => {
 };
 const name = (s: string) => s.split(',')[0]!;
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/**
+ * A throttle curve held under `k` from `a` to `b` (no curve: rated thrust throughout), as a curve of its own: each of its
+ * pieces cut where it crosses `k`, so the integral of what is drawn is exact.
+ */
+function capped(curve: Curve | undefined, k: number, a: number, b: number): Curve {
+  const at = (x: number) => (curve ? alongCurve(curve, x) : 1);
+  const xs = [a, ...(curve?.points.map((p) => p[0]).filter((x) => x > a && x < b) ?? []), b];
+  const points: [number, number][] = [];
+  for (let n = 0; n < xs.length; n++) {
+    const x = xs[n]!;
+    const y = at(x);
+    if (n > 0) {
+      const x0 = xs[n - 1]!;
+      const y0 = at(x0);
+      if ((y0 - k) * (y - k) < 0) points.push([x0 + ((x - x0) * (k - y0)) / (y - y0), k]);
+    }
+    points.push([x, Math.min(y, k)]);
+  }
+  return { points, confidence: curve?.confidence ?? 'estimated', source: 'a throttle held under a hand’s lever' };
+}
 
 /** A flight's staged vehicle, ready to be flown. `site`, `frame` and `seaLevel` as staged.ts `ascend`'s; `x` the law's solution, for its plane. */
 export function stagedVehicle(
@@ -252,17 +291,55 @@ export function stagedVehicle(
     ),
   });
 
-  const dry = (i: number, from: number): number => {
+  /** Each stage's engine's lever (sim/lever.ts): null for a solid. */
+  const ranges = stages.map((st) => handRange(st.engine));
+  /** The share of rated thrust stage `i` is held to by the hands at `at` (1: not held), and its throttle there. */
+  const handAt = (hand: readonly (readonly [number, number])[] | undefined, at: number): number => {
+    let k = 1;
+    for (const [t, x] of hand ?? []) {
+      if (t > at) break;
+      k = x;
+    }
+    return k;
+  };
+  const throttleAt = (s: Pick<StagedState, 'hand'>, i: number, at: number): number => {
+    const hand = s.hand?.[i];
+    return hand?.length ? Math.min(stack.throttle(i, at), handAt(hand, at)) : stack.throttle(i, at);
+  };
+  /** One unit of stage `i`'s propellant burned from `from` to `to`, kg: the record's throttle, held under the hands' lever. */
+  const burnedIn = (s: Pick<StagedState, 'hand'>, i: number, from: number, to: number): number => {
+    const hand = s.hand?.[i];
+    if (!hand?.length) return stack.burned(i, from, to);
+    if (to <= from) return 0;
+    const piece = (a: number, b: number, k: number) =>
+      k >= 1 ? stack.burned(i, a, b) : stack.flows[i]! * integral(capped(stages[i]!.throttle, k, a, b), a, b);
+    let sum = 0;
+    let a = from;
+    let k = handAt(hand, from);
+    for (const [t, x] of hand) {
+      if (t <= a) continue;
+      if (t >= to) break;
+      sum += piece(a, t, k);
+      a = t;
+      k = x;
+    }
+    return sum + piece(a, to, k);
+  };
+  const dry = (i: number, from: number, s: Pick<StagedState, 'hand'>): number => {
     const load = full[i]!;
-    const burned = (t: number) => stack.burned(i, from, t);
-    const hi = from + (10 * load) / stack.flows[i]!;
+    const burned = (t: number) => burnedIn(s, i, from, t);
+    const hi = from + (10 * load) / (stack.flows[i]! * Math.min(1, ranges[i]?.least ?? 1));
     return burned(hi) <= load ? Infinity : spentAt(burned, load, from, hi);
   };
   const dries = new Map<string, number>();
-  const dryOf = (i: number, from: number) => {
+  /** (a hand's schedule is a new array at each change: when a stage held by it runs dry is kept by the schedule) */
+  const handDries = new WeakMap<object, Map<string, number>>();
+  const dryOf = (i: number, from: number, s?: Pick<StagedState, 'hand'>) => {
     const key = `${i}|${from}`;
-    let at = dries.get(key);
-    if (at === undefined) dries.set(key, (at = dry(i, from)));
+    const hand = s?.hand?.[i];
+    const cache = hand?.length ? (handDries.get(hand) ?? handDries.set(hand, new Map()).get(hand)!) : dries;
+    let at = cache.get(key);
+    if (at === undefined) cache.set(key, (at = dry(i, from, hand?.length ? s! : {})));
     return at;
   };
   /** Whether a stage draws alone on a tank its own body carries (every stage of a Vostok's): its figures are its own. */
@@ -274,23 +351,24 @@ export function stagedVehicle(
   const sharedDry = (s: StagedState, i: number): number => {
     const shares = stages[i]!.shares;
     const key = shares.map((j) => `${s.stages[j]!.from},${s.stages[j]!.to},${s.stages[j]!.gone}`).join('|');
-    let at = dries.get(key);
+    const handed = shares.some((j) => s.hand?.[j]?.length);
+    const cache = handed ? (handDries.get(s.hand!) ?? handDries.set(s.hand!, new Map()).get(s.hand!)!) : dries;
+    let at = cache.get(key);
     if (at !== undefined) return at;
     const load = full[i]! * stages[i]!.holder.count;
     const lit = shares.filter((j) => Number.isFinite(s.stages[j]!.from));
     const end = (j: number) => Math.min(s.stages[j]!.to, s.stages[j]!.gone);
-    const drawn = (t: number) =>
-      lit.reduce((sum, j) => sum + stages[j]!.count * stack.burned(j, s.stages[j]!.from, Math.min(t, end(j))), 0);
+    const drawn = (t: number) => lit.reduce((sum, j) => sum + stages[j]!.count * burnedIn(s, j, s.stages[j]!.from, Math.min(t, end(j))), 0);
     const from = Math.min(...lit.map((j) => s.stages[j]!.from));
-    const most = lit.reduce((sum, j) => sum + stages[j]!.count * stack.flows[j]!, 0);
+    const most = lit.reduce((sum, j) => sum + stages[j]!.count * stack.flows[j]! * Math.min(1, ranges[j]?.least ?? 1), 0);
     const hi = Math.min(Math.max(...lit.map(end)), from + (10 * load) / most);
     at = !lit.length || drawn(hi) <= load ? Infinity : spentAt(drawn, load, from, hi);
-    dries.set(key, at);
+    cache.set(key, at);
     return at;
   };
   /** When a stage stops: cut, or dry. */
   const stop = (s: StagedState, i: number) =>
-    Math.min(s.stages[i]!.to, own[i] || stages[i]!.shares.length === 1 ? dryOf(i, s.stages[i]!.from) : sharedDry(s, i));
+    Math.min(s.stages[i]!.to, own[i] || stages[i]!.shares.length === 1 ? dryOf(i, s.stages[i]!.from, s) : sharedDry(s, i));
   const burning = (s: StagedState, i: number, at = s.t) => {
     const st = s.stages[i]!;
     return st.gone > at && at >= st.from && at < stop(s, i);
@@ -298,7 +376,7 @@ export function stagedVehicle(
   /** One unit's propellant burned by `at`. */
   const burnedBy = (s: StagedState, i: number, at: number) => {
     const st = s.stages[i]!;
-    return Number.isFinite(st.from) ? stack.burned(i, st.from, Math.min(at, stop(s, i), st.gone)) : 0;
+    return Number.isFinite(st.from) ? burnedIn(s, i, st.from, Math.min(at, stop(s, i), st.gone)) : 0;
   };
   const massAt = (s: StagedState, at: number): number => {
     let m = def.mass.value;
@@ -340,7 +418,9 @@ export function stagedVehicle(
   /** What stage `i` pushes the stack with, N: its thrust in this air, less what a joint below takes of it, with what burns and what is joined as from instant `as`. */
   const pushOf = (s: StagedState, i: number, at: number, pressure: number, as = at): number => {
     if (!burning(s, i, as)) return 0;
-    const f = stack.thrust(i, at, pressure);
+    const f = s.hand?.[i]?.length
+      ? nozzleThrust(stages[i]!.count, stages[i]!.engine.thrust.vacuum.value, throttleAt(s, i, at), stack.areas[i]!, pressure)
+      : stack.thrust(i, at, pressure);
     return firesInto(s, i, as) ? f * hotShare[i]! : f;
   };
   /**
@@ -360,7 +440,7 @@ export function stagedVehicle(
   };
   const vacuumPush = (s: StagedState, i: number, at: number) => {
     if (!burning(s, i, at)) return 0;
-    const f = sensed(stages[i]!.count, stack.throttle(i, at), stages[i]!.engine.thrust.vacuum.value, massAt(s, at));
+    const f = sensed(stages[i]!.count, throttleAt(s, i, at), stages[i]!.engine.thrust.vacuum.value, massAt(s, at));
     return firesInto(s, i, at) ? f * hotShare[i]! : f;
   };
   /** A stage's name as the deck says it ('the core', 'the strap-ons', 'the third stage'); the last's load is 'the spacecraft'. */
@@ -439,7 +519,7 @@ export function stagedVehicle(
 
   /** What the controls set off at this instant: the hands' steps, then the plan's events, each through the machine. */
   const command = (state: StagedState, c: StagedControls): StagedState => {
-    const s: StagedState = { ...state, controls: c };
+    const s: StagedState = leaned({ ...state, controls: c }, c.lever);
     if (s.parted || s.landed || s.broke) return s;
     const loose = s.stages.some((st) => Number.isFinite(st.loose) && !Number.isFinite(st.gone));
     if (!c.steps?.length && !c.events?.length && !loose) return s;
@@ -525,6 +605,25 @@ export function stagedVehicle(
     }
     const settled = settle({ ...s, ...viewOf(craft) }, craft, said);
     return { ...s, craft: settled.craft, ...viewOf(settled.craft), parted: settled.parted, said };
+  };
+
+  /** The lever's settings for each stage written into the hands' schedule, where they differ from what it holds now. */
+  const leaned = (s: StagedState, lever: StagedControls['lever']): StagedState => {
+    if (!lever || s.parted || s.landed || s.broke) return s;
+    let hand = s.hand;
+    stages.forEach((_, i) => {
+      const range = ranges[i];
+      const asked = lever[i];
+      if (!range || asked === undefined || !Number.isFinite(asked)) return;
+      const k = clamp(asked, range.least, range.most);
+      const was = hand?.[i] ?? [];
+      if (handAt(was, s.t) === k) return;
+      const kept = was.length && was[was.length - 1]![0] >= s.t ? was.slice(0, -1) : was;
+      const all: (readonly (readonly [number, number])[])[] = hand ? [...hand] : stages.map(() => []);
+      all[i] = [...kept, [s.t, k] as const];
+      hand = all;
+    });
+    return hand === s.hand ? s : { ...s, hand };
   };
 
   const start = (): StagedState => {
@@ -626,7 +725,7 @@ export function stagedVehicle(
     hots.forEach((hot, i) => {
       if (!hot || !burning(s, i, s.t) || !firesInto(s, i, s.t)) return;
       if (scorch === s.scorch) scorch = [...s.scorch];
-      const dose = scorch[i]! + stack.throttle(i, s.t) * TICK;
+      const dose = scorch[i]! + throttleAt(s, i, s.t) * TICK;
       (scorch as number[])[i] = dose;
       if (dose > hot.endures.value && !broke)
         broke = {
@@ -740,6 +839,9 @@ export function stagedVehicle(
       tanks: null,
       strain: s.strain.load,
       lateral: 0,
+      ...(s.hand
+        ? { throttles: Object.fromEntries(stages.flatMap((st, i) => (burning(s, i) ? [[st.engine.id, throttleAt(s, i, s.t)]] : []))) }
+        : {}),
     };
   };
 
@@ -779,7 +881,9 @@ export function stagedVehicle(
       ),
     burning,
     thrust: thrustNow,
-    dry: (i, from, s) => (s && !own[i] && stages[i]!.shares.length > 1 ? sharedDry(s, i) : dryOf(i, from)),
+    dry: (i, from, s) => (s && !own[i] && stages[i]!.shares.length > 1 ? sharedDry(s, i) : dryOf(i, from, s)),
+    lever: (s, i) => (s.hand?.[i]?.length ? handAt(s.hand[i], s.t) : 1),
+    throttle: (s, i, at = s.t) => throttleAt(s, i, at),
     sequence,
     sample,
     shape,

@@ -17,6 +17,7 @@ import { orbitalRelease } from '../src/sim/run.ts';
 import { apart } from '../src/sim/shed.ts';
 import { aboutAxis, turn } from '../src/sim/rigid.ts';
 import { guided } from '../src/sim/fliers.ts';
+import { handRange } from '../src/sim/lever.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { add, cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
@@ -639,4 +640,50 @@ test('a side-mounted part inherits the motion at its own axis and keeps the stac
   const spin = turn(release.q, release.w);
   assert.ok(length(sub(turn(body.q, body.w), spin)) < 1e-12);
   assert.ok(length(sub(sub(body.v, release.v), cross(spin, sub(body.r, release.r)))) < 1e-12);
+});
+
+test('the throttle lever on the live staged vehicle: full it is the record’s run to the bit; lower it holds every stage under it, burns less and stays aboard longer', () => {
+  /** Fly to `until` from the pad with the lever at `lever` from `from` (undefined: no lever given at all). */
+  const flown = (lever, from = 0, until = 60) => {
+    const v = stagedVehicle(flight.plan, site, dated, sea, x);
+    const inner = stagedPilot(v, x, site, dated, sea, { guidance: true, sequence: true });
+    const pilot = (s) => (lever === undefined || s.t < from ? inner(s) : { ...inner(s), lever: stages.map(() => lever) });
+    let s = v.tick(v.start(), {
+      pitch: 0,
+      yaw: 0,
+      roll: 0,
+      steps: [
+        { kind: 'ignite', stage: 0 },
+        { kind: 'ignite', stage: 1 },
+      ],
+    });
+    while (s.t < until - 1e-9 && !s.parted && !s.broke) s = v.tick(s, pilot);
+    return { v, s };
+  };
+  const none = flown(undefined).s;
+  const full = flown(1).s;
+  assert.equal(full.hand, undefined, 'a lever at full writes nothing');
+  assert.deepEqual([full.r, full.v, full.q, full.apparent], [none.r, none.v, none.q, none.apparent], 'the record’s run, to the last bit');
+  // (held low for long, the stack flies its programme's angles lower in thicker air: at seven tenths from 20 s it breaks up by bending at 83 s)
+  const { v, s: low } = flown(0.7, 20);
+  assert.equal(low.broke, null);
+  assert.ok(
+    low.hand?.every((h) => h.length === 1 && Math.abs(h[0][0] - 20) < 0.02 && h[0][1] === 0.7),
+    `each stage held at seven tenths from 20 s: ${JSON.stringify(low.hand)}`,
+  );
+  assert.ok(v.mass(low) > v.mass(none) + 1000, `less burned: ${v.mass(low).toFixed(0)} kg against ${v.mass(none).toFixed(0)}`);
+  assert.equal(v.throttle(low, 1), Math.min(0.7, v.throttle(none, 1)), 'the core: the record’s setting, held under the lever');
+  // what is left is the integral of what was asked: three tenths of each stage's flow, from the instant it was set to 60 s
+  const at = low.hand[0][0][0];
+  const left = v.left(low).map((k, i) => k - v.left(none)[i]);
+  stages.slice(0, 2).forEach((st, i) => {
+    const want = 0.3 * (60 - at) * st.count * (st.engine.thrust.vacuum.value / (9.80665 * st.engine.isp.vacuum.value));
+    assert.ok(Math.abs(left[i] - want) < 1e-3, `stage ${i}: ${left[i]} kg more left, want ${want}`);
+  });
+  const shy = flown(0.2, 20).s;
+  assert.equal(
+    shy.hand?.[0]?.[0]?.[1],
+    handRange(stages[0].engine).least,
+    'under the least the lever holds at the least: a cut is a step of its own',
+  );
 });
