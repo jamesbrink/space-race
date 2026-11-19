@@ -217,7 +217,7 @@ const grain = async () => {
 
 for (const flight of flights) {
   console.log(`${flight.id}: ${flight.seats.length} seat(s)`);
-  const slug = flight.id.split('/').pop();
+  const slug = [flight.id.split('/').pop(), flight.route.split('/gallery/')[1]].filter(Boolean).join('-');
   // --- 1280 wide: the whole of it ---
   {
     const { page, errors, close } = await open(flight.route, 1280, 800);

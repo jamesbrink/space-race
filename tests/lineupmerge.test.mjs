@@ -303,3 +303,26 @@ test('what is not a plain mesh is kept as it is', () => {
   assert.equal(kept.geometry, line.geometry);
   assert.notEqual(kept.material, line.material);
 });
+
+test('a Lineup window skips only an empty transparency pass', () => {
+  const root = new THREE.Group();
+  const material = new THREE.MeshStandardMaterial({ name: 'glass', side: THREE.DoubleSide, transparent: true });
+  for (const angle of [-Math.PI / 4, Math.PI / 4]) {
+    const mesh = new THREE.Mesh(new THREE.PlaneGeometry(), material);
+    mesh.rotation.y = angle;
+    root.add(mesh);
+  }
+  const [window] = drawn(join(root, null)).children;
+  const camera = new THREE.PerspectiveCamera();
+  for (const [x, z, single] of [
+    [0, 5, true],
+    [0, -5, true],
+    [5, 0, false],
+  ]) {
+    camera.position.set(x, 0, z);
+    window.onBeforeRender(null, null, camera, window.geometry, window.material);
+    assert.equal(window.material.forceSinglePass, single);
+  }
+  window.onBeforeRender(null, null, new THREE.OrthographicCamera(), window.geometry, window.material);
+  assert.equal(window.material.forceSinglePass, false);
+});
