@@ -299,6 +299,19 @@ Top-level nodes in the GLB, bottom to top. These names are the `node` fields in 
 The same GLB also holds the launch vehicle's five nodes: see
 [redstone-mrlv.md](../../vehicles/redstone-mrlv.md).
 
+## Freedom 7 at native detail
+
+From two metres the pressed beads on a shingle have rounded ends, a crown and a flat margin. Daylight catches the
+outside of each dished washer and its screw separately. The seams still follow No. 7's own shingle map. The two
+circular ports have finely divided retaining rings and the periscope door has separate hinge knuckles. The hatch has
+the fastened outer skin and eight internal latches described above. The 70-bolt explosive hatch belongs to No. 11.
+
+The bead form, washers and narrow plates along the recovery cylinder are **estimated** from the shape of the flown
+metal, Smithsonian NASM2021-00161 and -00168. The hatch is missing in -00161. Its outer sheet treatment is **assumed**
+from the adjacent shingles. The May paint, release socket, original window positions and latch arrangement have the
+sources given above. The paint follows the finer sheet surface. No. 7's shared shield, pack, antenna and tower are
+described under “Native exterior” in [the capsule record](../../vehicles/mercury-capsule.md).
+
 ## What the model gets wrong or leaves out
 
 - **The antenna canister's diameter disagrees with the one document that states it.** See above.
@@ -368,9 +381,8 @@ The same GLB also holds the launch vehicle's five nodes: see
   Each porthole and the periscope's screen is also a light: what is outside it is looked at a couple of times a second
   (a picture eight pixels across) and comes in as that colour, scaled by the pane's area and by a factor chosen by eye,
   as the lamps' strength is. It has no shadow and no direction: it lights the wall behind the port as well as before it.
-- **The retropack's straps** run from its sides. They should meet under its centre at one
-  explosive bolt. The motors are not canted toward the centre of mass as the real ones are.
-- **The jettison motor has one nozzle** in the model; it had three.
+- **The web retropack's straps** stop at its sides. The native straps join under its centre, as in SEDR 104 (1959), 8-4. The motors are not canted toward the centre of mass as the real ones are.
+- **The jettison motor** has three outlets at native detail. Their lip diameters and clocking are estimates. The web model has one.
 - **The tower's bracing** (one diagonal per bay) is a simplification.
 - **Lettering is Arial Bold**, not the stencil McDonnell used; "FREEDOM 7" was hand-painted.
 - **The tower leaves on both its rockets, simply.** Hammack and Heberlig (p. 15): at booster cutoff "the

@@ -17,7 +17,8 @@ import math
 
 from mathutils import Matrix, Vector
 
-from srlib import IN, TAU, MeshBuilder, Surf, arc_profile, decal, deg, frame, group, interior, lettering, material, prof
+import srlib
+from srlib import IN, TAU, MeshBuilder, Surf, arc_profile, decal, deg, frame, group, interior, lettering, material, prof, round_sides
 
 BODY_R = 35.0  # 70 in diameter
 # Base to the spacecraft's plane of maximum diameter. Derived: the vehicle is 83.38 ft (1000.56 in)
@@ -118,13 +119,21 @@ def _banded(mb_a: MeshBuilder, mb_b: MeshBuilder, r: float, z0: float, z1: float
     arc = TAU / count
     for q in range(count):
         mb = mb_a if q % 2 == 0 else mb_b
-        mb.lathe(prof([(r, z0), (r, z1)]), max(2, 96 // count), arc=(phase + q * arc, phase + (q + 1) * arc))
+        mb.lathe(prof([(r, z0), (r, z1)]), round_sides(max(2, 96 // count)), arc=(phase + q * arc, phase + (q + 1) * arc))
+
+
+def _skin_rivet(mb, at, normal, radius, height):
+    if not srlib.native():
+        mb.disc(at, normal, radius * IN, height * IN)
+        return
+    head = [(radius, -0.015), (radius, height * 0.8), (radius * 0.82, height), (0, height * 1.08)]
+    mb.lathe(prof(head), 12, matrix=frame(at, normal))
 
 
 def _rivet_ring(mb: MeshBuilder, r: float, z: float, count: int = 96) -> None:
     for i in range(count):
         t = TAU * i / count
-        mb.disc(Vector((r * math.cos(t), r * math.sin(t), z)) * IN, (math.cos(t), math.sin(t), 0), 0.3 * IN, 0.08 * IN)
+        _skin_rivet(mb, Vector((r * math.cos(t), r * math.sin(t), z)) * IN, (math.cos(t), math.sin(t), 0), 0.3, 0.08)
 
 
 def _rivet_lines(mb: MeshBuilder, r: float, z0: float, z1: float, count: int, pitch: float = 3.0) -> None:
@@ -135,7 +144,38 @@ def _rivet_lines(mb: MeshBuilder, r: float, z0: float, z1: float, count: int, pi
         c, s = math.cos(t), math.sin(t)
         for k in range(n + 1):
             z = z0 + (z1 - z0) * k / n
-            mb.disc(Vector((r * c, r * s, z)) * IN, (c, s, 0), 0.24 * IN, 0.07 * IN)
+            _skin_rivet(mb, Vector((r * c, r * s, z)) * IN, (c, s, 0), 0.24, 0.07)
+
+
+def access_cover(cover, rivets, surf, t, z, width, height, depth):
+    """A removable skin panel. Its rolled edge and screw positions are visual estimates (inches)."""
+    if not srlib.native():
+        cover.box((width * IN, height * IN, depth * IN), surf.frame(t, z, 0.0))
+        return
+    # Wrapped to the barrel, with rounded corners and a turned-down edge.
+    outline = []
+    radius = 1.0
+    for sx, sy, start in ((1, 1, 0), (-1, 1, 90), (-1, -1, 180), (1, -1, 270)):
+        for k in range(9):
+            angle = deg(start + k * 90 / 8)
+            outline.append((sx * (width / 2 - radius) + radius * math.cos(angle), sy * (height / 2 - radius) + radius * math.sin(angle)))
+    corners, outline = outline, []
+    for a, b in zip(corners, corners[1:] + corners[:1]):
+        count = max(1, math.ceil(abs(a[0] - b[0]) / 0.7))
+        outline.extend((a[0] + (b[0] - a[0]) * i / count, a[1] + (b[1] - a[1]) * i / count) for i in range(count))
+    # Radial rings keep the broad face curved even between opposite corners.
+    rings = [(k / 12, depth / 2) for k in range(13)] + [(1.01, depth * 0.375), (1.01, -0.1)]
+    cover.grid(
+        lambda i, j: surf.p(t + outline[i][0] * rings[j][0] / BODY_R, z + outline[i][1] * rings[j][0], rings[j][1]),
+        range(len(outline)),
+        range(len(rings)),
+        closed_u=True,
+        flip=True,
+    )
+    for x in (-width / 2 + 0.85, width / 2 - 0.85):
+        for k in range(5):
+            angle = t + x / BODY_R
+            rivets.disc(surf.p(angle, z + (k / 4 - 0.5) * (height - 2), depth / 2), surf.n(angle), 0.19 * IN, 0.07 * IN, 16)
 
 
 def _prism(mb: MeshBuilder, outline, thick_root: float, thick_tip: float, r_root: float, r_tip: float, matrix: Matrix) -> None:
@@ -180,6 +220,30 @@ def _offset(pts, d: float) -> list:
     return out
 
 
+def _root_shield(mb, fasteners, outline, rot):
+    """Sheet-metal guards over the fin root (TM X-53107, 4.8). Estimated hems and screws."""
+    inset = _offset(outline, -0.32)
+    for side in (-1, 1):
+
+        def face_point(r, z, lift):
+            thickness = 2.5 - (r - BODY_R) * 0.35 / 15
+            return rot @ (Vector((r, side * (thickness + lift), z)) * IN)
+
+        verts = [face_point(r, z, 0) for r, z in inset]
+        verts += [face_point(r, z, -0.10) for r, z in outline]
+        verts += [face_point(r, z, -0.28) for r, z in outline]
+        faces = [(0, 1, 2, 3)]
+        for n in (0, 4):
+            for i in range(4):
+                j = (i + 1) % 4
+                faces.append((n + j, n + i, n + 4 + i, n + 4 + j))
+        mb.add(verts, [face[::-1] if side > 0 else face for face in faces])
+        normal = rot.to_3x3() @ Vector((0.35 / 15, side, 0))
+        for r in (BODY_R + 2.2, BODY_R + 12.8):
+            for z in (3.0, 11.0, 18.4):
+                _skin_rivet(fasteners, face_point(r, z, -0.015), normal, 0.25, 0.10)
+
+
 def _fin(mb: MeshBuilder, outline, thick_root: float, thick_tip: float, r_root: float, r_tip: float, matrix: Matrix, *, rivets=None, rows=()) -> None:
     """A fin or an air rudder: `outline` is (r, z) points in its plane, anticlockwise; its thickness
     tapers from root to tip and every edge is rounded, from the mid-plane at the outline to the flat
@@ -192,6 +256,9 @@ def _fin(mb: MeshBuilder, outline, thick_root: float, thick_tip: float, r_root: 
         return thick_root / 2 + k * (r - r_root)
 
     rings = [(0.0, 0.0), (0.12, 0.55), (0.45, 0.88), (1.2, 1.0)]  # inset, share of the half thickness
+    if srlib.native():
+        # Resolve the rolled edge between the same nose and face stations.
+        rings = [(0, 0), (0.035, 0.30), (0.12, 0.55), (0.24, 0.73), (0.45, 0.88), (0.70, 0.96), (0.96, 0.99), (1.2, 1)]
     loops = [_offset(outline, -d) for d, _ in rings]
     n = len(outline)
     verts, faces = [(r * IN, 0.0, z * IN) for r, z in loops[0]], []
@@ -219,7 +286,7 @@ def _fin(mb: MeshBuilder, outline, thick_root: float, thick_tip: float, r_root: 
             for q in range(count + 1):
                 r, z = r0 + (r1 - r0) * q / count, z0 + (z1 - z0) * q / count
                 at = matrix @ Vector((r * IN, side * (half(r) - 0.01) * IN, z * IN))
-                rivets.disc(at, normal, 0.2 * IN, 0.09 * IN)  # their heads stand 2 mm proud: closer, and the face would fight them
+                _skin_rivet(rivets, at, normal, 0.2, 0.09)  # their heads stand 2 mm proud: closer, and the face would fight them
 
 
 def over_weld(mb: MeshBuilder, first: int, z_weld: float) -> None:
@@ -253,7 +320,7 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
     # ------------------------------------------------------------------ adapter
     g = group("RedstoneAdapter")
     skin = MeshBuilder()
-    skin.lathe(prof([(BODY_R, up(S_AFT)), (ADAPTER_TOP_R, up(LENGTH - 1.2))]), 128)
+    skin.lathe(prof([(BODY_R, up(S_AFT)), (ADAPTER_TOP_R, up(LENGTH - 1.2))]), round_sides(128))
     skin.build("Adapter_Skin", M["white"], g, sharp_angle=None)
     inner = MeshBuilder()
     inner.lathe(prof([(BODY_R - 0.3, up(S_AFT)), (ADAPTER_TOP_R - 0.3, up(LENGTH - 1.2))]), 96, flip=True)
@@ -278,7 +345,7 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
                 (ADAPTER_TOP_R - 0.3, up(LENGTH - 0.1)),
             ]
         ),
-        128,
+        round_sides(128),
     )
     for i in range(3):
         t = TAU * (i + 0.5) / 3 + deg(30)
@@ -324,9 +391,9 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
         _rivet_ring(rivets, BODY_R, up(s))
     doors = MeshBuilder()
     for t in (deg(90), deg(270)):  # instrument compartment access doors
-        doors.box((16 * IN, 22 * IN, 0.25 * IN), body.frame(t, up(S_TANK + AFT_LOWER + INSTRUMENT / 2), 0.0))
+        access_cover(doors, rivets, body, t, up(S_TANK + AFT_LOWER + INSTRUMENT / 2), 16, 22, 0.25)
     for t in (deg(0), deg(180)):
-        doors.box((12 * IN, 12 * IN, 0.25 * IN), body.frame(t, up(S_TANK + 21), 0.0))
+        access_cover(doors, rivets, body, t, up(S_TANK + 21), 12, 12, 0.25)
     caps = MeshBuilder()
     caps.lathe(prof([(0, up(S_TANK + 0.3)), (BODY_R - 0.2, up(S_TANK + 0.3))]), 64, flip=True)
     # no bulkhead at the top: the capsule's retropack hangs down into the ballast section
@@ -344,7 +411,7 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
     caps.build("AftUnit_Bulkheads", M["inner"], g)
     # the skin's inner face, standing off it: fittings sunk through the skin end behind this
     wall = MeshBuilder()
-    wall.lathe(prof([(BODY_R - 0.9, up(S_TANK + 0.3)), (BODY_R - 0.9, up(S_AFT))]), 96, flip=True)
+    wall.lathe(prof([(BODY_R - 0.9, up(S_TANK + 0.3)), (BODY_R - 0.9, up(S_AFT))]), round_sides(96), flip=True)
     wall.build("AftUnit_InnerWall", M["wall"], g, sharp_angle=None)
     if interior():
         z0, z1 = S_TANK + AFT_LOWER, S_TANK + AFT_LOWER + INSTRUMENT
@@ -392,17 +459,17 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
     # Frost: on launch morning the oxygen tank's wall, at -183 C, is white with ice from the humid
     # Cape air between its two domes. The alcohol tank above it stays bare paint.
     frost0, frost1 = S_TAIL + 16.0, S_TAIL + 16.83 * 12 - 8.0
-    skin.lathe(prof([(BODY_R, up(S_TAIL)), (BODY_R, up(frost0))]), 128)
-    skin.lathe(prof([(BODY_R, up(frost1)), (BODY_R, up(band0))]), 128)
+    skin.lathe(prof([(BODY_R, up(S_TAIL)), (BODY_R, up(frost0))]), round_sides(128))
+    skin.lathe(prof([(BODY_R, up(frost1)), (BODY_R, up(band0))]), round_sides(128))
     frost = MeshBuilder()
-    frost.lathe(prof([(BODY_R, up(frost0)), (BODY_R, up(frost1))]), 128)
+    frost.lathe(prof([(BODY_R, up(frost0)), (BODY_R, up(frost1))]), round_sides(128))
     frost.build("CenterUnit_Frost", M["frost"], g, sharp_angle=None)
-    skin.lathe(prof([(BODY_R, up(band1)), (BODY_R, up(S_TANK))]), 128)
+    skin.lathe(prof([(BODY_R, up(band1)), (BODY_R, up(S_TANK))]), round_sides(128))
     band = MeshBuilder()
-    band.lathe(prof([(BODY_R, up(band0)), (BODY_R, up(band1))]), 128)
+    band.lathe(prof([(BODY_R, up(band0)), (BODY_R, up(band1))]), round_sides(128))
     band.build("CenterUnit_Band", M["black"], g, sharp_angle=None)
     wall = MeshBuilder()  # the tank wall's inner face: the conduits' and ports' roots end behind it
-    wall.lathe(prof([(BODY_R - 0.8, up(S_TAIL)), (BODY_R - 0.8, up(S_TANK))]), 96, flip=True)
+    wall.lathe(prof([(BODY_R - 0.8, up(S_TAIL)), (BODY_R - 0.8, up(S_TANK))]), round_sides(96), flip=True)
     wall.build("CenterUnit_InnerWall", M["wall"], g, sharp_angle=None)
     for s in range(int(S_TAIL) + 2, int(S_TANK), 47):  # skin rings
         _rivet_ring(rivets, BODY_R, up(s), 72)
@@ -429,10 +496,36 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
     # photograph (none read shows them): between the fins, clear of the lettering, which is on the fins' at 45 and 225
     # degrees where these were until November 2026.
     for t in (deg(0), deg(180)):
+        if srlib.native():
+            # A formed cover with flanged feet. The section and end taper are estimates
+            # within the inventory tunnel's length, width and crown height.
+            section = [
+                (-2.5, -0.1),
+                (-2.5, 0.12),
+                (-2.0, 0.16),
+                (-1.7, 1.52),
+                (-1.2, 2.1),
+                (-0.65, 2.2),
+                (0.65, 2.2),
+                (1.2, 2.1),
+                (1.7, 1.52),
+                (2.0, 0.16),
+                (2.5, 0.12),
+                (2.5, -0.1),
+            ]
+            bands = [(S_TAIL - 15, 0.05), (S_TAIL - 11, 0.7), (S_TAIL - 6, 1), (S_TANK + 6, 1), (S_TANK + 11, 0.7), (S_TANK + 15, 0.05)]
+            fit.grid(
+                lambda i, j: body.p(
+                    t + section[i][0] / BODY_R, up(bands[j][0]), min(section[i][1], 0.16) + max(0, section[i][1] - 0.16) * bands[j][1]
+                ),
+                range(len(section)),
+                range(len(bands)),
+            )
+            continue
         fit.box((5.0 * IN, (S_TANK - S_TAIL + 30) * IN, 2.4 * IN), body.frame(t, up((S_TANK + S_TAIL) / 2), 1.0))
     for t, s in ((deg(135), S_TAIL + 180), (deg(315), S_TAIL + 420)):  # LOX and alcohol fill and vent
         f = body.frame(t, up(s))
-        fit.lathe(prof([(3.2, -0.2), (3.2, 0.5), (2.4, 0.5), (2.3, 0.2), (0, 0.2)]), 28, matrix=f)
+        fit.lathe(prof([(3.2, -0.2), (3.2, 0.5), (2.4, 0.5), (2.3, 0.2), (0, 0.2)]), round_sides(28), matrix=f)
     # UNITED STATES, twice: stacked upright, one letter under the next, on the meridians of the two fins that stand
     # square to the pitch plane, 45 and 225 degrees round from the capsule's hatch (the periscope's fin, 135, lies down
     # range: places/cape-canaveral/lc-5.md). So each faces a camera abeam of the flight's line. Estimated, read off photographs of both
@@ -481,10 +574,18 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
         # in two lengths, stopping short of the ring weld between the tanks: the two welds would
         # otherwise lie in each other's surface at a coarse level of detail
         for s0, s1 in ((S_TAIL + 3, s_mid - 9.0 - 1.6), (s_mid - 9.0 + 1.6, S_TANK - 3)):
+            if srlib.native():
+                t = deg(15 + 60 * i)
+                bead = [(-0.55, -0.06), (-0.48, 0.06), (-0.3, 0.125), (0, 0.15), (0.3, 0.125), (0.48, 0.06), (0.55, -0.06)]
+                fit.grid(lambda j, h: body.p(t + bead[j][0] / BODY_R, up(h), bead[j][1]), range(len(bead)), (s0, s1))
+                continue
             fit.box((1.1 * IN, (s1 - s0) * IN, 0.5 * IN), body.frame(deg(15 + 60 * i), up((s0 + s1) / 2), -0.12))
     for s in (S_WELD,):  # the common bulkhead between the tanks shows as a ring weld
         w0, w1, proud = WELD
-        fit.lathe(prof([(BODY_R - 0.1, up(s - w0)), (BODY_R + proud, up(s - w1)), (BODY_R + proud, up(s + w1)), (BODY_R - 0.1, up(s + w0))]), 128)
+        fit.lathe(
+            prof([(BODY_R - 0.1, up(s - w0)), (BODY_R + proud, up(s - w1)), (BODY_R + proud, up(s + w1)), (BODY_R - 0.1, up(s + w0))]),
+            round_sides(128),
+        )
     skin.build("CenterUnit_Tanks", M["white"], g, sharp_angle=None)
     rivets.build("CenterUnit_Fasteners", M["bolt"], g)
     fit.build("CenterUnit_Conduits", M["white"], g, smooth=True, sharp_angle=30)
@@ -497,7 +598,7 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
     g = group("RedstoneTailUnit")
     white, black, rivets = MeshBuilder(), MeshBuilder(), MeshBuilder()
     _banded(white, black, BODY_R, up(8), up(S_TAIL), deg(0))
-    white.lathe(prof([(BODY_R - 1.5, up(0)), (BODY_R, up(8))]), 128)
+    white.lathe(prof([(BODY_R - 1.5, up(0)), (BODY_R, up(8))]), round_sides(128))
     for s in (10, S_TAIL - 2):
         _rivet_ring(rivets, BODY_R, up(s))
     inner = MeshBuilder()
@@ -533,10 +634,12 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
         # the gap from the fin, its bearing boss on either face (where the shaft is is estimated)
         rudder = [(tip_r - 14.5, 0), (tip_r, 0), (tip_r, 33.5), (tip_r - 14.5, 33.5)]
         _fin(rudders, rudder, 1.9, 1.5, tip_r - 14.5, tip_r, rot, rivets=rivets, rows=[((tip_r - 12.5, 2.0), (tip_r - 12.5, 31.5), 3.5)])
-        rudders.tube(rot @ Vector(((tip_r - 16.0) * IN, 0, 24.0 * IN)), rot @ Vector(((tip_r - 12.0) * IN, 0, 24.0 * IN)), 0.6 * IN, 12)
+        rudders.tube(rot @ Vector(((tip_r - 16.0) * IN, 0, 24.0 * IN)), rot @ Vector(((tip_r - 12.0) * IN, 0, 24.0 * IN)), 0.6 * IN, round_sides(12))
         for side in (1, -1):
             hub = rot @ Vector(((tip_r - 9.0) * IN, side * 0.85 * IN, 24.0 * IN))
-            rudders.lathe(prof([(0.0, 0.0), (1.3, 0.0), (1.1, 0.35), (0.0, 0.4)]), 16, matrix=frame(hub, rot.to_3x3() @ Vector((0, side, 0))))
+            rudders.lathe(
+                prof([(0.0, 0.0), (1.3, 0.0), (1.1, 0.35), (0.0, 0.4)]), round_sides(16), matrix=frame(hub, rot.to_3x3() @ Vector((0, side, 0)))
+            )
     white.build("TailUnit_SkinWhite", M["white"], g, sharp_angle=None)
     black.build("TailUnit_SkinBlack", M["black"], g, sharp_angle=None)
     fins_w.build("TailUnit_FinsWhite", M["white"], g, sharp_angle=50)  # flat faces, rounded edges
@@ -546,9 +649,13 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
     shields = MeshBuilder()
     for i in range(4):  # stainless shields on the fin roots, added for the longer burn
         rot = Matrix.Rotation(deg(45 + 90 * i), 4, "Z") @ Matrix.Translation((0, 0, base_z * IN))
-        _prism(shields, [(BODY_R - 0.6, 0.6), (BODY_R + 15, 0.6), (BODY_R + 15, 20), (BODY_R - 0.6, 30)], 5.0, 4.3, BODY_R, BODY_R + 15, rot)
+        outline = [(BODY_R - 0.6, 0.6), (BODY_R + 15, 0.6), (BODY_R + 15, 20), (BODY_R - 0.6, 30)]
+        if srlib.native():
+            _root_shield(shields, rivets, outline, rot)
+        else:
+            _prism(shields, outline, 5.0, 4.3, BODY_R, BODY_R + 15, rot)
     for t in (deg(0), deg(180)):  # engine bay access doors
-        shields.box((20 * IN, 26 * IN, 0.5 * IN), body.frame(t, up(S_TAIL - 34), 0.0))
+        access_cover(shields, rivets, body, t, up(S_TAIL - 34), 20, 26, 0.5)
     shields.build("TailUnit_ShieldsAndDoors", M["sheet"], g, smooth=False)
     rivets.build("TailUnit_Fasteners", M["bolt"], g)
     inner.build("TailUnit_Structure", M["inner"], g)
@@ -562,20 +669,23 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
     eng = MeshBuilder()
     bell = [(11.5, 118), (11.5, 96), (10.5, 88), (7.6, 78), (8.6, 70), (11.2, 52), (13.6, 34), (15.4, 16), (NOZZLE_EXIT_R, 2)]
     wall = MeshBuilder()
-    wall.lathe(prof([(r, eu(s)) for r, s in reversed(bell)]), 64)  # outer wall, walked upward
-    wall.lathe(prof([(0, eu(119.5)), (6, eu(121)), (11.5, eu(118))][::-1]), 64, flip=True)  # injector dome
+    wall.lathe(prof([(r, eu(s)) for r, s in reversed(bell)]), round_sides(64))  # outer wall, walked upward
+    wall.lathe(prof([(0, eu(119.5)), (6, eu(121)), (11.5, eu(118))][::-1]), round_sides(64), flip=True)  # injector dome
+    if srlib.native():
+        # Close the visible front edge of the bell between its existing outer and inner walls.
+        wall.lathe(prof([(NOZZLE_EXIT_R, eu(2)), (NOZZLE_EXIT_R - 1, eu(2))]), round_sides(64), flip=True)
     wall.build("Engine_ChamberWall", M["engine"], g, sharp_angle=35)
     for s in range(17, 70, 9):  # stiffening hoops on the double-walled chamber, between the two manifolds
         r = next(r0 + (r1 - r0) * (s - s0) / (s1 - s0) for (r0, s0), (r1, s1) in zip(bell, bell[1:]) if s1 <= s <= s0)
-        eng.lathe(prof([(r + 0.1, eu(s - 0.7)), (r + 0.8, eu(s)), (r + 0.1, eu(s + 0.7))]), 48)
+        eng.lathe(prof([(r + 0.1, eu(s - 0.7)), (r + 0.8, eu(s)), (r + 0.1, eu(s + 0.7))]), round_sides(48))
     # turbopump and peroxide tank beside the chamber; thrust frame up to the tank
-    eng.tube((20 * IN, 4 * IN, eu(84) * IN), (20 * IN, 4 * IN, eu(116) * IN), 6.5 * IN, 24)
-    eng.lathe(prof(arc_profile(0, 0, 8.0, -90, 90, 12)), 24, matrix=Matrix.Translation((-21.5 * IN, -3 * IN, eu(104) * IN)))
-    eng.tube((20 * IN, 4 * IN, eu(100) * IN), (9 * IN, 2 * IN, eu(112) * IN), 2.2 * IN, 12)
+    eng.tube((20 * IN, 4 * IN, eu(84) * IN), (20 * IN, 4 * IN, eu(116) * IN), 6.5 * IN, round_sides(24))
+    eng.lathe(prof(arc_profile(0, 0, 8.0, -90, 90, 12)), round_sides(24), matrix=Matrix.Translation((-21.5 * IN, -3 * IN, eu(104) * IN)))
+    eng.tube((20 * IN, 4 * IN, eu(100) * IN), (9 * IN, 2 * IN, eu(112) * IN), 2.2 * IN, round_sides(12))
     for i in range(4):
         t = deg(45 + 90 * i)
         a = Vector((math.cos(t), math.sin(t), 0))
-        eng.tube((a * 10.5 + Vector((0, 0, eu(116)))) * IN, (a * 30 + Vector((0, 0, up(S_TAIL - 1)))) * IN, 1.3 * IN, 10)
+        eng.tube((a * 10.5 + Vector((0, 0, eu(116)))) * IN, (a * 30 + Vector((0, 0, up(S_TAIL - 1)))) * IN, 1.3 * IN, round_sides(10))
     # the chamber is double-walled and cooled by its own fuel: the outer wall is ribbed lengthwise
     ribs = MeshBuilder()
     stations = [float(s) for s in range(4, 78, 2)]
@@ -598,37 +708,37 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
     pipes = MeshBuilder()
     r1 = lambda rr: (rr * IN, rr * IN)  # noqa: E731
     # alcohol arrives down the axis (its line runs through the oxygen tank); oxygen round the side
-    pipes.tube((0, 0, eu(121) * IN), (0, 0, up(S_TAIL - 1) * IN), 3.2 * IN, 20)
+    pipes.tube((0, 0, eu(121) * IN), (0, 0, up(S_TAIL - 1) * IN), 3.2 * IN, round_sides(20))
     pipes.loft(
         [Vector((20, 4, eu(111))) * IN, Vector((23, 6, eu(126))) * IN, Vector((24, 8, up(S_TAIL - 6))) * IN, Vector((24, 8, up(S_TAIL - 1))) * IN],
         [r1(2.6)] * 4,
-        16,
+        round_sides(16),
         ref=(1, 0, 0),
     )
     # pump discharge to the fuel manifold at the nozzle exit, where the coolant starts its trip up the wall
     pipes.loft(
         [Vector((20, 4, eu(89))) * IN, Vector((21.5, 5, eu(60))) * IN, Vector((20.5, 4, eu(22))) * IN, Vector((18.0, 3, eu(8))) * IN],
         [r1(2.0)] * 4,
-        16,
+        round_sides(16),
         ref=(1, 0, 0),
     )
     for s, extra in ((6, 0.75), (74, 0.6)):  # sunk a little way into the wall
         rr = bell_r(s) + extra
-        pipes.lathe(prof([(rr + 1.0 * math.cos(a), eu(s) + 1.0 * math.sin(a)) for a in (TAU * k / 12 for k in range(13))][::-1]), 64)
+        pipes.lathe(prof([(rr + 1.0 * math.cos(a), eu(s) + 1.0 * math.sin(a)) for a in (TAU * k / 12 for k in range(13))][::-1]), round_sides(64))
     # steam from the peroxide gas generator leaves through a duct to the base
     pipes.loft(
         [Vector((-21.5, -3, eu(96))) * IN, Vector((-24, -6, eu(70))) * IN, Vector((-25, -8, eu(30))) * IN, Vector((-25, -8, up(7))) * IN],
         [r1(1.9)] * 4,
-        14,
+        round_sides(14),
         ref=(1, 0, 0),
     )
     for sx in (-1, 1):  # air bottles for the valves
-        pipes.lathe(prof(arc_profile(0, 0, 4.6, -90, 90, 10)), 20, matrix=Matrix.Translation((sx * 6 * IN, 24 * IN, eu(120) * IN)))
+        pipes.lathe(prof(arc_profile(0, 0, 4.6, -90, 90, 10)), round_sides(20), matrix=Matrix.Translation((sx * 6 * IN, 24 * IN, eu(120) * IN)))
     pipes.build("Engine_Plumbing", M["alu"], g, sharp_angle=40)
     eng.build("Engine_A7", M["engine"], g, sharp_angle=35)
     if interior():  # inside the chamber: the hot wall, and the injector the propellants arrive through
         liner, inj = MeshBuilder(), MeshBuilder()
-        liner.lathe(prof([(r - 1.0, eu(s)) for r, s in bell]), 64)
+        liner.lathe(prof([(r - 1.0, eu(s)) for r, s in bell]), round_sides(64))
         inj.lathe(prof([(11.0, eu(117.2)), (0.0, eu(117.2))]), 48, flip=True)
         for rr in (2.0, 4.2, 6.4, 8.6, 10.4):  # rings of orifices, shown as ridges
             inj.lathe(prof([(rr + 0.35, eu(117.2)), (rr + 0.35, eu(116.6)), (rr - 0.35, eu(116.6)), (rr - 0.35, eu(117.2))]), 48)
@@ -641,7 +751,7 @@ def build(base_z: float, font=None, clamp_covers: str = "boxes", number: str | N
         _prism(vanes, [(6.5, 0.2), (15.0, 0.2), (15.0, 6.5), (11.5, 11.0), (6.5, 11.0)], 1.5, 1.5, 6.5, 15.0, rot)
         a = Vector((math.cos(deg(45 + 90 * i)), math.sin(deg(45 + 90 * i)), 0))
         arms.tube(
-            (a * 15.0 + Vector((0, 0, up(5)))) * IN, (a * (BODY_R - 1.25) + Vector((0, 0, up(5)))) * IN, 1.1 * IN, 10
+            (a * 15.0 + Vector((0, 0, up(5)))) * IN, (a * (BODY_R - 1.25) + Vector((0, 0, up(5)))) * IN, 1.1 * IN, round_sides(10)
         )  # ends between the inner wall and the skin
     vanes.build("Engine_JetVanes", M["graphite"], g, smooth=False)
     arms.build("Engine_VaneShafts", M["steel"], g)

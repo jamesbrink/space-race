@@ -72,6 +72,20 @@ That is the vehicle's own datum, probably the spacecraft's aft end; the model do
 | `RedstoneTailUnit` | engine bay, four fins, four air rudders |
 | `RedstoneEngine` | A-7 chamber wall, liner and ribbed cooling jacket, injector, feed lines, manifolds, turbopump, steam duct, thrust frame, four jet vanes |
 
+## MR-7 at native detail
+
+| Part | Exterior at close range | Evidence and confidence |
+| --- | --- | --- |
+| Adapter | Finer circular skin and clamp flanges around the three rectangular MR-7 covers. | The adapter and covers follow the existing MR-7 outline. TM X-53107 Fig. 4-1 and the comparison with MR-4 in *Results of the Second U.S. Manned Suborbital Space Flight*, Fig. 2-2. |
+| Aft unit | The checks follow the skin around the instrument compartment. The covers wrap round the barrel with radiused corners, a turned lip and screws. Ring and stringer rows have round-headed fasteners. | Ring frames and stringer longerons are **documented**, TM X-53107 §4.2.1 and Fig. 4-2. Checks and lettering are **estimated** from NASA S61-02407. Skin joint positions, cover details and fastener profiles are **estimated**. |
+| Centre unit | The band, frosted oxygen-tank skin and outside welds follow the tank curvature. The two existing external covers have flanged feet and taper down toward their ends. The number plates and vertical lettering keep the flight layout. | Tank diameter and section lengths from TM X-53107 Fig. 4-1. The external covers, their positions, end profiles and the weld bead sections are **estimated**. Section 4.5 describes a cable conduit *through* the tanks. It does not establish the model's two external covers or what they carried. |
+| Tail unit | The fins and air rudders have rolled leading edges, round fastener heads, curved bearing bosses and shafts. Hemmed stainless sheets follow the fin roots. The rounded engine access panels follow the barrel. | Four fins and rudders in Fig. 4-2 and §4.4.8, stainless fin shields in §4.8 of TM X-53107. Sheet returns, rivet pitch, bearing shape and access panel fit are **estimated**. |
+| Engine | Looking up the tail, the inner and outer surfaces meet at a continuous annular lip. Visible pipe bends, stiffening hoops, vane shafts and the four dark graphite vanes retain their established positions. | A-7 and carbon vanes from TM X-53107 §§4.3 and 4.4.8. The lip section, plumbing routes and vane profiles remain **estimated**. |
+
+The division into panels, the flushness of the heads and the exact MR-7 service-door edges have no shop drawing in
+this record. The mesh called `Engine_A7` includes the hoops. Its lowest vertex is −17.855 m in both tiers. The
+separate chamber-wall mesh reaches −18.146 m. These are two distinct surfaces in the exported vehicle.
+
 ## What the model gets wrong or leaves out
 
 - **The adapter's height is a remainder**, not a measurement, and one primary figure disagrees with it (see above).

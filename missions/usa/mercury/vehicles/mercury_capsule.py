@@ -38,6 +38,7 @@ from srlib import (
     lathe_obj,
     material,
     prof,
+    round_sides,
     text_mesh,
 )
 
@@ -188,7 +189,8 @@ def shingle_row(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, 
     if beads:
         ss = [0.0, margin * 0.6] + [margin + (1 - 2 * margin) * i / (beads * 6) for i in range(beads * 6 + 1)] + [1 - margin * 0.6, 1.0]
     else:
-        ss = [i / 6 for i in range(7)]
+        steps = round_sides(6)
+        ss = [i / steps for i in range(steps + 1)]
     rings = [(z0 + gap, 0.0), (z0 + 1.0, 0.0), (z0 + 2.0, 1.0), (z1 - 2.0, 1.0), (z1 - 1.0, 0.0), (z1 - gap, 0.0)]
 
     def height(s: float) -> float:
@@ -216,6 +218,17 @@ def shingle_row(panels: MeshBuilder, bolts: MeshBuilder, surf: Surf, z0: float, 
         # one row per seam (on this shingle's leading edge; its neighbour supplies the other)
         for i in range(n_edge):
             z = z0 + 1.6 + (z1 - z0 - 3.2) * i / (n_edge - 1)
+            if srlib.native() and not beads:
+                # NASM2021-00161: a narrow strip made in short leaves down each cylinder seam.
+                cell = (z1 - z0 - 3.2) / (n_edge - 1)
+                za, zb = max(z0, z - cell / 2 + 0.04), min(z1, z + cell / 2 - 0.04)
+                # The pitch/yaw jet faceplates cover four seams. End the trim at their edges.
+                if k % 3 == 1 and za < z1 + 0.3 - 2.25 and zb > z1 + 0.3 - 5.75:
+                    continue
+                strip = [(-0.52, -0.04), (-0.50, 0.075), (0.50, 0.075), (0.52, -0.04)]
+                panels.grid(lambda j, h: surf.p(t0 + strip[j][0] / rmid, h, strip[j][1]), range(4), (za, zb))
+                bolts.disc(surf.p(t0, z, 0.075), surf.n(t0), 0.2 * IN, 0.07 * IN, 18)
+                continue
             bolts.disc(surf.p(t0, z), surf.n(t0), 0.2 * IN, 0.07 * IN)
         n_end = beads or 4
         for z in (z0 + 0.55, z1 - 0.55):
@@ -327,7 +340,7 @@ class Skin:
         def spread(a: float, b: float, level: float) -> list[tuple[float, float]]:
             """A stretch of one height, cut so no facet turns more than four degrees round the cone."""
             # (at every level of detail: a wider facet sinks into the structure under it)
-            n = max(1, math.ceil(math.degrees((b - a) * (tb - ta)) / 4.0 - 1e-6))
+            n = max(1, math.ceil(math.degrees((b - a) * (tb - ta)) / (1.25 if srlib.native() else 4.0) - 1e-6))
             return [(a + (b - a) * i / n, level) for i in range(1, n + 1)]
 
         m, e, d = margin / width, ramp / width, strip / width
@@ -339,12 +352,18 @@ class Skin:
             at = 0.0
             for a, b in edges:
                 across += spread(at, a, 0.0) + [(a + e, 1.0)] + spread(a + e, b - e, 1.0) + [(b, 0.0)]
+                if srlib.native():
+                    # Half-round ends of the pressed beads, visible on NASM2021-00161.
+                    across.extend([(a + e * 0.25, 0.48), (a + e * 0.6, 0.84), (b - e * 0.6, 0.84), (b - e * 0.25, 0.48)])
+                    across.sort()
                 at = b
             across += spread(at, 1.0, 0.0)
         along: list[tuple[float, float]] = [(0.0, 0.0)]  # (inches along the cone, how much of a bead's height)
         if stacks:
             pitch = (run_ - 2 * end) / count
             humps = ((-0.34, 0.0), (-0.17, 0.75), (0.0, 1.0), (0.17, 0.75), (0.34, 0.0)) if detail >= 1.0 else ((-0.34, 0.0), (0.0, 1.0), (0.34, 0.0))
+            if srlib.native():
+                humps = [(0.34 * i / 6, math.cos(i * math.pi / 12)) for i in range(-6, 7)]
             for k in range(count):
                 along += [(end + (k + 0.5 + f) * pitch, h) for f, h in humps]
         along.append((run_, 0.0))
@@ -376,11 +395,29 @@ class Skin:
         if srlib.DETAIL < 0.5:
             return
         wide, head, tall = WASHER
+        if srlib.native():
+            # Washer rim, dished seat and the screw crown are one continuous surface.
+            # Keep the same outside diameter and installed head height as the inventory.
+            profile = [
+                (wide, -0.025),
+                (wide, tall),
+                (wide * 0.84, tall * 1.05),
+                (head * 1.12, tall * 0.82),
+                (head, tall * 0.86),
+                (head * 0.9, tall * 1.05),
+                (0, tall * 1.08),
+            ]
+            bolts.lathe(prof(profile), 24, matrix=frame(self.surf.p(t, z, off), self.surf.n(t)))
+            return
         bolts.lathe([(wide * IN, 0.0), (head * IN, tall * IN), (0.0, tall * IN)], 10, matrix=frame(self.surf.p(t, z, off), self.surf.n(t)))
 
     def screw(self, bolts: MeshBuilder, t: float, z: float) -> None:
         """A plain screw's head."""
-        bolts.disc(self.surf.p(t, z), self.surf.n(t), SCREW[0] * IN, SCREW[1] * IN)
+        if srlib.native():
+            r, h = SCREW
+            bolts.lathe(prof([(r, 0), (r, h), (r * 0.75, h * 1.2), (0, h * 1.3)]), 16, matrix=self.surf.frame(t, z))
+        else:
+            bolts.disc(self.surf.p(t, z), self.surf.n(t), SCREW[0] * IN, SCREW[1] * IN)
 
     # -- a plain panel, with or without an opening ------------------------------------
 
@@ -405,7 +442,7 @@ class Skin:
         g = GAP / rmid
         ta, tb, za, zb = t0 + g, t1 - g, z0 + GAP * self.cos, z1 - GAP * self.cos
         if hole is None:
-            n = max(1, math.ceil(math.degrees(tb - ta) / 4.0 - 1e-6))
+            n = max(1, math.ceil(math.degrees(tb - ta) / (1.25 if srlib.native() else 4.0) - 1e-6))
             ts = [ta + (tb - ta) * i / n for i in range(n + 1)]
             mb.grid(lambda t, z: self.surf.p(t, z, off), ts, (za, zb), uv=lambda t, z: (t * rmid * IN, z * IN))
             return
@@ -540,7 +577,7 @@ def build_heat_shield(M, hung: bool = False) -> bpy.types.Object:
     else:
         profile = cap + [(SHIELD_R, -0.25), (SHIELD_R - 0.25, 0.0), (SHIELD_R - 2.5, 0.0), (SHIELD_R - 3.0, -0.8), (0.0, -0.8)]
         g = top
-    lathe_obj("HeatShield_HeatSink", prof(profile), M["beryllium"], g, segs=160, sharp_angle=30)
+    lathe_obj("HeatShield_HeatSink", prof(profile), M["beryllium"], g, segs=round_sides(160), sharp_angle=30)
     # attachment ring fasteners around the edge
     mb = MeshBuilder()
     for i in range(72):
@@ -726,17 +763,17 @@ def landing_bag(M, shield: bpy.types.Object) -> list[str]:
 def build_retropack(M) -> None:
     g = group("Retropack")
     housing = [(0, -23.0), (6, -22.6), (10, -21.6), (12.3, -20.6), (13, -19.5), (13, -10.85), (0, Z_APEX - 0.15)]
-    lathe_obj("Retropack_Housing", prof(housing), M["aluminium"], g, segs=96, sharp_angle=35)
+    lathe_obj("Retropack_Housing", prof(housing), M["aluminium"], g, segs=round_sides(96), sharp_angle=35)
 
     motors, nozzles = MeshBuilder(), MeshBuilder()
     for i in range(3):  # three solid retrograde motors, ripple-fired 5 s apart
         t = TAU * i / 3
         c = Vector((7.0 * math.cos(t), 7.0 * math.sin(t), 0.0))
         m = Matrix.Translation((c + Vector((0, 0, -19.0))) * IN)
-        motors.lathe(prof(arc_profile(0, 0, 5.6, -90, 20, 16)), 40, matrix=m)
+        motors.lathe(prof(arc_profile(0, 0, 5.6, -90, 20, 16)), round_sides(40), matrix=m)
         bell = [(1.1, -23.4), (1.9, -24.4), (2.7, -25.6), (3.2, -26.5), (3.45, Z_RETRO_BOTTOM)]
-        nozzles.lathe(prof(bell), 32, matrix=Matrix.Translation(c * IN))
-        nozzles.lathe(prof([(0.0, -23.6), (1.1, -23.4)]), 32, matrix=Matrix.Translation(c * IN))
+        nozzles.lathe(prof(bell), round_sides(32), matrix=Matrix.Translation(c * IN))
+        nozzles.lathe(prof([(0.0, -23.6), (1.1, -23.4)]), round_sides(32), matrix=Matrix.Translation(c * IN))
     retro = (
         "Retrograde rockets",
         "Three solid motors of about 1,000 lbf for ten seconds each, fired five seconds apart: what would bring the capsule down from orbit. "
@@ -749,8 +786,8 @@ def build_retropack(M) -> None:
         t = TAU * (i + 0.5) / 3
         c = Vector((9.6 * math.cos(t), 9.6 * math.sin(t), 0.0))
         m = Matrix.Translation(c * IN)
-        motors.lathe(prof([(1.7, -19.5), (1.7, -23.6), (1.2, -24.2), (0.0, -24.2)]), 20, matrix=m)
-        nozzles.lathe(prof([(0.5, -24.2), (1.0, -25.4)]), 16, matrix=m)
+        motors.lathe(prof([(1.7, -19.5), (1.7, -23.6), (1.2, -24.2), (0.0, -24.2)]), round_sides(20), matrix=m)
+        nozzles.lathe(prof([(0.5, -24.2), (1.0, -25.4)]), round_sides(16), matrix=m)
     posi = ("Posigrade rockets", "Three small solid motors, 400 lbf for a second, that push the capsule clear of the booster.")
     thing(motors, "Retropack_PosigradeMotors", M["aluminium"], g, *posi, shell=False)
     thing(nozzles, "Retropack_PosigradeNozzles", M["nozzle"], g, *posi, shell=False)
@@ -761,16 +798,47 @@ def build_retropack(M) -> None:
         t = TAU * (i + 0.5) / 3
         rad, side = Vector((math.cos(t), math.sin(t), 0)), (-math.sin(t), math.cos(t), 0)
         pts = [(13.15, -17.5), (13.15, -11.6)]
-        pts += [(r, Z_SPHERE_C - math.sqrt(rs**2 - r**2)) for r in np.linspace(14.0, SHIELD_R, 14)]
+        pts += [(r, Z_SPHERE_C - math.sqrt(rs**2 - r**2)) for r in np.linspace(14.0, SHIELD_R, round_sides(14))]
         pts += [(SHIELD_R + 0.3, -1.2), (SHIELD_R + 0.3, 1.2)]
         path = [(rad * r + Vector((0, 0, z))) * IN for r, z in pts]
-        straps.ribbon(path, side, 2.2 * IN)
+        if srlib.native():
+            # SEDR 104 (1959), 8-4: all three straps join at the centre below the pack.
+            # The path between the outlet covers is estimated from the existing housing.
+            route = [
+                (1.2, -23.14, 23),
+                (6.0, -22.78, 23),
+                (10, -21.83, 23),
+                (12.45, -20.78, 20),
+                (13.18, -19.55, 16),
+                (13.2, -18.95, 10),
+                (13.2, -18.4, 5),
+            ]
+            edges = []
+            for radius, h, turn in route:
+                bearing = t + deg(turn)
+                centre = Vector((radius * math.cos(bearing), radius * math.sin(bearing), h))
+                half = Vector((-math.sin(bearing), math.cos(bearing), 0)) * 1.1
+                edges.extend(((centre - half) * IN, (centre + half) * IN))
+            for centre in path:
+                half = Vector(side) * (1.1 * IN)
+                edges.extend((centre - half, centre + half))
+            straps.add(edges, [(k, k + 1, k + 3, k + 2) for k in range(0, len(edges) - 2, 2)])
+        else:
+            straps.ribbon(path, side, 2.2 * IN)
         clips.box(
             (1.4 * IN, 3.0 * IN, 2.4 * IN), frame((rad * (SHIELD_R + 0.7) + Vector((0, 0, 0.6))) * IN, rad) @ Matrix.Rotation(math.pi / 2, 4, "Y")
         )
         # umbilical conduit beside each strap, pack to shield edge
         o = Vector(side) * 1.9
+        if srlib.native():
+            # Carry the existing conduit along the strap, over the dish to its edge.
+            sweep = [(rad * r + o + Vector((0, 0, z - 0.36))) * IN for r, z in pts[2:-2]]
+            start = (rad * 13.2 + o + Vector((0, 0, -14))) * IN
+            straps.loft([start, *sweep], [(0.3 * IN, 0.3 * IN)] * (len(sweep) + 1), 18, ref=side, resample=1)
+            continue
         straps.tube((rad * 13.2 + o + Vector((0, 0, -14))) * IN, (rad * 14.5 + o + Vector((0, 0, -10.6))) * IN, 0.3 * IN, 8)
+    if srlib.native():
+        clips.lathe(prof([(1.56, -23.03), (1.56, -23.36), (1.34, -23.47), (0, -23.47)]), 48)
     thing(
         straps,
         "Retropack_Straps",
@@ -778,7 +846,7 @@ def build_retropack(M) -> None:
         g,
         "Retropack straps",
         "Three straps hold the pack to the heat shield until explosive bolts let it go. "
-        "They should meet under its middle at one bolt; here they do not.",
+        + ("They meet at a single fitting under the pack." if srlib.native() else "They should meet under its middle at one bolt; here they do not."),
         shell=False,
         sharp_angle=25,
     )
@@ -1206,7 +1274,7 @@ def periscope_door(M, g, skin: Skin, door, scope_z: float, umbilical_z: float, a
         cheek = Matrix((c_w, c_h, c_n)).transposed().to_4x4()
         cheek.translation = (works.clevis + c_h * side + c_n * 0.085) * IN
         chamfered(fit_door, (0.56, 0.16, 0.57), cheek, 0.05)
-    fit_door.tube((works.clevis - c_h * 0.34) * IN, (works.clevis + c_h * 0.34) * IN, 0.09 * IN, 10)
+    fit_door.tube((works.clevis - c_h * 0.34) * IN, (works.clevis + c_h * 0.34) * IN, 0.09 * IN, round_sides(10))
     # The hinge, along the leaf's long edge toward the hatch (Figure 12-1 draws that edge toothed): a pin's line a tenth
     # of an inch under the skin, its knuckles the door's and the frame's by turns.
     half = (zb - za) / math.cos(CONE.a) / 2 - 0.35
@@ -1214,7 +1282,7 @@ def periscope_door(M, g, skin: Skin, door, scope_z: float, umbilical_z: float, a
     span = 2 * half / count
     for k in range(count):
         a, b = works.hinge + works.h * (-half + span * k + 0.05), works.hinge + works.h * (-half + span * (k + 1) - 0.05)
-        (fit_door if k % 2 else hinge).tube(a * IN, b * IN, SCOPE_HINGE[2] * IN, 10)
+        (fit_door if k % 2 else hinge).tube(a * IN, b * IN, SCOPE_HINGE[2] * IN, round_sides(10))
     # screws through the leaf into the pan's frame, along both long edges (their number is ours)
     for k in range(6):
         z = qa + (qb - qa) * (k + 0.5) / 6
@@ -1394,11 +1462,15 @@ def build_recovery_compartment(M) -> None:
 
     s = MeshBuilder()
     rr = NECK_R - 0.1
-    s.lathe(prof([(0.0, Z_CYL + 0.2), (rr, Z_CYL + 0.2), (rr, Z_CAN), (0.0, Z_CAN)]), 96)
+    s.lathe(prof([(0.0, Z_CYL + 0.2), (rr, Z_CYL + 0.2), (rr, Z_CAN), (0.0, Z_CAN)]), round_sides(96))
     s.build("Recovery_Structure", M["underlay"], g, sharp_angle=30)
     chutes = MeshBuilder()  # main and reserve ring-sail canisters, seen with the antenna canister off
     for y in (-6.6, 6.6):
-        chutes.lathe(prof([(6.2, Z_CAN), (6.2, Z_CAN + 0.5), (5.6, Z_CAN + 0.8), (0.0, Z_CAN + 0.8)]), 40, matrix=Matrix.Translation((0, y * IN, 0)))
+        chutes.lathe(
+            prof([(6.2, Z_CAN), (6.2, Z_CAN + 0.5), (5.6, Z_CAN + 0.8), (0.0, Z_CAN + 0.8)]),
+            round_sides(40),
+            matrix=Matrix.Translation((0, y * IN, 0)),
+        )
     chutes.build("Recovery_ParachuteCanisters", M["aluminium"], g)
     if interior():  # the packed main and reserve parachutes under those lids
         packs = MeshBuilder()
@@ -1416,7 +1488,7 @@ def build_recovery_compartment(M) -> None:
         fit.box((5.0 * IN, 3.2 * IN, 0.9 * IN), CYL.frame(t, Z_CAN - 4.0, -0.2))  # sunk through the skin, proud by 0.25 in
         for dz, rad in ((0.75, 0.8), (-0.85, 0.35)):
             f = CYL.frame(t, Z_CAN - 4.0 + dz, 0.25)
-            fit.lathe(prof([(rad + 0.2, 0.0), (rad + 0.2, 0.25), (rad, 0.25)]), 16, matrix=f)
+            fit.lathe(prof([(rad + 0.2, 0.0), (rad + 0.2, 0.25), (rad, 0.25)]), round_sides(16), matrix=f)
             dark.lathe(prof([(rad, 0.25), (rad * 0.4, -0.2), (0.0, -0.2)]), 16, matrix=f)
         says = (
             "Pitch and yaw thrusters",
@@ -1437,8 +1509,8 @@ def build_antenna_canister(M) -> None:
     lower = [(0.0, Z_CAN + 0.05), (CAN_R0, Z_CAN + 0.05), (can_r(w0), w0)]
     upper = [(can_r(w1), w1), (CAN_R1, Z_CAN_TOP - 0.4), (CAN_R1 - 0.4, Z_CAN_TOP), (0.0, Z_CAN_TOP)]
     mb = MeshBuilder()
-    mb.lathe(prof(lower), 96)
-    mb.lathe(prof(upper), 96)
+    mb.lathe(prof(lower), round_sides(96))
+    mb.lathe(prof(upper), round_sides(96))
     fit = MeshBuilder()
     can = Surf(CAN_R0, Z_CAN, math.atan((CAN_R0 - CAN_R1) / CAN_H))
     for i in range(4):  # supports bridging the bicone antenna's dielectric window
@@ -1451,8 +1523,8 @@ def build_antenna_canister(M) -> None:
     for which, t in (("Roll", deg(0)), ("Pitch", deg(90))):  # roll and pitch infrared horizon scanners
         body, lens = MeshBuilder(), MeshBuilder()
         f = can.frame(t, Z_CAN + 18.5)
-        body.lathe(prof([(2.0, -0.4), (2.0, 1.3), (1.5, 1.6), (1.4, 1.3)]), 28, matrix=f)
-        lens.lathe(prof([(1.4, 1.3), (0.0, 1.45)]), 28, matrix=f)
+        body.lathe(prof([(2.0, -0.4), (2.0, 1.3), (1.5, 1.6), (1.4, 1.3)]), round_sides(28), matrix=f)
+        lens.lathe(prof([(1.4, 1.3), (0.0, 1.45)]), round_sides(28), matrix=f)
         says = (
             f"{which} horizon scanner",
             "An infrared scanner that finds the Earth's edge, to keep the attitude gyros true. There are two: roll and pitch.",
@@ -1462,14 +1534,16 @@ def build_antenna_canister(M) -> None:
     # top: drogue mortar, and the destabilising flap that keeps the capsule from entering nose-first
     fit.lathe(
         prof([(3.2, Z_CAN_TOP), (3.2, Z_CAN_TOP + 1.2), (2.8, Z_CAN_TOP + 1.2), (2.8, Z_CAN_TOP + 0.2), (0.0, Z_CAN_TOP + 0.2)]),
-        32,
+        round_sides(32),
         matrix=Matrix.Translation((0, -5.5 * IN, 0)),
     )
     fit.box((9.0 * IN, 6.0 * IN, 0.25 * IN), Matrix.Translation((0, 4.0 * IN, (Z_CAN_TOP + 0.55) * IN)) @ Matrix.Rotation(deg(5), 4, "X"))
     for x in (-4.0, 4.0):
-        fit.tube((x * IN - 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), (x * IN + 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), 0.3 * IN, 10)
+        fit.tube(
+            (x * IN - 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), (x * IN + 0.8 * IN, 1.2 * IN, (Z_CAN_TOP + 0.3) * IN), 0.3 * IN, round_sides(10)
+        )
     mb.build("Antenna_Housing", M["beryllium_shingle"], g, sharp_angle=30)
-    window = lathe_obj("Antenna_DielectricWindow", prof([(can_r(w0), w0), (can_r(w1), w1)]), M["dielectric"], g)
+    window = lathe_obj("Antenna_DielectricWindow", prof([(can_r(w0), w0), (can_r(w1), w1)]), M["dielectric"], g, segs=round_sides(96))
     window["label"] = "Antenna window"
     window["about"] = (
         "An 8 in band the radio passes through: behind it is the bicone antenna, two cones point to point, which the canister is named for."
@@ -1504,23 +1578,66 @@ def build_escape_tower(M) -> None:
 
     truss, steel = MeshBuilder(), MeshBuilder()
     levels = list(TRUSS_BAYS)  # no cross-members until clear of the canister
+
+    def brace(i0, z0, i1, z1, radius):
+        start, end = node(i0, z0), node(i1, z1)
+        if not srlib.native():
+            truss.tube(start, end, radius * IN, 10)
+            return
+        # Fishmouth each tube onto the sloping main leg. Compute the intersection around
+        # its circumference so even a shallow diagonal ends on the leg instead of inside it.
+        axis = (end - start).normalized()
+        u, v, _ = srlib.basis(axis)
+        run = (end - start).length
+
+        def joint(radial, i, direction):
+            chord = (node(i, Z_TRUSS_TOP) - node(i, Z_CAN)).normalized()
+            a = direction - chord * chord.dot(direction)
+            b = radial - chord * chord.dot(radial)
+            dot = a.dot(b)
+            return (math.sqrt(dot * dot + a.length_squared * ((0.8 * IN) ** 2 - b.length_squared)) - dot) / a.length_squared
+
+        def surface(theta, row):
+            radial = (u * math.cos(theta) + v * math.sin(theta)) * radius * IN
+            foot, head = joint(radial, i0, axis), run - joint(radial, i1, -axis)
+            at = (foot - 0.0012, foot + 0.002, foot + 0.006, head - 0.006, head - 0.002, head + 0.0012)[row]
+            return start + axis * at + radial * (1.12 if row in (0, 1, 4, 5) else 1)
+
+        truss.grid(surface, [TAU * i / 30 for i in range(30)], range(6), closed_u=True)
+
     for i in range(3):
-        truss.tube(node(i, Z_CAN + 1.0), node(i, Z_TRUSS_TOP), 0.8 * IN, 14)
+        truss.tube(node(i, Z_CAN + 1.0), node(i, Z_TRUSS_TOP), 0.8 * IN, round_sides(14))
         for z in levels:
-            truss.tube(node(i, z), node(i + 1, z), 0.5 * IN, 10)
+            brace(i, z, i + 1, z, 0.5)
         for b, (z0, z1) in enumerate(zip(levels, levels[1:])):
             j0, j1 = (i, i + 1) if b % 2 == 0 else (i + 1, i)
-            truss.tube(node(j0, z0), node(j1, z1), 0.45 * IN, 10)
+            brace(j0, z0, j1, z1, 0.45)
         # explosive-bolt housing where each leg meets the clamp ring
         steel.box(
             (3.2 * IN, 2.4 * IN, 3.0 * IN),
             frame(node(i, Z_CAN + 1.2), (math.cos(legs[i]), math.sin(legs[i]), 0)) @ Matrix.Rotation(math.pi / 2, 4, "Y"),
         )
+        if srlib.native():
+            # Six keepers hold the divided clamp to the pylon (SEDR 104, 1959, 2-14).
+            # Their runs either side of the three feet and their width are estimated.
+            leg = node(i, Z_CAN + 8)
+            tangent = Vector((-math.sin(legs[i]), math.cos(legs[i]), 0))
+            radial = Vector((math.cos(legs[i]), math.sin(legs[i]), 0))
+            for sign in (-1, 1):
+                root = node(i, Z_CAN) + (tangent * sign * 2.5 + radial * 0.73) * IN
+                strap = [root, root + Vector((0, 0, 1.9 * IN)), leg + (tangent * sign * 0.52 + radial * 0.54) * IN]
+                steel.ribbon(strap, tangent, 0.38 * IN)
+            outward = Vector((math.cos(legs[i]), math.sin(legs[i]), 0))
+            tangent = Vector((-outward.y, outward.x, 0))
+            for offset in (-0.7, 0.7):
+                at = node(i, Z_CAN + 1.2) + (outward * 1.58 + tangent * offset) * IN
+                steel.lathe(prof([(0.42, 0), (0.42, 0.15), (0.29, 0.15)]), 22, matrix=frame(at, outward))
+                steel.disc(at, outward, 0.30 * IN, 0.36 * IN)
     truss.lathe(
         prof(
             [(0.0, Z_TRUSS_TOP - 0.6), (7.6, Z_TRUSS_TOP - 0.6), (7.6, Z_TRUSS_TOP + 0.6), (5.2, Z_TRUSS_TOP + 0.6), (5.2, Z_MOTOR), (0.0, Z_MOTOR)]
         ),
-        48,
+        round_sides(48),
     )
     truss.build("Tower_Truss", M["tower"], g, sharp_angle=35)
     steel.build("Tower_BoltHousings", M["steel"], g, smooth=False)
@@ -1539,10 +1656,10 @@ def build_escape_tower(M) -> None:
         (0.7, Z_TOP - 0.4),
         (0.0, Z_TOP),
     ]
-    lathe_obj("Tower_EscapeMotor", prof(case), M["tower"], g, segs=64, sharp_angle=30)
+    lathe_obj("Tower_EscapeMotor", prof(case), M["tower"], g, segs=round_sides(64), sharp_angle=30)
     bands = MeshBuilder()
     for z in (Z_MOTOR + 1.0, (Z_MOTOR + Z_MOTOR_TOP) / 2, Z_MOTOR_TOP - 1.0):
-        bands.lathe(prof([(7.5, z - 0.6), (7.7, z - 0.4), (7.7, z + 0.4), (7.5, z + 0.6)]), 64)
+        bands.lathe(prof([(7.5, z - 0.6), (7.7, z - 0.4), (7.7, z + 0.4), (7.5, z + 0.6)]), round_sides(64))
     bands.build("Tower_MotorBands", M["steel"], g)
     if interior():  # the solid-propellant grain that the case is wrapped round
         grain = MeshBuilder()
@@ -1557,9 +1674,22 @@ def build_escape_tower(M) -> None:
         rad = Vector((math.cos(t), math.sin(t), 0))
         origin = (rad * 3.6 + Vector((0, 0, Z_MOTOR + 1.0))) * IN
         axis = rad * math.sin(cant) + Vector((0, 0, -math.cos(cant)))
-        noz.lathe(prof([(1.5, 0.0), (1.7, 2.0), (2.7, 5.5), (3.6, 9.0), (4.1, 12.0)]), 32, matrix=frame(origin, axis))
+        noz.lathe(
+            prof([(1.5, 0.0), (1.7, 2.0), (2.7, 5.5), (3.6, 9.0), (4.06 if srlib.native() else 4.1, 12.0)]),
+            round_sides(32),
+            matrix=frame(origin, axis),
+        )
     # tower-jettison motor fires straight down the middle
-    jett.lathe(prof([(2.3, Z_MOTOR - 0.2), (2.3, Z_MOTOR - 5.5), (1.2, Z_MOTOR - 6.5), (2.0, Z_MOTOR - 9.0)]), 28)
+    if srlib.native():
+        # SEDR 104, escape system: three outlets. Their visual proportions here are estimated.
+        jett.lathe(prof([(2.3, Z_MOTOR - 0.2), (2.3, Z_MOTOR - 5.5), (1.9, Z_MOTOR - 5.8), (0, Z_MOTOR - 5.8)]), 72)
+        for angle in legs:
+            radial = Vector((math.cos(angle), math.sin(angle), 0))
+            origin = (radial * 1.05 + Vector((0, 0, Z_MOTOR - 5.72))) * IN
+            axis = radial * math.sin(deg(30)) + Vector((0, 0, -math.cos(deg(30))))
+            jett.lathe(prof([(0.46, 0.0), (0.53, 0.7), (1.08, 3.6), (0.94, 3.6), (0.39, 0.7)]), 48, matrix=frame(origin, axis))
+    else:
+        jett.lathe(prof([(2.3, Z_MOTOR - 0.2), (2.3, Z_MOTOR - 5.5), (1.2, Z_MOTOR - 6.5), (2.0, Z_MOTOR - 9.0)]), round_sides(28))
     thing(
         noz,
         "Tower_EscapeNozzles",
@@ -1575,6 +1705,7 @@ def build_escape_tower(M) -> None:
         M["nozzle"],
         g,
         "Tower jettison rocket",
-        "Takes the tower away once it is no longer wanted: about 800 lbf for a second and a half. It had three nozzles; the model has one.",
+        "Takes the tower away once it is no longer wanted: about 800 lbf for a second and a half. "
+        + ("Three outlets below the escape motor." if srlib.native() else "It had three nozzles; the model has one."),
         shell=False,
     )

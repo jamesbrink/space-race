@@ -136,6 +136,21 @@ turned frame; Freedom 7's script prints it.
 `wall` builds a wall of revolution with openings left in it (a hatch, a window, a door), their
 angles whole multiples of 2.5° so that the facets of one band meet those of the next.
 
+## Native exterior
+
+The Freedom 7 native GLB keeps the same cutaway, separation groups and model stations. The following describes
+detail above the inventory level.
+
+| Hardware | What is visible | Evidence and confidence |
+| --- | --- | --- |
+| Recovery cylinder | Narrow segmented seam strips under the fasteners, interrupted at the four jet fittings. | NASM2021-00161 clearly shows the broad smooth panels and narrower joint leaves. Width, thickness and divisions are **estimated**. |
+| Heat shield and antenna | Smoother rolled shield edge, canister shell, dielectric band, scanner rims and lens. | Same section profiles and dimensions as the inventory, with finer circumferential sampling. See the flight's Dimensions table, CR-649 Fig. 1 and SEDR 104 §2-9. |
+| Retropack | Three straps continue round the casing to one fitting on its bottom face. A wire bundle follows each strap from the side of the pack across the dish. The three retro outlets, three posigrade outlets and their housings have round lips. | Three straps and their common fastening are **documented** in SEDR 104 (1959) §8-4. Three bundles following the straps are **documented** in §8-10. Strap paths between outlets, wire diameters, clip form and joint heights are **estimated**. |
+| Escape tower | The cross tubes meet the three sloping legs on a saddle cut. Each clamp housing shows fastening heads and the six keepers run back to the pylon. The three escape outlets and the three smaller jettison outlets can be distinguished underneath the motor. | Stations from SEDR 104 Fig. 1-3, the six cable straps and retained clamp segments from §2-14 (1959), nozzle count and cant from the flight's propulsion sources. Tube-end weld shape, washer size, keeper routing and outlet proportions are **estimated**. |
+
+The shield and retro outlet covers at liftoff, retropack grommets, wire terminations, weld sizes and the face of the
+central fastener lack a measured No. 7 detail drawing here. The native mesh still shows the retro outlets open.
+
 ## What the model gets wrong or leaves out
 
 Each item in full, with its source, is in [Freedom 7's spacecraft.md](../flights/mr-3-freedom-7/spacecraft.md),
@@ -158,9 +173,8 @@ Each item in full, with its source, is in [Freedom 7's spacecraft.md](../flights
   squares of their distances); the shield's weight is an estimate (beryllium an inch thick over the dish, 140 kg: no
   weight for the shield or the bag is in anything read), the bag's cloth, straps and cables are left out, and the dish's
   centre is taken at its zone's mid-depth. The pilot is a point that goes to the sill before he leaves.
-- **The retropack's straps** run from its sides instead of meeting under its centre at one explosive bolt, and its
-  motors are not canted toward the centre of mass.
-- **The escape tower:** the jettison motor has one nozzle, where it had three; the bracing is one diagonal a bay.
+- **The web retropack's straps** end at its sides. The native pack has the central connection. Both tiers approximate the motors' alignment.
+- **The escape tower** has one diagonal per bay in both tiers. The web jettison motor has one outlet.
 - **The periscope's objective** is a lens over three inches of barrel, not the instrument's optics; its door has no
   latch, seal or spring, and the motor, gear box and roller guides are not drawn.
 - **The antenna canister's diameter** disagrees with the one document that states it.

@@ -35,6 +35,16 @@ Vec3 = tuple[float, float, float]
 DETAIL = 1.0
 
 
+def native() -> bool:
+    """The close inspection tier. The inventory and both web LODs keep their original meshes."""
+    return DETAIL > 1.0
+
+
+def round_sides(inventory: int) -> int:
+    """Refine a specified *curve*. Polygonal nuts, stock sections and rivet counts keep their shape."""
+    return inventory * 3 if native() else inventory
+
+
 def interior() -> bool:
     """Whether to build what is only seen in a cutaway: crew, equipment, tank internals."""
     return DETAIL >= 0.75
@@ -488,7 +498,10 @@ def ladder(
         c = a + up * (k * step / up.length) - o
         if (c + o - a).length > up.length - 0.05:
             break
-        mb.tube(c - side, c + side, rung / 2 * math.sqrt(2), 4, caps=False)
+        if native():
+            mb.tube(c - side, c + side, rung / 2, 20, caps=False)
+        else:
+            mb.tube(c - side, c + side, rung / 2 * math.sqrt(2), 4, caps=False)
     obj = mb.build(name, mat, parent, smooth=False)
     obj["climb"] = 1
     return obj
@@ -1049,7 +1062,7 @@ def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> 
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--preview", help="directory for EEVEE preview stills")
-    ap.add_argument("--detail", type=float, default=1.0, help="level of detail: 1 is full, 0.25 is a distant LOD")
+    ap.add_argument("--detail", type=float, default=1.0, help="level of detail: 2 is native, 1 is the inventory, 0.25 is a distant LOD")
     ap.add_argument("--allow-clashes", action="store_true", help="export even if the clearance check fails")
     ap.add_argument("--named", help="a JSON list of the names the flights' data asks the viewer to find: meshes so named are not joined")
     args = ap.parse_args(argv)

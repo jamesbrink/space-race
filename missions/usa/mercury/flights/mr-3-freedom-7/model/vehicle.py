@@ -66,6 +66,7 @@ from srlib import (  # noqa: E402
     load_font,
     mark_shells,
     prof,
+    round_sides,
     run,
 )
 
@@ -197,7 +198,7 @@ def build_afterbody(M, font) -> Skin:
 
     # the ports' plates, each with its hole; the hatch's border; the periscope door's plate
     for plate, (t, z) in zip(PORT_PLATES, PORTHOLES):
-        skin.panel(plates, *plate, hole=circle(PORT_HOLE), about=(t, z), rings=[i / 9 for i in range(10)])
+        skin.panel(plates, *plate, hole=circle(PORT_HOLE, round_sides(48)), about=(t, z), rings=[i / 9 for i in range(10)])
         mercury_capsule.fasten_round(skin, skin.bolts, plate, inset=0.5, pitch=2.8)
     mid = ((HATCH[0] + HATCH[1]) / 2, (HATCH[2] + HATCH[3]) / 2)
     skin.panel(plates, *JAMB, hole=skin.bounds(*mid, *HATCH), about=mid)
@@ -289,7 +290,7 @@ def build_ports(M, g, skin: Skin) -> None:
         plate, ring, glass, void = MeshBuilder(), MeshBuilder(), MeshBuilder(), MeshBuilder()
         to = skin.flat(t, z)
         # the plate: an annulus on the cone's own curve, a sixteenth of an inch and more above the shingle it is laid on
-        n = 48
+        n = round_sides(48)
         radii = ((PORT_HOLE, -0.09), (PORT_HOLE, 0.1), (PORT_PLATE, 0.1), (PORT_PLATE, 0.0))
         plate.grid(
             lambda i, j, to=to: to(radii[j][0] * math.cos(TAU * i / n), radii[j][0] * math.sin(TAU * i / n), radii[j][1]),
@@ -308,13 +309,13 @@ def build_ports(M, g, skin: Skin) -> None:
         # (it starts under the skin: the cone falls a quarter of an inch away from a flat ring at the port's sides)
         # (and its underside, which is what of it is seen from the cabin, through the pane it holds down)
         well = [(PORT_WELL, -0.28), (PORT_WELL, lip), (PORT_GLASS - 0.05, lip), (PORT_GLASS - 0.05, -PORT_SET), (PORT_WELL, -PORT_SET)]
-        ring.lathe(prof(well), 64, matrix=f)
+        ring.lathe(prof(well), round_sides(64), matrix=f)
         for i in range(24):
             a = TAU * (i + 0.5) / 24
             ring.disc(f @ Vector((3.375 * math.cos(a) * IN, 3.375 * math.sin(a) * IN, lip * IN)), CONE.n(t), 0.06 * IN, 0.04 * IN)
         # (under the ring, and out past the sleeve that lines the wall inside, so nothing is seen past its edge from the cabin)
         pane = mercury_cabin.PORT_OUTER_PANE
-        glass.lathe(prof([(PORT_WELL + 0.04, pane), (0.0, pane)]), 48, matrix=f)
+        glass.lathe(prof([(PORT_WELL + 0.04, pane), (0.0, pane)]), round_sides(48), matrix=f)
         if not interior():  # no cabin behind it: a dark disc stands in for one
             void.lathe(
                 prof([(PORT_GLASS + 0.02, pane - 0.1), (0.0, pane - 0.1)]), 48, matrix=f
