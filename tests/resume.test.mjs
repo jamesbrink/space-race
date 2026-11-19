@@ -480,7 +480,7 @@ test('the stamp: the same flight the same, a figure of its plan changed another 
   assert.notEqual(hash('abc'), hash('abd'));
 });
 
-test('only a flight with a tower escape hull stamps how its pad is posed', () => {
+test('a flight stamps where its pad stands, and only one with a tower escape hull how its pad is posed', () => {
   const apollo = flights.find((flight) => flight.id === 'usa/apollo/apollo-7');
   const editPad = (flight, edit) => ({
     ...flight,
@@ -488,7 +488,12 @@ test('only a flight with a tower escape hull stamps how its pad is posed', () =>
   });
   const move = (pad) => ({ ...pad, position: [0, -100, 0] });
   assert.notEqual(stampOf(editPad(apollo, move)), stampOf(apollo));
-  assert.equal(stampOf(editPad(freedom7, move)), stampOf(freedom7));
+  // (every flight flown by hand can strike what stands at its site, sim/sitecontact.ts: moved, the pad is another site)
+  assert.notEqual(stampOf(editPad(freedom7, move)), stampOf(freedom7));
+  // but how its parts are posed is the baked solids' (their own stamp, made by the build), not the flight's data here
+  const posed = (pad) => ({ ...pad, parts: pad.parts.map((part) => ({ ...part, explode: [9, 9, 9] })) });
+  assert.equal(stampOf(editPad(freedom7, posed)), stampOf(freedom7));
+  assert.notEqual(stampOf(editPad(apollo, posed)), stampOf(apollo));
   const editCopy = (pad) => ({
     ...pad,
     name: 'Revised launch pad name',

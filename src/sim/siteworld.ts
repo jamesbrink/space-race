@@ -52,6 +52,8 @@ interface Standing {
   place: Pose;
   piece: SolidPiece;
   tree: BoxTree | null;
+  /** Where it stands in the site's frame, for one that never moves: worked out when first asked. */
+  still?: Pose;
   /** A sphere round the piece in its own frame. */
   middle: Vec3;
   reach: number;
@@ -116,7 +118,14 @@ export class SiteWorld {
   }
 
   private poseOf(s: Standing, t: number): Pose {
+    // (a piece that never moves is placed once)
+    if (!s.piece.track) return (s.still ??= within(s.place, s.piece.pose));
     return within(s.place, poseAt(s.piece, t));
+  }
+
+  /** How far from the site's origin anything here ever is, m: a sphere further off than that and its own radius meets nothing. */
+  get extent(): number {
+    return this.reach;
   }
 
   /** Where a piece (`model/node`) stands at `t`, seconds from launch, in the site's frame: null if there is none of that name. */
@@ -154,6 +163,31 @@ export class SiteWorld {
         best = { fraction: hit.fraction, normal: turnBy(pose1.q, hit.normal), model: s.model, node: s.piece.node, part: s.piece.part };
     }
     return best;
+  }
+
+  /**
+   * Whether a sphere of `radius` going from `from` at `t0` to `to` at `t1` neither starts in anything nor meets
+   * anything: one question for a whole vehicle (the sphere round its hull) before each of its own spheres is asked.
+   */
+  clear(from: Vec3, to: Vec3, radius: number, t0: number, t1: number = t0): boolean {
+    const along = sub(to, from);
+    const span = dot(along, along);
+    const nearest = span ? Math.min(1, Math.max(0, -dot(from, along) / span)) : 0;
+    if (length(add(from, scale(along, nearest))) > this.reach + radius) return true;
+    for (const s of this.standing) {
+      const pose0 = this.poseOf(s, t0);
+      const pose1 = s.piece.track && t1 !== t0 ? this.poseOf(s, t1) : pose0;
+      const a = into(pose0, from);
+      const b = into(pose1, to);
+      // (in the piece's own frame: its sphere against the way's)
+      const way = sub(b, a);
+      const size = dot(way, way);
+      const k = size ? Math.min(1, Math.max(0, dot(sub(s.middle, a), way) / size)) : 0;
+      if (length(sub(s.middle, add(a, scale(way, k)))) > s.reach + radius) continue;
+      s.tree ??= new BoxTree(s.piece.boxes);
+      if (s.tree.touching(a, radius).length || s.tree.sweep(a, b, radius)) return false;
+    }
+    return true;
   }
 
   /** The pieces a sphere standing at `centre` at `t` reaches into: `model/node` each. */

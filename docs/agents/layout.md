@@ -324,6 +324,7 @@ src/
   sim/contact.ts                     swept spacecraft contact and its inelastic impulse
   sim/solids.ts                      what is solid, baked from a model (tools/collision-bake.mjs): a structure's pieces as boxes with where each stands from liftoff on, a vehicle's hulls as spheres; the file's format, a sphere swept against a box, a piece's boxes in a tree
   sim/siteworld.ts                   what stands at a flight's site, placed as the flight places its models and asked in the site's frame at an instant: a swept sphere's first meeting, what a sphere touches, what is under a point; which models have solids (`solidModels`)
+  sim/sitecontact.ts                 a vehicle flown by hand against what stands at its site: its hull's spheres swept through each tick, the first meeting answered by an impulse on the tick's outcome (contact.ts `strike`), and what was struck said
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
   sim/orbital-target.ts               a separated upper stage on its own orbit, with range observations for the historical rendezvous

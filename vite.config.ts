@@ -30,12 +30,19 @@ const PAD_STAMPS = Object.fromEntries(
     .map((file) => [file.slice('public/'.length), `${collisionCode}.${digest([file])}`]),
 );
 
+// What a flight flown by hand can strike at its site, and with what hull (tools/collision-bake.mjs): a kept flight is not
+// flown again on other shapes than it was flown on (deck/tape.ts `stampOf`).
+const SOLID_STAMPS = Object.fromEntries(
+  filesFor(['public/models/**/*.solid.bin']).map((file) => [file.slice('public/'.length), digest([file])]),
+);
+
 // GitHub Pages serves the site from /<repo>/; CI passes that in as BASE_PATH.
 export default defineConfig({
   base: process.env.BASE_PATH ?? '/',
   define: {
     'import.meta.env.SIM_STAMP': JSON.stringify(SIM_STAMP),
     'import.meta.env.PAD_STAMPS': JSON.stringify(PAD_STAMPS),
+    'import.meta.env.SOLID_STAMPS': JSON.stringify(SOLID_STAMPS),
   },
   // (agents' worktrees live under .claude/ inside the repo: a file changed in one is not this server's, and reloading the
   // page for it broke a browser test half way through and would restart anyone's session. Only this checkout's own
