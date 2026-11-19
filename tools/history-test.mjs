@@ -176,7 +176,8 @@ async function phoneWays(page) {
   const lacking = '#gallery .title .ways [data-way=site][aria-disabled=true]';
   inLine(await box(lacking), 'Apollo 16: the way to a site not built');
   check(/not built/i.test((await box(lacking))?.text ?? ''), 'and it says why');
-  await page.locator(`${lacking}:visible`).click();
+  // (Playwright waits on aria-disabled as on disabled; a finger does not)
+  await page.locator(`${lacking}:visible`).click({ force: true });
   await page.waitForTimeout(300);
   const said = await page.evaluate(() => document.querySelector('#gallery .notes')?.textContent ?? '');
   check(/not built/i.test(said), `a tap on it says why in the notes (${said.trim().slice(0, 60)})`);
