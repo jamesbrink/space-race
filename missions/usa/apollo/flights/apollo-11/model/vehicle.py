@@ -36,7 +36,7 @@ def check_stowed_gear():
 
 
 def build():
-    saturn_v.build(lunar_module=partial(lunar_module.build, spacecraft=5))
+    saturn_v.build(lunar_module=partial(lunar_module.build, spacecraft=5), adapter_number="14")
     check_stowed_gear()
     apollo_csm.build(saturn_v.CSM_OFFSET, spacecraft=107)
     launch_escape.build(saturn_v.CSM_OFFSET, saturn_v.HEIGHT, boardable=True)

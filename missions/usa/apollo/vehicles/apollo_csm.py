@@ -192,6 +192,9 @@ def build(offset=0, *, spacecraft=101):
     console_equipment.indicators(groups["FlightDirectorIndicators"], CM_BASE, spacecraft=spacecraft)
     console_equipment.equipment(groups["ConsoleEquipment"], CM_BASE, spacecraft=spacecraft)
     cabin_bays.build(groups["CabinEquipmentBays"], CM_BASE)
+    if spacecraft == 107:
+        groups["WaterDispenser"] = group("WaterDispenser")
+        cabin_bays.columbia_dispenser(groups["WaterDispenser"], CM_BASE)
     unitized_couch.build(groups["CrewCouches"], CM_BASE, foldable=lunar)
     if lunar:
         groups["HighGainAntenna"] = group("HighGainAntenna")
