@@ -119,7 +119,80 @@ def _bay(radial, across, xa, origin_xa):
     return (radial * math.cos(a) - across * math.sin(a), radial * math.sin(a) + across * math.cos(a), xa - origin_xa)
 
 
-def power(parent, origin_xa):
+def odyssey_oxygen(shelf, core, origin_xa):
+    """SM-109 sector IV, Apollo 13 Review Board, ch. 4. Stations and local fittings are estimated."""
+    if not interior():
+        return
+    jacket = material("apollo-dewar-jacket", (0.52, 0.53, 0.51), metallic=0.82, roughness=0.31)
+    alloy = material("apollo-oxygen-shelf-anodized", (0.54, 0.28, 0.08), metallic=0.65, roughness=0.38)
+    metal = material("apollo-oxygen-stainless", (0.56, 0.58, 0.58), metallic=0.76, roughness=0.33)
+    black = material("apollo-oxygen-electrical", (0.10, 0.11, 0.12), metallic=0.25)
+    leads = MeshBuilder()
+    frame = MeshBuilder()
+    for i, (r, a) in enumerate(((36, 1), (60.8, -11.6)), 1):
+        centre = _bay(r, a, 920, origin_xa)
+        _ball(f"SM_OxygenDewar_{i}", OXYGEN_DIAMETER, centre, jacket, shelf)
+        _lathe(f"SM_OxygenMount_{i}", _ring(13.28, 13.60, -0.56, 0.56), centre, alloy, shelf)
+        _lathe(
+            f"SM_OxygenAccessory_{i}", [(2.9, 12.8), (3.5, 13.2), (3.5, 14.0), (2.7, 14.2), (2.7, 18), (2.3, 18.35), (0, 18.35)], centre, metal, shelf
+        )
+        for side in (-1, 1):
+            _line(
+                leads,
+                [
+                    _bay(r + dr, a + side * da, 920 + h, origin_xa)
+                    for dr, da, h in ((0, 2.5, 16.3), (0, 5.5, 16.3), (1.1, 7.8, 14.5), (2.9, 11.8, 9), (3.5, 13.9, 2))
+                ],
+                0.30,
+            )
+    # The installation photo shows a common equatorial shelf. Carry its open webs
+    # outside the jackets: the two centres lie along this local longitudinal axis.
+    dr, da = 24.8, -12.6
+    length = math.hypot(dr, da)
+
+    def point(along, across, height):
+        return _bay(36 + (along * dr - across * da) / length, 1 + (along * da + across * dr) / length, 920 + height, origin_xa)
+
+    for side in (-1, 1):
+        for h in (-0.67, 0.67):
+            _line(
+                frame,
+                [
+                    point(t, side * w, h)
+                    for t, w in ((-11.4, 7.7), (-5.8, 12.55), (0, 13.78), (length, 13.78), (length + 5.8, 12.55), (length + 11.4, 7.7))
+                ],
+                0.29,
+            )
+        for t in range(0, 28, 4):
+            _line(frame, [point(t, side * 13.78, -0.67), point(t + 2, side * 13.78, 0.67), point(t + 4, side * 13.78, -0.67)], 0.24)
+    frame.build("SM_OxygenShelfTruss", alloy, shelf)
+    leads.build("SM_OxygenAccessoryLines", metal, shelf)
+    # Figure 4-1: two motors at opposite ends of the heater tube, a separate
+    # capacitance quantity probe, and the helical heater windings.
+    r, a = 60.8, -11.6
+    centre = _bay(r, a, 920, origin_xa)
+    tube = MeshBuilder()
+    tube.lathe(prof(_ring(1.59, 1.80, -10.9, 10.9)), segs=40, arc=(math.radians(240), math.radians(360)))
+    tube.build("SM_OxygenTwoHeaterTubeSection", metal, core).location = Vector(centre) * IN
+    for label, h in (("Lower", -9.1), ("Upper", 9.1)):
+        _lathe(f"SM_OxygenTwo{label}FanMotor", [(0.9, h - 1.55), (1.42, h - 1.25), (1.42, h + 1.25), (0.9, h + 1.55)], centre, black, core)
+    elements = MeshBuilder()
+    for n in range(2):
+        turns = 8
+        path = []
+        for step in range(97):
+            angle = 2 * math.pi * turns * step / 96 + n * math.pi
+            path.append(_bay(r + 1.46 * math.cos(angle), a + 1.46 * math.sin(angle), 913.0 + 14 * step / 96, origin_xa))
+        _line(elements, path, 0.14)
+    elements.build("SM_OxygenTwoHeaterWindings", alloy, core)
+    probe = MeshBuilder()
+    _line(probe, [_bay(r - 2.45, a, h, origin_xa) for h in (908.4, 931.6)], 0.55)
+    for h in (908.6, 931.5):
+        _line(probe, [_bay(r - 2.45, a, h, origin_xa), _bay(r + 0.4, a, h, origin_xa)], 0.36)
+    probe.build("SM_OxygenTwoQuantityProbe", metal, core)
+
+
+def power(parent, origin_xa, *, separate_oxygen=False):
     if not interior():
         return
     dewar = material("apollo-dewar-jacket", (0.52, 0.53, 0.51), metallic=0.82, roughness=0.31)
@@ -131,7 +204,11 @@ def power(parent, origin_xa):
         ("Oxygen", OXYGEN_DIAMETER, ((36, -1, 920), (61.5, 11, 920))),
         ("Hydrogen", HYDROGEN_DIAMETER, ((56, 0, 858.5), (56, 0, 892.1))),
     ):
+        if gas == "Oxygen" and separate_oxygen:
+            continue
         for i, (radial, across, xa) in enumerate(positions, 1):
+            if gas == "Hydrogen" and separate_oxygen:
+                i = 3 - i  # SM-109 installation drawing labels the upper tank 1.
             centre = _bay(radial, across, xa, origin_xa)
             _ball(f"SM_{gas}Dewar_{i}", diameter, centre, dewar, parent)
             if gas == "Oxygen":
@@ -140,6 +217,8 @@ def power(parent, origin_xa):
     # The mission report (5.8.1) explicitly puts cell 2 inboard of 1 and 3.
     radius = FUEL_CELL_DIAMETER / 2
     for number, radial, across in ((1, 61, -12), (2, 39, 0), (3, 61, 12)):
+        if separate_oxygen:
+            across = -across  # Fig. 4-4, viewed from outside SM-109: cell 3 on the left, 1 on the right.
         centre = _bay(radial, across, 943.5, origin_xa)
         _lathe(
             f"SM_FuelCell_{number}_Jacket",

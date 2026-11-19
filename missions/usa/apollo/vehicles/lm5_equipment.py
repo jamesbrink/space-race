@@ -78,20 +78,20 @@ def mesa_contents(bay, alloy, ivory, dark):
     sample_cases(bay, alloy, dark)
 
 
-def sample_cases(bay, alloy, dark, prefix="LM5"):
+def sample_cases(bay, alloy, dark, prefix="LM5", stations=((-12, 75), (12, 75))):
     cases, lids, hardware, seals = (MeshBuilder() for _ in range(4))
-    for x in (-12, 12):
+    for x, z in stations:
         # Two hinged lids with the two latches on their forward edge, S69-31076/31080.
-        box(cases, (x, 9, 75), (18, 11.5, 11))
-        box(seals, (x, 9, 80.65), (17.85, 11.35, 0.6))
-        box(lids, (x, 9, 81.46), (18.2, 11.7, 1.32))
+        box(cases, (x, 9, z), (18, 11.5, 11))
+        box(seals, (x, 9, z + 5.65), (17.85, 11.35, 0.6))
+        box(lids, (x, 9, z + 6.46), (18.2, 11.7, 1.32))
         for dx in (-6, 6):
-            tube(hardware, (x + dx - 1, 14.85, 80.8), (x + dx + 1, 14.85, 80.8), 0.45)
-            box(hardware, (x + dx, 2.95, 80), (1.3, 0.44, 2.0))
-            tube(hardware, (x + dx - 0.7, 2.65, 79.25), (x + dx + 0.7, 2.65, 79.25), 0.23)
+            tube(hardware, (x + dx - 1, 14.85, z + 5.8), (x + dx + 1, 14.85, z + 5.8), 0.45)
+            box(hardware, (x + dx, 2.95, z + 5), (1.3, 0.44, 2.0))
+            tube(hardware, (x + dx - 0.7, 2.65, z + 4.25), (x + dx + 0.7, 2.65, z + 4.25), 0.23)
         for dx in (-2.8, 2.8):
-            tube(hardware, (x + dx, 3.25, 76.6), (x + dx, 2.0, 75.7), 0.32)
-        tube(hardware, (x - 2.8, 2.0, 75.7), (x + 2.8, 2.0, 75.7), 0.33)
+            tube(hardware, (x + dx, 3.25, z + 1.6), (x + dx, 2.0, z + 0.7), 0.32)
+        tube(hardware, (x - 2.8, 2.0, z + 0.7), (x + 2.8, 2.0, z + 0.7), 0.33)
     sample = group("SampleContainers", bay)
     cases.build(f"{prefix}_SampleReturnBoxes", alloy, sample)
     lids.build(f"{prefix}_ContainerLids", alloy, sample)

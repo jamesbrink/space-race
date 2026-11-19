@@ -69,7 +69,6 @@ export const upcoming: Upcoming[] = [
     launch: '1969-10-12',
   },
   { id: 'ussr/soyuz/soyuz-8', nation: 'USSR', name: 'Soyuz 8', line: 'Vladimir Shatalov · Alexei Yeliseyev', launch: '1969-10-13' },
-  { id: 'usa/apollo/apollo-13', nation: 'USA', name: 'Apollo 13', line: 'Jim Lovell · Jack Swigert · Fred Haise', launch: '1970-04-11' },
   { id: 'ussr/soyuz/soyuz-9', nation: 'USSR', name: 'Soyuz 9', line: 'Andriyan Nikolayev · Vitaly Sevastyanov', launch: '1970-06-01' },
   {
     id: 'usa/apollo/apollo-14',

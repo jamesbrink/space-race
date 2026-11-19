@@ -281,7 +281,7 @@ def markings(first, second, red):
     mark_shells([obj.name for owner in (first, second) for obj in owner.children if obj.name.startswith(("Letters_", "SIC_Flag_"))])
 
 
-def instrument_unit(parent, steel, metal):
+def instrument_unit(parent, steel, metal, impact_radio=False):
     """SA-503 equipment bays, by cold plate number in MSFC-MAN-503 Fig. 7-4 sheets 2–5."""
     cases, plates, vessels = MeshBuilder(), MeshBuilder(), MeshBuilder()
 
@@ -292,7 +292,7 @@ def instrument_unit(parent, steel, metal):
         )
 
     for bay in range(1, 25):
-        if bay != 8:  # access door
+        if bay != 8 and not (impact_radio and bay == 24):  # access door; plate 24 travels with the SA-508 equipment
             plates.box((1.25 * IN, 28 * IN, 26 * IN), pose(bay, 0, 17, 127))
     # Tangential offsets, case widths and heights traced from the perspective
     # views. Space is left for the open access door and the spherical assemblies.
@@ -317,6 +317,8 @@ def instrument_unit(parent, steel, metal):
         24: [(-8, 22, 8, 11), (3, 22, 7, 11), (11, 22, 6, 14)],
     }
     for bay, items in envelopes.items():
+        if impact_radio and bay == 24:
+            continue  # The dedicated impact-tracking installation occupies this plate.
         for x, z, width, height in items:
             cases.box((5.5 * IN, width * IN, height * IN), pose(bay, x, z, 123.5))
     # The two accumulators, the cylindrical flight control computer at bay 16,
@@ -338,7 +340,51 @@ def instrument_unit(parent, steel, metal):
         mark_shells([mesh.build("IU503_" + name, paint, parent).name])
 
 
-def build(*, lunar_module=None, adapter_number=None):
+def lunar_impact_radio(iu, white, black, alloy, steel):
+    """AS-508 evaluation, table B-4: CCS hardware and battery 6D20 on cold plate 24."""
+    bay = -math.pi / 4
+    # The outer cork was painted white opposite the plate. Divide the skin at its paint edges.
+    meshes = [MeshBuilder(), MeshBuilder()]
+    for start, end, segs, index in ((-7.5, 7.5, 6, 1), (7.5, 352.5, 122, 0)):
+        arc = (bay + math.radians(start), bay + math.radians(end))
+        meshes[index].lathe(prof([(UPPER_RADIUS, THIRD_TOP), (UPPER_RADIUS, IU_TOP)]), segs=segs, arc=arc)
+    for mesh, name, paint in zip(meshes, ("Barrel", "WhiteCork"), (black, white)):
+        mark_shells([mesh.build("IU508_" + name, paint, iu).name])
+
+    radio = group("LunarImpactRadio")
+    radio["lineup_enclosed"] = True
+    mount = group("IU508_EquipmentMount", radio)
+    mount.location = radial(127, bay, THIRD_TOP + 17)
+    mount.rotation_euler.z = bay
+
+    def case(name, dims, centre, paint):
+        envelope = MeshBuilder()
+        envelope.box(tuple(d * IN for d in dims), Matrix.Translation(tuple(c * IN for c in centre)))
+        envelope.build("IU508_" + name, paint, mount, smooth=False)
+
+    case("ColdPlate24", (1.25, 28, 26), (0, 0, 0), alloy)
+    # MSFC-MAN-508 fig. 7-4, sheet 2: broad low case with a bolted lid and three stiffeners.
+    case("Battery6D20", (12.5, 25, 9.8), (-7, 0, -7.3), material("iu508-battery", (0.36, 0.39, 0.41), 0.45, 0.48))
+    case("BatteryLid", (13.2, 25.8, 0.5), (-7.1, 0, -2.1), alloy)
+    case("Transponder", (6, 12, 6), (-3.7, 6.3, 6.4), steel)
+    case("PowerAmplifier", (7.2, 6.3, 10.8), (-4.35, -4, 5.2), alloy)
+    case("CoaxialSwitch", (4.3, 4.2, 3.5), (-2.9, -10.5, 7.3), steel)
+    fittings = MeshBuilder()
+    for y in (-7.8, 0, 7.8):
+        # Gussets widen at the base, tapering up against the front of the case.
+        vertices = [(x * IN, (y + side) * IN, z * IN) for side in (-0.23, 0.23) for x, z in ((-13.32, -12.1), (-14.3, -12.1), (-13.32, -3.8))]
+        fittings.add(vertices, [(0, 1, 2), (5, 4, 3), (0, 3, 4, 1), (1, 4, 5, 2), (2, 5, 3, 0)])
+    for x in (-13, -1.3):
+        for y in range(-12, 13, 3):
+            fittings.tube((x * IN, y * IN, -1.8 * IN), (x * IN, y * IN, -1.58 * IN), 0.2 * IN, segs=8)
+    for z in (-8.4, -5.8):
+        fittings.tube((-13.28 * IN, -10.5 * IN, z * IN), (-14.1 * IN, -10.5 * IN, z * IN), 0.52 * IN)
+    for y in (3.0, 6.5, 10):
+        fittings.tube((-3.8 * IN, y * IN, 9.46 * IN), (-3.8 * IN, y * IN, 10.4 * IN), 0.65 * IN)
+    fittings.build("IU508_BatteryAndRadioFittings", alloy, mount, smooth=False)
+
+
+def build(*, lunar_module=None, adapter_number=None, impact_radio=False):
     white = material("saturn-white", (0.86, 0.87, 0.83), roughness=0.64)
     black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
     steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
@@ -364,7 +410,10 @@ def build(*, lunar_module=None, adapter_number=None):
     mid = (SECOND_TOP + TAPER_TOP) / 2
     barrel("SIVB_Interstage_", taper, [(SECOND_TOP, mid, r, (r + u) / 2, 0b11000011), (mid, TAPER_TOP, (r + u) / 2, u, 0b00001111)], white, black)
     barrel("SIVB_", third, [(TAPER_TOP, THIRD_TOP, u, u, 0)], white, black)
-    barrel("IU_", iu, [(THIRD_TOP, IU_TOP, u, u, 255)], white, black)
+    if impact_radio:
+        lunar_impact_radio(iu, white, black, alloy, steel)
+    else:
+        barrel("IU_", iu, [(THIRD_TOP, IU_TOP, u, u, 255)], white, black)
     fairings(first, white, fairing_black, shield)
     markings(first, second, red)
     if srlib.DETAIL >= 0.5:
@@ -422,7 +471,7 @@ def build(*, lunar_module=None, adapter_number=None):
         tanks(second_tanks, "SII_Tank", 194, [(weld, 120, -1), (weld, 144, 1), (forward, 128, 1)], [(weld, forward)], metal, warm)
         third_tanks.location.z = third_engine.location.z
         structure.second_stage(third_tanks, metal, warm, steel)
-        instrument_unit(equipment, steel, metal)
+        instrument_unit(equipment, steel, metal, impact_radio)
     adapter(group("SpacecraftAdapter"), white, lunar_module is not None, adapter_number)
     if lunar_module is None:
         payload(group("LunarTestArticle"), steel, alloy)
@@ -430,8 +479,8 @@ def build(*, lunar_module=None, adapter_number=None):
         lunar_module(IU_TOP)
 
 
-def sii_external_equipment():
-    """SA-507 Flight Manual, figs. 5-2 and 5-19. Visible envelopes in inches."""
+def sii_external_equipment(stage_number=7):
+    """SA-507 and SA-508 Flight Manuals, figs. 5-2 and 5-19. Visible envelopes in inches."""
     collar = bpy.data.objects["LowerInterstage"]
     stage = bpy.data.objects["SaturnSecondStage"]
     white = bpy.data.materials["saturn-white"]
@@ -453,7 +502,7 @@ def sii_external_equipment():
     for i in range(4):
         angle = i * math.pi / 2 + math.pi / 4
         cover(
-            f"SII7_UllageFairing_{i + 1}",
+            f"SII{stage_number}_UllageFairing_{i + 1}",
             collar,
             angle,
             [(FIRST_TOP + z, w, h) for z, w, h in ((3, 8, 8), (14, 10, 12), (76, 10, 12), (89, 8, 9), (108, 0.8, 0.6))],
@@ -462,4 +511,4 @@ def sii_external_equipment():
     # The systems tunnel continues up the side of the S-II, above its skirt. Keep each paint field.
     angle = math.radians(122)  # In the white field alongside the UNITED STATES legend.
     for i, (lo, hi, paint) in enumerate(((COLLAR_TOP + 8, 1969.9, white), (1970, 2014.9, dark), (2015, SECOND_TOP - 42, white))):
-        cover(f"SII7_SystemsTunnel_{i + 1}", stage, angle, [(lo, 8, 5), (hi, 8, 5)], paint)
+        cover(f"SII{stage_number}_SystemsTunnel_{i + 1}", stage, angle, [(lo, 8, 5), (hi, 8, 5)], paint)

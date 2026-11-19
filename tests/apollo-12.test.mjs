@@ -1,12 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { BufferAttribute, BufferGeometry, Matrix4 } from 'three';
-import { MeshBVH } from 'three-mesh-bvh';
 import { flight } from '../missions/usa/apollo/flights/apollo-12/flight.ts';
 import { lacks, openingFor } from '../src/app/address.ts';
-import { Exploder } from '../src/viewer/explode.ts';
-import { readGlb } from '../tools/glb-geometry.mjs';
-import { framesOf, hierarchy } from './glb.mjs';
+import { assertAdapterClearance } from './apollo-adapter-clearance.mjs';
+import { framesOf } from './glb.mjs';
 
 const [stack, intrepid] = flight.models;
 const file = (model, level) => new URL('../public/' + model.url.replace('.glb', level + '.glb'), import.meta.url);
@@ -100,31 +97,8 @@ for (const level of ['', '.lod1', '.lod2']) {
   });
 }
 
-// Work in the transformed triangle meshes, including the spacecraft's stowed pose.
-// Regression: the extra equipment in quadrant II travels past SLA-15 before the legs unfold.
 test('Intrepid clears the four SLA-15 panels through extraction and gear deployment', async () => {
-  const { gltf, triangles } = await readGlb(file(stack, ''));
-  const root = hierarchy(gltf);
-  const motion = new Exploder(root, stack.parts);
-  const indices = new Map(gltf.nodes.map((node, i) => [node.name, i]));
-  function pieces(names) {
-    const list = [];
-    for (const name of names) {
-      root.getObjectByName(name).traverse((obj) => {
-        for (const { positions, indices: faces } of triangles(indices.get(obj.name))) {
-          const geometry = new BufferGeometry();
-          geometry.setAttribute('position', new BufferAttribute(positions, 3));
-          geometry.setIndex(new BufferAttribute(faces, 1));
-          geometry.computeBoundingBox();
-          geometry.boundsTree = new MeshBVH(geometry);
-          list.push({ obj, geometry, world: geometry.boundingBox.clone() });
-        }
-      });
-    }
-    return list;
-  }
-  const walls = pieces(['SpacecraftAdapter']);
-  const payload = pieces([
+  await assertAdapterClearance(stack, [
     'LMFuelCask',
     'LMScienceBay',
     'LMSurfaceEquipment',
@@ -135,20 +109,4 @@ test('Intrepid clears the four SLA-15 panels through extraction and gear deploym
     'LMDescent',
     'LMEquipment',
   ]);
-  const local = new Matrix4();
-  for (let step = 0; step <= 100; step++) {
-    motion.set(step / 100);
-    root.updateMatrixWorld(true);
-    for (const item of [...walls, ...payload]) item.world.copy(item.geometry.boundingBox).applyMatrix4(item.obj.matrixWorld);
-    for (const wall of walls) {
-      for (const item of payload) {
-        if (!wall.world.intersectsBox(item.world)) continue;
-        local.copy(wall.obj.matrixWorld).invert().multiply(item.obj.matrixWorld);
-        assert.ok(
-          !wall.geometry.boundsTree.intersectsGeometry(item.geometry, local),
-          `${item.obj.name} enters ${wall.obj.name} at ${step}%`,
-        );
-      }
-    }
-  }
 });
