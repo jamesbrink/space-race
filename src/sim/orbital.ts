@@ -1283,8 +1283,10 @@ export function flyOrbit(
   let before = samples[0]!;
   /** Where it was over as it came through the interface: the landing's miss is measured along the line from there. */
   let gate: Vec3 | null = null;
-  // (six hours past the last thing planned, or past now with nothing planned: a day in orbit is flown round to its burn)
-  const LIMIT = Math.min(stopAt, Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER)) + 6 * 3600);
+  // (six hours past the last thing planned, or past now with nothing planned: a day in orbit is flown round to its burn; a
+  // coast with no burn at all, an uncrewed target that stays up, three days: as far as the clock's coasting rates take it)
+  const span = Number.isFinite(on) || moves.length ? 6 * 3600 : 3 * 86_400;
+  const LIMIT = Math.min(stopAt, Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER)) + span);
   const target =
     ship.landing && geodeticToEcef({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value, height: 0 });
 
