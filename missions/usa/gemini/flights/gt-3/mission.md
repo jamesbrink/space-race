@@ -39,15 +39,18 @@ apsides' lift, 6.0 km, lower: simplified (section 7).
 
 | | Record | Flown | |
 | --- | --- | --- | --- |
-| Speed at cutoff, space-fixed | 25,682 ft/s (7,828 m/s) at insertion | 7,767 m/s | miss: 61 m/s short |
-| Perigee | 87.0 nmi (161.1 km) | 28.3 km | miss |
-| Apogee | 121.0 nmi (224.1 km) | 161.1 km | miss |
-| Inclination | 32.6° | 32.53° | within 0.25° |
+| Speed at cutoff, space-fixed | 25,682 ft/s (7,828 m/s) at insertion | 7,822 m/s | holds: 6 m/s under, the cutoff the guidance's on the orbit |
+| Perigee | 87.0 nmi (161.1 km) | 161.1 km | holds: the law's target |
+| Apogee | 121.0 nmi (224.1 km) | 211.4 km osculating at the cutoff; 220 km of the mean orbit left on | holds |
+| Inclination | 32.6° | 32.60° | holds: the law steers to it |
 
-It falls short of the orbit, as the Vostoks' and Voskhod's ascents here do. The figures are GLV-4's and GLV-1's, not
-GLV-3's, whose thrust and impulse the launch systems report says were "higher than predicted", by how much not said.
-Nothing is adjusted. So from the spacecraft's separation the run shown is the published orbit begun where the ascent left
-it (staged.ts `published`): a handover, not a result.
+The second stage is cut by the guidance, as the radio guidance cut it, where the orbit reached has the published
+period: at 334.7 s, 0.7 s after the recorded 334.0, level at the perigee's height, and the spacecraft parts 25 s after
+it stops, as recorded. Cut at the recorded instant it was 58 m/s short of the orbit (until November 2026, when the
+published orbit's speed was then handed to it). The figures are GLV-4's and GLV-1's, not GLV-3's, whose thrust and
+impulse the launch systems report says were "higher than predicted", by how much not said. Nothing is adjusted, and
+nothing is handed over: the coast is flown on from the state the ascent left, one state from the pad to the sea
+(docs/agents/simulator.md, "One state").
 
 ## 3. The orbit and the three burns
 

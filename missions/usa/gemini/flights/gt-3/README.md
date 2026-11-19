@@ -251,7 +251,7 @@ launch, which agree. The mission report's own table has not been found.
   (97 ft/s) leaves a perigee of 72 km, where SP-138 has 83: 11 km low, cause not established.
 - **The entry** on the lift the programme flew (0.19, estimated for this ship), not the 0.29 the prediction had (derived
   from SP-138's 35 per cent), banked 60 degrees (estimated): the drogue out at 4:45:58 (4:46:48), 289 km short of where it
-  landed and 77 km to the right; from the ascent's handover, 253 km short and 54 to the right, down at 4:52:58 (4:52:31).
+  landed and 77 km to the right; flown whole from the pad, 200 km short and 36 to the right, down at 4:53:05 (4:52:31).
   The bank angles flown are not read, and on them alone the landing moves by hundreds of kilometres.
 
 ## Where sources disagree

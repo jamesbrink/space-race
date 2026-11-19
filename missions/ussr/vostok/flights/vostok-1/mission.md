@@ -626,10 +626,10 @@ Three corrections to the inputs, none of them fitting (sources: docs/sources.md,
   taken as what a block can burn (39.55 t, 93.6 t: derived), drained at the engine's whole flow, which already counts the
   turbine's peroxide (the RD-107's impulse is thrust over kerosene, oxygen and peroxide together: lpre.de).
 - **The throttling, in kind**: the strap-ons' intermediate stage before separation and the core's final stage on its
-  steering chambers for its last 10 s (the 8D75's, lpre.de; Gagarin's 10 to 15 s of weightlessness). Their levels for the
+  steering chambers for its last 7.00 s (the cyclogram's, since November 2026; 10 s before: below. The 8D75's, lpre.de; Gagarin's 10 to 15 s of weightlessness). Their levels for the
   8K72K were not found: 60 % (the 8K71's) and 10.4 % (the four steering chambers at their rated thrust, the most it can be).
 
-| | Burned to the times (first reading) | Cut on the planned orbit's speed (second) | Read again (now) | Record | |
+| | Burned to the times (first reading) | Cut on the planned orbit's speed (second) | Read again (to November 2026, the final stage 10 s) | Record | |
 | --- | --- | --- | --- | --- | --- |
 | Block E cut off | 676 s | 659.3 s | **676.4 s, 46 kg left** | 676 s | **holds**: the integrator's setting and Block E's figures agree with the recorded instant |
 | Inclination | 64.95° (target) | 64.95° (target) | **64.97°** | 64.95° | **holds**, and is now a check |
@@ -637,18 +637,30 @@ Three corrections to the inputs, none of them fitting (sources: docs/sources.md,
 | At the last cutoff | 7,986 m/s | 7,841 | **7,693 m/s, 152 short** | 7,845 needed | **misses: does not reach orbit** (perigee -171 km; the planned 180 km over the ball the record's heights and period imply since November 2026: over the mean Earth 7,691 m/s, 153 short, perigee -176 km) |
 | Most load, first stage | 5.25 g | 5.25 | 4.72 g | about 5 | holds |
 
-**The finding now.** With the third stage cut where its integrator was set and arriving at the recorded instant, the
-miss is the first two stages': 153 m/s short (162 in the standard atmosphere). Their throttling, documented in kind, is worth more than the whole miss either
-way (no core final stage: +444 m/s; 5 s of it, not 10: +222; no strap-on intermediate stage: +143), and the core carries 4.5 t
-to its cutoff, which a vehicle with tank-emptying regulators would not. So the core's load (100.4 less 6.8 t) and its final
-stage as the sources give them do not agree with one another; which is wrong is not known.
+**The finding to November 2026.** With the third stage cut where its integrator was set and arriving at the recorded
+instant, the miss was the first two stages': 153 m/s short (162 in the standard atmosphere), the perigee under the ground.
+Their throttling, documented in kind, is worth more than the whole miss either way (no core final stage: +444 m/s; 5 s
+of it, not 10: +222; no strap-on intermediate stage: +143), and the core carried 4.5 t to its cutoff, which a vehicle with
+tank-emptying regulators would not.
 
-**What is shown.** The scene, the deck and the coast's and descent's checks now fly the ascent as above and, from the
-spacecraft's separation, the published orbit begun where the ascent left it (`published` in staged.ts: the place and
-instant the ascent's, the speed the published orbit's there). That retires the estimated `injection.arc` (27.5°; the
-ascent puts it at 27.82°). Flown so, the published orbit read as mean elements (issue #8) with its heights over the
-ball its own heights and period imply (6,369.1 km): period 89.44 min (holds), apogee flown round 329.9 km (holds), 132 km at
-10:36, 10:45:23 at 7 km, landing 425 km long and 10 km across (the across holds), module 10:50:05, pilot 10:58:47. Over the
+**The final stage is the cyclogram's 7.00 s (November 2026).** The "last 10 s" above was read off Siddiqi's 300 s and
+nothing else. The launch cyclogram has «Предварительная» at 305.74 s and «Главная» at 312.74 s: 7.00 s of final stage
+(vostok-8k72k.ts `FINAL_STAGE`, documented), and it is now flown so, before the same estimated cutoff. Each second of
+main-chamber thrust is 44 m/s, so the vehicle now reaches an orbit: at Block E's cutoff on its integrator's setting,
+676.4 s with 46 kg left, it has 7,827 m/s, level at 180 km, where 181 by 327 km needs 7,841: **14 m/s short**, on an
+orbit of 180 by 265 km osculating there. The greatest load before the core's cutoff is 4.13 g, where the documents
+have 4.2. The core still carries 3.7 t to its cutoff. On the day the core ran 22.0 m/s over its design (NIIP-5's
+report), which is the apogee the record has and this run has not. Nothing is fitted: the 7.00 s is the document's.
+
+**What is shown.** One state, flown from the pad to the ground (docs/agents/simulator.md, "One state, changed only by
+what pushes it"): the ascent as above, the spacecraft pushed off by its joint (0.25 m/s), and the coast and the descent
+flown on from that state and no other. Until November 2026 the spacecraft was put on the published orbit at its
+separation (its speed there replaced by the published orbit's, 147 m/s more): that is gone. The ship is left on 179 by
+283 km and 88.97 min, where the record has 181 by 327 km and 89.44 min (misses, recorded: the 14 m/s). Flown on from
+there: apogee flown round 283.6 km, 121 km at 10:36, 10:45:04 at 7 km, landing 542 km long and 0.5 km across (the across
+holds), module 10:49:45, pilot 10:58:27. Begun at the published orbit's speed, until November 2026: period 89.44 min,
+apogee flown round 329.9 km, 132 km at 10:36, 10:45:23 at 7 km, landing 425 km long and 10 km across, module 10:50:05,
+pilot 10:58:47. Over the
 mean Earth, until November 2026: apogee 326 km, 134 km, 10:45:33, 498 km long and 9 km across, module 10:50:14, pilot
 10:58:56: the ascent cut at the planned 180 km over a ball 1.9 km smaller is 3 m/s faster and leaves the spacecraft
 elsewhere on the orbit (on the ball's continuum drag in orbit, before that: 10:45:34, 503 km, 10:50:16, 10:58:58). (Read as osculating, as until November 2026: apogee 346 km (+19), 138 km, 10:45:39, 452 km long

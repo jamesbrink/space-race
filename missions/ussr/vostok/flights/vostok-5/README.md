@@ -43,14 +43,14 @@ readiness from a launch set for 14:00 by it, so his times are converted and `der
 
 ## The flight as flown
 
-From [mission.md](mission.md). The ascent on the type's figures falls short of an orbit, as Vostok 1's and 2's do: what is
-shown from the separation is the published orbit begun where the ascent left the ship. Its period holds (88.27 min, not
-independent) and so does its apogee from the injection (223.0 km), its heights read over the ball they and its period
+From [mission.md](mission.md). The ascent on the type's figures reaches the orbit, Block E cut by the guidance where the
+orbit reached has the published period (676.3 s; its own integrator's setting is not known), and what is shown is one state
+flown from the pad to the ground (docs/agents/simulator.md, "One state"). Its period holds (88.27 min, the guidance's) and so does its apogee from the injection (223.0 km), its heights read over the ball they and its period
 imply (6,366.7 km, the ellipsoid under an apsis at 47° where the run's perigee is at 63° N: an open inconsistency,
 mission.md). Flown in the thermosphere of the days' own Sun on the ship's free-molecular drag, the orbit falls as TASS's
 did: four days on it is 163.3 by 197.4 km where TASS has 159 by 193, and goes round in 87.91 min where TASS has 87.8. The
 pilot comes down at 14:03:42 (not independent: the burn is timed from his landing), the ball at 13:57:41. **It comes down
-3,314 km short and 253 km across the record's landing** from the injection (3,717 and 242 from the ascent's handover), over
+3,314 km short and 253 km across the record's landing** from the injection (3,706 and 240 flown whole from the pad), over
 Arabia: that last tenth of a minute carried round the last days is the miss, and a period 0.05 min shorter would close
 it; what owns it is not established (mission.md, "Five days in the air"). Before the drag was corrected it came down
 5,647 km short.

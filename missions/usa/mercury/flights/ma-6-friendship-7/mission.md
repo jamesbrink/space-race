@@ -45,9 +45,10 @@ short. At the cutoff 161 by 280 km (the record 161 by 261), 32.33° (32.54); the
 
 ## The orbit, the retrofire and the pack
 
-The coast is flown from the published orbit, read as mean elements with its period node to node (world/meanelements.ts):
-from the estimated injection (`orbital.test.mjs`), or from where the ascent left the capsule, at the published orbit's
-speed (`staged.ts` `published`: what the scene shows). The heights are taken over the equatorial radius: the report does
+The coast shown is flown on from the state the ascent left the capsule in, one state from the pad to the sea
+(docs/agents/simulator.md, "One state"): the sustainer is cut by the guidance where the orbit the capsule will be left on
+has the published period, read as mean elements node to node (world/meanelements.ts). The coast from the published orbit at
+the estimated injection (`orbital.test.mjs`) is a test of the coast alone, and is shown nowhere. The heights are taken over the equatorial radius: the report does
 not say. **The period is flown node to node** (`orbit.kind`, derived from its own figures, tests/periods.test.mjs): on that
 ball the heights' mean orbit has a nodal period 0.9 s shorter than the 88 min 29 s, an anomalistic one 9.4 s longer and a
 Kepler one 14.0 s longer, so the nodal is the nearest for every period within the printed second. No document read says

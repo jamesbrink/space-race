@@ -71,18 +71,18 @@ and so is `injection.at`; the burn's end is Vostok 1's 38.5 s (`estimated`) wher
 Tolerances were set before anything was flown (the record's own commit flew nothing). The ascent flies the day's air
 over the pad (ERA5's column at 08:00 UTC, `aloft.ts`, and the 1976 standard above it); the coast the joined ship's
 free-molecule drag in the air of the days' Sun (world/thermosphere.ts), the descent the standard and calm. On the type's
-ascent, the published orbit from where it left the ship, then the descent:
+ascent, the coast flown on from the state it left the ship in (one state from the pad: docs/agents/simulator.md, "One state"), then the descent:
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Perigee at the last cutoff | 179.8 km ± 5 | −215 km | **miss** | the type's ascent falls short, as Vostoks 1 to 3's (139 m/s slow) |
-| Apogee at the last cutoff | 236.7 km ± 10 | 180 km | **miss** | the same |
-| Inclination | 64.95° ± 0.05 | 64.98° | yes | on Vostok 1's aiming azimuth |
-| Period at the last cutoff | 88.3 min ± 15 s | 83.75 min | **miss** | the same as the perigee |
+| Perigee at the last cutoff | 179.8 km ± 5 | 180.0 km | yes (+0.2 km) | the law's target |
+| Apogee at the last cutoff | 236.7 km ± 10 | 219.9 km | **miss** (−16.8 km) | Block E is cut by the guidance where the orbit reached has the published period, its own integrator's setting not being known (misses.ts `OSCULATING`): what is read here is the osculating orbit at that instant |
+| Inclination | 64.95° ± 0.05 | 64.95° | yes | the law steers to it out of the plane of Vostok 1's aiming azimuth |
+| Period at the last cutoff | 88.3 min ± 15 s | 88.09 min | yes (−12.3 s) | the same as the apogee; the orbit the ship is left on has the published period to a tenth of a second |
 | Period, node to node, of the orbit begun | 88.3 min ± 2 s | 88.30 | yes | not independent |
-| Apogee as flown round | 236.7 km ± 5 | 238.4 km | yes | over the mean Earth, until November 2026: 213.2 km, a miss (−23.5 km) |
-| Landing across the track | 0 ± 60 km (the region of Atasu) | +55 km | yes | |
-| Landing along the track | 0 ± 100 km | +2,407 km | **miss** | the period over 48 revolutions (Vostok 3's `PERIOD_64`, `PERIOD_48`) |
+| Apogee as flown round | 236.7 km ± 5 | 238.5 km | yes | over the mean Earth, until November 2026: 213.2 km, a miss (−23.5 km) |
+| Landing across the track | 0 ± 60 km (the region of Atasu) | +56 km | yes |  |
+| Landing along the track | 0 ± 100 km | +2,455 km | **miss** | the period over 48 revolutions (Vostok 3's `PERIOD_64`, `PERIOD_48`) |
 | Descent module down | 09:46:33 ± 90 s | 09:52:13 | **miss** (+340 s) | down 5.8 minutes before him where the record has twelve, as Vostok 3's |
 | Popovich down | 09:59:00 ± 2 min | 09:58:01 | yes | not independent: the burn is derived from it |
 

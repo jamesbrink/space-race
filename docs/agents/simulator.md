@@ -24,14 +24,46 @@ speeds and climb angles at separation, loads, event times), each with an `id` th
 `Results` and a `tolerance` **set before the simulator was run**. Nothing is fitted: an input is
 never adjusted to bring a check in.
 
+## One state, changed only by what pushes it
+
+In every mode (as flown, on guidance, by hand) a craft has one state, integrated from liftoff to recovery and changed only
+by forces the simulator models: thrust from the engines' data at the throttle and attitude held, gravity, the air, lift
+and drag in entry, parachutes, a joint's push at a separation, a docking joint. The record (tracking points, a published
+orbit, a landing) is what a run is **compared with**: the difference is a residual, recorded (src/sim/misses.ts, the
+flight's mission.md), and it is never written into the state or into samples already flown. No run is put on a published
+orbit, joined to a tracking fix or handed a state it did not fly to.
+
+"As flown" is therefore the record's sequence and commands (ignitions, cutoffs or their conditions, staging, the attitude
+programme, each burn's instant, attitude and length) carried out by guidance on that one state. Where a command given by
+the clock alone would drift from what the hardware did, the guidance closes the loop on the state, as the real one did:
+
+- **The last cutoff is the guidance's where the record's was** (sim/plan.ts: a trigger `{ orbit: 'published' }`). The stage
+  is cut when the orbit the state is on has the record's period (world/meanelements.ts `shortOfPublished`, the published
+  figures read as the coast reads them: staged.ts `orbitShort`), not at the recorded instant, which becomes a figure the run
+  is held to. A stage let go so long after such a cut is let go that long after it stops (`sequenceOf`'s `wait`), cut or dry.
+  A cutoff the record gives as a hardware setting is flown as that setting: a Mercury-Atlas's sustainer on its recorded
+  speed, Vostok's Block E on its integrator's apparent velocity. Which it is, is the plan's data; a flight that failed keeps
+  the cut it had.
+- **The law steers to the orbit** (staged.ts `steer`, `lawOf`). Its unknowns are solved for the height (over the orbit's
+  reference ball, or over the ellipsoid under the cutoff where the record's figure is a trajectory table's:
+  `Guidance.target.over`), climb and inclination at the last cutoff. With the aiming azimuth
+  given the launch plane is the record's, and the third unknown is the yaw the tangent holds out of that plane
+  (`Solved.yaw`), so the inclination is reached and not left to the pad's eastward motion. A stored programme
+  (`Guidance.programme`) is the first part of the law only, flown open as the gyros flew it; from `turn` the tangent takes
+  over, from an angle the law solves for (`Solved.kick` is then the step in the axis there: Apollo 7's S-IVB steps 7.3
+  degrees up as its closed loop begins, where the report's figure shows 8).
+- **A separation is an impulse** (staged.ts `partedOff`, forces.ts `keptShare`): the spacecraft leaves with its share of
+  the speed its joint pushes the two apart at, along the long axis, on the record's run as on a flight flown by hand.
+
+What a run misses the record by is its finding. A flight that comes out badly wrong wants its guidance or its data put
+right; a fix written into the state is not one.
+
 ## Separation and recontact
 
-The recorded orbital flight has two states at spacecraft separation. The incoming state finishes the
-ascent. The outgoing state starts the published coast at the same place and instant, with its own
-velocity. Interpolation on either side uses the velocity for that side. Both the spacecraft and its
-detached stage use the outgoing trajectory as their reference. On a live ascent the simulator divides
-the joint's relative speed between the two masses. A piece on a rotating vehicle also inherits its
-station's velocity and the stack's rotation.
+At the spacecraft's separation a run has two samples at one instant: the stack's state as it parts, and the spacecraft's a
+joint's push later (above). Interpolation on either side uses the velocity for that side. Both the spacecraft and its
+detached stage use the outgoing trajectory as their reference, each with its share of the joint's relative speed by the
+two masses. A piece on a rotating vehicle also inherits its station's velocity and the stack's rotation.
 
 On a hand-flown flight, `sim/contact.ts` sweeps rounded collision shapes between physics samples.
 `Sheds.meet` resolves a detached part against the assembly still aboard; `Sheds.siblings` resolves
@@ -236,11 +268,11 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - Different physics, and kept so: forces.ts `airForces` on a rigid body against a point's drag; flyDown's several canopies
     against a capsule's one; shed.ts `apart`; leaving the pad (vehicle.ts balances every force, stagedlive.ts thrust
     against weight).
-- **A refactor moves no figure unexplained.** `pnpm figures` (tools/figures.mjs) flies every run the tests fly and holds 740
+- **A refactor moves no figure unexplained.** `pnpm figures` (tools/figures.mjs) flies every run the tests fly and holds 3,329
   frame-free figures (heights, speeds, times, places, elements), as doubles, against `tests/fixtures/figures.json`.
   - Exact doubles differ between machines. So the capture is made and compared on hal9000 only, and it is not part of
     `pnpm check`. (On a Mac, compare a tree against a capture of its own base: `--write --against <file>`, then `--against <file>`.)
-  - "Bit for bit" means all 740 equal to the last bit.
+  - "Bit for bit" means all of them equal to the last bit.
   - A commit that moves any figure says why, proves the cause where it can (e.g. the move gone with the one change undone),
     quotes the `pnpm figures` diff in its body, blesses the capture again on hal9000 (`--write`) in the same commit, and
     restates any README or mission.md figure whose rounding shows the move.
@@ -750,8 +782,7 @@ read gives enough of to fly (issue #10).
   that instant (flown from the pad with its attitude placed as the law's: the two agree to a hundredth of a metre a
   second) and flown on by the switches and the hands, Space sets off the record's steps in turn whenever it is pressed
   (each stage lit, cut, let go; the fairing; the spacecraft parted), and once parted the spacecraft coasts from where that
-  ascent left it (`flyOrbit` from `parted`), short of an orbit or not: the handover to the published orbit is the record's
-  run's alone. Its hand controls are the user's without the lock. The turning in orbit is a hand's on the attitude, not a
+  ascent left it (`flyOrbit` from `parted`), short of an orbit or not, as the record's own run does from its own. Its hand controls are the user's without the lock. The turning in orbit is a hand's on the attitude, not a
   rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight by the one
   propagator (below, "The flight deck has a navball and a predicted path"; orbitdeck.ts `predict`, given to path.ts as the
   source's `predict`): on the launch vehicle, under guidance or by hand, where it goes if the engines stopped now (fliers.ts
@@ -777,9 +808,9 @@ read gives enough of to fly (issue #10).
   deck hands the cabin, with each sample, the instants of the record's events on the run on show (`DeckNews`; sim/run.ts
   `orbitalEvents`, moved by a burn by hand), the hands' push and whether they have the attitude, so its lamps light on those
   events, its gauges with a `history` follow the record's readings, the manual orientation's switch stands as the hands are
-  and the hand controller moves with the keys. Because
-  the ascent as recorded falls short of the published orbit, what the record's run shows from separation is the published
-  orbit begun where the ascent left the spacecraft (`published`); the tests hold the ascent itself to the record as flown.
+  and the hand controller moves with the keys. What the record's
+  run shows from separation is the coast flown on from the state its own ascent left the spacecraft in ("One state", above):
+  the tests hold the ascent and the coast to the record, and what each misses it by is in src/sim/misses.ts.
   The descent is drawn from the run's own `descent` (staged.ts `descentOf`: flyDown's tracks in the scene's frame, when
   each parachute came out and went): a drop that `rides` the descent's bodies is carried along each body's track in turn
   and turned to hang against its motion through the air; a body's parachute (`ChuteDef.body`) is drawn by chute.ts from

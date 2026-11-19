@@ -25,9 +25,11 @@ and Fly, with the airlock let out and shot off at the record's times and the bur
 
 ## The flight as flown
 
-From [mission.md](mission.md). The ascent on the 11A57's figures and the crew's instants falls short
-of an orbit, as every Vostok's and Voskhod 1's does, so what is shown from the separation is the
-published orbit begun where the ascent left the ship. Flown from the record's own orbit, the coast
+From [mission.md](mission.md). The ascent on the 11A57's figures and the crew's instants reaches the
+orbit: Block I is cut by the guidance where the orbit reached has the published period, at 537 s
+where the crew's report has 523, with 0.1 t left, and what is shown is one state flown from the pad
+to the ground (docs/agents/simulator.md, "One state"). Flown on from there, as from the record's own
+orbit, the coast
 holds the record's file on the ninth and eighteenth revolutions to 2 km. The burn is fired at
 OKB-1's commands (11:36:29.5 to about 11:37:09), straight against the motion as Belyayev aimed it
 by eye, for 112 m/s worked from the engine's measured thrust; the modules part fourteen minutes

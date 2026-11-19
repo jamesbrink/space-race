@@ -195,10 +195,13 @@ it is in an orbit of 161 by 280 km at 32.33° (the record 161 by 261, 32.54°); 
 T+62 s (982 lb/ft², 47.0 kPa, "at approximately T+1 minute"); 6.8 g at the booster engines' cutoff and 7.9 at the
 sustainer's (7.7).
 
-On the published orbit from where the ascent left it, the retrorockets fire over the Pacific off California, at 32.1° N
+Flown on from the state the ascent left it in (one state from the pad: docs/agents/simulator.md, "One state"; the
+sustainer cut by the guidance where the orbit reached is the published one, 8 s before the recorded instant), the
+retrorockets fire over the Pacific off California, at 32.1° N
 127.8° W; the capsule comes through 100 km at T+4:42:40 at 7.41 km/s through the air, 1.2° below level; 0.05 g at
-04:43:53 (the relay by hand at 04:43:31) and 7.7 g (7.7); the drogue out at 30,000 ft at 04:49:37 (04:49:17.2) and down at 04:56:14 (04:55:23), falling
-8.7 m/s on the main, 215 km beyond where the *Noa* picked it up and 47 km to the right. From the published orbit begun
+04:43:53 (the relay by hand at 04:43:31) and 7.7 g (7.7); the drogue out at 30,000 ft at 04:49:17 (04:49:17.2) and down at 04:55:54 (04:55:23), falling
+8.7 m/s on the main, 63 km beyond where the *Noa* picked it up and 8 km to the left (215 km and 47 km to the right
+until November 2026, when the coast was begun at the published orbit's speed in the unsteered ascent's plane). From the published orbit begun
 at the estimated injection the drogue is out at 04:49:15 and 104 km beyond. Each miss is recorded with its cause in
 `src/sim/misses.ts`. The record landed 40 miles short of the planned point because the retrofire had been worked
 without the consumables spent; the run is held to where it was picked up.

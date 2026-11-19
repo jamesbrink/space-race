@@ -29,10 +29,12 @@ ground.
 
 From [mission.md](mission.md). The ascent is flown on the 11A57's figures as read (the Vostok-K's
 blocks with the later engines, Block I at its maker's thrust on Brügge's load) and Kosmos 47's
-instants, cut at the record's 523 s; like every Vostok's here it falls short of an orbit, at
-7,583 m/s where the orbit reached needs some 8,000. So what is shown from the separation is the
-published orbit begun where the ascent left the ship: a handover, not a result. Its period holds
-(90.1 min, not independent) and so does its apogee (409.1 km). The burn at 10:18:58, aimed from the
+instants, Block I cut by the guidance where the orbit reached has the published period: at 530 s
+where the record has 523, with 0.6 t left, at 7,870 m/s, level at 177.5 km. What is shown is one
+state flown from the pad to the ground (docs/agents/simulator.md, "One state"). Its period holds
+(90.1 min, the guidance's) and so does its apogee (410.7 km; 409.1 from the published orbit at the
+estimated injection, which the figures after this are of; flown whole it comes down 1,198 km short
+and 52 km across). The burn at 10:18:58, aimed from the
 Sun for the Vostok's 45 s and 136 m/s (neither found for this flight), brings the ball down
 **1,066 km short and 106 km across**, in the steppe north-west of the Aral Sea, at 10:43:17, four
 minutes early. The burn a minute later would land it 475 km short; Chertok's programmed 10:08:56

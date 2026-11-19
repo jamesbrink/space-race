@@ -49,17 +49,17 @@ Moscow time (UTC+3), and seconds from liftoff at 10:00:00 on 18 March 1965.
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Perigee at the last cutoff | 173.5 km ± 5 | −1,107.5 km | **miss** | the ascent falls short of an orbit (`SHORT_VK2`) |
-| Apogee at the last cutoff | 497.7 km ± 15 | 180.0 km | **miss** | the same |
+| Perigee at the last cutoff | 173.5 km ± 5 | 180.0 km | **miss** (+6.5 km) | the law is flown level to the planned 180 km (`SHORT_VK2`) |
+| Apogee at the last cutoff | 497.7 km ± 15 | 477.3 km | **miss** (−20.4 km) | Block I is cut by the guidance where the orbit reached has the published period (misses.ts `OSCULATING`): what is read here is the osculating orbit at that instant |
 | Inclination | 65° ± 0.2 | 65.00° | yes | not independent |
-| Period at the last cutoff | 90.944 min ± 15 s | 75.13 min | **miss** | the same |
+| Period at the last cutoff | 90.944 min ± 15 s | 90.76 min | yes (−10.8 s) | the same; the orbit the ship is left on has the published period to a tenth of a second |
 | Period, node to node, of the orbit begun | 90.944 min ± 2 s | 90.944 | yes | not independent |
-| Apogee as flown round (coast; shown) | 497.7 km ± 5 | 499.0; 493.8 km | yes | |
+| Apogee as flown round (coast; shown) | 497.7 km ± 5 | 499.0; 493.8 km | yes |  |
 | The ninth orbit (coast) | 173.3 × 496.2 km, 90.928 min | within 2 km and 2 s | yes | |
 | The eighteenth orbit (coast) | 173.1 × 494.6 km, 90.910 min | within 2 km and 2 s | yes | |
 | The ninth and eighteenth orbits (shown) | as above | 5 km high at perigee, 5 low at apogee | **miss** | the shown run begins where the ascent left it, low at 180 km |
-| Landing across the track (coast; shown) | 0 ± 25 km | −85; −48 km | **miss** | below |
-| Landing along the track (coast; shown) | 0 ± 100 km | −583; −451 km | **miss** | below |
+| Landing across the track (coast; shown) | 0 ± 25 km | −85; −46 km | **miss** | below |
+| Landing along the track (coast; shown) | 0 ± 100 km | −583; −446 km | **miss** | below |
 | Touchdown | 12:02:17 ± 2 min | 12:02:00 | yes | |
 | Touchdown speed | 0.2 m/s ± 1 | 2.1 m/s | **miss** | as Voskhod 1's: the rocket and the parachutes are each an estimate |
 

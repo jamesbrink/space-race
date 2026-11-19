@@ -390,6 +390,7 @@ tools/
   ut1-bake.mjs                        bakes src/world/ut1.ts from the IERS's EOP C01 series: UT1 - TAI since 1956
   stars.mjs                           bakes the stars (the Bright Star Catalogue: stars.ts and public/sky/stars.bin) and the Milky Way (NASA's map)
   figures.mjs                         the simulators' figures to the last digit, every run the tests fly, against tests/fixtures/figures.json (`pnpm figures`; made on hal9000, not in `pnpm check`)
+  residuals.mjs                       what every flight into orbit misses its record by, as one table: when each stage stopped, the orbit left on, where and when it came down, the step in velocity at the parting, each tracking fix (`node tools/residuals.mjs [flight]`: simulator.md, "One state")
   predictions.mjs                     the predictions the figures capture (`predict:*`), each made again from a start nudged and in a frame turned (tests/predict.test.mjs, #30)
   png.mjs                             one-channel PNGs written and read without a library (the globe's maps)
   logo.mjs                            writes the mark (src/ui/logo.ts) to docs/logo.svg (README) and public/og.png (link previews): run after changing it
@@ -437,4 +438,5 @@ where it was left.
 - `src/viewer/dockjets.ts` binds the orbital RCS mouths and the Agena engine to the shared exhaust renderer.
 - `tools/docking.mjs` flies the Apollo and Gemini decks in Chrome, including a saved joint maneuver.
 
+- `tests/onestate.test.mjs` holds every flight into orbit to one state from the pad to the ground (simulator.md, "One state, changed only by what pushes it"): between any two samples of the record's run the velocity changes by gravity and by what the run says was pushing, the only step at one instant is the parting joint's push, the coast begins from the state the ascent left, a last stage cut by its guidance on the orbit leaves the record's period (on changed copies of three flights too), and every flight leaves its pad along its azimuth in the batch run, the samples drawn and the live vehicle.
 - `tests/path-display.test.mjs` checks late display jobs with synthetic results and distinguishes wall-time delay from simulation time.

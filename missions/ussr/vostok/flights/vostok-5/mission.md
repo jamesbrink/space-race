@@ -50,26 +50,26 @@ Vostok 1's 19 minutes from burn to ejection is a burn about 13:36. The two readi
 
 ## What the run gives
 
-On the type's ascent in the day's air over the pad (ERA5, `aloft`), then the published orbit from where it left the
-spacecraft (the handover the scene shows), then the descent; and the coast from the estimated injection. The coast flies
+On the type's ascent in the day's air over the pad (ERA5, `aloft`), then the coast flown on from the state it left the
+spacecraft in (one state from the pad: docs/agents/simulator.md, "One state"), then the descent; and the coast from the estimated injection. The coast flies
 the ship's free-molecular drag in the thermosphere of the days' own Sun (Jacchia 1971 on 13 to 19 June 1963's indices).
 Tolerances were set before anything was flown (the commit that added them flew nothing); TASS's orbit four days on was
 added as a check after the physics agent's probe of that instant had been seen, and says so.
 
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
-| Perigee at the last cutoff | 174.7 km ± 5 | −232.1 km | **miss** (−407 km) | the type's ascent falls short of an orbit, as Vostok 1's and 2's (`SHORT_V5`) |
-| Apogee at the last cutoff | 222.1 km ± 10 | 181.0 km | **miss** (−41 km) | the same: level at the 181 km asked for, and slow |
+| Perigee at the last cutoff | 174.7 km ± 5 | 181.0 km | **miss** (+6.3 km) | the law is flown level to the 181 km asked for (`SHORT_V5`) |
+| Apogee at the last cutoff | 222.1 km ± 10 | 199.3 km | **miss** (−22.8 km) | Block E is cut by the guidance where the orbit reached has the published period (misses.ts `OSCULATING`): what is read here is the osculating orbit at that instant |
 | Inclination | 64.96° ± 0.05 | 64.975° | yes | |
-| Period at the last cutoff | 88.27 min ± 15 s | 83.76 min | **miss** (−271 s) | the same |
+| Period at the last cutoff | 88.27 min ± 15 s | 88.07 min | yes (−12.3 s) | the same; the orbit the ship is left on has the published period to a tenth of a second |
 | Period, node to node, of the orbit begun | 88.27 min ± 2 s | 88.27 | yes | not independent |
 | Apogee as flown round, from the injection | 222.1 km ± 5 | 223.0 km | yes | |
-| Apogee as flown round, from the ascent's handover | 222.1 km ± 5 | 217.7 km | yes | |
+| Apogee as flown round, from the ascent's handover | 222.1 km ± 5 | 217.9 km | yes | flown on from the state the ascent left: nothing is handed over |
 | TASS, 15:00 on 18 June: perigee (coast; shown) | 159 km ± 5 | 163.3; 168.5 km | yes; **miss** (+9.5 km) | the shown run, begun lower, drags less at perigee. TASS's own three of that instant imply a ball 0.9 km smaller than the flight's: over the flight's its heights would read 0.9 km lower |
 | TASS, 15:00 on 18 June: apogee (coast; shown) | 193 km ± 5 | 197.4; 195.8 km | yes; yes | |
 | TASS, 15:00 on 18 June: period (coast; shown) | 87.8 min ± 6 s | 87.91; 87.94 min | **miss** (+6.4 s); **miss** (+8.6 s) | below |
-| Landing across the track (coast; shown) | 0 ± 25 km | −253; −242 km | **miss** | below |
-| Landing along the track (coast; shown) | 0 ± 100 km | −3,314; −3,717 km | **miss** | below |
+| Landing across the track (coast; shown) | 0 ± 25 km | −253; −240 km | **miss** | below |
+| Landing along the track (coast; shown) | 0 ± 100 km | −3,314; −3,706 km | **miss** | below |
 | Bykovskiy down | 14:06 ± 3 min | 14:03:42 | yes | not independent: the burn is timed from it |
 | Descent module down | 13:58 ± 5 min (derived) | 13:57:41 | yes | |
 
@@ -78,7 +78,7 @@ added as a check after the physics agent's probe of that instant had been seen, 
 **Over the ball the record's heights and period imply** (November 2026, against the record's old 6,369 km by Kepler's law):
 the coast from the injection is flown to the bit as before (the period fixes the axis), and so are its figures here (the
 orbit at an instant was read over the implied ball already). The ascent cut at 181 km over a ball 2.3 km smaller is 3 m/s
-faster: from its handover the landing is 3,717 km short and 242 km across, where it was 3,853 and 263.
+faster: flown on from it the landing is 3,706 km short and 240 km across (3,717 and 242 begun at the published orbit's speed, until November 2026; 3,853 and 263 before that).
 
 The descent comes down at 22° N 40° E, in Arabia: what the descent itself gives (its times, 0.25 km between the ball and
 the pilot) is the type's, flown from wherever the coast left it.

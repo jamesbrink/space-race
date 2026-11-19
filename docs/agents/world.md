@@ -223,8 +223,8 @@ Moscow time where TASS has 11:48 and 17:42 (as osculating, 11:49:08 and 17:43:45
 worked examples of mean elements were not to hand and none is used.
 
 src/sim reads every published orbit so (`sim/orbital.ts` `publishedOf`): `injectionState` places the coast's start with
-`fromPublished`, and `sim/staged.ts` `published` gives a spacecraft left where the ascent cut off the speed `alongPublished`
-gives (the flight's frame has the pole for +Z, which is all it needs); `kind: 'osculating'` gives the old states to the
+`fromPublished`, and a guidance that cuts its last stage on the orbit (`shortOfPublished`, sim/staged.ts `orbitShort`) cuts
+it at the speed `alongPublished` gives there (the flight's frame has the pole for +Z, which is all it needs); `kind: 'osculating'` gives the old states to the
 bit. The coast's `period` result is the nodal period of the orbit it begins on, by `meanOf` and `periodsOf`. Flown so,
 Vostok 2's coast from the ascent flown crosses at 11:48:45 and 17:42:34 and, with the burn at 09:51:00, comes down 501
 km short where it was 1,493; Vostok 1's apogee flown round is 326.1 km (record 327, was 346.2), its landing 503 km

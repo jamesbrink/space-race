@@ -64,7 +64,7 @@ programme set wrong or put right from the ground (README, "Where the sources dis
 
 ## What the run gives
 
-On the type's ascent in the day's air over the pad (ERA5, `aloft`), then the published orbit from where it left the ship,
+On the type's ascent in the day's air over the pad (ERA5, `aloft`), then the coast flown on from the state it left the ship in (one state from the pad: docs/agents/simulator.md, "One state"),
 then the descent; and the coast from the estimated injection, on the ship's free-molecular drag in the thermosphere of
 the days' Sun (Jacchia 1971 on 16 to 19 June 1963's indices). Tolerances were set before anything was flown; TASS's orbit
 two days on was added as a check after the physics agent's probe of that instant had been seen, and says so.
@@ -72,18 +72,18 @@ two days on was added as a check after the physics agent's probe of that instant
 | Check | Record | Run | Within | Why, if not |
 | --- | --- | --- | --- | --- |
 | Greatest load, first stage | under five, 4.5 ± 1 | 4.71 g | yes | |
-| Perigee at the last cutoff | 180.9 km ± 5 | −210.7 km | **miss** (−392 km) | the type's ascent falls short of an orbit (`SHORT_V6`, as Vostok 1's) |
-| Apogee at the last cutoff | 231.1 km ± 10 | 183.0 km | **miss** (−48 km) | the same |
+| Perigee at the last cutoff | 180.9 km ± 5 | 183.0 km | yes (+2.1 km) | the law's target |
+| Apogee at the last cutoff | 231.1 km ± 10 | 212.5 km | **miss** (−18.7 km) | Block E is cut by the guidance where the orbit reached has the published period (misses.ts `OSCULATING`): what is read here is the osculating orbit at that instant |
 | Inclination | 64.95° ± 0.05 | 64.98° | yes | |
-| Period at the last cutoff | 88.3 min ± 15 s | 83.85 min | **miss** (−267 s) | the same |
+| Period at the last cutoff | 88.3 min ± 15 s | 88.09 min | yes (−12.3 s) | the same; the orbit the ship is left on has the published period to a tenth of a second |
 | Period, node to node, of the orbit begun | 88.3 min ± 2 s | 88.30 | yes | not independent |
-| Apogee as flown round (coast; shown) | 231.1 km ± 5 | 232.0; 230.9 km | yes | |
+| Apogee as flown round (coast; shown) | 231.1 km ± 5 | 232.0; 231.0 km | yes |  |
 | TASS, 15:00 on 18 June: perigee (coast; shown) | 174 km ± 5 | 176.5; 177.5 km | yes; yes | with the ascent cut over the record's old 6,363 km, until November 2026, the shown run's was 179.8, a miss |
 | TASS, 15:00 on 18 June: apogee (coast; shown) | 218 km ± 5 | 220.3; 219.7 km | yes | |
 | TASS, 15:00 on 18 June: period (coast; shown) | 88.1 min ± 6 s | 88.15; 88.15 min | yes | |
 | Greatest load in the entry | no more than 8, 8 ± 2 | 8.70 g | yes | |
 | Landing across the track (coast; shown) | 0 ± 25 km | −176; −113 km | **miss** | below |
-| Landing along the track (coast; shown) | 0 ± 100 km | −2,726; −2,679 km | **miss** | below |
+| Landing along the track (coast; shown) | 0 ± 100 km | −2,726; −2,686 km | **miss** | below |
 | Tereshkova down | 11:20 ± 2 min | 11:16:37 | **miss** (−203 s) | the burn’s derived minute: she takes 26.0 min from it to the ground |
 | Descent module down | 11:13 ± 5 min (derived) | 11:10:22 | yes | |
 | The two landings apart | 400 m ± 3 km | 251 m | yes | no wind is flown |
