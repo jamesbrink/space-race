@@ -310,6 +310,8 @@ src/
   app/dockflight.ts  ui/dockflight.css  orbital approach viewer and flight controls
   sim/approach.ts  sim/docking.ts      terminal rendezvous initial state and two-spacecraft docking dynamics
   sim/contact.ts                     swept spacecraft contact and its inelastic impulse
+  sim/solids.ts                      what is solid, baked from a model (tools/collision-bake.mjs): a structure's pieces as boxes with where each stands from liftoff on, a vehicle's hulls as spheres; the file's format, a sphere swept against a box, a piece's boxes in a tree
+  sim/siteworld.ts                   what stands at a flight's site, placed as the flight places its models and asked in the site's frame at an instant: a swept sphere's first meeting, what a sphere touches, what is under a point; which models have solids (`solidModels`)
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
   sim/orbital-target.ts               a separated upper stage on its own orbit, with range observations for the historical rendezvous
@@ -337,6 +339,8 @@ src/
   sound/index.ts                      the joinery: the clock, the scene's run and the camera in; the speaker by the clock, U, the volume
 tools/
   build-model.mjs                     runs a flight's model scripts through Blender
+  collision-bake.mjs                  bakes each sited flight's solids into its own folder (`public/models/<flight>/<model>.solid.bin`, `pnpm collision`; `--check` says what is stale), in node from the committed GLBs: no Blender
+  glb-geometry.mjs                    a GLB's nodes and triangles decoded in node (Draco, by the page's own decoder in public/draco)
   lod-thresholds.mjs                  each model's and piece's own level-of-detail thresholds, kept in model/<name>.lod.json, put into the GLB's extras
   lod-measure.mjs                     the measuring behind lod-thresholds.mjs, in a browser: each model and piece, at each level, against distance
   shot.mjs                            one screenshot of the viewer, for looking at a change
