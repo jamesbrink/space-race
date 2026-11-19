@@ -63,7 +63,12 @@ for (const [number, letter, launcher] of [
       // adjacent landing must be within a person's step at every LOD. The near end reaches the hatch.
       const floor = room.lo[1] + pad.position[1] - 0.05 * 0.3048;
       assert.ok(Math.abs(hatch.lo[1] - floor) < 0.15, `sill ${hatch.lo[1]}, landing ${floor}`);
-      assert.ok(room.lo[0] >= hatch.lo[0] && room.lo[0] <= hatch.hi[0]);
+      if (number === 11) {
+        const gap = room.lo[0] - hatch.hi[0];
+        assert.ok(gap > 0 && gap < 0.3, `white room to hatch threshold: ${gap} m`);
+      } else {
+        assert.ok(room.lo[0] >= hatch.lo[0] && room.lo[0] <= hatch.hi[0]);
+      }
       assert.ok(room.lo[2] < hatch.lo[2] && room.hi[2] > hatch.hi[2]);
       assert.equal(Boolean(frames.point('Substation')), letter === 'A');
       // The two leaves hinge toward the negative-Z vestibule wall. Bound their reach through

@@ -8,6 +8,8 @@ In the **Gallery**, start at SA-506 and open the cutaway to follow the engines, 
 
 ## Launch site
 
+![SA-506 on mobile launcher 1 before launch (left) and Columbia’s open hatch beside the white room during crew ingress (right)](../../../../../docs/readme/apollo-11-pad.webp)
+
 SA-506 stands on mobile launcher 1 at Pad 39A. The site opens at **06:54 EDT** on 16 July 1969, when Armstrong entered Columbia. Choose a crew member and follow the approach ramp, launcher stairs and tower elevator. Leave the elevator at level 320, cross arm 9 and board through the white room. Collins entered at 07:00 and Aldrin at 07:07. The closeout crew shut the hatch at 07:25. The initial positions on the ramp and the shared A7L suits are representative. [NASA mission overview](https://www.nasa.gov/missions/apollo/apollo-11/apollo-11-mission-overview/) · [Launch Control transcript](https://apollojournals.org/afj/ap11fj/01launch.html#t-0023444)
 
 At T−50 minutes Launch Control ordered arm 9 to its 12° standby position. At T−5 minutes the arm began its final retraction. By T−4:48 the crew heard it was fully retracted. The launch-vehicle evaluation gives first motion at T+0.3 seconds. The spacecraft mission report lists liftoff at T+0.6 seconds. The countdown uses first motion for the five inflight service arms. [Countdown transcript](https://apollojournals.org/afj/ap11fj/01launch.html#t-0004958) · [AS-506 Flight Evaluation Report, §§3.6 and 4, table 4-1](https://www.ibiblio.org/apollo/Documents/lvfea-AS506-Apollo11.pdf) · [Pad hardware and reconstruction limits](../../../places/cape-canaveral/lc-39.md)

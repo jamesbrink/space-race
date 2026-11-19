@@ -115,6 +115,11 @@ export class Framing {
     return box.copy(this.h.modelsBox(this.h.flying()));
   }
 
+  /** A named view can frame a part or a particular moving assembly inside it. */
+  private subjects(nodes: readonly string[] = []): THREE.Object3D[] {
+    return nodes.flatMap((name) => this.h.parts().get(name) ?? this.h.main()?.getObjectByName(name) ?? []);
+  }
+
   /** The middle of what `of` names: a part, or a view's subject as `view` frames it. */
   private middleOf(of: { view?: string; part?: string }): THREE.Vector3 | null {
     const box = new THREE.Box3();
@@ -122,7 +127,7 @@ export class Framing {
     if (part) box.setFromObject(part);
     else if (of.view && this.h.root()) {
       const named = this.h.def()?.views.find((v) => v.id === of.view);
-      const subjects = (named?.nodes ?? []).flatMap((n) => this.h.parts().get(n) ?? []);
+      const subjects = this.subjects(named?.nodes);
       if (subjects.length) for (const o of subjects) box.expandByObject(o);
       else this.wholeOf(named ? this.h.main() : null, box);
     }
@@ -207,7 +212,7 @@ export class Framing {
     // 'all' is everything on show; a named view with no numbers is the model alone, as it stands;
     // one that names parts is those parts wherever they are now, so it follows them as they come apart
     const box = new THREE.Box3();
-    const subjects = (named?.nodes ?? []).flatMap((n) => this.h.parts().get(n) ?? []);
+    const subjects = this.subjects(named?.nodes);
     if (subjects.length) for (const o of subjects) box.expandByObject(o);
     else this.wholeOf(named ? this.h.main() : null, box);
     const size = box.getSize(new THREE.Vector3());

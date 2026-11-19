@@ -4,7 +4,7 @@ from math import cos, pi, sin
 
 from mathutils import Matrix
 
-from sitelib import P, Parts, beam, box, fine, handrail, hull, lattice, obox, stair_rails, stairs, truss, use  # noqa: E402
+from sitelib import P, Parts, beam, box, fine, handrail, hull, lattice, obox, plate, stair_rails, stairs, truss, use  # noqa: E402
 from srlib import FT, material  # noqa: E402
 
 DECK = 22 + 25
@@ -79,7 +79,7 @@ def base(parts):
         )
 
 
-def tower(parts):
+def tower(parts, crane_parked):
     parts.node("Umbilical_Tower")
     frame = parts("Umbilical_Tower", "red")
     for lo, hi in zip(LEVELS, [*LEVELS[1:], 380]):
@@ -104,18 +104,24 @@ def tower(parts):
     box(parts(lift, "steel"), (72.95, 15.75, DECK + 7.8), (81.05, 24.05, DECK + 8.25))
     # Enclosed twin elevator shaft inside the open lattice.
     box(parts("Umbilical_Tower", "steel"), (79, -5, DECK + 0.02), (88, 6, DECK + 348))
-    parts.node("Hammerhead_Crane")
+    parts.node("Hammerhead_Crane", origin=(80, 0, 0) if crane_parked else (0, 0, 0))
+    if crane_parked:
+        parts.nodes["Hammerhead_Crane"][0].rotation_euler.z = pi / 2
     crane = parts("Hammerhead_Crane", "red")
     box(crane, (76, -5, DECK + 360), (84, 5, DECK + 386))
     truss(crane, lambda i, x: (x, (-3, 3, 3, -3)[i], DECK + (387, 387, 398, 398)[i]), range(-5, 124, 8), 0.63, 0.38)
     beam(parts("Hammerhead_Crane", "steel"), (-4, 0, DECK + 387), (-4, 0, DECK + 376), 0.25)
 
 
-def arms(parts):
+def arms(parts, as506):
     # Service envelopes approximated from the Saturn V flight manual, section VIII.
     for i, (level, tip) in enumerate(
         ((68, 16.65), (132, 16.65), (150, 16.65), (175, 16.65), (215, 16.65), (245, 10.9), (276, 10.9), (304, 6.5), (320, 8)), 1
     ):
+        # Leave the steel frame outside the stage skin through its whole swing.
+        # July tips include room for the coarse collision cells on both assets.
+        if as506:
+            tip = (18.4, 18.4, 18.4, 18.4, 18.4, 12.65, 12.65, 9.8, 8)[i - 1]
         name = f"Service_Arm_{i}"
         z = DECK + level
         # An outboard bearing keeps the parked truss clear of both tower columns.
@@ -128,20 +134,146 @@ def arms(parts):
             box(parts("Umbilical_Tower", "deck"), (55, -2.8, z - 0.35), (59.4, 2.8, z + 0.03))
             truss(parts(name, "red"), lambda k, x: (x, (-3, 3, 3, -3)[k], z + (0, 0, 8.4, 8.4)[k]), [30, 42.5, 55], 0.39, 0.22)
             box(floor, (30, -2.8, z + 0.19), (54.95, 2.8, z + 0.44))
-            stairs(floor, (30, 0, z + 0.44), (12, 0, z + 6.4), 5.5)
-            stair_rails(parts(name, "rail"), (30, 0, z + 0.44), (12, 0, z + 6.4), 5.5)
+            # On ML-1 the landing sits one step below the opening leaves.
+            landing = 5.97 if as506 else 6.4
+            stairs(floor, (30, 0, z + 0.44), (12, 0, z + landing), 5.5)
+            stair_rails(parts(name, "rail"), (30, 0, z + 0.44), (12, 0, z + landing), 5.5)
             # The two open hatch leaves occupy the positive-y side of the vestibule.
-            box(floor, (4.65, -3, z + 6.06), (12, 5.9, z + 6.4))
+            sill = 6.14 if as506 else 4.65
+            # Keep the underside clear after both GLBs are quantized into collision boxes.
+            thickness = 0.32 if as506 else 0.34
+            box(floor, (sill, -3, z + landing - thickness), (12, 5.9, z + landing))
             room = parts(name, "white")
             for y in (-3.1, 5.7):
-                box(room, (4.65, y, z + 6.45), (12, y + 0.2, z + 14.1))
-            box(room, (4.65, -3.15, z + 14.1), (12, 5.95, z + 14.37))
+                box(room, (sill, y, z + landing + 0.05), (12, y + 0.2, z + 14.1))
+            box(room, (sill, -3.15, z + 14.1), (12, 5.95, z + 14.37))
         else:
             truss(parts(name, "red"), lambda k, x: (x, (-2, 2, 2, -2)[k], z + (0, 0, 5, 5)[k]), [tip, (tip + 55) / 2, 55], 0.39, 0.22)
             box(parts(name, "deck"), (tip, -1.89, z + 0.2), (54.95, 1.89, z + 0.44))
 
 
-def build(pad):
+def holddowns(parts):
+    parts.node("Holddown_Arms")
+    for i in range(4):
+        theta = pi / 4 + i * pi / 2
+        u = (cos(theta), sin(theta), 0)
+        for radius, z, size in ((34, 1.4, (8, 5, 2.8)), (32, 7.5, (4, 4, 10)), (17, 18.7, (2.4, 3.2, 1.2))):
+            obox(parts("Holddown_Arms", "steel"), (radius * u[0], radius * u[1], DECK + z), u, (0, 0, 1), size)
+        beam(parts("Holddown_Arms", "steel"), (32 * u[0], 32 * u[1], DECK + 12), (17 * u[0], 17 * u[1], DECK + 18.6), 2.4)
+
+
+def as506_holddowns(parts):
+    """Apollo 11 Press Kit, Mobile Launcher; MSFC-MAN-504 fig. 8-7; SP-4204 ch. 13."""
+    parts.node("Holddown_Arms")
+    # Pad X is north, Y west. Positions I to IV begin in the east and progress counterclockwise.
+    for i, (ux, uy) in enumerate(((0, -1), (1, 0), (0, 1), (-1, 0)), 1):
+
+        def point(radius, width, height, ux=ux, uy=uy):
+            return (ux * radius - uy * width, uy * radius + ux * width, DECK + height)
+
+        axis = (ux, uy, 0)
+        steel = parts("Holddown_Arms", "steel")
+        # Cantilever support girder reaches in from the rim of the deck opening.
+        for w in (-1.85, 1.85):
+            beam(steel, point(24.8, w, 0.45), point(24.8, w, 9.6), 0.85)
+            beam(steel, point(24.8, w, 1.2), point(18.2, w, 9.6), 0.7)
+        obox(steel, point(21.3, 0, 9.72), axis, (0, 0, 1), (9, 6, 0.5))
+        # Open-sided casting, with room for the linkage to collapse.
+        for w in (-2.55, 2.55):
+            profile = [(17.1, 9.99), (25.45, 9.99), (21.5, 17.9), (18.3, 18.7)]
+            hull(steel, [[point(r, side, z) for r, z in reversed(profile)] for side in (w - 0.26, w + 0.26)])
+            beam(steel, point(17.05, w, 19.0), point(18.6, w, 15.1), 0.48)
+        obox(steel, point(17.8, 0, 18.93), axis, (0, 0, 1), (3.55, 5.5, 0.48))
+        # Contact plane equals the stack exhibit's S-IC lower rim, STA 118.3.
+        obox(parts("Holddown_Arms", "deck"), point(16.3, 0, 19.3016667), axis, (0, 0, 1), (1.3, 2.75, 0.28))
+        link = f"Holddown_Link_{i}"
+        pivot = point(19.12, 0, 17.85)
+        parts.node(link, "Holddown_Arms", pivot)
+        lever = parts(link, "deck")
+        for w in (-0.69, 0.69):
+            profile = [(18.48, 17.62), (19.2, 17.05), (22.87, 17.3), (23.12, 18.05), (19.72, 19.1), (18.55, 18.97)]
+            hull(lever, [[point(r, side, z) for r, z in reversed(profile)] for side in (w - 0.23, w + 0.23)])
+        beam(lever, point(18.9, -1.09, 18.28), point(18.9, 1.09, 18.28), 0.49)
+        # The adjustable head bears on the vehicle lug's upper shoulder. Its pad follows
+        # the lug taper (5 to 1.5 in outboard over an 8.5 in rise above the sole).
+        head = [(16.755, 20.042), (16.898, 19.695), (17.29, 19.74), (18.62, 18.20), (19.20, 18.85), (17.67, 20.62), (16.80, 20.64)]
+        # Leave 0.002 ft radial seating clearance so the two independently exported solids meet without crossing.
+        hull(lever, [[point(r + 0.002, w, z) for r, z in reversed(head)] for w in (-0.56, 0.56)])
+        # The steel visor is open on its underside. The two side cheeks turn about a horizontal shaft.
+        hood = f"Holddown_Hood_{i}"
+        centre, radius, height = 21.12, 4.03, 16.82
+        parts.node(hood, "Holddown_Arms", point(centre, 0, height))
+        visor = parts(hood, "steel")
+        visor_shell(visor, point, centre, radius, height, 2.17)
+
+
+def tail_masts(parts):
+    parts.node("Tail_Service_Masts")
+    # Fig. 8-7 shows two masts west of the opening and one east.
+    for x, y in ((9, 25), (-9, 25), (9, -25)):
+        sign = 1 if y > 0 else -1
+        mb = parts("Tail_Service_Masts", "steel")
+        box(mb, (x - 2, y - 2.4, DECK), (x + 2, y + 2.4, DECK + 1.1))
+        for dx in (-1.55, 1.55):
+            beam(mb, (x + dx, y + sign * 1.8, DECK + 1), (x + dx, y - sign * 0.5, DECK + 20), 0.55)
+            beam(mb, (x + dx, y - sign * 1.8, DECK + 1), (x + dx, y - sign * 0.5, DECK + 20), 0.55)
+        beam(mb, (x, y, DECK + 20), (x, sign * 15, DECK + 23), 1.9)
+
+
+def visor_shell(mesh, point, centre, radius, height, half_width):
+    """One curved quadrant of steel, open on its underside with cheeks at the bearing."""
+    angles = [i * pi / 12 for i in range(7)]
+
+    def arc(rad, angle, width):
+        return point(centre + rad * cos(angle), width, height + rad * sin(angle))
+
+    loop = [(radius, a) for a in angles] + [(radius - 0.19, a) for a in reversed(angles)]
+    hull(mesh, [[arc(rad, a, w) for rad, a in reversed(loop)] for w in (-half_width, half_width)])
+    for w in (-half_width - 0.08, half_width + 0.08):
+        outline = [point(centre, w, height), *[arc(radius - 0.10, a, w) for a in angles]]
+        plate(mesh, outline, 0.12)
+
+
+def as506_tail_masts(parts):
+    """Starboard and port masts from MSFC-MAN-504 fig. 8-7; local hinge geometry estimated."""
+    parts.node("Tail_Service_Masts")
+    steel = parts("Tail_Service_Masts", "steel")
+    for label, angle in (("1_2", -78), ("3_2", 78), ("3_4", 102)):
+        ux, uy = cos(angle * pi / 180), sin(angle * pi / 180)
+        axis = (ux, uy, 0)
+
+        def point(radius, width, height, ux=ux, uy=uy):
+            return (ux * radius - uy * width, uy * radius + ux * width, DECK + height)
+
+        centre, pivot_height = 28.6, 22.6
+        obox(steel, point(centre, 0, 0.54), axis, (0, 0, 1), (6.8, 5.8, 1.08))
+        for dr in (-2.5, 2.5):
+            for w in (-2.25, 2.25):
+                beam(steel, point(centre + dr, w, 1.07), point(centre + dr * 0.77, w, 31.7), 0.38)
+            for lo, hi in ((1.1, 11.8), (11.8, 21.05), (23.8, 28.4), (28.4, 31.65)):
+                beam(steel, point(centre + dr * 0.83, -2.23, lo), point(centre + dr * 0.83, 2.23, hi), 0.24)
+        for z in (11.8, 21.05, 28.4, 31.7):
+            for w in (-2.25, 2.25):
+                beam(steel, point(centre - 2.01, w, z), point(centre + 2.01, w, z), 0.29)
+        boom = f"Tail_Boom_{label}"
+        parts.node(boom, "Tail_Service_Masts", point(centre, 0, pivot_height))
+        moving = parts(boom, "deck")
+        obox(moving, point(26.7, 0, pivot_height), axis, (0, 0, 1), (17.7, 2.0, 1.38))
+        obox(moving, point(33.8, 0, pivot_height), axis, (0, 0, 1), (4.3, 2.6, 1.68))
+        # The carrier withdraws into the rotating boom's end as the boom rises.
+        carrier = f"Tail_Carrier_{label}"
+        parts.node(carrier, boom, point(17.35, 0, pivot_height))
+        obox(parts(carrier, "steel"), point(17.67, 0, pivot_height), axis, (0, 0, 1), (2.28, 2.38, 1.99))
+        hood_height = 33.7
+        visor_shell(steel, point, centre, 2.81, hood_height, 2.29)
+        for w in (-2.19, 2.19):
+            beam(steel, point(centre, w, 31.4), point(centre, w, hood_height), 0.4)
+        hood = f"Tail_Visor_{label}"
+        parts.node(hood, "Tail_Service_Masts", point(centre, 0, hood_height))
+        visor_shell(parts(hood, "deck"), point, centre, 2.48, hood_height, 1.97)
+
+
+def build(pad, *, as506=False):
     use(FT)
     parts = Parts(
         {
@@ -157,24 +289,13 @@ def build(pad):
     )
     hardstand(parts, pad)
     base(parts)
-    parts.node("Holddown_Arms")
-    for i in range(4):
-        theta = pi / 4 + i * pi / 2
-        u = (cos(theta), sin(theta), 0)
-        for radius, z, size in ((34, 1.4, (8, 5, 2.8)), (32, 7.5, (4, 4, 10)), (17, 18.7, (2.4, 3.2, 1.2))):
-            obox(parts("Holddown_Arms", "steel"), (radius * u[0], radius * u[1], DECK + z), u, (0, 0, 1), size)
-        beam(parts("Holddown_Arms", "steel"), (32 * u[0], 32 * u[1], DECK + 12), (17 * u[0], 17 * u[1], DECK + 18.6), 2.4)
-    parts.node("Tail_Service_Masts")
-    # Fig. 8-7 shows two masts west of the opening and one east.
-    for x, y in ((9, 25), (-9, 25), (9, -25)):
-        sign = 1 if y > 0 else -1
-        mb = parts("Tail_Service_Masts", "steel")
-        box(mb, (x - 2, y - 2.4, DECK), (x + 2, y + 2.4, DECK + 1.1))
-        for dx in (-1.55, 1.55):
-            beam(mb, (x + dx, y + sign * 1.8, DECK + 1), (x + dx, y - sign * 0.5, DECK + 20), 0.55)
-            beam(mb, (x + dx, y - sign * 1.8, DECK + 1), (x + dx, y - sign * 0.5, DECK + 20), 0.55)
-        beam(mb, (x, y, DECK + 20), (x, sign * 15, DECK + 23), 1.9)
-    tower(parts)
-    arms(parts)
+    if as506:
+        as506_holddowns(parts)
+        as506_tail_masts(parts)
+    else:
+        holddowns(parts)
+        tail_masts(parts)
+    tower(parts, as506)
+    arms(parts, as506)
     parts.build()
     return "Mobile launcher: 160 by 135 ft base, 445 ft to crane on pad pedestals"

@@ -1,4 +1,4 @@
-import type { Keyframe, ModelDef, Move, Part, SiteDef } from '../../../../src/types.ts';
+import type { Keyframe, Machine, ModelDef, Move, Part, SiteDef } from '../../../../src/types.ts';
 import { CAPE_CANAVERAL } from './place.ts';
 
 const FT = 0.3048;
@@ -165,15 +165,87 @@ export function mobileLauncher(
     [-1, 0, 0],
     [0, 0, 1],
   ];
+  const holdDownRelease: Machine = {
+    kind: 'release',
+    confidence: 'documented',
+    source: 'AS-506 Flight Evaluation Report, §3.6.1. Pneumatic hold-down release at first motion. Sound approximated.',
+  };
+  const tailHydraulics: Machine = {
+    kind: 'hydraulic',
+    confidence: 'assumed',
+    source:
+      'SA-504 Flight Manual, §VIII, p. 8-8: hydraulic carrier and mast operation assumed for ML-1. AS-506 evaluation §3.6.1 records normal retraction.',
+  };
+  const hoodClosure: Machine = {
+    kind: 'door',
+    confidence: 'estimated',
+    source: 'AS-506 Flight Evaluation Report, §§3.6.1 and 3.6.3. The protective hoods swing shut. Closure sound approximated.',
+  };
   const release = hinges.flatMap((axis, index): Move[] => {
     const arm = index + 1;
     return [
-      { kind: 'swing', node: `Holddown_Link_${arm}`, axis, angle: (82 * Math.PI) / 180, from: firstMotion, to: firstMotion + 0.5 },
+      {
+        kind: 'swing',
+        machine: holdDownRelease,
+        node: `Holddown_Link_${arm}`,
+        axis,
+        angle: (82 * Math.PI) / 180,
+        from: firstMotion,
+        to: firstMotion + 0.5,
+      },
       ...(arm === 1
         ? []
         : [
-            { kind: 'swing' as const, node: `Holddown_Hood_${arm}`, axis, angle: -Math.PI / 2, from: firstMotion + 1, to: firstMotion + 2 },
+            {
+              kind: 'swing' as const,
+              machine: hoodClosure,
+              node: `Holddown_Hood_${arm}`,
+              axis,
+              angle: -Math.PI / 2,
+              from: firstMotion + 1,
+              to: firstMotion + 2,
+            },
           ]),
+    ];
+  });
+  const tailRetraction = (
+    [
+      ['1_2', -78],
+      ['3_2', 78],
+      ['3_4', 102],
+    ] as const
+  ).flatMap(([mast, degrees]): Move[] => {
+    const angle = (degrees * Math.PI) / 180;
+    const radialX = Math.cos(angle);
+    const radialZ = -Math.sin(angle);
+    const axis: [number, number, number] = [radialZ, 0, -radialX];
+    return [
+      {
+        kind: 'slide',
+        machine: tailHydraulics,
+        node: `Tail_Carrier_${mast}`,
+        by: [radialX * FT, 0, radialZ * FT],
+        from: firstMotion,
+        to: firstMotion + 0.45,
+      },
+      {
+        kind: 'swing',
+        machine: tailHydraulics,
+        node: `Tail_Boom_${mast}`,
+        axis,
+        angle: Math.PI / 2,
+        from: firstMotion,
+        to: firstMotion + 1.1,
+      },
+      {
+        kind: 'swing',
+        machine: hoodClosure,
+        node: `Tail_Visor_${mast}`,
+        axis,
+        angle: -Math.PI / 2,
+        from: firstMotion + 1.1,
+        to: firstMotion + 1.7,
+      },
     ];
   });
   return {
@@ -233,12 +305,17 @@ export function mobileLauncher(
         'The entire rocket and tower rode on this two-storey platform.',
         'Five F-1 engines fired through the 45-foot-square opening. The base was 25 feet deep.',
       ),
-      part(
-        'Tail_Service_Masts',
-        'Tail service masts',
-        'Three masts connected to the base of the first stage.',
-        'Two stood west of the engine opening and one to the east. Their steel supports and umbilical housings are simplified.',
-      ),
+      {
+        ...part(
+          'Tail_Service_Masts',
+          'Tail service masts',
+          'Three masts connected to the base of the first stage.',
+          holdDowns
+            ? 'At liftoff the umbilical carriers drew back as the booms swung upright. All three protective hoods closed on Apollo 11. The individual transit times are estimated.'
+            : 'Two stood west of the engine opening and one to the east. Their steel supports and umbilical housings are simplified.',
+        ),
+        ...(holdDowns ? { clocked: tailRetraction } : {}),
+      },
       {
         ...part(
           'Holddown_Arms',
@@ -277,7 +354,9 @@ export function mobileLauncher(
       part(
         'Hammerhead_Crane',
         'Hammerhead crane',
-        'The crane reached out across the top of the Saturn.',
+        holdDowns
+          ? 'The crane was parked across the tower before the countdown reached crew ingress.'
+          : 'The crane reached out across the top of the Saturn.',
         'The hook could reach 85 feet from the tower axis.',
       ),
       ...arms.map(([arm, from, to], i): Part => {
@@ -309,7 +388,7 @@ export function mobileLauncher(
               label: 'No. 1 hold-down',
               nodes: ['Holddown_Link_1', 'Holddown_Hood_1'],
               span: 5.5,
-              from: [1, 0.45, 0.6] as [number, number, number],
+              from: [-1, 0.4, 0.6] as [number, number, number],
             },
           ]
         : []),
