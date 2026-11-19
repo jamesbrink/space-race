@@ -106,7 +106,7 @@ def shade(groups, station):
     cabin_shade.bake(solid, blockers, lamps, daylight, broad=("CM_PressureWall", "CM_AftPressureBulkhead"), flip=("CM_PressureWall",))
 
 
-def columbia_dispenser(parent, base):
+def water_dispenser(parent, base, spacecraft):
     """Left forward bay. TN D-6737, water-gas separator illustration; dimensions in inches."""
     if not interior():
         return
@@ -119,13 +119,23 @@ def columbia_dispenser(parent, base):
         return Vector((x, y, z + base)) * IN
 
     axis = Vector((0, 0, 1))
-    case = lathe_obj("CM107_WaterGasSeparator", prof([(0, 0), (0.63, 0), (0.76, 0.25), (0.76, 5.65), (0.6, 6), (0, 6)]), alloy, parent, segs=32)
+    prefix = f"CM{spacecraft}"
+    case = lathe_obj(f"{prefix}_WaterGasSeparator", prof([(0, 0), (0.63, 0), (0.76, 0.25), (0.76, 5.65), (0.6, 6), (0, 6)]), alloy, parent, segs=32)
     case.matrix_local = frame(point(11, -33.5, 47), axis)
     for z in (48.2, 51.8):
         bracket.tube(point(11, -37, z), point(11, -34.3, z), 0.44 * IN, segs=12)
     grip.tube(point(11, -33.5, 46.9), point(9.8, -33.5, 44.6), 0.56 * IN, segs=16)
     pipe.tube(point(11, -33.5, 53), point(11, -33.5, 54.1), 0.32 * IN, segs=12)
     pipe.tube(point(11, -33.5, 54.1), point(12.7, -33.5, 54.8), 0.29 * IN, segs=12)
-    bracket.build("CM107_DispenserStowageClips", alloy, parent)
-    grip.build("CM107_DispenserHandpiece", dark, parent)
-    pipe.build("CM107_DispenserNozzle", alloy, parent)
+    if spacecraft == 108:
+        # Apollo 12 MR §7.9 / appendix A: a second separator upstream of the potable-water tank.
+        # Show the unit separately behind the drinking-water gear; its case, ports and installation are estimated.
+        inline = lathe_obj(
+            "CM108_InlineHydrogenSeparator", prof([(0, 0), (1.05, 0), (1.25, 0.33), (1.25, 4.25), (1.02, 4.6), (0, 4.6)]), alloy, parent, segs=32
+        )
+        inline.matrix_local = frame(point(15.1, -36, 47), axis)
+        pipe.tube(point(15.1, -36, 47), point(15.1, -36, 46.2), 0.22 * IN, segs=12)
+        pipe.tube(point(15.1, -36, 51.6), point(15.1, -36, 52.4), 0.22 * IN, segs=12)
+    bracket.build(f"{prefix}_DispenserStowageClips", alloy, parent)
+    grip.build(f"{prefix}_DispenserHandpiece", dark, parent)
+    pipe.build(f"{prefix}_DispenserNozzle", alloy, parent)

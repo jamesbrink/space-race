@@ -428,3 +428,38 @@ def build(*, lunar_module=None, adapter_number=None):
         payload(group("LunarTestArticle"), steel, alloy)
     else:
         lunar_module(IU_TOP)
+
+
+def sii_external_equipment():
+    """SA-507 Flight Manual, figs. 5-2 and 5-19. Visible envelopes in inches."""
+    collar = bpy.data.objects["LowerInterstage"]
+    stage = bpy.data.objects["SaturnSecondStage"]
+    white = bpy.data.materials["saturn-white"]
+    dark = bpy.data.materials["saturn-black"]
+
+    def cover(name, parent, angle, stations, paint):
+        # Each section follows the cylindrical skin across the width of the fitting.
+        mesh = MeshBuilder()
+        vertices = []
+        for z, half_width, rise in stations:
+            for offset, height in ((-1, 0), (-0.68, 0.76), (0, 1), (0.68, 0.76), (1, 0)):
+                vertices.append(radial(LOWER_RADIUS - 0.36 + rise * height, angle + offset * half_width / LOWER_RADIUS, z))
+        faces = [(i, i + 1, i + 6, i + 5) for i in range(len(vertices) - 5) if i % 5 != 4]
+        faces.extend([(4, 3, 2, 1, 0), tuple(range(len(vertices) - 5, len(vertices)))])
+        mesh.add(vertices, faces)
+        mark_shells([mesh.build(name, paint, parent, smooth=False).name])
+
+    # Four aft interstage fairings, retained with the collar. Absolute clocking and profiles estimated.
+    for i in range(4):
+        angle = i * math.pi / 2 + math.pi / 4
+        cover(
+            f"SII7_UllageFairing_{i + 1}",
+            collar,
+            angle,
+            [(FIRST_TOP + z, w, h) for z, w, h in ((3, 8, 8), (14, 10, 12), (76, 10, 12), (89, 8, 9), (108, 0.8, 0.6))],
+            white,
+        )
+    # The systems tunnel continues up the side of the S-II, above its skirt. Keep each paint field.
+    angle = math.radians(122)  # In the white field alongside the UNITED STATES legend.
+    for i, (lo, hi, paint) in enumerate(((COLLAR_TOP + 8, 1969.9, white), (1970, 2014.9, dark), (2015, SECOND_TOP - 42, white))):
+        cover(f"SII7_SystemsTunnel_{i + 1}", stage, angle, [(lo, 8, 5), (hi, 8, 5)], paint)
