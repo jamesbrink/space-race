@@ -2,7 +2,7 @@
 
 Part of the agent notes: start at [AGENTS.md](../../AGENTS.md).
 
-A named Gallery view may set `isolate` when its subject is enclosed on every side, as with Apollo 8’s instrument panel. The controls remain at their installed height. Moving the camera lets the visitor examine their faces and cases. Choosing another view, plinth, part or seat restores the assembly.
+A named Gallery view may set `isolate` when its subject is enclosed on every side, as with Apollo 8’s instrument panel. The controls remain at their installed height. Moving the camera lets the visitor examine their faces and cases. Choosing another view, plinth, part or seat restores the assembly. A view with one node can set `onSelect` to give the same inspection angle and isolation when the visitor selects that part, as with Eagle’s two enclosed equipment bays.
 
 ## The navigation, the same for every flight
 

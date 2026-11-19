@@ -2,7 +2,7 @@ import type { Flight, Part } from '../../../../../src/types.ts';
 import { LC39A } from '../../../places/cape-canaveral/lc-39.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
-import { APOLLO10_THRUST } from '../../vehicles/propulsion.ts';
+import { APOLLO11_THRUST } from '../../vehicles/propulsion.ts';
 import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
 import { eagleModel, eaglePort, eagleStackParts, eagleViews } from './eagle.ts';
 
@@ -222,7 +222,7 @@ const launcher = [
   ),
   part(
     'SaturnThirdStage',
-    'S-IVB-506N third stage',
+    'S-IVB-6N third stage',
     rocket,
     8,
     19,
@@ -325,8 +325,8 @@ const launcher = [
     'Each outboard engine hung from a thrust post under a half-cone fin fairing. Together the F-1s produced about 7.7 million pounds of thrust at liftoff.',
   ),
 ];
-// Estimated crew-access window for the studio seat data.
-const boarding: [number, number] = [-3 * 3600, -2 * 3600];
+// Launch Control logged first ingress at 06:54 EDT and hatch closure at 07:25, before 09:32 range zero.
+const boarding: [number, number] = [-elapsed(2, 38, 0), -elapsed(2, 7, 0)];
 
 export const flight: Flight = {
   id: 'usa/apollo/apollo-11',
@@ -371,6 +371,7 @@ export const flight: Flight = {
       confidence: 'derived',
       note: 'Block II stations XA706 to XA1000 and Xc110.25 at the docking plane, NASA TN D-6854, fig. A-13.',
     },
+    specification(rocket, 'Mass at ground ignition', 2941221, 'kg', 'AS-506 Flight Evaluation Report, §2, vehicle mass at S-IC ignition'),
     specification(rocket, 'Height on the pad', 363 * 12 * inch, 'm', kit),
     specification(ship, 'CSM at transposition', 63473 * 0.45359237, 'kg', 'MSC-00171, table A-I, reconstructed flight mass in pounds'),
     specification(lm, 'LM at transposition', 33294.5 * 0.45359237, 'kg', 'MSC-00171, table A-I, reconstructed flight mass in pounds'),
@@ -384,7 +385,7 @@ export const flight: Flight = {
     specification(lm, 'Footpad diameter', 37 * inch, 'm', kit + ', p. 103'),
     specification('Mission', 'Flight duration', elapsed(195, 18, 35), 's', report),
   ],
-  motors: APOLLO10_THRUST.map((m) => ({ ...m, confidence: 'assumed', note: 'Nominal sister-vehicle rating. ' + m.note })),
+  motors: APOLLO11_THRUST,
   models: [
     {
       id: 'vehicle',
@@ -412,7 +413,7 @@ export const flight: Flight = {
           nodes: [...nodes(command), ...nodes(service)],
         },
         { id: 'eagle', label: 'Eagle in adapter', nodes: nodes(eagleStackParts), isolate: true, from: [1, 0.12, -0.25] },
-        ...eagleViews.filter((v) => ['porch', 'dps', 'aps', 'drogue'].includes(v.id)),
+        ...eagleViews.filter((v) => ['porch', 'dps', 'aps', 'drogue', 'mesa', 'seq'].includes(v.id)),
         { id: 'hatch', label: 'Lightweight crew hatch', nodes: ['SideHatch'], isolate: true, from: [-0.85, -0.53, 0.1], span: 1.75 },
         {
           id: 'probe',

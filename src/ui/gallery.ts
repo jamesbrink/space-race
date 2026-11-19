@@ -1189,7 +1189,11 @@ export class Gallery {
     if (node) {
       if (!narrow()) this.tab('Parts');
       this.untuck();
-      stage.framing.focus(node, snap);
+      const view = this.model.views.find((v) => v.onSelect && v.nodes?.length === 1 && v.nodes[0] === node);
+      if (view?.nodes) {
+        if (view.isolate) this.restoreInspection = stage.inspect(view.nodes);
+        stage.framing.view(view.id, snap);
+      } else stage.framing.focus(node, snap);
     } else stage.framing.view(WHOLE_VIEW, snap);
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-node]')) {
       const on = b.dataset.node === node;

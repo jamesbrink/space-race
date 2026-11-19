@@ -1759,3 +1759,10 @@ For the standing figures NASA's [Apollo 8 press kit, Space Suits](https://www.na
 ## Soyuz launch sites at Tyuratam
 
 Figure 7.1-2 shows the height and arrangement of the access platforms beside Soyuz 1. NASA photograph S75-32339 shows the open towers during preparations for Apollo–Soyuz. The [Site 1 notes](../missions/ussr/places/tyuratam/site-1.md) distinguish features visible in those photographs from estimates shared across five launches. The [Site 31 notes](../missions/ussr/places/tyuratam/site-31.md) cover the October 1968 rollout, the January 1969 launch photograph and the modern mapping used to estimate the rail and deck footprint. [NASA Soyuz 1 photograph](https://ntrs.nasa.gov/api/citations/20200003165/downloads/20200003165.pdf) · [NASA Apollo–Soyuz photographs](https://www.nasa.gov/missions/apollo-soyuz/the-apollo-soyuz-mission/)
+
+### Apollo 11 · AS-506, Columbia and Eagle
+
+- [Apollo 11 Mission Report, MSC-00171](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A11_MissionReport.pdf), table 3-I, §§8.9.4, A.1, A.2, A.5 and table A-I. Flight events, changes from Apollo 10, and reconstructed mass at each event.
+- [Saturn V Launch Vehicle Flight Evaluation Report AS-506](https://www.ibiblio.org/apollo/Documents/lvfea-AS506-Apollo11.pdf), §2. Stage identities, configuration, ground ignition mass.
+- [Apollo 11 Press Kit](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A11_PressKit.pdf), lunar surface equipment, television and landing gear. [Apollo 11 Flight Plan](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/a11final-fltpln.pdf), crew positions through translunar injection.
+- [Apollo 11 image library](https://www.nasa.gov/wp-content/uploads/static/history/alsj/a11/images11.html), 69-HC-620, AS11-36-5388/5389, AS11-37-5443, AS11-40-5900 and AS11-44-6574. [NASA SP-214](https://www.nasa.gov/wp-content/uploads/static/history/alsj/a11/as11psr.pdf), photographic summary and surface experiments.
