@@ -13,22 +13,27 @@
  * of the Earth), with the Moon's centre at the origin, metres. The ground does not move in it; the
  * Earth hangs nearly still and turns; the Sun and the stars go round once a month.
  *
- * **The path** is one move outward. The camera starts 110 km over the far side (the height Apollo 8
- * and Kaguya photographed Earthrise from), a little behind the Moon's southern limb, with the
- * Earth half risen over the horizon; it climbs and draws back, and the Earth comes clear as the
- * horizon falls away (Earthrise); it goes on out, always looking back, the horizon bending into the Moon's
- * limb (as Lunar Orbiter 1 and Zond 7 saw it), until five minutes later it settles 100,000 km behind
- * the Moon with the whole far side below and the whole Earth above it (as Chang'e 5-T1 and DSCOVR
- * saw the two together). It never stops dead and never cuts: its height is one smooth curve, and
- * what it settles into is a still camera before a turning Earth. Where it stands is worked out from
- * two things only, its height and how far the Earth's centre stands above the Moon's limb, so the
- * Earth keeps its place in the frame for as long as the page is left open, whatever the libration.
+ * **The path** is one move outward, from the ground. The camera starts 40 m over a plain on the
+ * Moon's south-western limb (`SITE`: a place found in the laser altimeter's heights where the
+ * ground is level and the Earth stands half risen over a horizon six kilometres off), close enough
+ * that the blocks lying on it and their shadows are seen. It goes straight up, and the Earth rises
+ * as the horizon falls away under it (Earthrise, which is the camera's doing: the Earth hangs
+ * still in the Moon's sky). From half a kilometre up it also draws back, keeping the Earth where
+ * it has risen to over the limb; it passes the height Apollo 8 and Kaguya photographed Earthrise
+ * from (110 km), goes on out, always looking back, the horizon bending into the Moon's limb (as
+ * Lunar Orbiter 1 and Zond 7 saw it), until it settles 100,000 km behind the Moon with the whole
+ * far side below and the whole Earth above it (as Chang'e 5-T1 and DSCOVR saw the two together).
+ * It never stops dead and never cuts: its height is one smooth curve, already rising when the
+ * picture comes up, and what it settles into is a still camera before a turning Earth. From far, where it stands is worked out from two things
+ * only, its height and how far the Earth's centre stands above the Moon's limb, so the Earth keeps
+ * its place in the frame for as long as the page is left open, whatever the libration; near the
+ * ground it stands over the place it started from, and the Earth is where the sky has it.
  *
  * The path is a design, and says so (`estimated`: chosen to look right). The sky it looks at is not.
  */
 import { EARTH } from '../../world/bodies.ts';
 import { cross, DEG, dot, j2000ToInertial, length, type Mat3, rotate, scale, sub, transpose, unit, type Vec3 } from '../../world/frames.ts';
-import { fromMoon, MOON_RADIUS, selenographic } from '../../world/moon.ts';
+import { fromMoon, fromSelenographic, MOON_RADIUS, selenographic } from '../../world/moon.ts';
 import { greenwichSiderealTime, julianDate, terrestrialTime } from '../../world/time.ts';
 import { ease } from '../../util/math.ts';
 import type { Measure } from '../../measure.ts';
@@ -64,44 +69,95 @@ export const LENS = {
 /** The angle the lens sees across the frame's side, radians: 2 atan(frame / 2 focal) = 6.30 degrees (derived). */
 export const FIELD = 2 * Math.atan(LENS.frame.value / (2 * LENS.focal.value));
 
-/** The path: every figure chosen (estimated), in the units it is said in. */
-export const PATH = {
-  /** Height over the Moon's mean sphere at the start, km: the height of Apollo 8's and Kaguya's orbits. */
-  from: 110,
-  /** And where it settles, km: far enough that the whole Moon is in the lens's field with the Earth above it. */
-  to: 100_000,
-  /** Seconds from the first frame to the settling. */
-  seconds: 300,
-  /**
-   * How far the Earth's centre stands above the Moon's limb, degrees: at the first frame (half of it clear of the
-   * horizon's hills, which stand a quarter of a degree over the limb); from `risen` seconds on; and where it
-   * settles, which it draws in to from `closing` seconds on (the Moon by then a ball of two degrees, and the Earth
-   * a degree clear of it).
-   */
-  rise: [0.3, 2.35, 1.9] as const,
-  risen: 80,
-  closing: 150,
-  /**
-   * Where on the Moon's limb (as the Earth sees it) the Earth stands over: the position angle round the limb from
-   * the Moon's north through its east (Mare Crisium's side), degrees. 208 is the south-south-west, at 62 degrees
-   * south: the far side's southern highlands, which the waning crescent's Sun lights from 18 degrees up at the
-   * instant, from behind the camera and to one side, so every crater has its shadow.
-   */
-  limb: 208,
-  /** The still frame anyone who has asked for less motion is given: this many seconds along the path (the Earth risen over a level horizon, from 250 km). */
-  still: 80,
+/**
+ * Where the camera starts: a place on the Moon, found and not placed by hand. tools/front-moon.mjs (`--find-site`)
+ * looks along the south-western limb, as the Earth sees it at the instant, for ground that is level for 8 km toward
+ * the Earth (within 1.2 degrees of level from the place, root mean square, in the altimeter's heights), with a level
+ * horizon there and the Earth's centre between 0.05 and 0.45 degrees over it from 40 m up, and takes the levellest.
+ * It is a plain 56 degrees south, two thirds of a degree on the Earth's side of the limb: the Sun is 20 degrees up
+ * there, behind the camera's left shoulder.
+ */
+export const SITE = {
+  longitude: {
+    value: -85.87,
+    confidence: 'derived',
+    source:
+      'tools/front-moon.mjs --find-site, from the LOLA heights of NASA’s CGI Moon Kit (ldem_64): the levellest place that sees the Earth half risen',
+  } satisfies Figure,
+  latitude: { value: -56.11, confidence: 'derived', source: 'as the longitude' } satisfies Figure,
+  /** The ground there, metres above the Moon's reference sphere (1,737,400 m): the bake writes it and the test holds the two together. */
+  ground: {
+    value: 1120.24,
+    confidence: 'derived',
+    source: 'LOLA (ldem_64, 481 m a texel), between its four nearest texels: tools/front-moon.mjs --only site',
+  } satisfies Figure,
 } as const;
 
-/** Where the path is `t` seconds along: the camera's height over the Moon's mean sphere (metres) and how far the Earth's centre stands above the limb (radians). */
-export function pathAt(t: number): { height: number; rise: number } {
-  // the height grows by equal ratios in equal parts of the eased time, so the ground shrinks at a steady pace
-  const height = PATH.from * 1000 * (PATH.to / PATH.from) ** ease(t / PATH.seconds);
-  const rise =
-    (PATH.rise[0] +
-      (PATH.rise[1] - PATH.rise[0]) * ease(t / PATH.risen) +
-      (PATH.rise[2] - PATH.rise[1]) * ease((t - PATH.closing) / (PATH.seconds - PATH.closing))) *
-    DEG;
-  return { height, rise };
+/** The unit vector toward the site, in the Moon's frame. */
+export const SITE_DIR: Vec3 = fromSelenographic(SITE.longitude.value, SITE.latitude.value);
+
+/** The path: every figure chosen (estimated), in the units it is said in. */
+export const PATH = {
+  /** Height over the ground at the site at the start, metres: low enough that a block a metre across is a dozen pixels. */
+  from: 40,
+  /** The height the first part of the climb is to, km over the site: the height of Apollo 8's and Kaguya's orbits. */
+  mid: 110,
+  /** And where it settles, km over the Moon's mean sphere: far enough that the whole Moon is in the lens's field with the Earth above it. */
+  to: 100_000,
+  /** Seconds the climb to `mid` takes, from rest to rest; when the going out begins (it overlaps the climb, so the camera does not pause); and when it has settled. */
+  lift: 160,
+  away: 100,
+  seconds: 380,
+  /**
+   * The climb does not start from rest: the picture comes up on a camera already rising, at this share of the
+   * climb's mean pace (half a metre a second at 40 m: the ground is seen to move from the first frame).
+   */
+  drift: 0.25,
+  /**
+   * The most the Earth's centre stands above the Moon's limb, degrees: until `closing` seconds, and where it
+   * settles (the Moon by then a ball of two degrees, and the Earth a degree clear of it). Near the ground the Earth
+   * is lower than this, where the sky has it; the camera begins to draw back as the Earth comes within `knee`
+   * degrees of it.
+   */
+  rise: [2.35, 1.9] as const,
+  closing: 230,
+  knee: 0.5,
+  /**
+   * The limb the rise is measured from is the Moon's mean sphere's, from far; near the ground, where that sphere
+   * is a kilometre under the plain, it is a sphere at the site's own level. Between these heights over the site,
+   * km, the one becomes the other.
+   */
+  level: [3, 60] as const,
+  /** The still frame anyone who has asked for less motion is given: this many seconds along the path (the Earth risen over a level horizon, from 30 km: the craters under it have their shadows). */
+  still: 105,
+} as const;
+
+/** The lesser of two, without a corner: `k` is how far apart they are when it first differs from the lesser. */
+const softMin = (a: number, b: number, k: number): number => {
+  const h = Math.max(k - Math.abs(a - b), 0) / k;
+  return Math.min(a, b) - (h * h * k) / 4;
+};
+
+/** The climb's share done, for a share of its time: eased at its end, and begun at `PATH.drift` of its mean pace. */
+const climbed = (x: number): number => {
+  const t = Math.min(1, Math.max(0, x));
+  return ease(t) + PATH.drift * t * (1 - t) ** 3;
+};
+
+/**
+ * Where the path is `t` seconds along: the camera's height over the Moon's mean sphere and over the ground at the
+ * site (metres), the most the Earth's centre may stand above the limb (radians), and the level of the sphere whose
+ * limb that is (metres above the mean sphere).
+ */
+export function pathAt(t: number): { height: number; over: number; rise: number; level: number } {
+  // the height grows by equal ratios in equal parts of each eased time, so the ground shrinks at a steady pace
+  const ground = SITE.ground.value;
+  const up = Math.log((PATH.mid * 1000) / PATH.from);
+  const out = Math.log((PATH.to * 1000 - ground) / (PATH.mid * 1000));
+  const over = PATH.from * Math.exp(up * climbed(t / PATH.lift) + out * ease((t - PATH.away) / (PATH.seconds - PATH.away)));
+  const rise = (PATH.rise[0] + (PATH.rise[1] - PATH.rise[0]) * ease((t - PATH.closing) / (PATH.seconds - PATH.closing))) * DEG;
+  const level = ground * (1 - ease(Math.log(over / (PATH.level[0] * 1000)) / Math.log(PATH.level[1] / PATH.level[0])));
+  return { height: ground + over, over, rise, level };
 }
 
 /** The sky from the Moon at an instant, in the scene's frame (the Moon's own; metres from its centre). */
@@ -186,6 +242,23 @@ export function limbPoint(sky: Pick<FrontSky, 'earth'>, angle: number): Vec3 {
   return [c * north[0] + s * east[0], c * north[1] + s * east[1], c * north[2] + s * east[2]];
 }
 
+/**
+ * The point of the Moon's limb, as the Earth sees it, that the camera's plane crosses: the plane of the Earth, the
+ * Moon's centre and the site. The camera is always in that plane, behind this point.
+ */
+export function limbOf(sky: Pick<FrontSky, 'earth'>): Vec3 {
+  const e = unit(sky.earth);
+  return unit(sub(SITE_DIR, scale(e, dot(SITE_DIR, e))));
+}
+
+/** That point's position angle round the limb, from the Moon's north through its east (`limbPoint`), degrees. */
+export function limbAngle(sky: Pick<FrontSky, 'earth'>): number {
+  const e = unit(sky.earth);
+  const east = unit(cross([0, 0, 1], e));
+  const n = limbOf(sky);
+  return (Math.atan2(dot(n, east), dot(n, cross(e, east))) / DEG + 360) % 360;
+}
+
 /** Where the camera is and how it is turned. */
 export interface FrontCamera {
   /** The eye, in the scene. */
@@ -194,39 +267,21 @@ export interface FrontCamera {
   right: Vec3;
   up: Vec3;
   forward: Vec3;
-  /** Its height over the Moon's mean sphere, metres, and how far the Earth's centre stands above the Moon's limb, radians. */
+  /** Its height over the Moon's mean sphere, metres, and how far the Earth's centre stands above the limb, radians. */
   height: number;
   rise: number;
-  /** How far below the level the Moon's limb lies from there, radians. */
+  /** How far below the level that limb lies from there, radians. */
   dip: number;
+  /** Whether it stands over the site (the Earth is then where the sky has it, lower than the path's most). */
+  held: boolean;
 }
 
-/**
- * The camera for a height and a rise, under a sky: over the far side behind the limb point, in the plane of that
- * point and the Earth, where the Earth's centre stands `rise` above the limb of the Moon's mean sphere; looking
- * so that the Earth's centre falls `aim` from the middle of the picture (as tangents: to the right and upward),
- * the limb level under it.
- */
-export function cameraFor(
+/** How a camera at a place is turned to the Earth: `aim` as `cameraFor` has it. */
+function turned(
+  position: Vec3,
   sky: Pick<FrontSky, 'earth'>,
-  height: number,
-  rise: number,
-  aim: readonly [number, number] = [0, 0],
-): FrontCamera {
-  const e = unit(sky.earth);
-  const n = limbPoint(sky, PATH.limb);
-  const r = MOON_RADIUS + height;
-  const dip = Math.acos(MOON_RADIUS / r);
-  // the angle at the Moon's centre from the Earth to the camera: a quarter turn, and the dip, less the rise; then
-  // set right for the Earth being near (it is 0.26 degrees lower from the limb than from the centre)
-  let angle = Math.PI / 2 + dip - rise;
-  let position: Vec3 = [0, 0, 0];
-  for (let k = 0; k < 4; k++) {
-    const [c, s] = [Math.cos(angle), Math.sin(angle)];
-    position = [r * (c * e[0] + s * n[0]), r * (c * e[1] + s * n[1]), r * (c * e[2] + s * n[2])];
-    const elevation = Math.asin(dot(unit(position), unit(sub(sky.earth, position))));
-    angle += elevation + dip - rise;
-  }
+  aim: readonly [number, number],
+): Pick<FrontCamera, 'right' | 'up' | 'forward'> {
   const toEarth = unit(sub(sky.earth, position));
   // It is held so that the Moon's centre is straight under the Earth in the picture, wherever in the picture the
   // Earth is put: the limb under the Earth is then level, near or far. The Earth, the Moon's centre and the eye
@@ -249,14 +304,54 @@ export function cameraFor(
     right = unit(sub(across, scale(forward, dot(across, forward))));
     up = cross(right, forward);
   }
-  return { position, right, up, forward, height, rise, dip };
+  return { right, up, forward };
 }
 
-/** The camera `t` seconds along the path, under the sky of that moment. */
-export const cameraAt = (t: number, sky: Pick<FrontSky, 'earth'>, aim?: readonly [number, number]): FrontCamera => {
-  const { height, rise } = pathAt(t);
-  return cameraFor(sky, height, rise, aim);
-};
+/**
+ * The camera for a height and a rise, under a sky: in the plane of the Earth, the Moon's centre and the site, behind
+ * the limb, where the Earth's centre stands `rise` above the limb of the sphere `level` metres over the Moon's mean
+ * one; looking so that the Earth's centre falls `aim` from the middle of the picture (as tangents: to the right and
+ * upward), the limb level under it.
+ */
+export function cameraFor(
+  sky: Pick<FrontSky, 'earth'>,
+  height: number,
+  rise: number,
+  aim: readonly [number, number] = [0, 0],
+  level = 0,
+): FrontCamera {
+  const e = unit(sky.earth);
+  const n = limbOf(sky);
+  const r = MOON_RADIUS + height;
+  const dip = Math.acos(Math.min(1, (MOON_RADIUS + level) / r));
+  // the angle at the Moon's centre from the Earth to the camera: a quarter turn, and the dip, less the rise; then
+  // set right for the Earth being near (it is 0.26 degrees lower from the limb than from the centre)
+  let angle = Math.PI / 2 + dip - rise;
+  let position: Vec3 = [0, 0, 0];
+  for (let k = 0; k < 4; k++) {
+    const [c, s] = [Math.cos(angle), Math.sin(angle)];
+    position = [r * (c * e[0] + s * n[0]), r * (c * e[1] + s * n[1]), r * (c * e[2] + s * n[2])];
+    const elevation = Math.asin(dot(unit(position), unit(sub(sky.earth, position))));
+    angle += elevation + dip - rise;
+  }
+  return { position, ...turned(position, sky, aim), height, rise, dip, held: false };
+}
+
+/**
+ * The camera `t` seconds along the path, under the sky of that moment. Over the site it goes straight up, and the
+ * Earth stands as high over the limb as the sky and the camera's height make it; as that nears the path's most
+ * (`PATH.rise`, within `PATH.knee`) it draws back as well, and from there on holds the Earth at that.
+ */
+export function cameraAt(t: number, sky: Pick<FrontSky, 'earth'>, aim: readonly [number, number] = [0, 0]): FrontCamera {
+  const { height, rise: most, level } = pathAt(t);
+  const r = MOON_RADIUS + height;
+  const over: Vec3 = scale(SITE_DIR, r);
+  const dip = Math.acos(Math.min(1, (MOON_RADIUS + level) / r));
+  const here = Math.asin(dot(SITE_DIR, unit(sub(sky.earth, over)))) + dip;
+  const rise = softMin(here, most, PATH.knee * DEG);
+  if (rise >= here) return { position: over, ...turned(over, sky, aim), height, rise, dip, held: true };
+  return cameraFor(sky, height, rise, aim, level);
+}
 
 /** The place on the Moon under a point of the scene, degrees. */
 export const moonUnder = (p: Vec3): { longitude: number; latitude: number } => selenographic(p);

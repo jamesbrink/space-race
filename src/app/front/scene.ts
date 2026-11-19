@@ -8,7 +8,7 @@ import { length, sub, unit } from '../../world/frames.ts';
 import { yearsFrom2000 } from '../../world/stars.ts';
 import { terrestrialTime } from '../../world/time.ts';
 import { FarEarth } from './earth.ts';
-import { cameraFor, FIELD, type FrontCamera, type FrontSky, instantAt, PATH, pathAt, skyAt } from './view.ts';
+import { cameraAt, FIELD, type FrontCamera, type FrontSky, instantAt, PATH, pathAt, skyAt } from './view.ts';
 
 /**
  * The front page's scene: the Earth seen from out by the Moon, on a canvas and a renderer of its
@@ -23,10 +23,11 @@ import { cameraFor, FIELD, type FrontCamera, type FrontSky, instantAt, PATH, pat
  * over it), so a float never holds 370,000 km and a metre together.
  *
  * It is drawn in two goes: the stars, on a camera of their own (they are points at no distance:
- * heavens.ts); then the Earth and, over it, the Moon, whose ground is the only thing with depth,
- * between a near plane kept at half the camera's height over the highest ground and a far one
- * past the Earth. Straight to the canvas, multisampled; the Earth's own edge is softened in its
- * shader, where no triangle's edge is.
+ * heavens.ts); then the Earth and, over it, the Moon, whose ground and the blocks on it are the
+ * only things with depth, between a near plane kept well inside the least distance to any ground
+ * from where the camera is (the Moon's bake works that out along the path: 16 m at the start,
+ * where the camera is 40 m up) and a far one past the Earth. Straight to the canvas, multisampled;
+ * the Earth's own edge is softened in its shader, where no triangle's edge is.
  *
  * It draws only when the picture would change: every frame while the camera is on its way, and
  * once it has settled, when the Earth has turned a quarter of a pixel (two to five frames a
@@ -34,7 +35,8 @@ import { cameraFor, FIELD, type FrontCamera, type FrontSky, instantAt, PATH, pat
  *
  * The brightnesses are one exposure for both worlds, as a photograph's is: the Sun's light is the
  * same figure the globe is lit by above the air (atmosphere.ts), and `EXPOSURE` is set so that the
- * brightest cloud is just under white. The Moon is then as dark beside the Earth as it is.
+ * brightest cloud is just under white. The Moon is then as dark beside the Earth as it is, from
+ * 40 m as from 100,000 km: the ground the picture opens on is asphalt in hard sunlight.
  */
 
 /** The exposure: for the look (estimated). */
@@ -46,8 +48,13 @@ const SUNLIGHT = [4.5, 4.3, 4.0] as const;
  * over. An optical depth of 0.12 straight up, about the world's mean at 550 nm: estimated (for 1961, more so).
  */
 const HAZE = { extinction: 8e-5, scale: 1500 };
-/** The faintest star drawn, and how bright: with the camera set for sunlit ground and cloud a photograph has none and an eye a few; estimated. */
-const STARS = { limit: 4.5, gain: 0.55 };
+/**
+ * The faintest star drawn, and how bright. With the camera set for sunlit ground and cloud a photograph has none,
+ * and an eye that keeps the ground out of its sight has the naked eye's few thousand over the whole sky: through
+ * this lens, six degrees across, that is a dozen in the frame, and they are drawn faint. A limit of 4.5, as it was, is
+ * one star a frame, which is none. Estimated: for the look.
+ */
+const STARS = { limit: 6.6, gain: 0.6 };
 
 export interface FrontStats {
   /** Frames drawn in the last second, and the loop's rate. */
@@ -78,7 +85,8 @@ export class FrontScene {
   /** Held where it is (a script taking pictures). */
   held = false;
   sky: FrontSky = skyAt(instantAt(0));
-  eye: FrontCamera = cameraFor(this.sky, PATH.from * 1000, 0);
+  /** The camera as it was last placed (its `height` is over the Moon's mean sphere, metres). */
+  eye: FrontCamera = cameraAt(0, this.sky);
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
@@ -130,7 +138,7 @@ export class FrontScene {
       lighter,
       renderer.capabilities.getMaxAnisotropy(),
     );
-    this.scene.add(this.earth.mesh, this.moon.mesh);
+    this.scene.add(this.earth.mesh, this.moon.group);
     this.stars = starsAlone(renderer.getPixelRatio()) as THREE.Points;
     this.stars.matrixAutoUpdate = false;
     const starry = (this.stars.material as THREE.ShaderMaterial).uniforms;
@@ -209,10 +217,10 @@ export class FrontScene {
     }
     const along = this.still ? PATH.still : this.t;
     const sky = (this.sky = skyAt(instantAt(this.still ? 0 : this.t)));
-    const { height, rise } = pathAt(along);
+    const { height, over } = pathAt(along);
     const camera = this.camera;
     const tanY = Math.tan((camera.fov * Math.PI) / 360);
-    const eye = (this.eye = cameraFor(sky, height, rise, [a[0] * tanY * camera.aspect, a[1] * tanY]));
+    const eye = (this.eye = cameraAt(along, sky, [a[0] * tanY * camera.aspect, a[1] * tanY]));
     // the camera stays at the origin and turns: its axes are the rotation's columns (it looks along its own -Z)
     const turn = new THREE.Matrix4().makeBasis(
       new THREE.Vector3(...eye.right),
@@ -221,14 +229,17 @@ export class FrontScene {
     );
     camera.quaternion.setFromRotationMatrix(turn);
     this.starCamera.quaternion.copy(camera.quaternion);
-    // the ground has depth; the Earth, beyond it, has none to speak of
-    camera.near = Math.max(1000, 0.5 * (height - 12_000));
+    // the ground has depth; the Earth, beyond it, has none to speak of. The near plane is well inside the least
+    // distance to any ground from where the camera is (the Moon's bake worked it out along the path: moonsite.ts);
+    // from further than that reaches, half the camera's height over the highest ground
+    const clear = this.moon.clearance(over);
+    camera.near = clear === null ? Math.max(1000, 0.5 * (height - 12_000)) : Math.max(0.5, 0.4 * clear);
     camera.far = 2 * length(sky.earth);
     camera.updateProjectionMatrix();
 
     const toSun = unit(sky.sun);
     let coming = this.earth.place(sub(sky.earth, eye.position), sky.earthAxes, unit(sub(sky.sun, sky.earth)), now);
-    coming = this.moon.place(eye.position, toSun, now) || coming;
+    coming = this.moon.place(eye.position, toSun, sky.earth, sky.earthLit, now) || coming;
     const s = sky.starAxes;
     this.stars.matrix.set(s[0][0], s[0][1], s[0][2], 0, s[1][0], s[1][1], s[1][2], 0, s[2][0], s[2][1], s[2][2], 0, 0, 0, 0, 1);
     this.stars.matrixWorldNeedsUpdate = true;

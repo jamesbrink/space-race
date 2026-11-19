@@ -1,6 +1,6 @@
 // Bakes the Moon as the front page sees it (src/viewer/moon.ts): its colour, and its relief at three sizes, finest
 // where the camera starts.
-//   node tools/front-moon.mjs [--cache <dir>] [--only colour|whole|wide|near]
+//   node tools/front-moon.mjs [--cache <dir>] [--only colour|whole|wide|near|site] [--find-site]
 //
 // Written to public/front/:
 //   moon.colour.jpg   the whole Moon's colour, 2048 x 1024: longitude -180 at the left edge to 180, north at the top
@@ -11,6 +11,9 @@
 //                     starts; its blue is not its height but how high the ground stands toward the Sun (below)
 //   moon.near.height.png  that ground's heights, whole: 768 square, a byte across the range moon.json gives
 //   moon.near.colour.jpg  the colour of the same ground as moon.near.jpg, on the same plane, 640 square (1.1 km a texel)
+//   moon.site.bin     the ground round where the camera starts (view.ts `SITE`), whole: 257 x 257 heights 250 m apart
+//                     on the plane touching the Moon there (a point's place on it is its direction's east and north
+//                     parts times the Moon's radius), little-endian 16-bit, quarter metres above the site's ground
 //   moon.json         where each plane touches, what it covers, how its bytes are read, and what it was made for
 //
 // A relief texel is red and green the ground's slope and blue its height. The slope is the rise over the run along
@@ -25,8 +28,15 @@
 // Where the Sun is lower than that the texel is in a shadow cast on it, and the shader says so. It holds while the
 // Sun keeps near that bearing, which it does for the hours the camera is near; the shader lets it go as the Sun moves on.
 //
-// Where the planes touch follows from the front page's own figures (src/app/front/view.ts: the instant, and the place on
-// the limb the Earth stands over), so this is run again when those change; tests/front.test.mjs fails until it is.
+// Where the planes touch follows from the front page's own figures (src/app/front/view.ts: the instant, and the place the
+// camera starts from, whose plane with the Earth crosses the limb where the Earth stands), so this is run again when
+// those change; tests/front.test.mjs fails until it is.
+//
+// The place itself is found here and written into view.ts by hand: `--find-site` lists the places along the
+// south-western limb where the ground is level toward the Earth and the Earth stands half risen over a level horizon,
+// levellest first (it bakes nothing). `--only site` then bakes the ground round view.ts's place, says what is seen from
+// it, and works out how near the ground comes to the camera all the way along its path (`site.clear`: the scene's near
+// plane is set by it); it fails if the path meets the ground.
 //
 // The sources, both NASA's and public domain (docs/sources.md, "The Moon"), are the CGI Moon Kit's (Scientific
 // Visualization Studio, 2019): `lroc_color_poles_8k.tif` (the Lunar Reconnaissance Orbiter Camera's wide-angle
@@ -39,8 +49,8 @@ import { closeSync, existsSync, mkdirSync, openSync, readSync, statSync, writeFi
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { INSTANT, instantAt, limbPoint, PATH, skyAt } from '../src/app/front/view.ts';
-import { cross, dot, unit } from '../src/world/frames.ts';
+import { cameraAt, INSTANT, instantAt, limbAngle, limbOf, limbPoint, PATH, pathAt, SITE, SITE_DIR, skyAt } from '../src/app/front/view.ts';
+import { cross, DEG, dot, sub, unit } from '../src/world/frames.ts';
 import { MOON_RADIUS, selenographic } from '../src/world/moon.ts';
 import { writeGreyPng } from './png.mjs';
 
@@ -175,7 +185,7 @@ function writeJpeg(path, data, w, h, quality, sampling) {
 // --- where the planes touch: behind the limb point the Earth stands over, toward where the camera starts ---
 const sky = skyAt(instantAt(0));
 const e = unit(sky.earth);
-const limb = limbPoint(sky, PATH.limb);
+const limb = limbOf(sky);
 /** The direction `behind` metres of ground behind the limb point, away from the Earth, in the camera's plane. */
 const behindLimb = (behind) => {
   const a = Math.PI / 2 + behind / MOON_RADIUS;
@@ -360,19 +370,195 @@ function bakeColour(file) {
   return { file: 'moon.colour.jpg', width: w, height: h, mean: Number(mean) };
 }
 
+// --- the place the camera starts from ---
+const along = (a, b, ca, cb) => [ca * a[0] + cb * b[0], ca * a[1] + cb * b[1], ca * a[2] + cb * b[2]];
+/**
+ * What is seen from `over` metres above the ground toward a direction `d`: the ground's height, the Earth's centre
+ * above the level, the horizon toward the Earth (its height above the level and how far off it is), how much the
+ * horizon's height varies 8 degrees either side, how far from level the ground is out to 8 km that way (root mean
+ * square and worst, seen from the place), and the Sun's height and bearing from the Earth's (anticlockwise). Radians.
+ */
+function seenFrom(map, d, over) {
+  const z = heightAt(map, d);
+  const eye = along(d, d, MOON_RADIUS + z + over, 0);
+  const toEarth = unit(sub(sky.earth, eye));
+  const forward = unit(along(toEarth, d, 1, -dot(toEarth, d)));
+  const left = cross(d, forward);
+  const horizons = [];
+  let squares = 0,
+    count = 0,
+    worst = 0;
+  for (let a = -8; a <= 8; a += 2) {
+    const way = unit(along(forward, left, Math.cos(a * DEG), Math.sin(a * DEG)));
+    let most = -1,
+      reach = 0,
+      far = 0;
+    while (reach < 300_000) {
+      reach += Math.max(250, reach * 0.02);
+      const to = along(d, way, Math.cos(reach / MOON_RADIUS), Math.sin(reach / MOON_RADIUS));
+      const ground = heightAt(map, to);
+      const v = sub(along(to, to, MOON_RADIUS + ground, 0), eye);
+      const up = dot(v, d) / Math.hypot(v[0], v[1], v[2]);
+      if (up > most) [most, far] = [up, reach];
+      if (reach < 8000) {
+        const slope = Math.atan2(ground - z, reach);
+        squares += slope * slope;
+        count++;
+        worst = Math.max(worst, Math.abs(slope));
+      }
+    }
+    horizons.push([Math.asin(most), far]);
+  }
+  const heightsOf = horizons.map((h) => h[0]);
+  const sun = unit(sky.sun);
+  return {
+    ground: z,
+    earth: Math.asin(dot(d, toEarth)),
+    horizon: horizons[4][0],
+    horizonAt: horizons[4][1],
+    spread: Math.max(...heightsOf) - Math.min(...heightsOf),
+    rough: Math.sqrt(squares / count),
+    worst,
+    sunUp: Math.asin(dot(d, sun)),
+    sunFrom: Math.atan2(dot(sun, left), dot(sun, forward)),
+  };
+}
+
+/** The places along the limb that would do, levellest first (view.ts `SITE` says what is asked of one). */
+function findSite(map) {
+  const found = [];
+  for (let angle = 198; angle <= 218; angle += 0.05) {
+    const n = limbPoint(sky, angle);
+    for (let toward = -1; toward <= 4; toward += 0.04) {
+      const d = unit(along(e, n, Math.sin(toward * DEG), Math.cos(toward * DEG)));
+      const s = seenFrom(map, d, PATH.from);
+      const clear = s.earth - s.horizon;
+      if (clear > 0.05 * DEG && clear < 0.45 * DEG && s.spread < 0.25 * DEG && s.rough < 1.2 * DEG && s.worst < 3 * DEG)
+        found.push({ at: selenographic(d), clear, ...s });
+    }
+  }
+  found.sort((a, b) => a.rough + a.spread - (b.rough + b.spread));
+  const deg = (x) => (x / DEG).toFixed(2);
+  for (const f of found)
+    console.log(
+      `${f.at.longitude.toFixed(2)} E ${f.at.latitude.toFixed(2)} N  ground ${f.ground.toFixed(0)} m  Earth ${deg(f.earth)} over a horizon at ${deg(f.horizon)}, ` +
+        `${(f.horizonAt / 1000).toFixed(0)} km off (${deg(f.clear)} clear, level within ${deg(f.spread)})  ground within ${deg(f.rough)} of level (worst ${deg(f.worst)})  ` +
+        `Sun ${deg(f.sunUp)} up, ${deg(f.sunFrom)} from the Earth`,
+    );
+}
+
+/** The site's ground, 257 heights a side 250 m apart, and how near the ground comes to the camera along its path. */
+function bakeSite(map) {
+  const up = SITE_DIR;
+  const east = unit(cross([0, 0, 1], up));
+  const north = cross(up, east);
+  const ground = heightAt(map, up);
+  if (Math.abs(ground - SITE.ground.value) > 0.05)
+    throw new Error(`view.ts says the site's ground is ${SITE.ground.value} m; the heights say ${ground.toFixed(2)}`);
+  const [side, metres, quantum] = [257, 250, 0.25];
+  const grid = new Int16Array(side * side);
+  for (let j = 0; j < side; j++)
+    for (let i = 0; i < side; i++) {
+      const x = ((i - (side - 1) / 2) * metres) / MOON_RADIUS,
+        y = ((j - (side - 1) / 2) * metres) / MOON_RADIUS;
+      const d = along(along(east, north, x, y), up, 1, Math.sqrt(1 - x * x - y * y));
+      const q = Math.round((heightAt(map, d) - ground) / quantum);
+      if (Math.abs(q) > 32767) throw new Error('the ground round the site is out of a 16-bit height’s range');
+      grid[j * side + i] = q;
+    }
+  writeFileSync(join(out, 'moon.site.bin'), Buffer.from(grid.buffer));
+  console.log(`moon.site.bin  ${side} x ${side}  ${sizeOf('moon.site.bin')}  ${metres} m apart`);
+  const s = seenFrom(map, up, PATH.from);
+  const toEarth = unit(sky.earth);
+  const deg = (x) => Number((x / DEG).toFixed(3));
+  console.log(
+    `  from ${PATH.from} m: the Earth's centre ${deg(s.earth)} up, the horizon ${deg(s.horizon)} at ${(s.horizonAt / 1000).toFixed(1)} km; ` +
+      `the Sun ${deg(s.sunUp)} up, ${deg(s.sunFrom)} from the Earth's bearing`,
+  );
+  // How near the ground comes to the camera along its path: at heights a quarter apart, the least distance to any
+  // ground within three heights of the point under the camera (and 5 km: the libration moves the path a little).
+  const over = [],
+    least = [];
+  for (let h = PATH.from; h < 400_000; h *= 1.25) {
+    let [t0, t1] = [0, PATH.seconds];
+    for (let k = 0; k < 60; k++) {
+      const mid = (t0 + t1) / 2;
+      if (pathAt(mid).over < h) t0 = mid;
+      else t1 = mid;
+    }
+    const eye = cameraAt(t1, skyAt(instantAt(t1))).position;
+    const under = unit(eye);
+    const a = unit(cross([0, 0, 1], under)),
+      b = cross(under, a);
+    const reach = Math.max(5000, 3 * h);
+    let nearest = Number.POSITIVE_INFINITY;
+    const n = 60;
+    for (let j = -n; j <= n; j++)
+      for (let i = -n; i <= n; i++) {
+        const [x, y] = [(i / n) * reach, (j / n) * reach];
+        const r = Math.hypot(x, y) / MOON_RADIUS;
+        const to = r ? along(under, unit(along(a, b, x, y)), Math.cos(r), Math.sin(r)) : under;
+        const p = along(to, to, MOON_RADIUS + heightAt(map, to), 0);
+        nearest = Math.min(nearest, Math.hypot(p[0] - eye[0], p[1] - eye[1], p[2] - eye[2]));
+        if (Math.hypot(...p) > Math.hypot(...eye) && r * MOON_RADIUS < 0.02 * h + 300)
+          throw new Error(`the path is under the ground ${(h / 1000).toFixed(1)} km up`);
+      }
+    over.push(Math.round(h * 10) / 10);
+    least.push(Math.round(nearest));
+  }
+  console.log(
+    `  the ground's least distance along the path: ${over.map((h, i) => `${(h / 1000).toFixed(2)}:${(least[i] / 1000).toFixed(2)}`).join(' ')} km`,
+  );
+  return {
+    file: 'moon.site.bin',
+    at: { longitude: SITE.longitude.value, latitude: SITE.latitude.value },
+    ground,
+    up,
+    east,
+    north,
+    side,
+    metres,
+    quantum,
+    towardEarth: Math.atan2(dot(toEarth, north), dot(toEarth, east)),
+    seen: {
+      from: PATH.from,
+      earth: deg(s.earth),
+      horizon: deg(s.horizon),
+      horizonAt: s.horizonAt,
+      sunUp: deg(s.sunUp),
+      sunFrom: deg(s.sunFrom),
+    },
+    clear: { over, least },
+  };
+}
+
 const metaFile = join(out, 'moon.json');
 const meta = existsSync(metaFile) ? JSON.parse((await import('node:fs')).readFileSync(metaFile, 'utf8')) : {};
+if (args.includes('--find-site')) {
+  findSite(heights(await source('ldem_64_uint.tif')));
+  process.exit(0);
+}
 if (!only || only === 'colour') meta.colour = bakeColour(await source('lroc_color_poles_8k.tif'));
 if (!only || only === 'whole' || only === 'wide') {
   const coarse = heights(await source('ldem_16_uint.tif'));
   if (!only || only === 'whole') meta.whole = bakeWhole(coarse);
   if (!only || only === 'wide') meta.wide = bakePlane(PLANES.wide, coarse, 2);
 }
+if (!only || only === 'near' || only === 'site') {
+  const fine = heights(await source('ldem_64_uint.tif'));
+  if (!only || only === 'site') meta.site = bakeSite(fine);
+}
 if (!only || only === 'near') {
   meta.near = bakePlane(PLANES.near, heights(await source('ldem_64_uint.tif')), 1, unit(sky.sun));
   meta.near.colour = bakePlaneColour(PLANES.near, await source('lroc_color_poles_8k.tif'), 640);
 }
-meta.for = { instant: INSTANT, limb: PATH.limb, limbAt: selenographic(limb), sun: unit(sky.sun) };
+meta.for = {
+  instant: INSTANT,
+  limb: limbAngle(sky),
+  limbAt: selenographic(limb),
+  site: [SITE.longitude.value, SITE.latitude.value],
+  sun: unit(sky.sun),
+};
 meta.data =
   'NASA Scientific Visualization Studio, CGI Moon Kit (E. Wright, 2019; svs.gsfc.nasa.gov/4720): colour from the Lunar ' +
   'Reconnaissance Orbiter Camera wide-angle mosaic, heights from the Lunar Orbiter Laser Altimeter. Public domain; credit ' +
