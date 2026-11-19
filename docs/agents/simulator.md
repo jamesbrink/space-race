@@ -902,7 +902,16 @@ read gives enough of to fly (issue #10).
   sequencer (B) off, on every kind (the ballistic, the orbital and the docking deck alike; nothing remembers it): the player
   lights the engines, steers, throttles, stages, cuts, fires the retrorockets and puts out the parachutes, each with its
   physical consequence ("What a hand can do"). Either switch thrown on has the record's guidance or its sequence fly that
-  part, and the mode line says so; both on is the flight as flown. A kept run resumes with the switches it had (the tape's
+  part, and the mode line says so; both on is the flight as flown. Hold (deck.ts `START.hold`, on; the key Enter, every letter
+  being taken; one switch on every deck but the docking deck's, whose guidance is already its attitude hold) is the
+  vehicle's own stabilisation, as every real autopilot gave it under its programme: with guidance off the control system
+  keeps the attitude it was last left at and damps its rates (autopilot.ts `hold` on the booster and the spacecraft alone,
+  stagedlive.ts `StagedPilotOptions.hold` on a staged launch vehicle), through the same steering and within the same
+  authority as the programme, so wind shear can overpower it and with nothing burning (or no gas) it does nothing, which
+  the mode line says; the keys turn the held attitude at `HOLD_TURN` (3 degrees a second, as they lean guidance's
+  programme). A first-time player who lights the engine and touches nothing rises straight and whole (Freedom 7: 93 km
+  and 2.3 km/s at T+150 s, 0.4 km downrange) and misses the mission by not flying the programme; Hold off, the keys are the
+  controls at `FINE` and nothing holds the nose into the wind (the Redstone breaks up by bending at T+36 s). A kept run resumes with the switches it had (the tape's
   `setup`); starting over (N) stands it on the pad by hand again. A run is at stake once it is flown (`Deck.stake`: by hand
   and with ticks flown), not while it stands untouched on its pad. What the mission intended is shown and not done, all of it
   from the plan: the navball's target mark is a flight director (`Deck.director`: the ballistic deck's tilt programme,
@@ -915,7 +924,7 @@ read gives enough of to fly (issue #10).
   card's figures against the reports'; the orbital card's held checks and the landing's distance), as before. A key steers a
   launch vehicle flown by hand at `FINE` of full throw, a tenth (estimated: KSP's fine controls, the game's and no vehicle's;
   a simulated pilot holding the director on keys with a degree's deadband and 0.15 s to react breaks the Redstone up by its
-  bending load at T+49 s at full throw, and flies it whole to its cutoff, 60 km up at 2.0 km/s at T+140 s, at a tenth); the
+  bending load at T+49 s at full throw, and flies it whole to its cutoff, 60 km up at 2.0 km/s at T+140 s, at a tenth: with Hold off); the
   finger's stick asks as far as it is pushed, and a spacecraft's jets are worked at their own throw. The launch site's own
   clock, the idle show, every batch run and every figure are the record's still.
 - **The deck is an instrument, not a page.** What is always there: the navball and the path in the left corner; the

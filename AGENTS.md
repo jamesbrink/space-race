@@ -263,7 +263,8 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   as data (`DeckSpec`: figures, readings, systems, steps, extra keys); a new kind is a class on `Deck`, not a second deck.
   Fly is taken by hand: on every entry guidance (G) and the sequencer (B) are off (deck.ts `START`, one rule for every kind), and the
   player lights, steers, throttles, stages, cuts and fires; either switch, thrown on, has the record's guidance or sequence fly that part,
-  and the mode line says which. What the mission intended is shown, never done: the navball's flight director (the record's programme or
+  and the mode line says which. Hold (Enter, on by default) is the vehicle's own stabilisation: with guidance off its control system keeps
+  the attitude the hands leave it at, within its steering's authority, and the keys move it; off, the keys work the controls themselves. What the mission intended is shown, never done: the navball's flight director (the record's programme or
   steering law), the next step with the record's time and condition, the record's throttle on the lever. A key steers a launch vehicle
   flown by hand at a tenth of full throw (`FINE`, estimated: at full throw a hand on keys breaks the Redstone up). A kept run resumes with
   its own switches. The launch site's clock, the idle show and every batch run stay the record's.

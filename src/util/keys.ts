@@ -98,6 +98,11 @@ export const KEYS = {
   'deck.next': { slots: [' '], does: 'the next event now', when: 'the flight deck' },
   'deck.guidance': { slots: ['g'], does: 'guidance', when: 'the flight deck' },
   'deck.sequence': { slots: ['b'], does: 'sequencer', when: 'the flight deck' },
+  'deck.hold': {
+    slots: ['enter'],
+    does: 'hold attitude',
+    when: 'the flight deck: the autopilot keeps the attitude you leave it at while guidance is off (every letter is taken)',
+  },
   'deck.again': { slots: ['n'], does: 'fly again', when: 'the flight deck' },
   'deck.leave': { slots: ['escape'], does: 'leave', when: 'the flight deck (L too)' },
   'deck.abort': { slots: ['x'], does: 'abort (twice)', when: 'the flight deck' },

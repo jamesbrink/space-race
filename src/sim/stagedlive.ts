@@ -941,6 +941,12 @@ export interface StagedPilotOptions {
   trim?: { pitch: number; yaw: number };
   /** Steps the hands have asked for at this tick. */
   steps?: () => Step[];
+  /**
+   * With guidance off, the attitude its control system holds (a direction for the long axis, in the vehicle's frame), or
+   * null for none: steered to by the same loop as the law, within the steering's authority, its rates damped; the hands'
+   * keys move it (the deck's). Not physics: the controls a stabilised vehicle gives itself.
+   */
+  hold?: () => Vec3 | null;
 }
 
 /**
@@ -994,7 +1000,9 @@ export function stagedPilot(
         ).map((e) => e.id)
       : [];
     const hands = adrift ? { pitch: 0, yaw: 0, roll: 0 } : (options.hands?.() ?? { pitch: 0, yaw: 0, roll: 0 });
-    if (!options.guidance && !adrift) return { ...hands, steps, events };
+    // (control lost holds nothing either)
+    const held = options.guidance || adrift ? null : (options.hold?.() ?? null);
+    if (!options.guidance && !adrift && !held) return { ...hands, steps, events };
     if (options.prescribed) {
       // as staged.ts flies it: the part of the law fixed for the tick, thetaTurn from the instant the tangent took over
       const mode = law.modeAt(s.t);
@@ -1007,6 +1015,7 @@ export function stagedPilot(
     if (law.modeAt(s.t) === 'tangent' && memo.thetaTurn === null) memo.thetaTurn = law.thetaAt(s, s.t, here.ground);
     const trim = adrift ? { pitch: 0, yaw: 0 } : (options.trim ?? { pitch: 0, yaw: 0 });
     const aim = (st: State, at: number): Vec3 => {
+      if (held) return held;
       const mode: Mode = law.modeAt(at);
       let target = law.axisAt(
         st,

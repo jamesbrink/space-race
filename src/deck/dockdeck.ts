@@ -79,6 +79,7 @@ export class DockDeck extends Deck<Flight> {
         timeline('mass', 'Mass', 'kg', 'Mass under the active pilot’s control'),
       ],
       guidance: 'Hold the current attitude by damping rotation',
+      hold: false,
       sequence: 'Capture when the port enters the docking envelope',
       labels: { steering: 'Attitude', events: 'Capture', restart: 'Restart approach' },
       choose: false,

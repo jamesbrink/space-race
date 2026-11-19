@@ -57,6 +57,13 @@ export interface AutopilotOptions {
    * whole flight one way without taking the stick from the platform.
    */
   trim?: () => { pitch: number; yaw: number };
+  /**
+   * An attitude held in place of the programme (the long axis's direction in the vehicle's frame), asked every tick, or
+   * null: the platform holds it on the booster as it holds the programme, still and with no turn fed forward, and on the
+   * spacecraft alone the automatic jets hold it in place of the record's attitudes. A stabilised vehicle with its programme
+   * off: what a hand flying by the flight director leaves it at (the deck's Hold).
+   */
+  hold?: () => Vec3 | null;
 }
 
 /** The turn, as a vector in the body's axes, that takes the long axis to `wanted` (a direction in the body's axes). */
@@ -155,13 +162,14 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
       if (!s.ignited || s.cutoff) return c; // nothing to steer with
       // the platform: the programme's axis, the rate it is turning at, and the plane it tilts in
       const trim = options.trim?.();
+      const held = options.hold?.() ?? null;
       const { left: port, downrange } = vehicle.launch;
       const leaned = (at: number): Vec3 =>
         trim
           ? turn(aboutAxis(scale(downrange, -1), trim.yaw), turn(aboutAxis(port, trim.pitch), vehicle.programme(at, litAt(s))))
           : vehicle.programme(at, litAt(s));
-      const axis = leaned(since(s));
-      const turning = scale(cross(axis, leaned(since(s) + 0.1)), 1 / 0.1);
+      const axis = held ?? leaned(since(s));
+      const turning = held ? ([0, 0, 0] as Vec3) : scale(cross(axis, leaned(since(s) + 0.1)), 1 / 0.1);
       const left = unturn(s.q, vehicle.launch.left);
       error = [Math.atan2(left[2], left[1]), ...turnTo(unturn(s.q, axis)).slice(1)] as unknown as Vec3;
       rate = sub(s.w, unturn(s.q, turning));
@@ -173,7 +181,9 @@ export function autopilot(vehicle: Vehicle, options: AutopilotOptions = {}): Pil
       if (s.mainAt !== null || (s.drogueAt !== null && s.abortAt === null)) return c;
       const up = vehicle.frame.up(s.r, s.t);
       const wind = sub(s.v, cross(earth, s.r));
-      if (s.enteredAt === null && hasLeft(s.craft, roles.tower) && length(wind) > 1) {
+      const held = options.hold?.() ?? null;
+      if (held && s.enteredAt === null) error = turnTo(unturn(s.q, held));
+      else if (s.enteredAt === null && hasLeft(s.craft, roles.tower) && length(wind) > 1) {
         // blunt end first: for retrofire, pitched as the record has it; after the pack has gone, straight into the air
         const level = sub(wind, scale(up, dot(wind, up)));
         const pitch = roles.retroPitch.value * DEG;

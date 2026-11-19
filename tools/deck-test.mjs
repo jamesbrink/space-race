@@ -171,7 +171,7 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
     });
     if (!labelFits) fail(where, `the next action's label extends beyond its button: "${await label()}"`);
     if (id.startsWith('ussr') && w === 1280) {
-      // taken over in the ascent with real keys: G takes it, W held turns it, B and Space drop the strap-ons
+      // taken over in the ascent with real keys: G takes it, W held turns it (the attitude held), B and Space drop the strap-ons
       for (let i = 0; i < 100 && (await page.evaluate(() => window.sr.clock.t)) < 50; i++) {
         await page.evaluate(() => window.sr.clock.seek(Math.min(50, window.sr.clock.t + 4)));
         await page.waitForTimeout(50);
@@ -193,8 +193,9 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
       await page.keyboard.up('KeyW');
       await page.waitForTimeout(300);
       const turned = await read();
-      if (!(turned.rate > 0.05)) fail(where, `W did not turn it: pitch rate ${turned.rate}`);
-      if (!(turned.pitch < before.pitch - 3)) fail(where, `W did not pitch it over: ${before.pitch} to ${turned.pitch}`);
+      // (with Hold, on by default, W turns the attitude held at 3 degrees a second and the steering follows it: deck.ts `HOLD_TURN`)
+      if (!(turned.rate > 0.02)) fail(where, `W did not turn it: pitch rate ${turned.rate}`);
+      if (!(turned.pitch < before.pitch - 2)) fail(where, `W did not pitch it over: ${before.pitch} to ${turned.pitch}`);
       await page.keyboard.press('KeyB');
       await page.keyboard.press('Space');
       await page.waitForTimeout(800);
