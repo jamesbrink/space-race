@@ -15,7 +15,7 @@ can be flown from liftoff to landing: as it was flown, or by your own hand.
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
 
 <p align="center">
-  <a href="https://jamesbrink.online/space-race/"><img src="docs/readme/front.jpg" alt="The front page: the list of flights over the Earth seen from the Moon" width="100%"></a>
+  <a href="https://jamesbrink.online/space-race/"><img src="docs/readme/front.jpg" alt="The front page: a main menu and the missions to choose from, over the Earth seen from the Moon" width="100%"></a>
 </p>
 
 ## What is in it
@@ -55,9 +55,9 @@ and says why.
 
 And two that belong to no one flight:
 
-- **The Lineup.** Every vehicle built so far on one floor at one scale, a person beside each, with a
+- **The Lineup** (Explore, on the front page's menu). Every vehicle built so far on one floor at one scale, a person beside each, with a
   timeline of the race under the row. Stand two together to compare them, or see the spacecraft alone.
-- **The front page.** The list of flights over the Earth, seen from out by the Moon.
+- **The front page.** A main menu and the missions to choose from, over the Earth seen from out by the Moon.
 
 The whole thing can be redrawn as an inked, cel-shaded drawing (`T`), and works on a phone.
 
