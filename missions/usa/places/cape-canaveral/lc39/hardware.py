@@ -113,14 +113,14 @@ def tower(parts, crane_parked):
     beam(parts("Hammerhead_Crane", "steel"), (-4, 0, DECK + 387), (-4, 0, DECK + 376), 0.25)
 
 
-def arms(parts, as506):
+def arms(parts, detailed):
     # Service envelopes approximated from the Saturn V flight manual, section VIII.
     for i, (level, tip) in enumerate(
         ((68, 16.65), (132, 16.65), (150, 16.65), (175, 16.65), (215, 16.65), (245, 10.9), (276, 10.9), (304, 6.5), (320, 8)), 1
     ):
         # Leave the steel frame outside the stage skin through its whole swing.
-        # July tips include room for the coarse collision cells on both assets.
-        if as506:
+        # These tips include room for the coarse collision cells on both assets.
+        if detailed:
             tip = (18.4, 18.4, 18.4, 18.4, 18.4, 12.65, 12.65, 9.8, 8)[i - 1]
         name = f"Service_Arm_{i}"
         z = DECK + level
@@ -134,14 +134,14 @@ def arms(parts, as506):
             box(parts("Umbilical_Tower", "deck"), (55, -2.8, z - 0.35), (59.4, 2.8, z + 0.03))
             truss(parts(name, "red"), lambda k, x: (x, (-3, 3, 3, -3)[k], z + (0, 0, 8.4, 8.4)[k]), [30, 42.5, 55], 0.39, 0.22)
             box(floor, (30, -2.8, z + 0.19), (54.95, 2.8, z + 0.44))
-            # On ML-1 the landing sits one step below the opening leaves.
-            landing = 5.97 if as506 else 6.4
+            # On the detailed launchers the landing sits one step below the opening leaves.
+            landing = 5.97 if detailed else 6.4
             stairs(floor, (30, 0, z + 0.44), (12, 0, z + landing), 5.5)
             stair_rails(parts(name, "rail"), (30, 0, z + 0.44), (12, 0, z + landing), 5.5)
             # The two open hatch leaves occupy the positive-y side of the vestibule.
-            sill = 6.14 if as506 else 4.65
+            sill = 6.14 if detailed else 4.65
             # Keep the underside clear after both GLBs are quantized into collision boxes.
-            thickness = 0.32 if as506 else 0.34
+            thickness = 0.32 if detailed else 0.34
             box(floor, (sill, -3, z + landing - thickness), (12, 5.9, z + landing))
             room = parts(name, "white")
             for y in (-3.1, 5.7):
@@ -162,7 +162,7 @@ def holddowns(parts):
         beam(parts("Holddown_Arms", "steel"), (32 * u[0], 32 * u[1], DECK + 12), (17 * u[0], 17 * u[1], DECK + 18.6), 2.4)
 
 
-def as506_holddowns(parts):
+def articulated_holddowns(parts):
     """Apollo 11 Press Kit, Mobile Launcher; MSFC-MAN-504 fig. 8-7; SP-4204 ch. 13."""
     parts.node("Holddown_Arms")
     # Pad X is north, Y west. Positions I to IV begin in the east and progress counterclockwise.
@@ -234,7 +234,7 @@ def visor_shell(mesh, point, centre, radius, height, half_width):
         plate(mesh, outline, 0.12)
 
 
-def as506_tail_masts(parts):
+def articulated_tail_masts(parts):
     """Starboard and port masts from MSFC-MAN-504 fig. 8-7; local hinge geometry estimated."""
     parts.node("Tail_Service_Masts")
     steel = parts("Tail_Service_Masts", "steel")
@@ -273,7 +273,31 @@ def as506_tail_masts(parts):
         visor_shell(parts(hood, "deck"), point, centre, 2.48, hood_height, 1.97)
 
 
-def build(pad, *, as506=False):
+def quench_valve(parts):
+    """AS-507 flight evaluation §3.6.1 identifies the Industrial Water System valve on arm 2.
+    Its dimensions, local mounting and discharge header are reconstructed.
+    """
+    z = DECK + 132
+    name = "Arm2_Quench_Valve"
+    parts.node(name, "Service_Arm_2", (47, 2.55, z + 2.3))
+    water = parts(name, "steel", True)
+    y, level = 2.55, z + 2.30
+    header = parts("Service_Arm_2", "steel/quench_header", True)
+    header.tube(P(21.2, y, level), P(52.0, y, level), 0.19 * FT)
+    # The valve body interrupts the sprinkler header near the tower end of the arm.
+    water.tube(P(45.8, y, level), P(48.2, y, level), 0.42 * FT)
+    for x in (45.7, 48.35):
+        water.tube(P(x - 0.08, y, level), P(x + 0.08, y, level), 0.62 * FT)
+    bonnet = parts(name, "deck", True)
+    bonnet.tube(P(46.95, y, level + 0.30), P(46.95, y, level + 1.09), 0.28 * FT)
+    bonnet.tube(P(46.95, y, level + 0.99), P(46.95, y, level + 1.64), 0.51 * FT)
+    for x in (22, 29, 36, 43):
+        header.tube(P(x, y, level - 0.08), P(x, y, level - 0.65), 0.1 * FT)
+    for x in (22.7, 34.7, 49.7):
+        beam(parts("Service_Arm_2", "deck/quench_brackets"), (x, 1.8, z + 0.58), (x, y, level - 0.08), 0.17)
+
+
+def build(pad, *, detailed=False, arm2_quench=False):
     use(FT)
     parts = Parts(
         {
@@ -289,13 +313,15 @@ def build(pad, *, as506=False):
     )
     hardstand(parts, pad)
     base(parts)
-    if as506:
-        as506_holddowns(parts)
-        as506_tail_masts(parts)
+    if detailed:
+        articulated_holddowns(parts)
+        articulated_tail_masts(parts)
     else:
         holddowns(parts)
         tail_masts(parts)
-    tower(parts, as506)
-    arms(parts, as506)
+    tower(parts, detailed)
+    arms(parts, detailed)
+    if arm2_quench:
+        quench_valve(parts)
     parts.build()
     return "Mobile launcher: 160 by 135 ft base, 445 ft to crane on pad pedestals"

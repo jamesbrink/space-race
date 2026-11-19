@@ -10,11 +10,11 @@ export interface Wind {
 /**
  * One layer of cloud, as an observer under it reports it. `cover` is the fraction of the sky it hides, 0 to 1 (a
  * station's okta is an eighth, and means that eighth give or take a sixteenth); `base` is metres above the station's
- * ground. `kind` is the observer's genus: the viewer draws cumulus as heaps, altocumulus as a deck of cloudlets,
+ * ground. `kind` is the observer's genus: the viewer draws cumulus as heaps, stratocumulus and altocumulus as layered decks,
  * cirrus as fibres and cirrostratus as a veil.
  */
 export interface CloudLayer {
-  kind: 'cumulus' | 'altocumulus' | 'cirrus' | 'cirrostratus';
+  kind: 'cumulus' | 'stratocumulus' | 'altocumulus' | 'cirrus' | 'cirrostratus';
   cover: Measure;
   base: Measure;
   /** What the record says of it that the figures do not: how it was coded, what else was said of it. */
@@ -52,7 +52,7 @@ export interface DayWeather {
    * metres; `wind`: what the layer drifts on, which is the wind at its own height.
    */
   low?: CloudLayer & { depth: Measure; size: Measure; wind: Wind };
-  /** The middle deck: altocumulus. */
+  /** The layered deck: altocumulus or a stratocumulus overcast, at its reported base. */
   middle?: CloudLayer;
   /**
    * The high cloud. `depth`: its optical depth looked straight up through (as the classes of Sassen and Cho, 1992, are

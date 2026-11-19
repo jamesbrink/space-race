@@ -1781,6 +1781,7 @@ Figure 7.1-2 shows the height and arrangement of the access platforms beside Soy
 ### Apollo 12 · AS-507, Yankee Clipper and Intrepid
 
 - [Apollo 12 Mission Report, MSC-01855](https://www.nasa.gov/wp-content/uploads/2025/11/a12-missionreport.pdf), mission sequence, appendix A configuration changes and surface experiments.
-- [Saturn V Launch Vehicle Flight Evaluation Report AS-507](https://www.nasa.gov/wp-content/uploads/static/history/afj/ap12fj/pdf/a12-saturn-v-fer.pdf), §2, stage and adapter identities, ignition mass and flight events.
+- [Saturn V Launch Vehicle Flight Evaluation Report AS-507](https://www.ibiblio.org/apollo/Documents/lvfea-AS507-Apollo12.pdf), §2 and table 2-2 for stage identities, ignition mass, first motion and IU disconnect. Sections 3.6 and 11.2.1 cover ML-2 equipment and liftoff clearances. Appendix A, table A-1, records the launch weather.
 - [Saturn V Flight Manual SA-507](https://www.apollojournals.org/afj/ap12fj/pdf/a12_sa507-flightmanual.pdf), §§IV–VII. Stage structure, interstage equipment and differences from SA-506.
 - [Apollo 12 Press Kit](https://science.nasa.gov/wp-content/uploads/2023/09/Apollo_12.pdf), spacecraft, Saturn V, photographic equipment and lunar surface experiments. [Apollo 12 photographic record](https://apollojournals.org/alsj/a12/images12.html), photographs of Intrepid, the deployment of the experiments and the surface traverse.
+- [Apollo 12 launch commentary, 14 November 1969](https://www.apollojournals.org/afj/ap12fj/01launch_to_earth_orbit.html), Kennedy Launch Control’s live reports on the crew boarding at level 320, hatch closure, and arm 9 at standby and in final retraction.

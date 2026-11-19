@@ -69,7 +69,7 @@ interface Countdown {
   intertankLatch?: number;
   firstMotion?: number;
   terminalConfidence?: 'assumed' | 'documented';
-  holdDowns?: 'as-506';
+  holdDowns?: 'as-506' | 'as-507';
 }
 
 export function mobileLauncher(
@@ -89,6 +89,9 @@ export function mobileLauncher(
     holdDowns,
   }: Countdown,
 ): ModelDef {
+  const as507 = holdDowns === 'as-507';
+  const manual = as507 ? 'Saturn V Flight Manual SA-507, section VIII, figure 8-8.' : MANUAL;
+  const evaluation = as507 ? 'AS-507 Flight Evaluation Report, §3.6.1.' : 'AS-506 Flight Evaluation Report, §3.6.1.';
   // Layout along the common countdown slider. Inflight sweeps share its final nine seconds.
   const arms: [string, number, number][] = [
     ['S-IC intertank', 0.4, 0.5],
@@ -109,8 +112,8 @@ export function mobileLauncher(
     source,
   });
   const sequence = [
-    key(-43200, 0, 'S-II aft access arm withdraws', 'estimated', MANUAL + ' Withdrawn as required. Time placed before crew ingress.'),
-    key(-43170, 0.1, 'S-II aft arm clear', 'estimated', MANUAL + ' Travel duration reconstructed.'),
+    key(-43200, 0, 'S-II aft access arm withdraws', 'estimated', manual + ' Withdrawn as required. Time placed before crew ingress.'),
+    key(-43170, 0.1, 'S-II aft arm clear', 'estimated', manual + ' Travel duration reconstructed.'),
     key(ingress, 0.1, 'Commander enters the spacecraft', 'documented', pao),
     key(
       parkCommand ?? parkedBy - 30,
@@ -122,11 +125,15 @@ export function mobileLauncher(
     key(parkedBy, 0.2, 'Crew access arm in its 12° standby position', 'estimated', pao + ' Arrival estimated from the standby exchanges.'),
     key(-300, 0.2, 'Crew access arm retracts from standby', 'documented', pao),
     key(
-      retractedBy ?? -270,
+      retractedBy ?? (as507 ? -290 : -270),
       0.4,
       'Crew access arm fully retracted',
-      retractedBy === undefined ? 'estimated' : 'documented',
-      retractedBy === undefined ? pao + ' Travel duration approximated from the countdown.' : pao + ' First full-retraction report.',
+      retractedBy === undefined ? (as507 ? 'assumed' : 'estimated') : 'documented',
+      as507 && retractedBy === undefined
+        ? 'SA-507 Flight Manual, figure 8-20. Nominal end of the retract-and-lock interval.'
+        : retractedBy === undefined
+          ? pao + ' Travel duration approximated from the countdown.'
+          : pao + ' First full-retraction report.',
     ),
     key(-30, 0.4, 'S-IC intertank arm withdraws', terminalConfidence, terminalSource),
     key(
@@ -137,13 +144,19 @@ export function mobileLauncher(
       terminalSource,
     ),
     key(forwardRetract, 0.5, 'S-IC forward arm withdraws', terminalConfidence, terminalSource),
-    key(forwardRetract + 8, 0.6, 'S-IC forward arm clear', 'assumed', MANUAL + ' Eight-second withdrawal.'),
+    key(
+      as507 ? -11 : forwardRetract + 8,
+      0.6,
+      'S-IC forward arm clear',
+      'assumed',
+      as507 ? 'SA-507 Flight Manual, figure 8-20. Nominal end of the retract-and-lock interval.' : manual + ' Eight-second withdrawal.',
+    ),
     key(
       firstMotion,
       0.6,
       'First vehicle motion releases five inflight arms',
-      terminalConfidence,
-      terminalSource + ' ' + MANUAL + ' Trigger within the first inch of rise.',
+      as507 ? 'documented' : terminalConfidence,
+      terminalSource + ' ' + manual + ' Trigger within the first inch of rise.',
     ),
     ...(intertankLatch === undefined
       ? []
@@ -156,7 +169,7 @@ export function mobileLauncher(
             terminalSource,
           ),
         ]),
-    key(firstMotion + 9, 1, 'Inflight arms clear', 'assumed', MANUAL + ' Nominal sweeps use the published maximum retraction times.'),
+    key(firstMotion + 9, 1, 'Inflight arms clear', 'assumed', manual + ' Nominal sweeps use the published maximum retraction times.'),
   ];
   // Position I faces east, position II north. The local horizontal hinge axes below are in viewer coordinates.
   const hinges: [number, number, number][] = [
@@ -168,18 +181,21 @@ export function mobileLauncher(
   const holdDownRelease: Machine = {
     kind: 'release',
     confidence: 'documented',
-    source: 'AS-506 Flight Evaluation Report, §3.6.1. Pneumatic hold-down release at first motion. Sound approximated.',
+    source: evaluation + ' Pneumatic hold-down release at first motion. Sound approximated.',
   };
   const tailHydraulics: Machine = {
     kind: 'hydraulic',
-    confidence: 'assumed',
-    source:
-      'SA-504 Flight Manual, §VIII, p. 8-8: hydraulic carrier and mast operation assumed for ML-1. AS-506 evaluation §3.6.1 records normal retraction.',
+    confidence: as507 ? 'documented' : 'assumed',
+    source: as507
+      ? 'SA-507 Flight Manual, §VIII, p. 8-8. Hydraulic carrier and mast operation. ' + evaluation
+      : 'SA-504 Flight Manual, §VIII, p. 8-8: hydraulic carrier and mast operation assumed for ML-1. AS-506 evaluation §3.6.1 records normal retraction.',
   };
   const hoodClosure: Machine = {
     kind: 'door',
     confidence: 'estimated',
-    source: 'AS-506 Flight Evaluation Report, §§3.6.1 and 3.6.3. The protective hoods swing shut. Closure sound approximated.',
+    source: as507
+      ? 'SA-507 Flight Manual, §VIII, figure 8-7. Hood motion and sound estimated for ML-2.'
+      : 'AS-506 Flight Evaluation Report, §§3.6.1 and 3.6.3. The protective hoods swing shut. Closure sound approximated.',
   };
   const release = hinges.flatMap((axis, index): Move[] => {
     const arm = index + 1;
@@ -193,7 +209,7 @@ export function mobileLauncher(
         from: firstMotion,
         to: firstMotion + 0.5,
       },
-      ...(arm === 1
+      ...(arm === 1 && !as507
         ? []
         : [
             {
@@ -253,7 +269,7 @@ export function mobileLauncher(
     id: 'pad',
     name: 'Mobile launcher ' + number,
     backdrop: 'ground',
-    url: `models/usa/places/cape-canaveral/lc39/pad-${holdDowns ? 'a-1969-07' : number === 3 ? 'b' : 'a'}.glb`,
+    url: `models/usa/places/cape-canaveral/lc39/pad-${as507 ? 'a-1969-11' : holdDowns ? 'a-1969-07' : number === 3 ? 'b' : 'a'}.glb`,
     home: 'launcher',
     position: [0, -deck, 0],
     scale: '160 × 135 ft launcher base · 445 ft from hardstand to crane',
@@ -310,9 +326,11 @@ export function mobileLauncher(
           'Tail_Service_Masts',
           'Tail service masts',
           'Three masts connected to the base of the first stage.',
-          holdDowns
-            ? 'At liftoff the umbilical carriers drew back as the booms swung upright. All three protective hoods closed on Apollo 11. The individual transit times are estimated.'
-            : 'Two stood west of the engine opening and one to the east. Their steel supports and umbilical housings are simplified.',
+          as507
+            ? 'All three retracted normally. As the booms rose, the umbilical carriers drew back into their protective housings. The individual strokes and hood closing times are estimated.'
+            : holdDowns
+              ? 'At liftoff the umbilical carriers drew back as the booms swung upright. All three protective hoods closed on Apollo 11. The individual transit times are estimated.'
+              : 'Two stood west of the engine opening and one to the east. Their steel supports and umbilical housings are simplified.',
         ),
         ...(holdDowns ? { clocked: tailRetraction } : {}),
       },
@@ -321,9 +339,11 @@ export function mobileLauncher(
           'Holddown_Arms',
           'Hold-down arms',
           'Four arms carry the Saturn over the exhaust opening.',
-          holdDowns
-            ? 'All four released at T+0.3 s. Film showed the protective hood on No. 1 stayed open and the other three appeared to close late. The exhibit estimates their closing times and assumes No. 1 occupied position I.'
-            : 'Each holds a fitting at the foot of the first stage until release. Their geometry is reconstructed.',
+          as507
+            ? 'ML-2 released SA-507 at T+0.25 s. All four arms unlatched within eight milliseconds. Their individual movements and the subsequent closing of the four protective hoods are reconstructed.'
+            : holdDowns
+              ? 'All four released at T+0.3 s. Film showed the protective hood on No. 1 stayed open and the other three appeared to close late. The exhibit estimates their closing times and assumes No. 1 occupied position I.'
+              : 'Each holds a fitting at the foot of the first stage until release. Their geometry is reconstructed.',
         ),
         ...(holdDowns ? { clocked: release } : {}),
       },
@@ -341,7 +361,7 @@ export function mobileLauncher(
             do: {
               kind: 'lift',
               node: 'Tower_Lift',
-              machine: { kind: 'lift', confidence: 'estimated', source: MANUAL + ' The tower elevator sound is approximated.' },
+              machine: { kind: 'lift', confidence: 'estimated', source: manual + ' The tower elevator sound is approximated.' },
               speed: (600 * FT) / 60,
               stops: [0, 30, 60, ...Array.from({ length: 14 }, (_, i) => 80 + 20 * i)].map((level) => ({
                 name: level ? 'Level ' + level : 'Deck',
@@ -357,7 +377,9 @@ export function mobileLauncher(
         holdDowns
           ? 'The crane was parked across the tower before the countdown reached crew ingress.'
           : 'The crane reached out across the top of the Saturn.',
-        'The hook could reach 85 feet from the tower axis.',
+        as507
+          ? 'Wind blew the Q-ball cover cable against the primary damper arm. The pad team loosened the cable sheath at this crane twice during the countdown so the damper could move.'
+          : 'The hook could reach 85 feet from the tower axis.',
       ),
       ...arms.map(([arm, from, to], i): Part => {
         const node = `Service_Arm_${i + 1}`;
@@ -368,7 +390,11 @@ export function mobileLauncher(
             i === 8
               ? 'The crew crossed this arm to the white room at the command module hatch.'
               : 'This arm carried connections between the tower and the Saturn V.',
-            'Move the slider to inspect the swing away from the vehicle. The clock follows the countdown. Final sweep angles and individual transit times are reconstructed.',
+            as507 && i === 1
+              ? 'A valve in this arm’s industrial-water quench system failed to open after liftoff. Favorable wind and water spilling from the arms above protected it from apparent damage. Valve geometry and piping are estimated.'
+              : as507 && i === 4
+                ? 'Launch film showed that the S-II forward umbilical cover did not secure when this arm withdrew. The five inflight arms began to swing when the vehicle moved. Individual sweeps are reconstructed.'
+                : 'Move the slider to inspect the swing away from the vehicle. The clock follows the countdown. Final sweep angles and individual transit times are reconstructed.',
           ),
           moves:
             i === 8
@@ -389,6 +415,17 @@ export function mobileLauncher(
               nodes: ['Holddown_Link_1', 'Holddown_Hood_1'],
               span: 5.5,
               from: [-1, 0.4, 0.6] as [number, number, number],
+            },
+          ]
+        : []),
+      ...(as507
+        ? [
+            {
+              id: 'quench',
+              label: 'Arm 2 quench valve',
+              nodes: ['Arm2_Quench_Valve'],
+              span: 2.5,
+              from: [0.22, 0.23, -1] as [number, number, number],
             },
           ]
         : []),
