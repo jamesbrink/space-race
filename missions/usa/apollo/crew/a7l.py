@@ -18,7 +18,32 @@ def paint(name, rgb, **kwargs):
     return bpy.data.materials.get(name) or material(name, rgb, **kwargs)
 
 
-def garment(who, *, ev=False, a7lb=False):
+def chest_patch(torso, parent, image_path):
+    """Circular flight emblem on the left breast, sized and placed from the launch-day photographs."""
+    patch = MeshBuilder()
+    radius = 4.2  # cm
+    azimuth = -math.pi / 2 + 0.52
+    height = fl.B.waist_z - fl.B.torso_z0 + 25.7
+
+    def disk(u, v):
+        return u * math.sqrt(1 - v * v / 2), v * math.sqrt(1 - u * u / 2)
+
+    def surface(u, v):
+        x, z = disk(u, v)
+        return torso.at(height + z * radius, azimuth + x * radius / 19, 0.38)
+
+    def picture(u, v):
+        x, z = disk(u, v)
+        return (0.5 + 0.485 * x) / fl.CM, (0.5 + 0.485 * z) / fl.CM
+
+    grid = [i / 4 - 1 for i in range(9)]
+    patch.grid(surface, grid, grid, uv=picture)
+    image = bpy.data.images.load(str(image_path), check_existing=True)
+    mat = paint(image_path.stem, (1, 1, 1), roughness=0.92, image=image)
+    fl.emit(patch, "Torso_MissionEmblem", mat, parent)
+
+
+def garment(who, *, ev=False, a7lb=False, insignia=None):
     body = fl.B
     cloth = paint("suit-beta-cloth", (0.88, 0.87, 0.81), roughness=0.9)
     dark = paint("apollo-suit-rubber", (0.04, 0.045, 0.05), roughness=0.8)
@@ -67,6 +92,8 @@ def garment(who, *, ev=False, a7lb=False):
     fl.Trousers(torso, legs).build(trousers)
     trunk_node = fl.group("Torso")
     fl.emit(trunk, "Torso_BetaCloth", cloth, trunk_node)
+    if insignia is not None:
+        chest_patch(torso, trunk_node, insignia)
     # Disconnects let cabin air into the garment and carry expired air back to the suit circuit.
     connections = [(-0.58, 10, outlets), (0.51, 10, inlets), (0.63, 19, ports)]
     if a7lb:
@@ -150,10 +177,10 @@ def fit(who, stature=None):
     fl.use(body)
 
 
-def standing(who, *, stature=None, ev=False, a7lb=False):
+def standing(who, *, stature=None, ev=False, a7lb=False, insignia=None):
     fit(who, stature)
     fl.start()
-    garment(who, ev=ev, a7lb=a7lb)
+    garment(who, ev=ev, a7lb=a7lb, insignia=insignia)
     fl.rig_standing()
     return f"{who}, {'EV' if ev else 'CMP' if a7lb else 'IV'} {'A7LB' if a7lb else 'A7L'} pressure garment"
 
