@@ -434,7 +434,18 @@ export function plinthViews(model: Pick<ModelDef, 'views' | 'rotationY' | 'galle
     { id: WHOLE_VIEW, label: 'Whole', ...(model.galleryFrom ? { from: model.galleryFrom } : {}) },
     ...model.views.flatMap((v): ViewDef[] => {
       if (model.walker && v.id === 'walkout') return [];
-      if (there(v) && !same(v)) return [{ id: v.id, label: v.label, nodes: v.nodes!, span: v.span, isolate: v.isolate, ...from(v) }];
+      if (there(v) && !same(v))
+        return [
+          {
+            id: v.id,
+            label: v.label,
+            nodes: v.nodes!,
+            span: v.span,
+            isolate: v.isolate,
+            ...(v.onSelect && { onSelect: true }),
+            ...from(v),
+          },
+        ];
       if (measured(v)) return [{ id: v.id, label: v.label, centreY: v.centreY! + lift, span: v.span!, ...from(v) }];
       return [];
     }),

@@ -1,10 +1,11 @@
-"""LM-3 Spider and LM-4 Snoopy. Inches from the deployed footpad plane, forward hatch on +X. See lunar-module.md."""
+"""LM-3 Spider, LM-4 Snoopy and LM-5 Eagle. Inches from the deployed footpad plane, forward hatch on +X. See lunar-module.md."""
 
 import math
 
 from mathutils import Matrix, Vector
 
 import apollo_docking
+import lm5_equipment
 import lm_cabin
 import lm_propulsion
 import lm_systems
@@ -140,6 +141,11 @@ def descent(parent, foil, amber, dark, alloy, spacecraft):
         for side in blanket.data.polygons:
             ring, facet = divmod(side.index, 8)
             side.material_index = 1 if ring in (1, 2) else 2 if facet % 2 else 0
+    if spacecraft == 5:
+        # AS11-44-6574: copper and gold on the front, dark fields under the placards.
+        for side in blanket.data.polygons:
+            ring, facet = divmod(side.index, 8)
+            side.material_index = 1 if facet in (0, 6) and ring in (1, 2) else 2 if (ring + facet) % 3 else 0
     mark_shells([blanket.name])
     # The descent engine passes through its base shield. Above it a separate, closed
     # blast deflector receives the ascent plume. Local recess dimensions are estimated.
@@ -240,6 +246,25 @@ def staging_fittings(lower, upper, alloy, dark):
     braces.build("LM3_InterstageBrackets", alloy, upper)
 
 
+def check_stowed_gear():
+    """The folded struts and their deployment shields must clear the adapter panels."""
+    import bpy
+    from mathutils.bvhtree import BVHTree
+
+    bpy.context.view_layer.update()
+
+    def meshes(root):
+        for obj in bpy.data.objects[root].children_recursive:
+            if obj.type == "MESH":
+                yield obj.name, BVHTree.FromPolygons([obj.matrix_world @ v.co for v in obj.data.vertices], [p.vertices[:] for p in obj.data.polygons])
+
+    panels = list(meshes("SpacecraftAdapter"))
+    for name, gear in meshes("LMLandingGear"):
+        for panel_name, panel in panels:
+            if gear.overlap(panel):
+                raise ValueError(f"Stowed landing gear {name} intersects {panel_name}")
+
+
 def check_engine_interfaces(parts):
     """Sweep the ascent nozzle out of its well and check both permanently installed engine apertures."""
     import bpy
@@ -299,7 +324,7 @@ def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
             tube(strut, (-10, side * 22, -28), joint, 1.65)
             tube(piston, (-2, side * 3, -5), (-10, side * 22, -28), 1.15)
         pad.lathe(prof([(0, -2), (10, -2), (PAD_RADIUS, 2.1), (PAD_RADIUS, 3.4), (10, 0.5), (2, 1), (0, 2)]), 40, matrix=Matrix.Translation(at(foot)))
-        pad.build(f"LM3_Footpad_{i}", metal, hinge)["diameter_in"] = 2 * PAD_RADIUS
+        pad.build(f"LM3_Footpad_{i}", gold if spacecraft == 5 else metal, hinge)["diameter_in"] = 2 * PAD_RADIUS
         if spacecraft != 5 or i != 0:
             probe = group(f"LM3_ProbeHinge_{i}", hinge)
             probe.location = at((foot[0] + 11, 0, foot[2] + 1))
@@ -316,6 +341,8 @@ def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
             for rung in range(9):
                 t = (rung + 0.5) / 9
                 tube(ladder, (10 + 40 * t, -7, -5 - 84 * t), (10 + 40 * t, 7, -5 - 84 * t), 0.75)
+            if spacecraft == 5:
+                lm5_equipment.ladder(hinge, metal, dark)
             if spacecraft == 3:
                 ladder.build("LM3_ForwardLadder", dark, hinge)
         piston.build(f"LM3_Piston_{i}", metal, hinge)
@@ -527,6 +554,11 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
             "LMLandingRadar",
         )
     }
+    if spacecraft == 5:
+        for name in ("LMPlumeDeflectors", "LMSurfaceEquipment", "LMScienceBay"):
+            parts[name] = group(name)
+        lm5_equipment.deflectors(parts["LMPlumeDeflectors"], silver, dark)
+        lm5_equipment.surface_bays(parts["LMSurfaceEquipment"], parts["LMScienceBay"], parts["LMDescent"], silver, amber, dark, ivory)
     for root in parts.values():
         if not deployed:
             root["lineup_enclosed"] = True
@@ -541,5 +573,7 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
     lm_propulsion.rcs_tanks(parts["LMReactionSupply"], silver, fuel, ox)
     lm_systems.build(parts, silver, interior_paint, dark, white, spacecraft=spacecraft)
     staging_fittings(parts["LMDescent"], parts["LMAscent"], silver, dark)
+    if deployed and spacecraft == 5:
+        lm5_equipment.pilot_camera(parts["LMControlPanels"], silver, dark, ivory)
     lm_cabin.build(parts["LMStations"], parts["LMControlPanels"], silver, interior_paint, dark, ivory, glass)
     check_engine_interfaces(parts)

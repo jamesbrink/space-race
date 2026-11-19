@@ -14,3 +14,5 @@ sat in. Its launch site and the flight itself are not built.
 [Apollo 9](flights/apollo-9/README.md) adds CSM-104 Gumdrop and the first crewed lunar module, LM-3 Spider. The Gallery shows both the launch installation on SA-504 and Spider deployed as a separate spacecraft.
 
 [Apollo 10](flights/apollo-10/README.md) pairs Charlie Brown (CSM-106) with Snoopy (LM-4) on SA-505. Snoopy also stands deployed, with the standing stations and the ascent stage that returned to lunar orbit rendezvous.
+
+[Apollo 11](flights/apollo-11/README.md) adds Columbia (CSM-107), Eagle (LM-5) and SA-506. Explore the folded LM aboard the Saturn V or the deployed Eagle with its landing equipment and two standing stations.

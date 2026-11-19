@@ -2,11 +2,32 @@ import type { Part } from '../../../../../src/types.ts';
 import { lower, upper, lunarGallery, lmPort } from '../../vehicles/lunar-gallery.ts';
 const stageParts: [string, string, string, string, string][] = [
   [
+    'LMPlumeDeflectors',
+    'Four plume deflectors',
+    lower,
+    'Look below each downward-firing jet for a curved shield on a truss.',
+    'The shields protected the descent stage from hot exhaust. At lunar liftoff all four stayed at Tranquility Base. The thrusters rose with the ascent stage.',
+  ],
+  [
+    'LMSurfaceEquipment',
+    'MESA and lunar television camera',
+    lower,
+    'The modular equipment stowage assembly folded out beside the ladder.',
+    'Armstrong pulled a lanyard from the porch. The television camera on the rack swung out to look across at the steps, already aimed for the first descent. The exhibit shows its stowed rack, camera and sample return boxes.',
+  ],
+  [
+    'LMScienceBay',
+    'Scientific equipment bay',
+    lower,
+    'Two packages occupied the rear quadrant diagonally opposite the MESA.',
+    'Aldrin drew the seismic package from the left compartment, with both solar wings folded against it. The covered laser reflector rode on a pallet in the right compartment. The left-hand door swung sideways and the right-hand door lifted.',
+  ],
+  [
     'LMDescentPower',
     'Four descent batteries',
     lower,
     'Four silver-zinc batteries supplied the descent buses.',
-    'Eagle carried two batteries in quadrant I and two in quadrant IV. On Spider all four had occupied quadrant IV (Apollo 10 Mission Report A.2.1; compartment positions assumed for Eagle). Open the blankets to inspect their cases, covers, terminals and leads. Installed envelopes are estimated.',
+    'The four descent batteries are shown in two pairs. Their locations follow LM-4 (Apollo 10 Mission Report A.2.1). Open the blankets to inspect their cases, covers, terminals and leads. Installed envelopes are estimated.',
   ],
   [
     'LMAscentPower',
@@ -103,15 +124,15 @@ const stageParts: [string, string, string, string, string][] = [
     'LMControlPanels',
     'Displays and hand controllers',
     upper,
-    'Armstrong and Aldrin shared the central guidance keyboard. Their computer carried the Luminary program.',
-    'The instrument boards, attitude displays, switches, armrests and hand controllers are static. Panel relief and positions are estimated from the LM handbook.',
+    'Armstrong and Aldrin shared the central guidance keyboard. The computer ran Luminary.',
+    'Aldrin filmed the descent with a 16-mm camera mounted at his window, shown on the deployed exhibit. The instrument boards, attitude displays and hand controllers are static. Panel relief and positions are estimated from the LM handbook.',
   ],
   [
     'LMAscentEngine',
     'Fixed ascent engine',
     upper,
     'A separate engine powered the ascent stage back to Columbia.',
-    'The bell sits above a recessed blast deflector in the descent deck. As the stages part, the deflector stays below. Its chamber, jacket, mount and external feed fittings leave with the cabin. It delivered a nominal 3,500 lbf.',
+    'The bell sits above a recessed blast deflector in the descent deck. As the stages part, the deflector stays below. Its chamber, jacket, mount and external feed fittings leave with the cabin. Its nominal thrust was 3,500 lbf.',
   ],
   [
     'LMAPSTanks',
@@ -173,4 +194,10 @@ export const {
   stageParts,
   facts,
   false,
+);
+
+eagleViews.push(
+  { id: 'deflectors', label: 'Plume deflectors', nodes: ['LMPlumeDeflectors', 'LMEquipment'], isolate: true, from: [1, 0.15, -0.45] },
+  { id: 'mesa', label: 'MESA and TV camera', nodes: ['LMSurfaceEquipment'], onSelect: true, isolate: true, from: [1, 0.5, 0.65] },
+  { id: 'seq', label: 'Scientific equipment bay', nodes: ['LMScienceBay'], onSelect: true, isolate: true, from: [-1, 0.62, -0.65] },
 );

@@ -36,6 +36,8 @@ const internal = new Set([
   'LMAscentPower',
   'LMDescentPower',
   'LMDescentConsumables',
+  'LMSurfaceEquipment',
+  'LMScienceBay',
   'LMDescentStructure',
   'LMControlPanels',
   'LMStations',

@@ -9,8 +9,8 @@ the historical record. Each spacecraft and its launch vehicle is modelled from d
 stands at its launch site as that site was that morning, under that day's Sun, Moon and weather, and
 can be flown from liftoff to landing: as it was flown, or by your own hand.
 
-**35 crewed flights so far, Vostok 1 (April 1961) to Soyuz T-2 (June 1980).** All of them are in the Gallery,
-24 stand at their launch site, and 15 can be flown. The seven uncrewed Gemini targets can be flown too, from Complex 14 on their Atlas: the two lost ones as the record had them fail.
+**36 crewed flights so far, Vostok 1 (April 1961) to Soyuz T-2 (June 1980).** All of them are in the Gallery,
+35 have a Launch site, 16 can fly from launch, and six others have orbital chapters. The seven uncrewed Gemini targets can be flown too, from Complex 14 on their Atlas: the two lost ones as the record had them fail.
 
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
 
@@ -99,12 +99,13 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Soyuz 4, *Amur*](missions/ussr/soyuz/flights/soyuz-4/README.md) | 14 Jan 1969 | Shatalov | Soyuz 11A511 | ● | ● | · |
 | [Apollo 9, *Gumdrop* and *Spider*](missions/usa/apollo/flights/apollo-9/README.md) | 3 Mar 1969 | McDivitt, Scott, Schweickart | Saturn V | ● | ● | · |
 | [Apollo 10, *Charlie Brown* and *Snoopy*](missions/usa/apollo/flights/apollo-10/README.md) | 18 May 1969 | Stafford, Young, Cernan | Saturn V | ● | ● | · |
+| [Apollo 11, *Columbia* and *Eagle*](missions/usa/apollo/flights/apollo-11/README.md) | 16 Jul 1969 | Armstrong, Collins, Aldrin | Saturn V | ● | · | · |
 | [Soyuz 10, *Granit*](missions/ussr/soyuz/flights/soyuz-10/README.md) | 22 Apr 1971 UTC | Shatalov, Yeliseyev, Rukavishnikov | Soyuz 11A511 | ● | ● | · |
 | [Soyuz 12, *Ural*](missions/ussr/soyuz/flights/soyuz-12/README.md) | 27 Sep 1973 | Lazarev, Makarov | Soyuz 11A511 | ● | ● | · |
 | [Soyuz 16, *Buran*](missions/ussr/soyuz/flights/soyuz-16/README.md) | 2 Dec 1974 | Filipchenko, Rukavishnikov | Soyuz-U 11A511U | ● | ● | · |
 | [Soyuz T-2, *Yupiter*](missions/ussr/soyuz/flights/soyuz-t-2/README.md) | 5 Jun 1980 | Malyshev, Aksyonov | Soyuz-U 11A511U | ● | ● | · |
 
-The 35 crewed flights and seven Gemini target launches share eight pads. At the Cape they use
+The 36 crewed flights and seven Gemini target launches share eight pads. At the Cape they use
 Complexes 5, 14, 19 and 34 and Kennedy's Pads 39A and 39B. At Tyuratam they use Sites 1 and 31.
 Each flight's record describes the hardware reconstructed for its date.
 

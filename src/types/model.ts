@@ -410,6 +410,8 @@ export interface ViewDef {
   nodes?: string[];
   /** In the Gallery, show these nodes in place with the surrounding assembly temporarily hidden. */
   isolate?: boolean;
+  /** Use this single-part inspection view when the corresponding Parts row is selected. */
+  onSelect?: boolean;
   /** Where the camera stands, as a direction from the subject (default: front right, slightly above). */
   from?: [number, number, number];
 }
