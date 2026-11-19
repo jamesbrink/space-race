@@ -227,10 +227,12 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
   shadows visible in the air, the sky's light on them, the ground's under them and the gain for the scattering
   orders not marched are estimates, each labelled. Beyond 12 to 40 km the cumulus follow the day's map, and the
   altocumulus beyond 40 to 150 km; the deck's banks are ours. Far off the cumulus are not marched but read as a
-  cover, so from orbit they are a soft field and do not show their turrets. They are marched for one pixel in
-  four and laid on by depth; motion vectors are written for them, but the cloud's own working on the clock is not
-  in them. Light shafts are computed but have not yet been seen strongly in a still. Cloud shadows fall on the
-  land and the sea, not yet on the models.
+  cover, so from orbit they are a soft field and do not show their turrets. The field is scaled by a measured trim
+  so that it covers the record's tenth seen from above. They are marched for one pixel in nine and laid on by
+  depth; motion vectors are written for them, but the cloud's own working on the clock is not in them. Moist air
+  under the bases, denser than the station's visibility allows (an estimate, labelled), carries the clouds' shadows
+  and light in the air; distinct shafts are still faint in stills. Cloud shadows fall on the land and the sea, not
+  yet on the models.
 - **By hand every strength is an estimate**: what the vanes, the rudders and the jets can do, how hard the air
   turns a body toward its trim and damps it, and how a parachute rights the capsule (`flight/attitude.rs`). They
   are angular accelerations, chosen so it handles as the reports describe; none is a measured moment, and the

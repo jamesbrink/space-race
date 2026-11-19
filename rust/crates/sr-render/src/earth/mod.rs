@@ -63,6 +63,7 @@ pub struct EarthPlugin;
 
 impl Plugin for EarthPlugin {
     fn build(&self, app: &mut App) {
+        ab::gpu_clock(app);
         app.add_plugins((
             MaterialPlugin::<EarthMaterial>::default(),
             MaterialPlugin::<leaves::PlantMaterial>::default(),

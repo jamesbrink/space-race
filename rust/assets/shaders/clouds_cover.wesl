@@ -140,13 +140,22 @@ fn column(texel: vec4<f32>, spread: f32, cell: f32, depth: f32, clock: f32) -> C
     return col;
 }
 
-// How much of the Sun the cloud over a column takes: 0 in the open, 0.9 under the thick of a cloud.
+// How much of the Sun's beam the thick of a cumulus stops: a cumulus a few hundred metres deep is tens of optical
+// depths, so all of it but a trace. (It was 0.9, and the forward-scattering haze in a cloud's shadow, looked at
+// against the Sun, then glowed as if the cloud were not there.) What still reaches a shadowed place is the sky's
+// light, which is not this.
+const SHADE_MOST: f32 = 0.985;
+// Where a sunbeam is taken to cross the layer, as a share of its depth above the base: low, where a cumulus is
+// broadest, so that its shadow is the shape of its base. Estimated.
+const SHADOW_UP: f32 = 0.12;
+
+// How much of the Sun the cloud over a column takes: 0 in the open, SHADE_MOST under the thick of a cloud.
 fn shade(col: Column) -> f32 {
-    return 0.92 * smoothstep(0.1, 0.22, col.within) * smoothstep(0.0, 120.0, col.top);
+    return SHADE_MOST * smoothstep(0.0, 0.15, col.within) * smoothstep(0.0, 120.0, col.top);
 }
 
 // How much of the Sun a place `height` m up has lost to the cumulus: what the field says of the columns its
-// sunbeam came down through a third of the way up the layer, if its turret stands that high. The
+// sunbeam came down through low in the layer (SHADOW_UP), if its turret stands that high. The
 // shadows on the ground (height 0) and the shafts in the air are both this. `en` is the place in the cumulus'
 // drifting frame; `sun` the way to the Sun as (east, north, up); `layer` the cumulus' base and depth, m; `laid`
 // the spread before it is gathered (`spread_for` of the cover there); `wind` their drift, m/s; `cell` the metres
@@ -157,8 +166,8 @@ fn sun_shadow(sheet: texture_2d<f32>, smp: sampler, en: vec2<f32>, height: f32, 
         return 0.0;
     }
     let along = along_wind(wind);
-    // (where the sunbeam crosses a third of the way up the layer, or the place itself if it is higher)
-    let up = max(layer.y * 0.3, height - layer.x);
+    // (where the sunbeam crosses SHADOW_UP of the way up the layer, or the place itself if it is higher)
+    let up = max(layer.y * SHADOW_UP, height - layer.x);
     let there = en + sun.xy * (max(layer.x + up - height, 0.0) / sun.z);
     let spread = laid * gather(on_sheet(there, along, cell));
     let second = second_laying(there / cell);

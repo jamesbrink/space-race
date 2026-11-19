@@ -18,7 +18,7 @@ import bevy_render::view::View;
 import bevy_render::globals::Globals;
 import super::clouds_cover::{
     CELLS, EDGE, Column, along_wind, column, gather, mirrored, on_sheet, second_laying, shadow_from, sheet_texel,
-    spread_for,
+    spread_for, SHADOW_UP,
 };
 
 struct CloudFrame {
@@ -728,7 +728,7 @@ fn in_shadow(en: vec2<f32>, height: f32, slow: Slow) -> f32 {
     if height > layer.y + layer.z {
         return 0.0;
     }
-    let up = max(layer.z * 0.3, height - layer.y);
+    let up = max(layer.z * SHADOW_UP, height - layer.y);
     let there = en + vec2(dot(sun, frame.east.xyz), dot(sun, frame.north.xyz)) * (max(layer.y + up - height, 0.0) / rise);
     return shadow_from(field, repeating, there, up, slow.spread, slow.second, along_wind(frame.wind.xy), layer.z,
         frame.lay.y, frame.north.w);
@@ -852,7 +852,7 @@ const MEASURE_REPEAT: i32 = 1;
 // Which parts are done over: 1 the cumulus, 2 the deck, 4 the haze.
 const MEASURE_PARTS: i32 = 7;
 // Which parts are left out: 1 the cumulus, 2 the deck, 4 the haze. Leave it at 0.
-const MEASURE_SKIP: i32 = 3;
+const MEASURE_SKIP: i32 = 0;
 
 // A different fraction at every pixel and every frame, for the temporal anti-aliasing to average.
 fn dither(at: vec2<f32>) -> f32 {
