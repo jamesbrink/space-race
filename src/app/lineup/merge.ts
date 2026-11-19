@@ -387,6 +387,56 @@ export function join(root: THREE.Object3D, craft: readonly string[] | null, byPa
   return { pieces, userData: { ...root.userData } };
 }
 
+/** A double-sided transparent mesh normally takes two draws. If all triangles face the same way
+ * from the eye, one of those draws is empty. Bound their plane equations once in mesh space. */
+function cullEmptyGlassPass(mesh: THREE.Mesh): void {
+  const material = mesh.material as THREE.Material;
+  if (!material.transparent || material.side !== THREE.DoubleSide || !material.name.startsWith('glass')) return;
+  const geometry = mesh.geometry;
+  const points = geometry.getAttribute('position');
+  const indices = geometry.index;
+  geometry.computeBoundingSphere();
+  const centre = geometry.boundingSphere!.center;
+  const a = new THREE.Vector3(),
+    b = new THREE.Vector3(),
+    normal = new THREE.Vector3();
+  const bounds = new THREE.Box3();
+  let low = Infinity,
+    high = -Infinity;
+  for (let i = 0; i < (indices?.count ?? points.count); i += 3) {
+    a.fromBufferAttribute(points, indices?.getX(i) ?? i);
+    b.fromBufferAttribute(points, indices?.getX(i + 1) ?? i + 1).sub(a);
+    normal
+      .fromBufferAttribute(points, indices?.getX(i + 2) ?? i + 2)
+      .sub(a)
+      .cross(b);
+    if (!normal.lengthSq()) continue;
+    normal.normalize();
+    bounds.expandByPoint(normal);
+    const offset = a.sub(centre).dot(normal);
+    low = Math.min(low, offset);
+    high = Math.max(high, offset);
+  }
+  mesh.onBeforeRender = (_renderer, _scene, camera, _geometry, worn) => {
+    if (!worn.transparent || worn.side !== THREE.DoubleSide) return;
+    if (!(camera as THREE.PerspectiveCamera).isPerspectiveCamera) {
+      worn.forceSinglePass = false;
+      return;
+    }
+    camera.getWorldPosition(a);
+    mesh.worldToLocal(a).sub(centre);
+    let near = -high,
+      far = -low;
+    for (const axis of ['x', 'y', 'z'] as const) {
+      const u = a[axis] * bounds.min[axis],
+        v = a[axis] * bounds.max[axis];
+      near += Math.min(u, v);
+      far += Math.max(u, v);
+    }
+    worn.forceSinglePass = near > 1e-5 || far < -1e-5;
+  };
+}
+
 /**
  * A vehicle's own drawing of a joined level: a mesh for each piece, sharing the piece's geometry (and an own piece's
  * pictures) with every other vehicle that has the same level, each in a material of its own (so that a vehicle's
@@ -406,6 +456,7 @@ export function drawn(joined: Joined): THREE.Group {
     } else {
       // (an own piece's material is copied too: the copy shares its pictures, which are the shelf's to let go)
       object = new THREE.Mesh(piece.geometry, piece.paints ? paintMaterial(piece.paints) : piece.material!.clone());
+      cullEmptyGlassPass(object as THREE.Mesh);
       object.position.copy(piece.at);
       object.scale.setScalar(piece.scale);
     }
