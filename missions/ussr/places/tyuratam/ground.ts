@@ -890,16 +890,50 @@ const UNDER_PIT = -60;
 
 /**
  * What stands round the site beyond its own place and is seen from it, modelled apart (viewer/around.ts), each in Site 1's
- * frame with its node's origin at its middle on the ground: the assembly and test building of Site 2, 2.04 km off on 252
- * degrees, whose top shows over the land from the deck (site-1.md, "On the horizon"; site2/mik.py, `pnpm model:tyuratam`).
- * It stood from before the first flight; its model is as of April 1961.
+ * frame with its node's origin at its middle on the ground: Site 2's assembly and test building, 1.99 km off on 253
+ * degrees, whose top shows over the land from the deck, with the buildings of its yard (site2/mik.py, site2/yard.py,
+ * `pnpm model site2`); and the measuring point IP-1, 1.4 km south-west, with the tracking station built along the road
+ * south-east of it by 1963 (ip1/centre.py, `pnpm model ip1`). Each model is the range on a day a photograph was taken
+ * of it: July 1959, the U-2's last before the flights (assumed to stand in April 1961, as the pad's own surroundings
+ * are), and 24 September 1964, a KH-7's, eighteen days before Voskhod 1 (site-1.md, "Beyond the fences").
  */
+const YARD_1959 = ['AssemblyBuilding', 'YardWorkshop', 'YardStore', 'YardTallBuilding', 'YardShop'];
+const CENTRE_1959 = [
+  'MeasuringHeadquarters',
+  'MeasuringBuilding14',
+  'MeasuringBuilding15',
+  'MeasuringBuilding13',
+  'MeasuringInstrumentBuilding',
+  'MeasuringGenerator',
+  'MeasuringDomeBuilding',
+];
+const WALLS = ['concrete-plaster-whitewashed', 'roof-felt-grey', 'steel-door-green', 'window-void'];
 const NEIGHBOURS: SiteAround[] = [
   {
     model: 'models/ussr/places/tyuratam/site2/1961-04.glb',
-    nodes: ['AssemblyBuilding'],
-    wears: ['concrete-plaster-whitewashed', 'roof-felt-grey', 'steel-door-green', 'steel-window-frame', 'window-void'],
+    nodes: YARD_1959,
+    wears: [...WALLS, 'steel-window-frame'],
     from: '1961-04-12',
+    until: '1964-09-24',
+  },
+  {
+    model: 'models/ussr/places/tyuratam/site2/1964-09.glb',
+    nodes: [...YARD_1959, 'YardLongBuilding'],
+    wears: [...WALLS, 'steel-window-frame'],
+    from: '1964-09-24',
+  },
+  {
+    model: 'models/ussr/places/tyuratam/ip1/1961-04.glb',
+    nodes: CENTRE_1959,
+    wears: [...WALLS, 'wall-limewashed-white'],
+    from: '1961-04-12',
+    until: '1964-09-24',
+  },
+  {
+    model: 'models/ussr/places/tyuratam/ip1/1964-09.glb',
+    nodes: [...CENTRE_1959, 'TrackingBuildingWest', 'TrackingBuildingEast', 'TrackingSupportBuilding', 'TrackingTower'],
+    wears: [...WALLS, 'wall-limewashed-white', 'paint-structure-grey'],
+    from: '1964-09-24',
   },
 ];
 
