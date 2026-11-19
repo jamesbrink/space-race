@@ -11,7 +11,7 @@ that ended 120 ft from Gemini 7.
 | Crew | Walter M. Schirra, Jr., command pilot; Thomas P. Stafford, pilot |
 | Spacecraft | Gemini No. 6, McDonnell Aircraft: [spacecraft.md](spacecraft.md) |
 | Launch vehicle | Gemini Launch Vehicle 6, a Titan II: [titan-ii-glv.md](../../vehicles/titan-ii-glv.md) |
-| Orbit at insertion | 86.9 by 140.0 nautical miles (161 by 259 km); 28.97°; period 87.92 min |
+| Orbit at insertion | 86.9 by 140.0 nautical miles (161 by 259 km); 28.97°; period printed 87.92 min, which those heights do not give (some 88.7: [mission.md](mission.md)) |
 | Rendezvous | about 5 h 56 min: stopped 120 ft below Gemini 7 |
 | Beside Gemini 7 | about five and a half hours, at 1 ft to 300 ft |
 | Retrofire | 25 h 15 min 58 s |
@@ -24,11 +24,12 @@ be turned, taken apart as they staged, and cut open: the radar and the three lat
 on its nose, the three batteries, the one water tank and the doubled propellant tanks in the
 adapter. At Complex 19 it stands on the thrust mount on the morning of 15 December: the erector
 raised while the crew go up and laid down at T−35, Schirra and Stafford on the approach to the ramp in
-their G4C suits, each a figure to walk the site as, under that morning's sky. The flight itself is
-not built: see "What is not built" below.
+their G4C suits, each a figure to walk the site as, under that morning's sky. Fly takes the flight
+deck, as flown from the record or taken over (see "The flight as flown" below, and [mission.md](mission.md)).
 
 **The flight's own mission report has not been found.** *Gemini Program Mission Report, Gemini
-VI-A*, MSC-G-R-66-2 (January 1966), was looked for twice: on NTRS by title, by report number and
+VI-A*, MSC-G-R-66-2 (January 1966), was looked for twice, and a third time in November 2026 (the To the
+Moon archive's file of that name is the October report): on NTRS by title, by report number and
 through its API; on archive.org by title, by number and through its full-text search; on ibiblio's
 Virtual AGC shelves; and in the Wayback Machine's captures of the JSC History Portal and the Apollo
 Lunar Surface Journal ([docs/sources.md](../../../../../docs/sources.md), "Not found"). The one copy
@@ -245,15 +246,37 @@ the air aloft is ERA5's (`aloft.ts`).
 - **The crew in their seats.** Schirra and Stafford stand on the approach to the ramp in the G4C suit
   (*Midprogram Conference*, p. 64; [g4c-suit.md](../../crew/g4c-suit.md)); the seats are empty. The
   flight's hexagonal emblem (NASA S65-55983), on the suits by NASA S65-61916, is not built.
-- **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
-  built and the lamps are dark. Nothing here chases Gemini 7.
+- **Of the flight** ([mission.md](mission.md), section 6): Gemini 7 as a craft to chase, so the rendezvous is flown as
+  burns at the record's instants and impulses and not solved on it; the braking, the station keeping and the separation;
+  the terminal phase's burns but for their forward parts; the computer's bank commands in the entry, held at 55° left.
+  Spacecraft 6's weights after launch and its retrofire are Gemini VII's. The cabin's instruments and lamps stand as built.
 - **The other two counts.** The model is the vehicle of 15 December. The Atlas-Agena of 25 October
   and Complex 14 are not built.
+
+## The flight as flown
+
+[mission.md](mission.md) has it all, with its sources; the misses are in `src/sim/misses.ts`, each with its cause.
+
+- **The ascent** on GLV-6's own weights, engines and instants (its evaluation) reaches the orbit: cut by the guidance at
+  339.9 s at 7,838.5 m/s (25,718 ft/s recorded), 155 by 251 km (86.9 by 140.0 nautical miles), in Gemini VII's plane at
+  28.97°. The first stage, flown on its own figures, is 47 m/s under its tracked speed at its cutoff, cause not
+  established; the second stage makes it up from the usable propellant the evaluation says it still held.
+- **The rendezvous is flown as burns, not on a target.** Gemini VII is not a craft in this run (the shared machinery flies
+  burns on a stage the spacecraft itself let go, not on another flight). The height adjust, phase adjust, plane change,
+  second height adjust and coelliptic burn are flown at the record's instants and impulses along the attitudes held, and
+  the run comes to 272 km at the first apogee (272) and to 269 by 273 km after the coelliptic burn (270 by 274). The
+  terminal phase initiation and the two midcourse corrections are flown by the forward parts of the computer's displays;
+  **the braking, the station keeping with Gemini VII, and the separation from it are not flown.** Before retrofire the orbit
+  is 275 by 309 km where SP-4002 has 283 by 311.
+- **The retrofire is timed for the landing place**, 277 s before the record's instant; the entry is banked 55° to the left
+  throughout, as Schirra held it before the computer took over: down at 25:50:38 (25:51:24), 4 km short along the track
+  and 171 km to the left.
 
 ## Where sources disagree
 
 | | One source | Another | Followed |
 | --- | --- | --- | --- |
+| The period at insertion | 87.92 min (SP-4002, Appendix 1, Table A) | some 88.7 min from the same row's 86.9 by 140.0 nautical miles; Gemini VIII's 86.3 by 146.7 is 88.83 in the same table | the heights: no period is flown ([mission.md](mission.md), section 3) |
 | When the Agena left, 25 October | "9:00:04 a.m. e.s.t." (MSC-G-R-65-5, section 1.0, read on the page) | 15:00:04.490 G.m.t. (the same report, further in); 10:00:04.490 a.m. e.s.t. (SP-4002, Appendix 1, Table B); "At 10 o'clock" (*Titans*, p. 268) | 15:00:04.490 G.m.t., which is 10 a.m. EST: the summary's hour is Houston's |
 | How long the engines ran on 12 December | "a second after engine ignition" (SP-4002) | the plug dropped "At 1.2 seconds" (*Titans*, p. 283) | Martin's: shut down at 87FS1 + 1.158 s, the holdfire 1.20 s after the sequencer's T-0 (GLV-6, III.A and III.B) |
 | When the rendezvous was | 263:58 of Gemini VII, which is 19:28 G.m.t. and 5:50:37 of this flight (Gemini VII mission report, 1.0) | 2:33 p.m. EST, 19:33 G.m.t. (*Titans*, p. 287); 5:56:00 (SP-4002, Table B) | both, as two instants: the Gemini VII report's is the start of braking at about 3,000 ft (SP-4002 puts it at 5:50), the others' the end of it, 120 ft below and still, which Schirra called the rendezvous (*Titans*, p. 288). The history's date is 19:33 |

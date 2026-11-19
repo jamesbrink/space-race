@@ -25,6 +25,9 @@ const FLIGHTS = {
   'usa/gemini/gt-3': ['Ignition', 'Staging: the second stage lit through the interstage'],
   'usa/gemini/gt-4': ['Ignition', 'Staging: the second stage lit through the interstage'],
   'usa/gemini/gt-5': ['Ignition', 'Staging: the second stage lit through the interstage'],
+  // (their second stage lit from its chamber's rise, after the first stage's cutoff: gemini-titan-plan.ts, their records)
+  'usa/gemini/gt-7': ['Ignition', 'First stage cutoff'],
+  'usa/gemini/gt-6a': ['Ignition', 'First stage cutoff'],
   'ussr/voskhod/voskhod-2': ['Ignition', 'Drop the strap-ons'],
   ...Object.fromEntries(
     ['gatv-5002', 'gatv-5003', 'gatv-5004', 'atda', 'gatv-5005', 'gatv-5006', 'gatv-5001'].map((id) => [
@@ -211,7 +214,11 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
   // each flight into orbit as flown, untouched: in orbit with its apogee on the deck once the ship is alone, and down at the
   // run's end with the deck and the navball at nought
   if (w === 1280)
-    for (const id of Object.keys(FLIGHTS).filter((f) => f.startsWith('ussr/') || f.startsWith('usa/gemini/gt-'))) {
+    for (const id of Object.keys(FLIGHTS).filter(
+      (f) =>
+        (f.startsWith('ussr/') || f.startsWith('usa/gemini/gt-')) &&
+        (!process.env.SR_FLIGHTS || process.env.SR_FLIGHTS.split(',').some((part) => f.includes(part))),
+    )) {
       const where = `${id} as flown at ${w}`;
       const { page, errors, context: ctx } = await fly(id, w, h, touch);
       const seek = async (t) => {

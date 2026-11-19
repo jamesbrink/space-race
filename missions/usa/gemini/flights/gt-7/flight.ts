@@ -28,6 +28,9 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { commanded, geminiCommands, geminiFlies } from '../../vehicles/gemini-flies.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
+import { orbital } from './orbital.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -418,7 +421,7 @@ const parts: PartWords[] = [
 const vehicle = lc19Vehicle(
   geminiTitanStack({
     flight: 'gt-7',
-    parts,
+    parts: commanded(parts, geminiCommands()),
     // the crew went up at T-100 minutes (NASA S65-61848: "one hour and 40 minutes before launch") and the hatches were to
     // shut at T-75 (the press kit, p. 4); the count ran without a hold
     seats: seats([-100 * 60, -75 * 60]),
@@ -812,6 +815,15 @@ export const flight: Flight = {
       'spacecraft 7, whose manoeuvring system differed from spacecraft 5’s by a reserve fuel tank (the Gemini VII mission report, 3.1.2.7)',
     ),
   ],
+  // the flight as an orbit, written from its record: the Titan's two stages, the orbit, the four burns of the fourteen days,
+  // the retrofire and the lifting entry, each figure with its source (orbital.ts; mission.md), flown through the day's air
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-7’s own weights and engines, from the mission report, on a stated steering law, and the coast on from the state it leaves. ' +
+    'The four burns of the fourteen days are flown at the report’s instants and tracked impulses; the station keeping on the second stage and the radial burn that ended it are not. ' +
+    'Gemini VI-A is not in this run: the rendezvous on the eleventh day is a mark on the clock. The entry is flown on the programme’s lift, banked one way where the crew reversed it (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot],
   // the place round the pad as it stood that December: as in March (places/cape-canaveral/lc19/model/1965-03.py)
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',

@@ -25,6 +25,9 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { commanded, geminiCommands, geminiFlies } from '../../vehicles/gemini-flies.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
+import { orbital } from './orbital.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -396,7 +399,7 @@ const parts: PartWords[] = [
 const vehicle = lc19Vehicle(
   geminiTitanStack({
     flight: 'gt-6a',
-    parts,
+    parts: commanded(parts, geminiCommands()),
     // the count as announced: the crew into the ship at T-90 minutes, the hatches shut at T-75 (the press kit, release
     // 65-362, p. 29), put on the clock with its 25-minute hold at T-3 taken whole (pad.ts). Estimated
     seats: seats([-115 * 60, -100 * 60]),
@@ -725,6 +728,15 @@ export const flight: Flight = {
       'spacecraft 6, whose manoeuvring system had two tanks of each propellant where spacecraft 5’s had one (SEDR 300 vol. 2, Section VIII, Figure 8-96); no account of its thrusters has been read',
     ),
   ],
+  // the flight as an orbit, written from its record: the Titan's two stages, the orbit, the rendezvous burns, the retrofire
+  // and the lifting entry, each figure with its source (orbital.ts; mission.md), flown through the day's air over the pad
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-6’s own weights and engines, from its evaluation, on a stated steering law, and the coast on from the state it leaves. ' +
+    'Gemini VII is not in this run: the rendezvous burns are flown at the record’s instants and impulses along the attitudes the crew held, the terminal phase’s by their forward parts, and the braking and station keeping are not flown. ' +
+    'The entry is flown on the programme’s lift, banked 55° left as Schirra held it before the computer took over (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot],
   // the place round the pad as it stood that December: as in March 1965 (places/cape-canaveral/lc19/model/1965-03.py)
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',

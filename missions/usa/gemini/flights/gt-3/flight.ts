@@ -371,8 +371,8 @@ const parts: PartWords[] = [
 
 /**
  * The crew station as somewhere to sit (types.ts: CabinDef; viewer/cabin.ts). The nodes are the model's
- * (vehicles/gemini_cabin.py). Nothing here is flown yet: the flight has no simulator run, so every instrument stands
- * where it was built and every lamp is dark, and each says so. What this gives is the cabin lit as indoors by its own
+ * (vehicles/gemini_cabin.py). Nothing here is driven by the flight's run: every instrument stands where it was built
+ * and every lamp is dark, flown or not, and each says so. What this gives is the cabin lit as indoors by its own
  * three floodlights, its instruments and controls named, and its two windows to look out of.
  */
 const cabin: CabinDef = {
