@@ -1,0 +1,271 @@
+import type { Part } from '../../../../../src/types.ts';
+import { lmPort, lower, lunarGallery, upper } from '../../vehicles/lunar-gallery.ts';
+
+const stageParts: [string, string, string, string, string][] = [
+  [
+    'LMPlumeDeflectors',
+    'Four plume deflectors',
+    lower,
+    'Look below each downward-firing jet for a curved shield on a truss.',
+    'The shields protected the descent stage from hot exhaust. At lunar liftoff all four stayed at Fra Mauro. The thrusters rose with the ascent stage.',
+  ],
+  [
+    'LMTransporter',
+    'Folded equipment transporter',
+    lower,
+    'A two-wheeled handcart rode folded against the MESA until the first moonwalk.',
+    'The crew pulled the upper retaining pins when a blanket caught during deployment. They unfolded the wheels, legs and tow handle. On the second traverse the cart carried tools, cameras and samples toward Cone Crater. The folded frame and its fittings are estimated.',
+  ],
+  [
+    'LMRetroreflector',
+    'Laser ranging retroreflector',
+    lower,
+    'A covered panel of corner cubes rode outside quadrant I.',
+    'The crew deployed the reflector about 100 feet west of the central station. Each of its 100 fused-silica corner cubes sent a laser pulse back toward its source, allowing observers on Earth to time its round trip. The model shows the covered flight package.',
+  ],
+  [
+    'LMPortableMagnetometer',
+    'Portable lunar magnetometer',
+    lower,
+    'A meter, cable and folding sensor tripod rode outside quadrant II.',
+    'The astronauts carried this instrument on the handcart and took magnetic-field measurements at two stations during the Cone Crater traverse. The folded components and attachment positions are estimated.',
+  ],
+  [
+    'LMSurfaceEquipment',
+    'MESA and lunar television camera',
+    lower,
+    'The modular equipment stowage assembly folded out beside the ladder.',
+    'The folded cart rode on the outside of this rack. The crew removed it to reach the sample cases and color television camera. The flag kit rode on the side of the MESA.',
+  ],
+  [
+    'LMScienceBay',
+    'Scientific equipment bay',
+    lower,
+    'Two packages occupied the rear quadrant diagonally opposite the MESA.',
+    'Subpackage one held the central station, passive and active seismic experiments, and charged-particle detector. Across the bay, subpackage two held the finned generator, suprathermal ion detector, cold-cathode gauge and tool carrier. The first data reached Earth during the first moonwalk.',
+  ],
+  [
+    'LMFuelCask',
+    'SNAP-27 fuel cask',
+    lower,
+    'A separate cask rode upright outside the experiment bay.',
+    'The astronauts tilted the cradle on the surface to transfer the fuel capsule into the generator. The generator itself travelled inside the scientific equipment bay.',
+  ],
+  [
+    'LMHammocks',
+    'Two crew hammocks',
+    upper,
+    'Shepard and Mitchell each had a hammock for the rest period between their moonwalks.',
+    'One hammock hung fore and aft and the other crossed the cabin. These rolls show their stowed envelopes. The placement and folds are estimated.',
+  ],
+  [
+    'LMDescentPower',
+    'Four descent batteries',
+    lower,
+    'Four silver-zinc batteries supplied the descent buses.',
+    'After the power transients on Apollo 13, engineers changed the cell venting and potting. The reinforced battery covers had their ribs on the outside. The two pairs use the documented LM-4 arrangement. Local case and cable positions are estimated.',
+  ],
+  [
+    'LMAscentPower',
+    'Ascent battery bay',
+    upper,
+    'Two silver-zinc batteries, each rated at 296 ampere-hours, travelled with the ascent stage.',
+    'LM-8 carried the revised ribbed covers on both ascent batteries. The negative terminal moved to the opposite end of each case. A new circuit breaker permitted transfer of power to Kitty Hawk after lunar ascent and docking.',
+  ],
+  [
+    'LMDescentConsumables',
+    'Descent water and oxygen stores',
+    lower,
+    'One oxygen vessel and one water vessel remained with the descent stage.',
+    'Water supplied the crew and the cooling system. The vessels and fittings are reconstructed from the mission report system diagrams.',
+  ],
+  [
+    'LMAscentLifeSupport',
+    'Oxygen, water and suit circuit',
+    upper,
+    'Two oxygen tanks and two water tanks stayed with the crew after staging.',
+    'The cabin suit circuit removed moisture and carbon dioxide. The model includes the storage vessels, a suit-circuit assembly, cartridges and ducts.',
+  ],
+  [
+    'LMLandingRadar',
+    'Landing radar antenna',
+    lower,
+    'The antenna looked down from beneath Antares’s descent stage.',
+    'During powered descent, the radar initially failed to acquire the surface. Mitchell cycled its breaker. With radar altitude available, the crew continued the landing at Fra Mauro.',
+  ],
+  [
+    'LMDescent',
+    'Thermal blankets and outriggers',
+    lower,
+    'The octagonal lower stage carried the whole spacecraft at launch.',
+    'Gold, copper and black blanket panels wrapped the stage. Four outriggers carried its loads into the adapter and supported the deployed legs. Blanket colours and seams are estimated. Outside the blankets, three separate fittings carried the folded cart, the laser reflector and the portable magnetometer.',
+  ],
+  [
+    'LMPorch',
+    'Forward porch and handrails',
+    lower,
+    'The porch projected over the ladder beneath the forward hatch.',
+    'Twin handrails bordered the platform. Shepard stepped from this platform onto the ladder, and Mitchell followed.',
+  ],
+  [
+    'LMLandingGear',
+    'Landing gear, ladder and probes',
+    lower,
+    'Three probes signalled surface contact. The leg under the ladder had none.',
+    'A ladder ran along the forward primary strut. In the launch stack the four assemblies fold inward beneath the outriggers. Metallic shielding covered the secondary struts. The model assumes the shortened deployment-truss shield documented for LM-6. Hinge positions and illustrated deployment paths are estimated from NASA TN D-6850.',
+  ],
+  [
+    'LMDescentStructure',
+    'Cruciform thrust structure',
+    lower,
+    'Two pairs of beams divided the descent stage into bays.',
+    'The central compartment held the engine. Four neighbouring bays held its propellants. Cut away the blankets or isolate the propulsion system to see the beam layout.',
+  ],
+  [
+    'LMDescentEngine',
+    'Throttleable descent engine',
+    lower,
+    'Kitty Hawk lowered the orbit of both spacecraft before they separated. Antares used its descent engine for the final approach to Fra Mauro.',
+    'Below its gimbal, the insulated chamber flares into a thin crushable nozzle extension. The engine view exposes the chamber jacket, mounting ring, attachments and external fittings. Their local shapes are reconstructed.',
+  ],
+  [
+    'LMDPSTanks',
+    'Descent propellant and helium tanks',
+    lower,
+    'Four tanks fed Antares’s descent engine.',
+    'Two held fuel and two held oxidizer. The model includes the helium vessels, tank bands and representative feed and pressurization lines. Routing and tank centres are estimated.',
+  ],
+  [
+    'LMAscent',
+    'Crew compartment and docking tunnel',
+    upper,
+    'Shepard and Mitchell flew standing up behind two triangular windows.',
+    'A third window above the commander looked up toward the docking target. Kitty Hawk’s probe met the conical drogue in the tunnel atop the midsection.',
+  ],
+  [
+    lmPort.part,
+    'Docking ring and drogue',
+    upper,
+    'Antares carried the receiving half of the docking system above its overhead hatch.',
+    'After launch, Kitty Hawk made six docking attempts before its crew could extract Antares from the adapter. On the return from Fra Mauro, the vehicles docked on the first attempt. Retraction drew the rings together, and the crew removed the probe and drogue to open the transfer passage.',
+  ],
+  [
+    'LMStations',
+    'Two standing flight stations',
+    upper,
+    'Armrests and restraints held each pilot in position.',
+    'Shepard stood on the left and Mitchell on the right. The deck, side lockers, armrests, restraints and eye positions are reconstructed. Enter either station to look through the glazing.',
+  ],
+  [
+    'LMControlPanels',
+    'Displays and hand controllers',
+    upper,
+    'Shepard and Mitchell shared the central guidance keyboard. The computer ran Luminary.',
+    'The instrument boards, attitude displays and hand controllers are static. Panel relief and positions are estimated from the LM handbook.',
+  ],
+  [
+    'LMAscentEngine',
+    'Fixed ascent engine',
+    upper,
+    'A separate engine powered the ascent stage back to Kitty Hawk.',
+    'The bell sits above a recessed blast deflector in the descent deck. As the stages part, the deflector stays below. Its chamber, jacket, mount and external feed fittings leave with the cabin. Its nominal thrust was 3,500 lbf.',
+  ],
+  [
+    'LMAPSTanks',
+    'Ascent propellant and helium tanks',
+    upper,
+    'Two spherical tanks supplied the pressure-fed ascent engine.',
+    'One held fuel and the other oxidizer. Two smaller helium vessels supplied pressurization. Their external envelopes and feed runs are reconstructed.',
+  ],
+  [
+    'LMEquipment',
+    'Attitude thrusters, radar and antennas',
+    upper,
+    'Sixteen thrusters let Antares turn and translate independently.',
+    'Four outriggers stand at 45° to the pitch and roll axes. Each cluster carries two opposed vertical jets and two horizontal jets at right angles. The rendezvous radar tracked Kitty Hawk. The 26-inch S-band antenna provided a separate link to Earth.',
+  ],
+  [
+    'LMReactionSupply',
+    'Reaction-control tankage',
+    upper,
+    'Two independent systems supplied the four thruster clusters.',
+    'Each system had a fuel tank, an oxidizer tank and a helium vessel. External envelopes and installed positions are approximate.',
+  ],
+];
+const facts: Record<string, Part['facts']> = {
+  LMFuelCask: [['Cask length × diameter', '23 × 8 in · Apollo 14 press kit pp. 38–39']],
+  LMScienceBay: [['SNAP-27 generator', '18 in tall × 16 in across the fins · Apollo 14 press kit pp. 38–39']],
+  LMTransporter: [
+    ['Deployed length × width × height', '86 × 39 × 32 in · Apollo 14 press kit p. 68'],
+    ['Tire diameter × width', '16 × 4 in · Apollo 14 press kit p. 68'],
+    ['Empty weight', '25 lb · MSC-04112 appendix A.2.1'],
+  ],
+  LMRetroreflector: [['Stowage', 'Quadrant I exterior · MSC-04112 appendix A.2.1']],
+  LMPortableMagnetometer: [['Stowage', 'Quadrant II exterior · MSC-04112 appendix A.2.1']],
+  LMDescentPower: [['Nominal case', '16.94 × 9.04 × 9.96 in · NASA TN D-6976 table I, assumed for LM-8']],
+  LMAscentPower: [['Nominal case', '35.75 × 4.95 × 7.70 in · NASA TN D-6976 table I, assumed for LM-8']],
+  LMDescent: [['Width across flats', '166 in · assumed from LM-3 fig. A.2-2']],
+  LMLandingGear: [
+    ['Pads', '4 × 37 in · Apollo 14 press kit, Lunar Module Landing Gear'],
+    ['Tread radius', '167.57 in · NASA TN D-6850 p. 6'],
+  ],
+  LMDescentEngine: [
+    ['Overall length / exit diameter', 'Approx. 85 / 58 in · NASA engine specifications, table I'],
+    ['Mount', 'Two-axis gimbal · Apollo 14 press kit, Descent Propulsion System'],
+  ],
+  LMAscentEngine: [['Overall length / exit diameter', 'Approx. 51 / 31 in · NASA engine specifications, table I']],
+  LMAscent: [
+    ['Crew compartment', '92 in diameter × 42 in deep · LM handbook, crew compartment; assumed'],
+    ['Forward hatch', '32 in square · LM handbook, crew compartment; assumed'],
+  ],
+};
+
+export { lmPort as antaresPort };
+export const {
+  model: antaresModel,
+  stackParts: antaresStackParts,
+  views: antaresViews,
+} = lunarGallery(
+  'apollo-14',
+  'Antares',
+  'LM-8 Antares',
+  [
+    {
+      node: 'LM_CommanderStation',
+      label: 'Shepard’s standing station',
+      from: 'LMAscent',
+      open: [103 * 3600 + 47 * 60 + 42, 143 * 3600 + 32 * 60 + 51],
+    },
+    {
+      node: 'LM_PilotStation',
+      label: 'Mitchell’s standing station',
+      from: 'LMAscent',
+      open: [103 * 3600 + 47 * 60 + 42, 143 * 3600 + 32 * 60 + 51],
+    },
+  ],
+  stageParts,
+  facts,
+  false,
+);
+
+antaresViews.push(
+  { id: 'met', label: 'Folded equipment transporter', nodes: ['LMTransporter'], onSelect: true, isolate: true, from: [1, 0.15, 0.7] },
+  { id: 'reflector', label: 'Laser retroreflector', nodes: ['LMRetroreflector'], onSelect: true, isolate: true, from: [-0.2, 0.6, 1] },
+  {
+    id: 'magnetometer',
+    label: 'Portable magnetometer',
+    nodes: ['LMPortableMagnetometer'],
+    onSelect: true,
+    isolate: true,
+    from: [0.2, 0.5, 1],
+  },
+  { id: 'deflectors', label: 'Plume deflectors', nodes: ['LMPlumeDeflectors', 'LMEquipment'], isolate: true, from: [1, 0.15, -0.45] },
+  { id: 'mesa', label: 'MESA and TV camera', nodes: ['LMSurfaceEquipment'], onSelect: true, isolate: true, from: [1, 0.5, 0.65] },
+  { id: 'cask', label: 'External fuel cask', nodes: ['LMFuelCask'], onSelect: true, isolate: true, from: [1, 0.5, 0.35] },
+  { id: 'hammocks', label: 'Crew hammocks', nodes: ['LMHammocks'], onSelect: true, isolate: true, from: [1, 0.5, 0.35] },
+  { id: 'seq', label: 'Scientific equipment bay', nodes: ['LMScienceBay'], onSelect: true, isolate: true, from: [-1, 0.62, -0.65] },
+);
+
+export const antaresStackViews = antaresViews.filter((view) =>
+  ['porch', 'dps', 'aps', 'drogue', 'mesa', 'seq', 'cask', 'deflectors', 'hammocks', 'met', 'reflector', 'magnetometer'].includes(view.id),
+);

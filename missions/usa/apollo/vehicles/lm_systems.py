@@ -21,6 +21,26 @@ def batteries(owner, positions, metal, panel, black):
         insulation.build(f"{owner.name}_Terminals_{i}", black, owner)
 
 
+def lm8_battery(owner, index, centre, size, opposite_terminals, metal, panel, dark):
+    """Ribbed covers and relocated ascent terminals, MSC-04112 A.2.2. Case and cover occupy the nominal envelope."""
+    x, y, z = centre
+    width, length, height = size
+    top = z + height / 2
+    case, lid, insulation = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    box(case, (x, y, z - 0.3), (width - 0.18, length - 0.18, height - 0.6))
+    box(lid, (x, y, top - 0.44), (width, length, 0.44))
+    for k in (-3, -2, -1, 0, 1, 2, 3):
+        box(lid, (x, y + k * length / 10, top - 0.2), (width - 0.65, 0.32, 0.4))
+    for sign in (-1, 1):
+        dy = (sign if opposite_terminals else 1) * (length / 2 - 1.15)
+        tx, ty = x + sign * (width / 2 - 1.25), y + dy
+        box(insulation, (tx, ty, top + 0.12), (1.4, 1.4, 0.88))
+        pipe(lid, [(tx, ty, top + 0.7), (tx, ty + (1 if dy < 0 else -1) * 2, top + 1.25), (tx + sign * 2, ty, top + 1.05)], 0.25)
+    case.build(f"{owner.name}_Battery_{index}", panel, owner)
+    lid.build(f"{owner.name}_LidAndLeads_{index}", metal, owner)
+    insulation.build(f"{owner.name}_Terminals_{index}", dark, owner)
+
+
 def build(parts, metal, panel, dark, white, *, spacecraft=3):
     radar = MeshBuilder()
     box(radar, (-59, 0, 53), (25, 21, 7))
@@ -35,8 +55,17 @@ def build(parts, metal, panel, dark, white, *, spacecraft=3):
     # MSC-00126 A.2.1: LM-4 divided its four batteries equally between the
     # two forward quadrants. Exact case stations within each bay are estimated.
     locations = [(63, y, z) for y in (-37, 37) for z in (72, 106)] if spacecraft >= 4 else [(x, -49, z) for x in (-54, -37) for z in (78, 99)]
-    batteries(parts["LMDescentPower"], locations, metal, panel, dark)
-    batteries(parts["LMAscentPower"], [(-66, y, 174) for y in (-11, 11)], metal, panel, dark)
+    if spacecraft == 8:
+        # NASA TN D-6976 table I. The narrow ascent batteries sit side by side.
+        for owner, centres, size, opposite in (
+            (parts["LMDescentPower"], locations, (9.04, 16.94, 9.96), False),
+            (parts["LMAscentPower"], [(-62, 0, 174), (-68.5, 0, 174)], (4.95, 35.75, 7.70), True),
+        ):
+            for i, centre in enumerate(centres, 1):
+                lm8_battery(owner, i, centre, size, opposite, metal, panel, dark)
+    else:
+        batteries(parts["LMDescentPower"], locations, metal, panel, dark)
+        batteries(parts["LMAscentPower"], [(-66, y, 174) for y in (-11, 11)], metal, panel, dark)
     for name, locations in (
         ("LMDescentConsumables", [("Water", 52, -47, 88, 11), ("Oxygen", 42, -59, 107, 7)]),
         (

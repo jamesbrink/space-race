@@ -8,6 +8,7 @@ import apollo_docking
 import lm5_equipment
 import lm6_equipment
 import lm7_equipment
+import lm8_equipment
 import lm_cabin
 import lm_propulsion
 import lm_systems
@@ -351,7 +352,7 @@ def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
                 t = (rung + 0.5) / 9
                 tube(ladder, (10 + 40 * t, -7, -5 - 84 * t), (10 + 40 * t, 7, -5 - 84 * t), 0.75)
             if spacecraft >= 5:
-                lm5_equipment.ladder(hinge, metal, dark, f"LM{spacecraft}")
+                lm5_equipment.ladder(hinge, metal, dark, f"LM{spacecraft}", flag_on_ladder=spacecraft < 8)
             if spacecraft == 3:
                 ladder.build("LM3_ForwardLadder", dark, hinge)
         piston.build(f"LM3_Piston_{i}", metal, hinge)
@@ -527,7 +528,7 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
 
 
 def build(iu_top=0, *, deployed=False, spacecraft=3):
-    if spacecraft not in (3, 4, 5, 6, 7):
+    if spacecraft not in (3, 4, 5, 6, 7, 8):
         raise ValueError(f"Unsupported lunar module LM-{spacecraft}")
     foil = material("lm3-blanket-gold", (0.64, 0.29, 0.042), metallic=0.68, roughness=0.43)
     amber = material("lm3-copper-blanket", (0.41, 0.132, 0.029), metallic=0.50, roughness=0.52)
@@ -574,6 +575,10 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
             parts["LMHammocks"] = group("LMHammocks")
             if spacecraft == 6:
                 lm6_equipment.build(parts, silver, amber, dark, white, ivory)
+            elif spacecraft == 8:
+                for name in ("LMTransporter", "LMRetroreflector", "LMPortableMagnetometer"):
+                    parts[name] = group(name)
+                lm8_equipment.build(parts, silver, amber, dark, white, ivory)
             else:
                 lm7_equipment.build(parts, silver, amber, dark, white, ivory)
                 if deployed:

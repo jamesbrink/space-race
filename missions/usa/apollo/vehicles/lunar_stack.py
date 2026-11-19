@@ -33,9 +33,13 @@ def bearing_lugs(stage, serial):
 
 
 def build(serial, csm, lm, adapter):
-    saturn_v.build(lunar_module=partial(lunar_module.build, spacecraft=lm), adapter_number=adapter, impact_radio=serial == 508)
-    if serial in (507, 508):
+    saturn_v.build(
+        lunar_module=partial(lunar_module.build, spacecraft=lm), adapter_number=adapter, impact_radio=serial if serial in (508, 509) else None
+    )
+    if serial in (507, 508, 509):
         saturn_v.sii_external_equipment(serial - 500)
+    if serial == 509:
+        saturn_v.pogo_accumulator()
     # MSFC-MAN-504 fig. 8-7 as seen on ML-1: north toward the tower, engine 1 northeast.
     # Index the complete first stage together so its engine fairings stay over the outboard bells.
     bearing_lugs(bpy.data.objects["SaturnFirstStage"], serial)
