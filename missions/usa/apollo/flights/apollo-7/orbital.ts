@@ -1,7 +1,17 @@
 /** Apollo 7 as flown by CSM-101 and Saturn IB AS-205. All elapsed times are ground elapsed time. */
 import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
 import { trackedState } from '../../../../../src/sim/orbital.ts';
-import type { Action, AttitudeDef, EngineDef, EventDef, FlightPlan, OrbitFix, PlanCheck, Trigger } from '../../../../../src/sim/plan.ts';
+import type {
+  Action,
+  AttitudeDef,
+  EngineDef,
+  EventDef,
+  FlightPlan,
+  OrbitFix,
+  PlanCheck,
+  Pursuit,
+  Trigger,
+} from '../../../../../src/sim/plan.ts';
 import type { ShedBody } from '../../../../../src/types.ts';
 import { earthFrame } from '../../../../../src/world/earthframe.ts';
 import { cross, dot, ecefToGeodetic, enuAxes, scale, sub, unit } from '../../../../../src/world/frames.ts';
@@ -86,6 +96,37 @@ const beforeSeparation = fix(`${REPORT}, Table 3-II, actual spacecraft/S-IVB sep
 ]);
 
 const mark = (id: string, label: string, at: number, source = EVENTS) => ({ id, label, at: doc(at, source) });
+/** A manoeuvre's impulse as the record has it, ft/s, held to a twentieth. */
+const impulse = (id: string, label: string, fps: number, source: string): PlanCheck => ({
+  id: `${id}.velocity`,
+  label,
+  value: fps * FT,
+  unit: 'm/s',
+  tolerance: 0.05 * fps * FT,
+  of: 'orbit',
+  confidence: 'documented',
+  source,
+});
+/** How far the S-IVB was from the spacecraft at an instant, m. */
+const range = (
+  id: string,
+  label: string,
+  at: number,
+  value: number,
+  tolerance: number,
+  confidence: PlanCheck['confidence'],
+  source: string,
+): PlanCheck => ({
+  id: `${id}.range`,
+  label,
+  value,
+  unit: 'm',
+  tolerance,
+  of: 'orbit',
+  confidence,
+  source,
+  when: { at, reading: 'range' },
+});
 
 /**
  * SPS firings as reported. The command instants come from Table 2-I. Table 3-V is the integrated
@@ -102,6 +143,45 @@ const sps = [
   { name: 'Set up the deorbit', on: T(239, 6, 12.0), off: T(239, 6, 19.7), duration: 8.2, dv: 220.1, mass: 24_864 },
   { name: 'Deorbit', on: T(259, 39, 16.3), off: T(259, 39, 28.2), duration: 12.4, dv: 343.6, mass: 24_262 },
 ] as const;
+
+/**
+ * The rendezvous with the S-IVB as commands (sim/plan.ts `Pursuit`): what each of its burns was for, which guidance
+ * carries out on where the two craft are (sim/pursuit.ts). The impulses and attitudes of Tables 3-IV and 3-V stay on
+ * the burns as the record's, to hold the solved ones against. The two phasing burns before them are flown as recorded:
+ * what they were aimed at is not in anything read.
+ */
+const SIVB_PERIOD = 89.7 * 60;
+export const rendezvous = {
+  /** Where the corrective combination was to leave the S-IVB from the spacecraft as the coelliptic manoeuvre lit. */
+  coelliptic: {
+    ahead: doc(80 * NMI, `${REPORT}, §3.2.1, approximate downtrack separation at the coelliptic maneuver`),
+    above: doc(7.8 * NMI, `${REPORT}, §3.2.1, altitude difference at the coelliptic maneuver`),
+  },
+  /** When the terminal phase's transfer was to arrive at the stage. */
+  intercept: assumed(
+    T(29, 16, 33) + (130 / 360) * SIVB_PERIOD,
+    `Terminal phase initiation (${REPORT}, Table 2-I) and 130 degrees of the target's travel after it, the transfer the Gemini rendezvous were planned on (Gemini Midprogram Conference, NASA SP-121, paper 28) and assumed here: Apollo 7's own figure is not in anything read. At the report's 89.7 min a revolution`,
+  ),
+  /** Where the spacecraft kept station, and until when. */
+  station: {
+    ahead: estimated(
+      70 * FT,
+      `${REPORT}, §2: final closure within 70 ft. Which side of the stage is not on the record: taken along the track, the stage ahead`,
+    ),
+    above: estimated(0, 'Relative elevation unknown'),
+    until: doc(T(30, 20, 0), 'SP-4029, station-keeping interval'),
+  },
+};
+const spsToward: (Pursuit | undefined)[] = [
+  { reach: rendezvous.coelliptic, at: doc(T(28, 0, 56.5), `${REPORT}, Table 2-I, coelliptic maneuver ignition`) },
+  { coelliptic: true },
+];
+const rcsToward: (Pursuit | undefined)[] = [
+  undefined,
+  undefined,
+  { reach: { ahead: derived(0, 'the stage itself'), above: derived(0, 'the stage itself') }, at: rendezvous.intercept },
+  { station: { ahead: rendezvous.station.ahead, above: rendezvous.station.above }, until: rendezvous.station.until },
+];
 
 const ignitionFixes = [
   [-29.56, 107.7, 990_253, 25_289.9, -0.13, 77.81],
@@ -187,6 +267,7 @@ const spsEvents = sps.flatMap((burn, i) => {
           `${REPORT}, ${i === 3 || i === 5 ? 'Table 5.18-IV, thrusting interval including the transient' : 'Table 3-V, effective duration'}`,
         ),
         massAtIgnition: doc(burn.mass * LB, WEIGHTS),
+        ...(spsToward[i] ? { toward: spsToward[i] } : {}),
       },
     ]),
     timed(`${id}-cutoff`, `SPS ${i + 1} cutoff`, burn.off, [{ cut: 'sps' }]),
@@ -203,12 +284,59 @@ const rcs = [
 const rcsAttitudes = rcs.map((burn) =>
   localAim(`${burn.id}-aim`, burn.name, burn.axis, `${REPORT}, Table 3-IV, effective local-horizontal components`),
 );
+/**
+ * The twenty-five minutes beside the stage after the separation: the spacecraft pulled ahead, turned round and kept
+ * station on it until the first phasing burn. Its thrusters' pulses are on no record read, so the record's impulse is
+ * none; guidance brakes it to the place and holds it there (`Pursuit.station`), and without the stage to hold on it
+ * does nothing.
+ */
+const FORMATION = SEPARATION + 35;
+const formationAim = localAim(
+  'rcs-formation-aim',
+  'Station-keeping with the S-IVB',
+  [1, 0, 0],
+  'Along the motion: the thrust is commanded on the stage',
+);
+const formationEvents: EventDef[] = [
+  {
+    ...timed('rcs-formation', 'Station-keeping with the S-IVB', FORMATION, [
+      { attitude: formationAim.id },
+      {
+        ignite: 'sm-rcs',
+        flown: estimated(0, 'No impulse on the record: the thrusters’ pulses beside the stage were not recorded'),
+        toward: {
+          station: {
+            ahead: estimated(
+              -100 * FT,
+              'NASA, Apollo 7/S-IVB Rendezvous in Space, photo caption: photographed at approximately 100 ft during transposition. The stage is taken to be directly behind the spacecraft',
+            ),
+            above: estimated(0, 'Photo range only'),
+          },
+          until: doc(T(3, 20, 9.9), `${REPORT}, Table 2-I, first phasing maneuver`),
+        },
+      },
+    ]),
+    at: estimated(
+      FORMATION,
+      'Time to pull clear for transposition, estimated from the separation’s motion; the instant is not on the record',
+    ),
+  },
+  {
+    ...timed('rcs-formation-cutoff', 'In formation with the S-IVB', FORMATION + 300, [{ cut: 'sm-rcs' }]),
+    at: estimated(
+      FORMATION + 300,
+      'Five minutes to turn round and come to rest by the stage: an estimate, the transposition’s own times not being on the record',
+    ),
+  },
+];
+
 const rcsEvents = rcs.flatMap((burn, i) => [
   timed(burn.id, burn.name, burn.on, [
     { attitude: rcsAttitudes[i]!.id },
     {
       ignite: 'sm-rcs',
       flown: doc(burn.dv * FT, `${REPORT}, Table 3-IV, resultant translation; braking's intermittent pulses are averaged`),
+      ...(rcsToward[i] ? { toward: rcsToward[i] } : {}),
     },
   ]),
   timed(
@@ -750,11 +878,25 @@ export const apollo7Plan: FlightPlan = {
         },
       },
     },
+    formationAim,
     ...rcsAttitudes,
     ...spsAttitudes,
     bank('entry-lift-up', 0),
     ...entryAttitudes,
   ],
+  // The spent stage, with the instrument unit and the adapter on it, flown on from the separation as a craft of its own.
+  target: {
+    joint: 'spacecraft-separation',
+    label: 'S-IVB',
+    mass: derived(
+      586_392.8 - (450_830.9 + 2_995.5 - 6_277.3) - 4_025.2 - 16_528.0 - 233_269 * LB,
+      `${ASCENT}, Table 6-I, the stage, instrument unit and adapter at first motion, less the whole propellant load (S-IVB-205 Stage Flight Evaluation Report, §14.2.1): what little was left aboard after the dump and the venting is not taken off`,
+    ),
+    dragArea: estimated(
+      2.2 * 117,
+      'King-Hele’s customary 2.2 (The Prediction of Satellite Lifetimes, §9.1) on 117 m²: a quarter of the outside of the stage, instrument unit and adapter taken as a cylinder 260 in across and 44 ft long and a cone 28 ft long down to 154 in (press kit, pp. 26, 32 and 33), which is the area a convex body turning every way presents on the average. How the stage lay after its control was let go is not in anything read; the adapter’s open panels are not counted',
+    ),
+  },
   events: [
     timed('liftoff', 'Liftoff', 0, [{ ignite: 'h1-inboard' }, { ignite: 'h1-outboard' }]),
     timed('sib-inboard-cutoff', 'Inboard H-1 engines cut off', 140.64, [{ cut: 'h1-inboard' }], `${ASCENT}, §8.1`),
@@ -765,6 +907,7 @@ export const apollo7Plan: FlightPlan = {
     // (the guidance's own cutoff: flown where the orbit reached has the record's period; the recorded instant is held as a figure)
     timed('sivb-cutoff', 'J-2 cutoff', J2_OFF, [{ cut: 'sivb-j2' }], `${ASCENT}, §9.1, guidance cutoff command`, [{ orbit: 'published' }]),
     timed('spacecraft-separation', 'CSM separates from S-IVB', SEPARATION, [{ separate: 'spacecraft-separation' }], `${LV_TRAJ}, Table VI`),
+    ...formationEvents,
     ...rcsEvents,
     ...spsEvents,
     timed('cm-sm-separation', 'Command module separates from service module', MODULES, [
@@ -797,6 +940,40 @@ export const apollo7Plan: FlightPlan = {
       source: `${REPORT}, Table 3-VI, trajectory deceleration`,
     },
     { id: 'cm.at', label: 'Splashdown', value: SPLASH, unit: 's', tolerance: 120, of: 'descent', confidence: 'documented', source: EVENTS },
+    // The rendezvous, flown by guidance on the stage as its own craft: the record's impulses and ranges are what it is held to.
+    impulse('sps-1', 'Corrective combination, impulse', 204.1, `${REPORT}, Table 3-V`),
+    impulse('sps-2', 'Coelliptic maneuver, impulse', 173.8, `${REPORT}, Table 3-V`),
+    impulse('rcs-terminal', 'Terminal phase initiation, impulse', 17.4, `${REPORT}, Table 3-IV`),
+    impulse('rcs-braking', 'Braking, impulse', 18.2, `${REPORT}, Table 3-IV, resultant of the braking’s pulses`),
+    range(
+      'formation',
+      'S-IVB at 3:16',
+      T(3, 16, 0),
+      100 * FT,
+      10,
+      'estimated',
+      'NASA, Apollo 7/S-IVB Rendezvous in Space, photo caption: approximately 100 ft',
+    ),
+    range('braking', 'S-IVB as braking began', T(29, 43, 55), 1.2 * NMI, 0.2 * NMI, 'documented', `${REPORT}, §3.2.1`),
+    range('station', 'S-IVB while keeping station', T(30, 0, 0), 70 * FT, 5, 'documented', `${REPORT}, §2: final closure within 70 ft`),
+    range(
+      'sextant-1',
+      'S-IVB at 45:30',
+      T(45, 30, 0),
+      160 * NMI,
+      10 * NMI,
+      'documented',
+      'SP-4029, Apollo 7 timeline, end of the sextant tracking interval',
+    ),
+    range(
+      'sextant-2',
+      'S-IVB at 53:20',
+      T(53, 20, 0),
+      320 * NMI,
+      15 * NMI,
+      'documented',
+      'SP-4029, Apollo 7 timeline, end of the sextant tracking interval',
+    ),
   ],
   record: {
     aborts,

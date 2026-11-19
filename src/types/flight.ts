@@ -211,7 +211,6 @@ export interface Flight {
       name: string;
       until: Measure;
       tailFirst?: Measure;
-      fixes: { at: Measure; ahead: Measure; above: Measure; relative?: boolean }[];
     };
     drops: {
       at: number;

@@ -101,52 +101,6 @@ export const flies: NonNullable<Flight['flies']> = {
     name: 'S-IVB',
     tailFirst: doc(11820, 'AS-205 flight evaluation §12.2, approximate time of tail-first alignment'),
     until: doc(168 * 3600 + 27 * 60, 'Apollo 7 Mission Report §3.4, approximate reentry time'),
-    fixes: [
-      {
-        at: estimated(
-          craft.joints.find((j) => j.id === 'spacecraft-separation')!.at!.value + 35,
-          'Time to pull clear for transposition estimated from separation motion; precise time unknown',
-        ),
-        ahead: estimated(
-          -50 * 0.3048,
-          'NASA Apollo 7 mission history: Schirra pulled 50 ft ahead to turn around; separation projected along track',
-        ),
-        above: estimated(0, 'Line of sight reconstructed along track'),
-        relative: true,
-      },
-      {
-        at: doc(3 * 3600 + 16 * 60, 'NASA Apollo 7/S-IVB Rendezvous in Space, photo caption'),
-        ahead: estimated(-100 * 0.3048, 'Photographed at approximately 100 ft during transposition. Stage assumed directly behind the CSM'),
-        above: estimated(0, 'Photo range only'),
-        relative: true,
-      },
-
-      {
-        at: doc(28 * 3600 + 56.5, 'Mission Report table 2-I, SPS-2 ignition'),
-        ahead: doc(80 * 1852, 'Mission Report §3.2.1, approximate downtrack separation'),
-        above: doc(7.8 * 1852, 'Mission Report §3.2.1, altitude difference'),
-      },
-      {
-        relative: true,
-        at: doc(29 * 3600 + 43 * 60 + 55, 'Mission Report §3.2.1, braking'),
-        ahead: estimated(1.2 * 1852, 'Reported slant range represented along track; direction unknown'),
-        above: estimated(0, 'Relative elevation unknown'),
-      },
-      ...[29 * 3600 + 55 * 60 + 43, 30 * 3600 + 20 * 60].map((t) => ({
-        relative: true,
-        at: doc(t, 'SP-4029, station-keeping interval'),
-        ahead: estimated(70 * 0.3048, 'Mission Report §2: final closure within 70 ft, reconstructed downtrack during station-keeping'),
-        above: estimated(0, 'Relative elevation unknown'),
-      })),
-      ...[
-        { t: 45.5 * 3600, range: 160 },
-        { t: 53 * 3600 + 20 * 60, range: 320 },
-      ].map(({ t, range }) => ({
-        at: doc(t, 'SP-4029, Apollo 7 timeline, end of sextant tracking interval'),
-        ahead: estimated(range * 1852, 'Reported sextant slant range represented along track; bearing unavailable'),
-        above: estimated(0, 'Relative elevation unknown'),
-      })),
-    ],
   },
   drops: [
     drop('sib-separation', ['SaturnFirstStage', 'SaturnInterstage', 'FirstStageEngines', 'FirstStageTankStructure']),
