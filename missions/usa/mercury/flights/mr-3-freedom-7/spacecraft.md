@@ -140,7 +140,7 @@ nothing here.
 | --- | --- | --- |
 | UNITED STATES | once, two lines 31 and 30 in long, letters 7 in tall, centred on 141° (from 104° to 180°) at stations 36.3 and 28.3, beside the periscope's door on the side away from the hatch | the pad, 21 April and 5 May 1961 (the colour "egress test" photograph; GPN-2000-001009); the capsule as kept, where it is the original paint |
 | FREEDOM over 7 | small: FREEDOM 23 in long and 3.4 in tall at station 17.3, the 7 beneath it at 12.9, on 240.5°, low between the upper port and the hatch | the carrier's deck, 5 May 1961 (MSFC-6101191 and the Commons photographs of Shepard inspecting the capsule). **The capsule as kept has FREEDOM 7 elsewhere**, painted along the meridian at about 260°: a repainting, and 1961 is followed |
-| Flags | none | none is on the sides that the 1961 photographs show (the US side's top row on the pad; the hatch's side and the top row above it on the deck), and the capsule as kept has none. The model had two flags and a second UNITED STATES, on the hatch's side, until November 2026: the deck photographs show that side bare |
+| Flags | none | none is on the sides that the 1961 photographs show (the US side's top row on the pad; the hatch's side and the top row above it on the deck), and the capsule as kept has none. NASA identifies Friendship 7 as the first spacecraft with a US flag painted outside. The model had two flags and a second UNITED STATES, on the hatch's side, until November 2026: the deck photographs show that side bare |
 | Not established | whether anything was painted between 180° and 230° | no photograph read shows it clearly |
 
 ## Propulsion
