@@ -778,7 +778,11 @@ JavaScript heap and 125 MB of decoded pictures.
   MiB on foot, over the 400; 398 with one.
 - **What the lighter tier changes, and what of it can be seen:**
   - *Nothing made that is not on show (no loss).* Only the levels of detail in view are sent to the GPU as the page
-    opens (every level's shaders are still built: `warm`); another level is sent when first drawn. The whole Earth's
+    opens (every level's shaders are still built: `warm`); another level is sent when first drawn. Which levels are in
+    view is judged at the drawing's own size: `warm` sizes the canvas first (`Pipeline.fit`). Since the canvas came to
+    be sized as a frame begins (88e7892d), `warm` drew before any frame had, at three's default 300 by 150, and sent
+    buffers the frames that followed did not use: Freedom 7's site as a phone held 7 to 9 MiB more of them, 401 to 403
+    MiB on foot, over the 400 (394 before that commit, 395 with the canvas sized first). The whole Earth's
     cube is made from 150 m up, the relief and colours when the eye passes 1500 m and never by the timer (later.ts);
     each picture is decoded, copied in and let go before the next is fetched, not six decoded faces at once. A model's pictures are sent when first drawn, not all at the start; the cabin's only once the inside is
     drawn, and let go again when it is not. The other look's shaders are built at the first T, which then takes a

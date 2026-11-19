@@ -1796,6 +1796,8 @@ export class Stage {
     if (token !== this.loads) return; // (another flight since: app/session.ts)
     onStep?.('clouds', 1);
     onStep?.('shaders', 0);
+    // (at the size it will be drawn: the canvas is sized as a frame begins, and none may have begun yet)
+    this.pipe.fit();
     // Everything that will ever be drawn is drawn now, unseen: every level of detail, whether
     // or not it is in view, by day and with the lamps lit (a scene with lamps on is a different
     // set of shaders). What is built and sent to the GPU here is not built in front of anyone.
