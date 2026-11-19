@@ -187,6 +187,18 @@ south-west corner to Complex 25 and on to 29; from Complex 26 east-north-east to
 complex had its road is plain in the aerials of 1959 to 1965. **Their lines here are estimated**: each is
 straight from one known place to the next, not traced from a map of 1961.
 
+## Native surroundings for May 1961
+
+The two open work levels of the LC-26 gantry have bearing bars and cross ties. The mast lacings have angle sections
+and the wheels, handrails and rungs have finer curved surfaces. The track uses the same rolled rail profile as LC-5.
+The near complexes with wedge blockhouses show steel viewing-port surrounds and horizontal bars. Their vaulted
+roof profiles and the existing circular stands have finer circumferential divisions.
+
+Confidence follows the entries for each complex. The Noble stand and the connected track are documented in
+*A Noble Endeavor*, pp. 7–8. The stock sizes, glazed-port trim and the use and pitch of grating are **estimated**,
+with the two-light layout **assumed** from HAER FL-8-5 p. 46 for the comparable blockhouses. Their dark ports are
+exterior representations. The separate generator buildings and sheds retain their inventory geometry.
+
 ## Sources known and not read
 
 HAER's drawings for Complex 17 (FL-8-5-A to -G); a legible copy of Complex 26's "Missile Service Stand"

@@ -1038,6 +1038,20 @@ Pads* pages and its dated photographs; the FHSU Project Mercury collection's Jul
 F16_015, F16_016, F16_017 and F19_008; Wikimedia Commons photographs of the blockhouse (2005, 2010)
 and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../docs/sources.md).
 
+## Native detail on 5 May 1961
+
+| Hardware | Visible construction | Source and confidence |
+| --- | --- | --- |
+| Service structure | Open angle sections on the leaning mast, triangular joint plates, an open steel grating outboard of each level 1 cutout, edge bands and kick plates. The handrails and ladder rungs have round sections. The split platforms, lift stops and ladder runs use the same pivots and walking heights. | Noble, *A Noble Endeavor*, pp. 4–5, 7–8, and Hammack and Heberlig Figs. 22–23 establish the mast and platforms. The individual steel sections, gusset outlines, grating pitch, kick plates and extent of the solid floor near the vehicle are **estimated**. |
+| Lift, lights and tray | The lift has open diamond mesh in the cage frame. Dome lights under the first platform have round rims. The white room's overhead tray has sides, transverse supports and visible cables. | The cage is visible in FHSU F19_051 (MR-4 egress exercise), **assumed** for May from the same structure in July. Mesh pitch, tray section and three cable runs are **estimated**. TM X-53107 §7.5.1.8 documents the lights and cable trays. |
+| Launcher and cable masts | The table, hinge pins, mast bands, hydraulic fittings and umbilicals have finer circular sections. Each levelling foot has a collar and hex locknut. The table and its four-sided deflector are part of the pad model. | S61-02407, S61-02408, TM X-53107 §7.1.3 and FHSU's July photographs of the launch table. The foot hardware and the welds on the four deflector plates are **estimated**. |
+| Hardstand and vehicles | The slab joints, rail channels and covered cable trench remain visible. Off the slab the rail joints have washers, heads and nuts. The cherry picker's wheels, slew bearing, pins and rams, and the trailers' wheels, vessels and bands have finer sections. | Slab, rails and truck outlines in the May launch views, rail hardware and joint pitch **estimated** as in the track table above. The photo coverage does not locate individual drains. |
+| Surroundings | The blockhouse viewing ports have retaining beads and screws, the roof follows the existing vault more closely, and the parked passenger cars' whitewall tyres have recessed tread grooves. Pad 6 also takes the finer launcher and walking hardware. | Port framing **estimated** from F16_016 and the dated exterior references in “The rest of the complex”. The roof reuses the existing dimensions. Tyre tread section **estimated** for the depicted period cars. |
+
+The photographs do not resolve the gantry's steel schedule, individual welds, floor pattern, lamp fittings or the
+routing of each cable. The trench on the hardstand is identified as a cable trench. No separate drain layout has been
+established for launch day.
+
 ## What the model gets wrong or leaves out
 
 - **Port Canaveral's harbour is two straight reaches of still water** (the entrance channel and one basin,

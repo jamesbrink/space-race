@@ -333,6 +333,14 @@ def truss(mb: MeshBuilder, corner, stations, chord: float, brace: float) -> None
             beam(mb, corner(a, s0), corner(b, s1), brace * 0.85)
 
 
+def rail_tube(mb, a, b, width):
+    """Native pipe handrail, within the envelope of the inventory's square approximation."""
+    if srlib.native():
+        mb.tube(P(*a), P(*b), width * UNIT / 2, 20)
+    else:
+        beam(mb, a, b, width)
+
+
 def handrail(mb: MeshBuilder, pts, height: float | None = None, post: float | None = None, rail: float | None = None) -> None:
     """Posts and two rails along a polyline of deck-level points: 3 ft 6 in high unless told."""
     f = foot()
@@ -342,9 +350,9 @@ def handrail(mb: MeshBuilder, pts, height: float | None = None, post: float | No
         n = max(1, round((b - a).length / (5.0 * f)))
         for k in range(1 if seg else 0, n + 1):  # a corner post belongs to the run before it
             p = a + (b - a) * k / n
-            beam(mb, p, p + Vector((0, 0, height)), post)
+            rail_tube(mb, p, p + Vector((0, 0, height)), post)
         for h in (height, height * 0.5):
-            beam(mb, a + Vector((0, 0, h)), b + Vector((0, 0, h)), rail)
+            rail_tube(mb, a + Vector((0, 0, h)), b + Vector((0, 0, h)), rail)
 
 
 def prism(mb: MeshBuilder, outline, z0: float, z1: float) -> None:
@@ -545,9 +553,9 @@ def stair_rails(mb: MeshBuilder, foot_at, top_at, width: float, height: float | 
         n = max(1, round((b - a).length / (4.5 * f)))
         for k in range(n + 1):
             q = a + (b - a) * k / n + off
-            beam(mb, tuple(q), tuple(q + Vector((0, 0, height))), 0.13 * f)
+            rail_tube(mb, tuple(q), tuple(q + Vector((0, 0, height))), 0.13 * f)
         for h in (height, height * 0.5):
-            beam(mb, tuple(a + off + Vector((0, 0, h))), tuple(b + off + Vector((0, 0, h))), 0.11 * f)
+            rail_tube(mb, tuple(a + off + Vector((0, 0, h))), tuple(b + off + Vector((0, 0, h))), 0.11 * f)
 
 
 def timber_pole(

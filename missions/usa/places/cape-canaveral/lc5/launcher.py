@@ -25,7 +25,7 @@ import math
 
 from mathutils import Vector
 
-from srlib import FT, TAU
+from srlib import FT, TAU, native, round_sides
 
 from .site import LAUNCHER_TOP, RAIL_TOP, P, Parts, axes, beam, box, fine, ftp, obox, plate, round_vehicle
 
@@ -49,7 +49,7 @@ def build(parts: Parts, node: str = "LaunchPedestal", rail_top: float = RAIL_TOP
     ri, ro = RING_R
     # the table: a deep box section rolled into a ring, with ribs between its flanges
     prof = [(ri, zr), (ro, zr), (ro, zr + 0.12), (ro - 0.15, zr + 0.12), (ro - 0.15, z1 - 0.32), (ro, z1 - 0.32), (ro, z1 - 0.2)]
-    ring.lathe(ftp([*prof, (ri, z1 - 0.2), (ri, zr)]), 64)
+    ring.lathe(ftp([*prof, (ri, z1 - 0.2), (ri, zr)]), round_sides(64))
     if fine():
         for k in range(24):
             a = TAU * (k + 0.5) / 24
@@ -78,7 +78,12 @@ def build(parts: Parts, node: str = "LaunchPedestal", rail_top: float = RAIL_TOP
         beam(legs, (5.0 * c, 5.0 * s, 1.6), (5.0 * math.cos(t2), 5.0 * math.sin(t2), 1.6), 0.3)
         # the foot: a jack screw in a pad, for levelling (TM X-53107 L-25: "vertical alignment")
         box(legs, (FOOT_R * c - 0.9, FOOT_R * s - 0.9, foot_z), (FOOT_R * c + 0.9, FOOT_R * s + 0.9, foot_z + 0.22))
-        fittings.tube(P(FOOT_R * c, FOOT_R * s, foot_z + 0.2), P(FOOT_R * c, FOOT_R * s, foot_z + 0.9), 0.28 * FT, 12)
+        fittings.tube(P(FOOT_R * c, FOOT_R * s, foot_z + 0.2), P(FOOT_R * c, FOOT_R * s, foot_z + 0.9), 0.28 * FT, round_sides(12))
+        if native():
+            # The levelling jack's collar and hex locknut surround its existing spindle.
+            at = axes((FOOT_R * c, FOOT_R * s, foot_z), (1, 0, 0), (0, 0, 1))
+            fittings.lathe(ftp([(0.48, 0.22), (0.48, 0.31), (0.39, 0.36), (0.27, 0.36)]), 48, matrix=at)
+            fittings.lathe(ftp([(0.39, 0.37), (0.42, 0.40), (0.42, 0.55), (0.37, 0.58), (0.27, 0.58)]), 6, matrix=at)
         if fine():
             for dx in (-0.68, 0.68):
                 for dy in (-0.68, 0.68):
@@ -100,7 +105,7 @@ def build(parts: Parts, node: str = "LaunchPedestal", rail_top: float = RAIL_TOP
     hx, hy = 4.3 * c - 1.75 * s, 4.3 * s + 1.75 * c  # beside the fin's pad, clear of the fin
     obox(fittings, (hx, hy, z1 + 0.05), (c, s, 0), (0, 0, 1), (1.3, 1.9, 0.5))
     for off, rr in ((-0.45, 0.22), (0.45, 0.13)):  # 60-pin and 4-pin
-        fittings.tube(P(hx - s * off, hy + c * off, z1 + 0.3), P(hx - s * off, hy + c * off, z1 + 0.42), rr * FT, 12)
+        fittings.tube(P(hx - s * off, hy + c * off, z1 + 0.3), P(hx - s * off, hy + c * off, z1 + 0.42), rr * FT, round_sides(12))
     # the two heavy cables from the ring to the pad, and away across it: WNW to the trench's end, and ESE.
     # Each leaves the ring from a plug, hangs down to the slab, lies on it in easy curves (lifted over
     # the rails' heads), and rises into a receptacle on a junction box. Their routes are estimated;
@@ -156,17 +161,19 @@ def cable_run(cable, fittings, start, ground, box_at, d: int, rail_top: float) -
     for k in range(1, 7):  # up off the slab into the receptacle
         s = k / 6
         path.append((lx + (face - d * 0.35 - lx) * s, ly + (by - ly) * s, rest(lx) + (0.75 - rest(lx)) * s * s * (3 - 2 * s)))
-    cable.loft([P(*p) for p in path], [(r * FT, r * FT)] * len(path), 12, ref=(0, 0, 1), resample=1)
+    cable.loft([P(*p) for p in path], [(r * FT, r * FT)] * len(path), round_sides(12), ref=(0, 0, 1), resample=1)
     # the plug at the ring: a body, a knurled coupling ring, a rubber boot where the cable leaves it
     down = (0.0, 0.0, -1.0)
     plug = axes((sx, sy, sz + 0.6), (1, 0, 0), down)
     body = [(0.0, -0.1), (0.24, -0.1), (0.24, 0.0), (0.28, 0.02), (0.28, 0.18), (0.22, 0.2), (0.22, 0.48), (0.16, 0.6), (0.0, 0.6)]
-    fittings.lathe(ftp(body), 16, matrix=plug)
+    fittings.lathe(ftp(body), round_sides(16), matrix=plug)
     # the junction box, and on its face a receptacle's square flange with the plug in it
     box(fittings, (bx - 0.9, by - 0.9, 0.0), (bx + 0.9, by + 0.9, 1.3))
     box(fittings, (face - d * 0.05 - 0.05, by - 0.45, 0.3), (face - d * 0.05 + 0.05, by + 0.45, 1.2))
     sock = axes((face - d * 0.05, by, 0.75), (0, 1, 0), (-d, 0, 0))
-    fittings.lathe(ftp([(0.0, 0.0), (0.26, 0.0), (0.26, 0.12), (0.3, 0.14), (0.3, 0.3), (0.2, 0.34), (0.17, 0.4), (0.0, 0.4)]), 16, matrix=sock)
+    fittings.lathe(
+        ftp([(0.0, 0.0), (0.26, 0.0), (0.26, 0.12), (0.3, 0.14), (0.3, 0.3), (0.2, 0.34), (0.17, 0.4), (0.0, 0.4)]), round_sides(16), matrix=sock
+    )
     if fine():  # the bolts of the box's cover
         for dy in (-0.7, 0.7):
             for z in (0.15, 1.15):

@@ -1305,6 +1305,8 @@ class Car:
             kit(self.hub if self.cap_r >= rr - 1.0 else paint_key).lathe([(rr, hw - 0.3), (0.0, hw + 0.4)], 16, matrix=out)
             return
         segs = sitelib.wheel_sides(32 if srlib.DETAIL >= 0.75 else 20)
+        if srlib.native() and self.whitewall:
+            segs = sitelib.wheel_sides(srlib.round_sides(32))
         # a tyre in section: bead, a sidewall that swells, a shoulder, a tread with a little crown
         bulge, mid = hw + 0.28, rr + 0.5 * (R - rr)
         tyre = [
@@ -1318,6 +1320,17 @@ class Car:
             (R - 0.08, -hw + 1.9),
             (R, 0.0),
         ]
+        if srlib.native() and self.whitewall:
+            # Recess the rain grooves inside the established tread envelope. Their section
+            # and spacing are estimated for these passenger tyres, in inches.
+            span = hw - 1.9
+            tyre.pop()
+            for frac in (-0.70, -0.25, 0.25, 0.70):
+                z = span * frac
+                r = R - 0.08 * abs(frac)
+                tyre.extend([(r, z - 0.075), (r - 0.16, z - 0.045), (r - 0.16, z + 0.045), (r, z + 0.075)])
+                if frac == -0.25:
+                    tyre.append((R, 0))
         tyre += [(R - 0.08, hw - 1.9), (R - 0.45, hw - 0.8), (R - 1.5, hw)]
         if self.whitewall:
             edge = min(rr + 0.6 + self.whitewall, mid + 0.6)

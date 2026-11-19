@@ -29,6 +29,7 @@ import sitelib
 import srlib
 from srlib import FT
 
+from . import steelwork
 from .site import (
     GAUGE,
     LEVELS,
@@ -237,7 +238,17 @@ def platform(parts: Parts, n: int, s: int) -> None:
     parts.node(name, "ServiceStructure", L(0.0, 0.0, zf))
     red, deck, white, glass = parts(name, "red"), parts(name, "deck"), parts(name, "white"), parts(name, "glass")
     rails, fit = parts(name, "white/rails"), parts(name, "grey/fittings")
-    notched_half(deck, s, zf - 0.45, zf, inner_edge(n, s), X=X)
+    edge = inner_edge(n, s)
+    if n == 1 and srlib.native():
+        # Keep the fitted nose of each half round the vehicle. The open outer deck bears on its joists.
+        shoulder = max(x for x, _ in edge) + 0.16
+        notched_half(deck, s, zf - 0.45, zf, edge, X=shoulder)
+        xa, xb = sorted((s * shoulder, s * X))
+        steelwork.grating(deck, xa, xb, DECK_FRONT + Y0, DECK_BACK + Y0, zf)
+        sbox(deck, s, X - 0.12, X - 0.06, DECK_FRONT, DECK_BACK, zf, zf + 0.33)
+        sbox(deck, s, 1, X - 0.13, DECK_FRONT + 0.06, DECK_FRONT + 0.12, zf, zf + 0.33)
+    else:
+        notched_half(deck, s, zf - 0.45, zf, edge, X=X)
     if n < 4:  # level 4's deck sits on the white room's roof
         under = parts(name, "yellow") if n == 3 else red  # the white room's underside showed yellow (6100884)
         for x in (4.6, 9.0, X - 0.3):  # joists, front to back
@@ -312,7 +323,18 @@ def platform(parts: Parts, n: int, s: int) -> None:
         if s < 0:
             sbox(fit, s, 6.0, 12.6, DECK_BACK - 1.6, DECK_BACK - 0.35, zf, zf + 3.0)
         sbox(fit, s, 11.0, 13.1, DECK_FRONT + 2.0, DECK_FRONT + 4.5, zf, zf + 5.5)
-        sbox(fit, s, 2.0, 12.8, DECK_BACK - 0.95, DECK_BACK - 0.35, zf + h - 1.2, zf + h - 0.9)
+        if srlib.native():
+            for y in (DECK_BACK - 0.95, DECK_BACK - 0.39):
+                sbox(fit, s, 2.0, 12.8, y, y + 0.04, zf + h - 1.2, zf + h - 0.9)
+            for i in range(12):
+                x = 2.05 + 0.96 * i
+                sbox(fit, s, x, x + 0.12, DECK_BACK - 0.91, DECK_BACK - 0.39, zf + h - 1.2, zf + h - 1.14)
+            cable = parts(name, "cable", True)
+            for i in range(3):
+                y = DECK_BACK - 0.82 + 0.14 * i
+                cable.tube(P(*L(s * 2.1, y, zf + h - 1.085)), P(*L(s * 12.7, y, zf + h - 1.085)), 0.055 * FT, 14)
+        else:
+            sbox(fit, s, 2.0, 12.8, DECK_BACK - 0.95, DECK_BACK - 0.35, zf + h - 1.2, zf + h - 0.9)
     else:  # level 4: the shelter round the escape tower, with the deflector inside, and a railed roof
         h = 9.0
         wall(red, glass, s, "x", X, (DECK_FRONT, DECK_BACK), zf, zf + h, [(-8.0, -4.5), (-2.5, 1.0), (3.0, 6.5)], zf + 4.0, zf + 7.5)
@@ -377,7 +399,7 @@ def wheelset(parts: Parts, k: int, sx: int, yc: float) -> None:
     for d in (-1, 1):
         x = sx * RAIL_PAIR_X + d * GAUGE / 2
         inward = -d  # toward the pair's middle: the flange runs inside the rail
-        steel.lathe(ftp(tread), sitelib.wheel_sides(32), matrix=axes(L(x, yc, zc), (0, 1, 0), (inward, 0, 0)))
+        steel.lathe(ftp(tread), sitelib.wheel_sides(srlib.round_sides(32)), matrix=axes(L(x, yc, zc), (0, 1, 0), (inward, 0, 0)))
     steel.tube(P(*L(sx * RAIL_PAIR_X - 3.45, yc, zc)), P(*L(sx * RAIL_PAIR_X + 3.45, yc, zc)), 0.25 * FT, 12)
 
 
@@ -405,8 +427,8 @@ def work_lights(parts: Parts) -> None:
         hung += [(f"ServiceStructure_Platform1_{'Left' if s < 0 else 'Right'}", (s * x, y)) for x, y in ((6.0, -8.0), (9.5, -1.0), (6.0, 6.0))]
     for node, (x, y) in hung:
         c = Matrix.Translation(P(*L(x, y, LEVELS[1] - 1.7)))
-        parts(node, "grey/shades", True).lathe(dome, 12, matrix=c)
-        parts(node, "lamp", True).lathe(lens, 12, matrix=c)
+        parts(node, "grey/shades", True).lathe(dome, srlib.round_sides(12), matrix=c)
+        parts(node, "lamp", True).lathe(lens, srlib.round_sides(12), matrix=c)
     # (strengths in fittings, as interiors.ceiling_light: each of these rooms had a lamp or two; estimated)
     # each of these rooms a 200 W incandescent lamp, about 3,700 lm: three quarters of a fitting, taken as 0.8
     rooms = [("Office", "ServiceStructure", (0.0, 25.0, 17.2), 0.8, 5.0)]
@@ -439,6 +461,9 @@ def access(parts: Parts) -> None:
         lbeam(frame, (x, y0 + 0.14, zf + 3.5), (x, y1 - 0.14, zf + 3.5), 0.1)
     lbeam(frame, (xi + 0.14, y1 - 0.07, zf + 3.5), (xi + CAR_W - 0.14, y1 - 0.07, zf + 3.5), 0.1)
     for a, b in (((xi + 0.07, y0), (xi + 0.07, y1)), ((xi + CAR_W - 0.07, y0), (xi + CAR_W - 0.07, y1)), ((xi, y1 - 0.07), (xi + CAR_W, y1 - 0.07))):
+        if srlib.native():
+            steelwork.lift_mesh(panel, L(*a, 0)[:2], L(*b, 0)[:2], zf + 0.1, zf + CAR_H - 0.1)
+            continue
         quad = [P(*L(*a, zf + 0.1)), P(*L(*b, zf + 0.1)), P(*L(*b, zf + CAR_H - 0.1)), P(*L(*a, zf + CAR_H - 0.1))]
         panel.add([tuple(v) for v in quad], [(0, 1, 2, 3)])
     # steps up to it from the pad, and from the track bed when the structure has rolled off the slab:
@@ -583,11 +608,29 @@ def build(parts: Parts) -> None:
 
         for z0, z1 in zip(zs, zs[1:]):
             for i in range(4):
-                beam(red, corner(i, z0), corner(i, z1), 0.75)
+                if srlib.native():
+                    facing = ((-1, 0, 0), (0, -1, 0), (1, 0, 0), (0, 1, 0))[i]
+                    # Seat each end inside the foot shoe or the head girder.
+                    foot = 9.75 if z0 == zs[0] else z0
+                    head = z1 - 0.35 if z1 == zs[-1] else z1
+                    steelwork.angle(red, corner(i, foot), corner(i, head), 0.75, facing)
+                else:
+                    beam(red, corner(i, z0), corner(i, z1), 0.75)
             for i in range(4):
                 j = (i + 1) % 4
                 beam(red, corner(i, z1), corner(j, z1), 0.36)
-                beam(red, corner(i, z0), corner(j, z1), 0.3)
+                if srlib.native():
+                    steelwork.angle(red, corner(i, z0), corner(j, z1), 0.3, (0, 0, 1))
+                    if i in (0, 2):
+                        # A triangular gusset at the diagonal's upper joint, in the plane of this face.
+                        x, y, z = corner(j, z1)
+                        direction = 1 if i == 0 else -1
+                        y += direction * 0.385
+                        sitelib.plate(
+                            red, [(x - direction * 0.25, y, z + 0.24), (x + direction * 0.95, y, z + 0.24), (x - direction * 0.25, y, z - 0.96)], 0.05
+                        )
+                else:
+                    beam(red, corner(i, z0), corner(j, z1), 0.3)
         sbox(red, sx, leg_x(BASE_Z) - 2.2, leg_x(BASE_Z) + 2.2, MAST_Y - 2.2, MAST_Y + 2.2, 9.3, 10.0)  # the leg's shoe and hinge
         dark.tube(P(*L(sx * (leg_x(BASE_Z) - 2.4), MAST_Y, 10.6)), P(*L(sx * (leg_x(BASE_Z) + 2.4), MAST_Y, 10.6)), 0.4 * FT, 12)
 

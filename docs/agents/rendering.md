@@ -431,6 +431,7 @@ with a fifth of LC-5's puff on the deck. Its sizes are estimated from photograph
 Models are generated, so a lower level of detail is a rebuild, not a remodel:
 `blender ... -- --out x.glb --detail 0.3`. `srlib.DETAIL` thins every curve and, under 0.5, drops
 fasteners; eight sides or fewer is a shape, not a curve, and is kept. The inventory uses 1.0.
+Freedom 7 also has a native inspection tier at 2.0. `pnpm rust:models:build` writes its stack, pad and two May 1961 place models under `rust/models/`. The native unpacker prefers those files.
 The clearance check runs at every level, and coarser curves sit differently against each other,
 so a fitting that clears at 1.0 can land on its neighbour at 0.3.
 A wheel that rolls is the exception to plain thinning: it asks for `sitelib.wheel_sides(n)` sides, a multiple

@@ -30,7 +30,7 @@ import interiors
 import sitelib
 import srlib
 import vehicles as cars
-from srlib import FT, interior
+from srlib import FT, interior, round_sides
 
 from .site import (
     GROUND,
@@ -127,9 +127,9 @@ def trailer_wheel(parts: Parts, node: str, centre, side: int) -> None:
     """A trailer's road wheel standing still: a tyre on a pressed-steel disc, its outer face toward `side` (+1: +X)."""
     m = axes(centre, (0, 1, 0), (side, 0, 0))
     tyre = [(0.85, -0.3), (1.15, -0.33), (1.32, -0.3), (1.4, -0.18), (1.4, 0.18), (1.32, 0.3), (1.15, 0.33), (0.85, 0.3)]
-    parts(node, "tyre", True).lathe(ftp(tyre), sitelib.wheel_sides(28), matrix=m)
+    parts(node, "tyre", True).lathe(ftp(tyre), sitelib.wheel_sides(round_sides(28)), matrix=m)
     rim = [(0.0, -0.28), (0.86, -0.28), (0.86, 0.2), (0.55, 0.22), (0.3, 0.24), (0.27, 0.34), (0.0, 0.34)]
-    parts(node, "grey/wheels", True).lathe(ftp(rim), 28, matrix=m)
+    parts(node, "grey/wheels", True).lathe(ftp(rim), round_sides(28), matrix=m)
 
 
 def vessel(radius: float, length: float, crown: float) -> list:
@@ -204,11 +204,11 @@ def near_launcher(parts: Parts) -> None:
     cx, cy, cz, r, length = xf - 4.4, (y0 + y1) / 2, 3.5, 1.5, 6.4
     parts.node(u, g, (cx, cy, 0.0), label="Tank on its cart")
     tank, frame, metal = parts(u, "orange/tank", True), parts(u, "chassis"), parts(u, "grey/fittings", True)
-    tank.lathe(ftp(vessel(r, length, 0.7)), 40, matrix=axes((cx, cy - length / 2, cz), (1, 0, 0), (0, 1, 0)))
+    tank.lathe(ftp(vessel(r, length, 0.7)), round_sides(40), matrix=axes((cx, cy - length / 2, cz), (1, 0, 0), (0, 1, 0)))
     for dy in (-1.9, 1.9):  # a saddle and a strap at each
         box(frame, (cx - 1.25, cy + dy - 0.2, 1.75), (cx + 1.25, cy + dy + 0.2, cz - 0.9))
         strap = ftp([(r + 0.02, -0.14), (r + 0.07, -0.14), (r + 0.07, 0.14), (r + 0.02, 0.14), (r + 0.02, -0.14)])
-        metal.lathe(strap, 40, matrix=axes((cx, cy + dy, cz), (1, 0, 0), (0, 1, 0)))
+        metal.lathe(strap, round_sides(40), matrix=axes((cx, cy + dy, cz), (1, 0, 0), (0, 1, 0)))
     for dx in (-1.25, 1.25):  # the cart: two rails and two ends, an axle under the middle, a prop and a drawbar at one end
         box(frame, (cx + dx - 0.12, cy - 3.3, 1.5), (cx + dx + 0.12, cy + 3.3, 1.76))
         box(frame, (cx + dx - 0.1, cy - 0.75, 1.0), (cx + dx + 0.1, cy - 0.45, 1.5))
@@ -218,7 +218,7 @@ def near_launcher(parts: Parts) -> None:
     for side in (-1, 1):
         m = axes((cx + side * 1.95, cy - 0.6, 1.0), (0, 1, 0), (side, 0, 0))
         tyre = [(0.6, -0.2), (0.86, -0.22), (0.97, -0.17), (1.0, -0.08), (1.0, 0.08), (0.97, 0.17), (0.86, 0.22), (0.6, 0.2)]
-        parts(u, "tyre", True).lathe(ftp(tyre), sitelib.wheel_sides(24), matrix=m)
+        parts(u, "tyre", True).lathe(ftp(tyre), sitelib.wheel_sides(round_sides(24)), matrix=m)
         parts(u, "grey/wheels", True).lathe(ftp([(0.0, -0.18), (0.61, -0.18), (0.61, 0.12), (0.2, 0.16), (0.0, 0.16)]), 20, matrix=m)
     beam(frame, (cx, cy + 3.2, 1.6), (cx, cy + 3.2, 0.12), 0.16)  # the prop it stands on
     box(frame, (cx - 0.35, cy + 2.85, 0.0), (cx + 0.35, cy + 3.55, 0.12))
@@ -278,11 +278,11 @@ def near_launcher(parts: Parts) -> None:
     for k in range(9):
         y = ta + 0.6 + k * (tb - ta - 1.2) / 8
         box(dark, (tx - 3.9, y - 0.12, deck - 0.6), (tx + 3.9, y + 0.12, deck - 0.27))
-    tank.lathe(ftp(vessel(r, length, 1.25)), 48, matrix=axes((tx, ta + 3.0, cz), (1, 0, 0), (0, 1, 0)))
+    tank.lathe(ftp(vessel(r, length, 1.25)), round_sides(48), matrix=axes((tx, ta + 3.0, cz), (1, 0, 0), (0, 1, 0)))
     for dy in (5.5, 13.5, 21.5):  # saddles, and a strap over the tank at each
         box(white, (tx - 2.1, ta + dy - 0.35, deck), (tx + 2.1, ta + dy + 0.35, cz - 1.4))
         strap = ftp([(r + 0.03, -0.2), (r + 0.09, -0.2), (r + 0.09, 0.2), (r + 0.03, 0.2), (r + 0.03, -0.2)])
-        tank.lathe(strap, 48, matrix=axes((tx, ta + dy, cz), (1, 0, 0), (0, 1, 0)))
+        tank.lathe(strap, round_sides(48), matrix=axes((tx, ta + dy, cz), (1, 0, 0), (0, 1, 0)))
     for side in (-1, 1):  # the tandem at the rear, the landing legs at the front
         for dy in (3.6, 7.4):
             trailer_wheel(parts, u, (tx + side * 3.3, ta + dy, 1.4), side)
@@ -479,7 +479,7 @@ def furniture(parts: Parts) -> None:
                 P(sx + dx * 1.15, sy + dy - 0.12, SHOWER_CASTOR),
                 P(sx + dx * 1.15, sy + dy + 0.12, SHOWER_CASTOR),
                 SHOWER_CASTOR * FT,
-                sitelib.wheel_sides(12),
+                sitelib.wheel_sides(round_sides(12)),
             )
         tube.tube(P(sx + dx, sy - 1.6, 8.6), P(sx + dx, sy + 1.6, 8.6), 0.07 * FT, 8)
     for dy in (-1.6, 1.6):
@@ -642,7 +642,7 @@ def furniture(parts: Parts) -> None:
             xa, xb = sorted((s * 2.3 + (tx0 + tx1) / 2, s * 3.9 + (tx0 + tx1) / 2))
             wheel = f"{tr}_Wheel_{k}"
             parts.node(wheel, tr, ((xa + xb) / 2, y, 1.55))
-            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, sitelib.wheel_sides(16))
+            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, sitelib.wheel_sides(round_sides(16)))
             parts(wheel, "chassis", True).tube(P(xa - 0.03, y, 1.55), P(xb + 0.03, y, 1.55), 0.8 * FT, 10)
         box(parts(tr, "chassis/axles"), ((tx0 + tx1) / 2 - 2.3, y - 0.2, 1.35), ((tx0 + tx1) / 2 + 2.3, y + 0.2, 1.75))
     for s in (-1, 1):  # the landing legs at the front
@@ -747,7 +747,7 @@ def transfer_van(parts: Parts) -> None:
             xa, xb = sorted((xm + s * 2.3, xm + s * 3.9))
             wheel = f"{tv}_Wheel_{k}"
             parts.node(wheel, tv, ((xa + xb) / 2, y, 1.55))
-            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, sitelib.wheel_sides(16))
+            parts(wheel, "tyre", True).tube(P(xa, y, 1.55), P(xb, y, 1.55), 1.55 * FT, sitelib.wheel_sides(round_sides(16)))
             parts(wheel, "chassis", True).tube(P(xa - 0.03, y, 1.55), P(xb + 0.03, y, 1.55), 0.8 * FT, 10)
         box(parts(tv, "chassis/tvaxles"), (xm - 2.3, y - 0.2, 1.35), (xm + 2.3, y + 0.2, 1.75))
         for s in (-1, 1):  # a hanger from each axle up to the frame

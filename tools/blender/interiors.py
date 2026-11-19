@@ -404,7 +404,9 @@ def lockers(parts: Parts, node: str, m: Matrix, n: int, *, width: float | None =
             _box(dark, m, (a + 0.25 * f, -0.03 * f, z), (b - 0.25 * f, -0.01 * f, z + 0.05 * f))
         _rod(chrome, m, (b - 0.18 * f, -0.02 * f, h * 0.48), (b - 0.18 * f, -0.12 * f, h * 0.48), 0.03 * f)
         _box(chrome, m, (b - 0.26 * f, -0.04 * f, h * 0.44), (b - 0.1 * f, -0.01 * f, h * 0.53))
-        _box(plate, m, ((a + b) / 2 - 0.15 * f, -0.03 * f, h - 1.15 * f), ((a + b) / 2 + 0.15 * f, -0.015 * f, h - 0.95 * f))
+        # The bottom louvre finishes 0.98 ft below the top. Put the native name plate below it.
+        label = h - (0.10 * f if srlib.native() else 0)
+        _box(plate, m, ((a + b) / 2 - 0.15 * f, -0.03 * f, label - 1.15 * f), ((a + b) / 2 + 0.15 * f, -0.015 * f, label - 0.95 * f))
 
 
 def cabinet(parts: Parts, node: str, m: Matrix, *, drawers: int = 4) -> None:

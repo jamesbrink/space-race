@@ -19,6 +19,9 @@ from __future__ import annotations
 
 import math
 
+from lc5 import steelwork
+from srlib import native, round_sides
+
 from .site import (
     FOOTING,
     FT,
@@ -159,7 +162,7 @@ def gantry(parts: Parts) -> None:
             x = sx * (wide / 2 - 1.5)
             box(grey, (x - 2.6, y - 4.0, 1.3), (x + 2.6, y + 4.0, 2.9))
             for dy in (-2.2, 2.2):
-                grey.tube(P(x - 2.9, y + dy, 1.28), P(x + 2.9, y + dy, 1.28), 1.25 * FT, 14)
+                grey.tube(P(x - 2.9, y + dy, 1.28), P(x + 2.9, y + dy, 1.28), 1.25 * FT, round_sides(14))
     # ---- the mast: two legs, each a pair of chords laced together, leaning in to the head
     for sx in (-1, 1):
         zs = [DECK + (HEAD - DECK) * k / 12 for k in range(13)]
@@ -167,7 +170,11 @@ def gantry(parts: Parts) -> None:
             for dy in (-2.0, 2.0):
                 beam(red, (sx * leg_x(za), MAST_Y + dy, za), (sx * leg_x(zb), MAST_Y + dy, zb), 0.9)
             flip = 2.0 if k % 2 else -2.0
-            beam(red, (sx * leg_x(za), MAST_Y + flip, za), (sx * leg_x(zb), MAST_Y - flip, zb), 0.45)
+            foot, head = (sx * leg_x(za), MAST_Y + flip, za), (sx * leg_x(zb), MAST_Y - flip, zb)
+            if native():
+                steelwork.angle(red, foot, head, 0.45, (sx, 0, 0))
+            else:
+                beam(red, foot, head, 0.45)
             beam(red, (sx * leg_x(zb), MAST_Y - 2.0, zb), (sx * leg_x(zb), MAST_Y + 2.0, zb), 0.45)
         beam(red, (sx * leg_x(45.0), MAST_Y - 2.0, 45.0), (sx * (wide / 2 - 1.5), MAST_Y - 34.0, DECK - 0.5), 1.0)  # the back brace
     for z in (22.0, *LEVELS.values(), 71.0, 92.0, HEAD):  # across, between the legs
@@ -179,7 +186,10 @@ def gantry(parts: Parts) -> None:
     pw, pd = PLATFORM
     ya, yb = MAST_Y + 3.2, MAST_Y + 3.2 + pd  # clear of the legs' forward chords
     for z in (22.0, LEVELS["I"]):
-        box(galv, (-pw / 2, ya, z - 0.5), (pw / 2, yb, z))
+        if native():
+            steelwork.grating(galv, -pw / 2, pw / 2, ya, yb, z)
+        else:
+            box(galv, (-pw / 2, ya, z - 0.5), (pw / 2, yb, z))
         handrail(red, [(-pw / 2 + 0.2, ya, z), (-pw / 2 + 0.2, yb - 0.2, z), (pw / 2 - 0.2, yb - 0.2, z), (pw / 2 - 0.2, ya, z)])
     for name in ("II", "III", "IV"):
         z = LEVELS[name]

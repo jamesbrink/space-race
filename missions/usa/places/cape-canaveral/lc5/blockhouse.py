@@ -144,6 +144,14 @@ def build(parts: Parts) -> None:
             w.box(frame, s0 - 0.05, s0 + 0.22, 0.02, 0.5, sill - 0.05, band + 0.05)
             w.box(frame, s1 - 0.22, s1 + 0.05, 0.02, 0.5, sill - 0.05, band + 0.05)
             w.box(frame, s0 + 0.22, s1 - 0.22, 0.02, 0.5, sill - 0.05, sill + 0.22)
+            if srlib.native():
+                # Outer retaining beads on the photographed ports. Sections, gauge and screw pitch estimated.
+                normal = (-w.n.x, -w.n.y, 0)
+                for a in (s0 + 0.085, s1 - 0.085):
+                    w.box(frame, a - 0.045, a + 0.045, -0.035, 0.02, sill, low)
+                    for k in range(5):
+                        frame.disc(P(*w.p(a, -0.035, sill + 0.22 + k * 0.49)), normal, 0.038 * FT, 0.025 * FT, 12)
+                w.box(frame, s0 + 0.14, s1 - 0.14, -0.035, 0.02, sill + 0.05, sill + 0.16)
             edges = [s0 + 0.1, s1 - 0.1] + ([(s0 + s1) / 2] if s1 - s0 > 7 else [])
             for a in edges:  # the upper light's side bars, and the mullion of a port two bays wide
                 beam(frame, w.p(a, 0.12, band), w.p(a, WALL - 0.3, head - 0.12), 0.24)
@@ -172,12 +180,15 @@ def build(parts: Parts) -> None:
 
     # ---- the roof: a slab set in from the walls, domed
     edge = offset_poly(OUTLINE, -1.0)
-    per = 6 if fine() else 3
+    per = srlib.round_sides(6) if fine() else 3
     rim = []
     for a, b in zip(edge, edge[1:] + edge[:1]):
         rim += [(a[0] + (b[0] - a[0]) * k / per, a[1] + (b[1] - a[1]) * k / per) for k in range(per)]
     roof = parts(g, "bunker/roof", True)
     rings = [1.0, 0.86, 0.7, 0.52, 0.34, 0.16] if fine() else [1.0, 0.7, 0.35]
+
+    if srlib.native():
+        rings = [k / 24 for k in range(24, 0, -1)]
 
     def dome(i: float, s: float):
         x, y = rim[int(i) % len(rim)]
@@ -270,6 +281,19 @@ def build(parts: Parts) -> None:
         [on_roof(12.0, -6.0, 0.08), on_roof(24.0, -2.0, 0.08), on_roof(36.0, 5.0, 0.08), on_roof(42.0, 8.0, 0.1)],
         [on_roof(43.0, 9.0, 0.08), on_roof(52.0, 2.0, 0.08), on_roof(60.0, -8.0, 0.08), on_roof(66.0, -19.0, 0.08), S(66.0, -21.6, EAVE - 2.0)],
     ):
+        if srlib.native():
+            centres = []
+            for a, b in zip(path, path[1:]):
+                steps = max(1, math.ceil(math.dist(a, b)))
+                for i in range(steps):
+                    x, y, z = (v + (w - v) * i / steps for v, w in zip(a, b))
+                    # Follow the curved roof until the run turns down over the eaves.
+                    if b[2] >= ROOF_EDGE:
+                        z = roof_z(x, y, edge) + 0.08
+                    centres.append(P(x, y, z))
+            centres.append(P(*path[-1]))
+            cable.loft(centres, [(0.05 * FT, 0.05 * FT)] * len(centres), 16, ref=(0, 0, 1), resample=1)
+            continue
         cable.loft([P(*q) for q in path], [(0.05 * FT, 0.05 * FT)] * len(path), 6, ref=(0, 0, 1))
     # the helix, aimed at pad 5 over the firing room's roof
     hx, hy, hz = on_roof(22.0, 9.0)

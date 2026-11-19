@@ -1,7 +1,8 @@
 // The native build's models: the repo's own GLBs with their Draco compression taken off, because Bevy's glTF
 // loader does not read KHR_draco_mesh_compression. Nothing else is changed: the same nodes, names, materials and
-// textures, written under rust/assets/models/ at the path they have under public/models/ (that folder is not
-// committed; this makes it again). The decoder is the page's own (public/draco), as tools/glb-geometry.mjs uses it.
+// textures, written under rust/assets/models/ at their original path. Sources come from rust/models/ when present,
+// otherwise from public/models/. The unpacked folder is not
+// committed; this makes it again. The decoder is the page's own (public/draco), as tools/glb-geometry.mjs uses it.
 //
 //   node rust/tools/unpack-models.mjs            the first flight and what stands round it
 //   node rust/tools/unpack-models.mjs <a.glb>... those files, given by their path under public/models/
@@ -98,7 +99,8 @@ function writer() {
 
 function unpack(d, file) {
   const native = join(root, 'rust/models', file);
-  const glb = readFileSync(existsSync(native) ? native : join(from, file));
+  const nativeTier = existsSync(native);
+  const glb = readFileSync(nativeTier ? native : join(from, file));
   const jsonLength = glb.readUInt32LE(12);
   const gltf = JSON.parse(glb.subarray(20, 20 + jsonLength).toString('utf8'));
   const bin = glb.subarray(20 + jsonLength + 8);
@@ -190,7 +192,7 @@ function unpack(d, file) {
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, Buffer.concat([header, chunk(json.length, 0x4e4f534a), json, chunk(body.length, 0x004e4942), body]));
   const stood = slider === null ? '' : `, stood as at liftoff (${slider.toFixed(2)} on its slider)`;
-  console.log(`${file}: ${triangles} triangles, ${(body.length / 1e6).toFixed(1)} MB${stood}`);
+  console.log(`${file} (${nativeTier ? 'native' : 'inventory'}): ${triangles} triangles, ${(body.length / 1e6).toFixed(1)} MB${stood}`);
 }
 
 const d = await decoder();

@@ -8,7 +8,7 @@ and flown by a native engine. It is a proof of concept on a long-running branch.
 
 ```sh
 pnpm install          # once: the model unpacker runs the web build's own code
-pnpm rust:models:build # rebuild the native Freedom 7 vehicle and pad from Blender sources (optional)
+pnpm rust:models:build # rebuild the native Freedom 7 vehicle, pad and May 1961 Cape surroundings from Blender sources (optional)
 pnpm rust:models      # unpack rust/models/ where present, public/models/ for the rest, into rust/assets/models/
 pnpm rust:run         # build (release) and open the game; arguments after -- go to it
 pnpm rust:check       # format check, clippy with warnings as errors, every test: must pass before a commit
@@ -98,7 +98,8 @@ crates/
   sr-hygiene/    tests only: the rules below
 apps/
   space-race/    the binary: reads the command line, opens the game
-tools/           node: unpack-models.mjs (Draco off, the pad stood as at liftoff)
+models/          committed native-tier Draco GLBs for Freedom 7 and its dated surroundings
+tools/           node: build-models.mjs (four native sources), unpack-models.mjs (Draco off, the pad stood as at liftoff)
 assets/          shaders; models/ is made by `pnpm rust:models`
 ```
 

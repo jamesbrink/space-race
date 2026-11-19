@@ -25,7 +25,7 @@ import sitelib
 from lc5.site import FOOTING, GAUGE, GROUND, RAIL_PAIR_X, RAIL_TOP
 from lc5.site import materials as _lc5_materials
 from sitelib import P, Parts, axes, beam, box, fine, handrail, lattice, obox, offset_poly, plate, prism, profile, slab, solid, stood
-from srlib import FT
+from srlib import FT, native, round_sides
 
 sitelib.use(FT)
 ftp = profile
@@ -103,8 +103,10 @@ def ring_stand(parts: Parts, node: str, centre, across: float, height: float, le
     steel = parts(node, "black/stands", True)
     r = across / 2
     m = axes((cx, cy, 0.0), (1, 0, 0), (0, 0, 1))
-    steel.lathe(ftp([(r * 0.72, height - 0.8), (r, height - 0.8), (r, height), (r * 0.72, height), (r * 0.72, height - 0.8)]), 24, matrix=m)
-    steel.lathe(ftp([(r * 1.15, 0.0), (r * 1.3, 0.0), (r * 1.3, 0.3), (r * 1.15, 0.3), (r * 1.15, 0.0)]), 24, matrix=m)
+    steel.lathe(
+        ftp([(r * 0.72, height - 0.8), (r, height - 0.8), (r, height), (r * 0.72, height), (r * 0.72, height - 0.8)]), round_sides(24), matrix=m
+    )
+    steel.lathe(ftp([(r * 1.15, 0.0), (r * 1.3, 0.0), (r * 1.3, 0.3), (r * 1.15, 0.3), (r * 1.15, 0.0)]), round_sides(24), matrix=m)
     for k in range(legs):
         q = math.tau * (k + 0.5) / legs
         beam(
@@ -124,6 +126,9 @@ def rails(parts: Parts, node: str, y0: float, y1: float, pairs=(-RAIL_PAIR_X, RA
     for cx in pairs:
         for side in (-0.5, 0.5):
             x = cx + side * GAUGE
+            if native():
+                sitelib.rail(steel, [(x, y0, RAIL_TOP), (x, y1, RAIL_TOP)])
+                continue
             box(steel, (x - 0.11, y0, -0.9), (x + 0.11, y1, RAIL_TOP))
 
 
@@ -158,7 +163,7 @@ def wedge_blockhouse(
     wall = parts(node, "bunker")
     prism(wall, [w(0, 0), w(half, -half), w(length, -half), w(length, half), w(half, half)], GROUND - FOOTING, eave)
     # the vault: the same section from just behind the point to the back wall
-    n, rise = 10, crown - eave
+    n, rise = round_sides(10), crown - eave
     section = [(-half + 0.01, eave - 1.0)] + [(-half + 0.01 + (width - 0.02) * k / n, eave + rise * (1 - (2 * k / n - 1) ** 2)) for k in range(n + 1)]
     section += [(half - 0.01, eave - 1.0)]
     solid(parts(node, "bunker/vault"), [[(*w(u, v), z) for v, z in section] for u in (half + 0.5, length - 0.01)])
@@ -175,6 +180,22 @@ def wedge_blockhouse(
         for a0, a1 in ports:
             ca = (a0 + a1) / 2
             obox(void, (mx + along[0] * ca - out[0] * 0.3, my + along[1] * ca - out[1] * 0.3, 6.6), (*along, 0), (0, 0, 1), (a1 - a0, 0.9, 3.6))
+            if native():
+                # External steel surrounds of the existing dark port. Two lights in tall viewing
+                # ports (HAER FL-8-5, p. 46). Estimate the bar widths and projection.
+                def trim(a, z, width, height):
+                    obox(
+                        steel,
+                        (mx + along[0] * a + out[0] * 0.20, my + along[1] * a + out[1] * 0.20, z),
+                        (*along, 0),
+                        (0, 0, 1),
+                        (width, 0.16, height),
+                    )
+
+                for edge in (a0 + 0.085, a1 - 0.085):
+                    trim(edge, 6.6, 0.17, 3.6)
+                for height in (4.88, 6.85, 8.32):
+                    trim(ca, height, a1 - a0 - 0.34, 0.16)
         span = max(a for p in ports for a in p) - min(a for p in ports for a in p) + 2.0
         mid = (max(a for p in ports for a in p) + min(a for p in ports for a in p)) / 2
         obox(steel, (mx + along[0] * mid + out[0] * 0.6, my + along[1] * mid + out[1] * 0.6, 8.75), (*along, 0), (0, 0, 1), (span, 1.6, 0.3))

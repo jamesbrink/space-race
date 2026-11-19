@@ -36,7 +36,7 @@ import math
 from mathutils import Matrix, Vector
 
 from sitelib import wheel_sides
-from srlib import FT, TAU
+from srlib import FT, TAU, round_sides
 
 from .site import HATCH_Z, P, Parts, arch, axes, beam, box, fine, ftp, hull, plate, truss
 
@@ -114,7 +114,7 @@ def road_wheel(parts: Parts, name: str, hub, side: int, dual: bool) -> None:
     offsets = (-0.5, 0.5) if dual else (0.0,)
     for off in offsets:
         m = out @ Matrix.Translation((0, 0, off * FT))
-        tyre.lathe(ftp(skin), wheel_sides(32), matrix=m)
+        tyre.lathe(ftp(skin), wheel_sides(round_sides(32)), matrix=m)
         if fine():  # shoulder lugs, staggered side to side
             for k in range(36):
                 for sz in (-1, 1):
@@ -128,7 +128,7 @@ def road_wheel(parts: Parts, name: str, hub, side: int, dual: bool) -> None:
     else:
         face = [(rb - 0.14, zo + 0.22), (0.62, zo + 0.10), (0.55, zo + 0.30), (0.30, zo + 0.30), (0.27, zo + 0.52), (0, zo + 0.55)]
         nut_r, nut_z = 0.43, zo + 0.30
-    rim.lathe(ftp([(0, zi), (rb + 0.04, zi), (rb + 0.04, zo + 0.40), (rb - 0.08, zo + 0.40), *face]), wheel_sides(32), matrix=out)
+    rim.lathe(ftp([(0, zi), (rb + 0.04, zi), (rb + 0.04, zo + 0.40), (rb - 0.08, zo + 0.40), *face]), wheel_sides(round_sides(32)), matrix=out)
     axle = out.to_3x3() @ Vector((0, 0, 1))
     for k in range(10):
         a = TAU * k / 10
@@ -224,7 +224,7 @@ def build(parts: Parts) -> dict:
         tbeam(trim, (3.5 + k * 0.4, -3.3, 5.9), (3.5 + k * 0.4, -3.55, 6.45), 0.07)
     dome = [(0, 0), (0.25, 0.04), (0.4, 0.2), (0.45, 0.45), (0.45, 4.35), (0.4, 4.6), (0.25, 4.76), (0, 4.8)]
     for y in (3.3, 2.3, 1.3):
-        light.lathe(ftp(dome), 16, matrix=axes(T(2.6, y, DECK_Z + 0.52), (0, 1, 0), (1, 0, 0)))
+        light.lathe(ftp(dome), round_sides(16), matrix=axes(T(2.6, y, DECK_Z + 0.52), (0, 1, 0), (1, 0, 0)))
         for x in (3.6, 6.4):
             tb(trim, (x - 0.12, y - 0.4, DECK_Z), (x + 0.12, y + 0.4, DECK_Z + 0.2))
     # the control station at the rear of the transporter (documented), reached from the ground
@@ -432,18 +432,18 @@ def build(parts: Parts) -> dict:
             top, low = Vector(T(xh + fore * 0.2, sy * 4.0, 5.0)), H + d * ((F - H).length * 0.78) + t * 0.55
             tb(body, (xh + fore * 0.2 - 0.3, sy * 4.0 - 0.3 * (sy < 0), 3.9), (xh + fore * 0.2 + 0.3, sy * 4.0 + 0.3 * (sy > 0), 5.3))
             mid = top + (low - top) * 0.6
-            light.tube(top * FT, mid * FT, 0.3 * FT, 14)  # the ram's barrel, on the body
-            rod.tube(mid * FT, low * FT, 0.13 * FT, 10)  # its rod, on the leg
+            light.tube(top * FT, mid * FT, 0.3 * FT, round_sides(14))  # the ram's barrel, on the body
+            rod.tube(mid * FT, low * FT, 0.13 * FT, round_sides(10))  # its rod, on the leg
             ttube(trim, (xh - 0.6, sy * 3.9, 3.2), (xh + 0.6, sy * 3.9, 3.2), 0.16, 10)  # the hinge pin
 
     # ---- turntable at the tail, the mast's foot, its two rams, the winch
     px, pz = PIVOT
-    trim.lathe(ftp([(0, 0), (2.7, 0), (2.7, 0.3), (0, 0.3)]), 40, matrix=Matrix.Translation(P(*T(px, 0, DECK_Z))))  # slew ring
+    trim.lathe(ftp([(0, 0), (2.7, 0), (2.7, 0.3), (0, 0.3)]), round_sides(40), matrix=Matrix.Translation(P(*T(px, 0, DECK_Z))))  # slew ring
     if fine():
         for k in range(24):
             a = TAU * k / 24
             trim.disc(P(*T(px + 2.55 * math.cos(a), 2.55 * math.sin(a), DECK_Z + 0.3)), (0, 0, 1), 0.07 * FT, 0.08 * FT, 6)
-    body.lathe(ftp([(2.4, 0.2), (2.4, 1.2), (0, 1.2)]), 40, matrix=Matrix.Translation(P(*T(px, 0, DECK_Z))))
+    body.lathe(ftp([(2.4, 0.2), (2.4, 1.2), (0, 1.2)]), round_sides(40), matrix=Matrix.Translation(P(*T(px, 0, DECK_Z))))
     tb(body, (px - 2.9, -2.2, DECK_Z + 1.2), (px + 3.1, 2.2, DECK_Z + 1.4))
     cheek = [(-1.7, DECK_Z + 1.4), (1.7, DECK_Z + 1.4), (0.95, pz + 0.3), (0.5, pz + 0.75), (-0.5, pz + 0.75), (-0.95, pz + 0.3)]
     for sy in (-1, 1):
@@ -485,9 +485,11 @@ def build(parts: Parts) -> dict:
         )
         centre = elbow + side * sy * 1.75  # a spoked sheave: grooved rim, hub, six spokes
         boom.lathe(
-            ftp([(1.62, -0.14), (1.9, -0.14), (1.78, 0.0), (1.9, 0.14), (1.62, 0.14), (1.62, -0.14)]), 32, matrix=axes(tuple(centre), u, side * sy)
+            ftp([(1.62, -0.14), (1.9, -0.14), (1.78, 0.0), (1.9, 0.14), (1.62, 0.14), (1.62, -0.14)]),
+            round_sides(32),
+            matrix=axes(tuple(centre), u, side * sy),
         )
-        boom.lathe(ftp([(0, -0.2), (0.4, -0.2), (0.4, 0.2), (0, 0.2)]), 16, matrix=axes(tuple(centre), u, side * sy))
+        boom.lathe(ftp([(0, -0.2), (0.4, -0.2), (0.4, 0.2), (0, 0.2)]), round_sides(16), matrix=axes(tuple(centre), u, side * sy))
         for k in range(6):
             spoke = u * math.cos(TAU * k / 6) + v * math.sin(TAU * k / 6)
             beam(boom, tuple(centre + spoke * 0.3), tuple(centre + spoke * 1.68), 0.16)
@@ -501,16 +503,16 @@ def build(parts: Parts) -> dict:
     for sy in (-1, 1):
         foot, top = Vector(T(px + 2.5, sy * 0.95, DECK_Z + 1.5)), pin + u * rs + v * 2.2 + side * sy * 0.95
         mid = foot + (top - foot) * 0.62
-        light.tube(foot * FT, mid * FT, 0.42 * FT, 16)
-        mmetal.tube(mid * FT, top * FT, 0.2 * FT, 12)
+        light.tube(foot * FT, mid * FT, 0.42 * FT, round_sides(16))
+        mmetal.tube(mid * FT, top * FT, 0.2 * FT, round_sides(12))
         tb(body, (px + 2.2, sy * 0.95 - 0.3, DECK_Z + 1.4), (px + 2.8, sy * 0.95 + 0.3, DECK_Z + 1.75))
-    mmetal.tube((pin - side * 1.85) * FT, (pin + side * 1.85) * FT, 0.32 * FT, 14)  # the mast's foot on its pin
+    mmetal.tube((pin - side * 1.85) * FT, (pin + side * 1.85) * FT, 0.32 * FT, round_sides(14))  # the mast's foot on its pin
     del mlight
 
     # ---- the jib: its own node on the pin at the mast's head
     parts.node("CherryPicker_Jib", "CherryPicker_Mast", tuple(elbow))
     jboom, jcable = parts("CherryPicker_Jib", "yellow"), parts("CherryPicker_Jib", "cable", True)
-    jboom.tube((elbow - side * 2.0) * FT, (elbow + side * 2.0) * FT, 0.25 * FT, 12)  # the pin
+    jboom.tube((elbow - side * 2.0) * FT, (elbow + side * 2.0) * FT, 0.25 * FT, round_sides(12))  # the pin
     w = (HANG - elbow).normalized()
     n = Vector((-w.z, 0, w.x))
     n = n if n.z > 0 else -n
@@ -561,11 +563,15 @@ def build(parts: Parts) -> dict:
         # hanger: two plates off the back wall to the pin at the jib's tip
         y0, y1 = sorted((c.y + sy * 0.95, c.y + sy * 1.1))
         box(cab, (c.x + 2.26, y0, c.z + 1.3), (HANG.x + 0.6, y1, c.z + 3.3))
-        pinm.lathe(ftp([(0, -0.08), (0.95, -0.08), (0.95, 0.08), (0, 0.08)]), 28, matrix=axes(tuple(HANG + side * sy * 1.3), (1, 0, 0), side * sy))
+        pinm.lathe(
+            ftp([(0, -0.08), (0.95, -0.08), (0.95, 0.08), (0, 0.08)]),
+            round_sides(28),
+            matrix=axes(tuple(HANG + side * sy * 1.3), (1, 0, 0), side * sy),
+        )
     box(cab, (c.x + 2.1, c.y - 2.1, c.z + 3.25), (c.x + 2.25, c.y + 2.1, c.z + 3.65))
     box(cab, (c.x - 2.25, c.y - 2.1, c.z + 3.25), (c.x - 2.1, c.y + 2.1, c.z + 3.65))
     box(cdark, (c.x + 2.1, c.y - 2.1, c.z - 3.55), (c.x + 2.25, c.y + 2.1, c.z - 2.8))
-    pinm.tube((HANG - side * 1.45) * FT, (HANG + side * 1.45) * FT, 0.2 * FT, 12)
+    pinm.tube((HANG - side * 1.45) * FT, (HANG + side * 1.45) * FT, 0.2 * FT, round_sides(12))
     beam(cdark, (c.x + 1.75, c.y - 1.9, c.z + 0.3), (c.x + 1.75, c.y + 1.9, c.z + 0.3), 0.12)  # grab rail
     for y in (-1.9, 1.9):
         beam(cdark, (c.x + 1.75, c.y + y, c.z + 0.3), (c.x + 1.97, c.y + y, c.z + 0.3), 0.1)

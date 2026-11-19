@@ -27,7 +27,7 @@ from __future__ import annotations
 
 import math
 
-from srlib import FT
+from srlib import FT, round_sides
 
 from .site import (
     BOOSTER_BAND,
@@ -76,16 +76,16 @@ def hinge(parts: Parts, node: str, which: str, collar: float) -> None:
     shoe = parts("LaunchPedestal", "grey", True)
     obox(shoe, at(0, 0, DECK + 0.02), out, up, (0.72, 0.5, 0.14))
     obox(shoe, at(0, 0, (DECK + z) / 2 + 0.04), out, up, (0.28, 0.12, z - DECK - 0.08))
-    shoe.tube(P(*at(0, -0.066, z)), P(*at(0, 0.066, z)), 0.17 * FT, 16)  # the lug's round head, the pin through it
+    shoe.tube(P(*at(0, -0.066, z)), P(*at(0, 0.066, z)), 0.17 * FT, round_sides(16))  # the lug's round head, the pin through it
     if fine():
         for u in (-0.28, 0.28):
             for v in (-0.18, 0.18):
                 shoe.disc(P(*at(u, v, DECK + 0.09)), up, 0.045 * FT, 0.04 * FT, 6)
     m = parts(node, "grey", True)
-    m.tube(P(*at(0, -0.21, z)), P(*at(0, 0.21, z)), 0.06 * FT, 12)
+    m.tube(P(*at(0, -0.21, z)), P(*at(0, 0.21, z)), 0.06 * FT, round_sides(12))
     for v in (-0.125, 0.125):
         obox(m, at(0, v, z + 0.15), out, up, (0.36, 0.05, 0.75))
-    m.lathe(ftp([(0.0, z + 0.3), (collar, z + 0.3), (collar, z + 0.62), (0.0, z + 0.62)]), 20, matrix=axes(at(0, 0, 0), out, up))
+    m.lathe(ftp([(0.0, z + 0.3), (collar, z + 0.3), (collar, z + 0.62), (0.0, z + 0.62)]), round_sides(20), matrix=axes(at(0, 0, 0), out, up))
 
 
 def pole(m, which: str, top: float, every: float) -> None:
@@ -94,13 +94,13 @@ def pole(m, which: str, top: float, every: float) -> None:
     r = POLE_R[which]
     m.lathe(
         ftp([(0.0, MAST_HINGE_Z + 0.6), (r, MAST_HINGE_Z + 0.6), (r, top - 0.06), (r * 0.7, top + 0.05), (0.0, top + 0.05)]),
-        16,
+        round_sides(16),
         matrix=axes(at(0, 0, 0), out, (0, 0, 1)),
     )
     if fine():
         z = MAST_HINGE_Z + every
         while z < top - 2.0:
-            m.tube(P(*at(0, 0, z - 0.08)), P(*at(0, 0, z + 0.08)), (r + 0.035) * FT, 16)
+            m.tube(P(*at(0, 0, z - 0.08)), P(*at(0, 0, z + 0.08)), (r + 0.035) * FT, round_sides(16))
             z += every
 
 
@@ -120,7 +120,7 @@ def capsule(parts: Parts) -> None:
     pole(m, which, top, 8.0)
     # the release head: a box on the pole's top, the valve's body on its outer face (TM X-53107, T-540: "capsule mast release valve")
     obox(parts(node, "grey/head"), at(0, 0, top + HEAD / 2 + 0.06), frame(which)[1], (0, 0, 1), (0.5, 0.46, HEAD))
-    m.tube(P(*at(0.25, 0, top + 0.45)), P(*at(0.52, 0, top + 0.45)), 0.1 * FT, 12)
+    m.tube(P(*at(0.25, 0, top + 0.45)), P(*at(0.52, 0, top + 0.45)), 0.1 * FT, round_sides(12))
     # the umbilical, strapped up the pole's side from the table to the head, and the eject control line beside it
     run = [at(0.0, 0.29, z) for z in (MAST_HINGE_Z + 1.1, 20.0, 40.0, top - 1.2)] + [at(0.0, 0.31, top + 0.25)]
     cable.loft([P(*p) for p in run], [(0.1 * FT, 0.1 * FT)] * len(run), 10, ref=(0, 0, 1), resample=1)
@@ -163,7 +163,7 @@ def booster(parts: Parts) -> None:
     skin = -((mast_frame(which)[0][0] ** 2 + mast_frame(which)[0][1] ** 2) ** 0.5) + BODY_R  # the booster's skin, from the pole's middle
     # the steady: two struts in to a shoe that stops 5/8 in short of the skin, just under the chequers (items 466 and 333)
     for z in (BOOSTER_BAND - 1.25, BOOSTER_BAND - 0.55):
-        m.tube(P(*at(-r + 0.03, 0, z)), P(*at(skin + 0.1, 0, z)), 0.05 * FT, 8)
+        m.tube(P(*at(-r + 0.03, 0, z)), P(*at(skin + 0.1, 0, z)), 0.05 * FT, round_sides(8))
     obox(m, at(skin + 0.08, 0, BOOSTER_BAND - 0.9), out, up, (0.06, 0.5, 1.0))
     # the cooling package, outboard: the coolant's vessel, white, round-bottomed, under the box of its blower and
     # valves, on two arms from the pole (TM X-53107 4.2.3: "the coolant container, blower, check valve, vent valve,
@@ -178,7 +178,7 @@ def booster(parts: Parts) -> None:
     obox(dark, at(mid, 0, (split + 0.06 + z1) / 2), out, up, (1.1, 1.2, z1 - split - 0.06))
     for z in (z0 + 0.75, z1 - 0.35):
         for v in (-0.3, 0.3):
-            m.tube(P(*at(r - 0.03, v * 0.5, z)), P(*at(mid - 0.4, v, z)), 0.045 * FT, 8)
+            m.tube(P(*at(r - 0.03, v * 0.5, z)), P(*at(mid - 0.4, v, z)), 0.045 * FT, round_sides(8))
     if fine():
         for z in (z0 + 0.62, split - 0.2):  # the bands the vessel hangs in
             white.tube(P(*at(mid, 0, z - 0.04)), P(*at(mid, 0, z + 0.04)), 0.545 * FT, 20)
@@ -186,7 +186,7 @@ def booster(parts: Parts) -> None:
     # the hose coiled behind the package, hung in a long loop (466: the dark loop outboard of the white vessel)
     cu, cz, ru, rz, rh = PACKAGE_REACH - 0.07 - 0.36, (z0 + z1) / 2 + 0.05, 0.36, 0.95, 0.07
     coil = [at(cu + ru * math.sin(math.tau * k / 24), 0.16 * (k / 24 - 1), cz + rz * math.cos(math.tau * k / 24)) for k in range(49)]  # two turns
-    hose.loft([P(*p) for p in coil], [(rh * FT, rh * FT)] * len(coil), 8, ref=rnd, resample=1)
+    hose.loft([P(*p) for p in coil], [(rh * FT, rh * FT)] * len(coil), round_sides(8), ref=rnd, resample=1)
     m.tube(P(*at(mid + 0.5, 0, cz + rz - 0.1)), P(*at(cu, 0, cz + rz - 0.1)), 0.04 * FT, 6)  # the hook it hangs on
     assert cu + ru + rh <= PACKAGE_REACH + 1e-6 and PACKAGE_HALF >= 0.62  # what level 2's floor is cut round (site.package_cut)
     # From the package up the pole's outer side, over its top in a saddle and in to the booster: the two air ducts
@@ -195,7 +195,7 @@ def booster(parts: Parts) -> None:
     arch = [(0.93, z1 - 0.05), (0.6, z1 + 1.0), (0.52, top - 1.6), (0.47, top - 0.5), (0.3, top + 0.42), (-0.08, top + 0.68)]
     arch += [(-0.42, top + 0.4), (-0.56, top - 0.3), (-0.5, top - 0.95), (-0.44, top - 1.26), (skin + 0.13, top - 1.3)]  # square on to the plate
     for v, rr in ((-0.23, 0.13), (0.23, 0.13), (0.0, 0.07)):
-        hose.loft([P(*at(u, v, z)) for u, z in arch], [(rr * FT, rr * FT)] * len(arch), 10, ref=rnd, resample=2)
+        hose.loft([P(*at(u, v, z)) for u, z in arch], [(rr * FT, rr * FT)] * len(arch), round_sides(10), ref=rnd, resample=2)
     obox(m, at(skin + 0.09, 0, top - 1.3), out, up, (0.06, 0.9, 0.8))  # the plate the plugs are on
     obox(m, at(0.0, 0, top + 0.09), out, up, (0.5, 0.78, 0.1))  # the saddle on the pole's top
     hose.tube(P(*at(-0.2, r + 0.05, MAST_HINGE_Z + 1.0)), P(*at(-0.2, r + 0.05, top - 0.3)), 0.03 * FT, 6)  # the eject control line

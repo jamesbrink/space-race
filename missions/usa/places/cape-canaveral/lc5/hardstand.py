@@ -172,7 +172,7 @@ def build(parts: Parts) -> None:
 
     # the painted circle, 121 ft across, a line 6 in wide
     paint = parts("Hardstand", "paint")
-    segs = 160 if fine() else 96
+    segs = srlib.round_sides(160) if fine() else 96
     for k in range(segs):
         a0, a1 = TAU * k / segs, TAU * (k + 1) / segs
         ring = [
@@ -228,4 +228,13 @@ def fishplate(mb, x: float, y: float, top: float) -> None:
         box(mb, (xa, y - 12 * i, base + 1.45 * i), (xb, y + 12 * i, base + 4.1 * i))
         if srlib.DETAIL >= 1.0:
             for k in (-7.5, -2.5, 2.5, 7.5):
+                if srlib.native():
+                    # Square-shouldered joint bolt on one side, washer and hex nut on the other.
+                    base_at = P(x + side * (w + 0.75) * i, y + k * i, base + 2.8 * i)
+                    rot = sitelib.axes((0, 0, 0), (0, 1, 0), (side, 0, 0))
+                    rot.translation = base_at
+                    profile = [(0.7, 0), (0.7, 0.13), (0.51, 0.13)]
+                    mb.lathe([(r * i * sitelib.UNIT, z * i * sitelib.UNIT) for r, z in profile], 24, matrix=rot)
+                    mb.disc(base_at, (side, 0, 0), 0.53 * i * sitelib.UNIT, 0.59 * i * sitelib.UNIT, 6 if side > 0 else 16)
+                    continue
                 mb.disc(P(x + side * (w + 0.7) * i, y + k * i, base + 2.8 * i), (side, 0, 0), 0.55 * i * sitelib.UNIT, 0.5 * i * sitelib.UNIT, 6)
