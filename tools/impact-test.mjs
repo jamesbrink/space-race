@@ -120,6 +120,91 @@ try {
       await close();
     }
   }
+  // A structure struck: Freedom 7, a second and a half up, pushed sideways into whatever of its pad stands nearest. The page's
+  // own deck flies it (the site's solids fetched by the page), and says what was struck; the rendered vehicle is left
+  // outside it. Both looks.
+  {
+    const { page, close, errors } = await open(browser, address, { timeout: 180000, viewport: [1100, 680] });
+    try {
+      const result = await page.evaluate(async () => {
+        const { cockpit, stage, clock } = window.sr;
+        const source = (path) => import(new URL(path, document.baseURI).href);
+        const { autopilot } = await source('src/sim/autopilot.ts');
+        const { add, scale, siteFrame, siteToEcefDirection, ecefToSite } = await source('src/world/frames.ts');
+        const { frameOf } = await source('src/world/earthframe.ts');
+        clock.pause();
+        const solids = cockpit.pageHost.solids?.();
+        if (!solids) throw new Error('the page has no solids for the site');
+        const site = siteFrame(cockpit.flight.site);
+        const frame = frameOf(cockpit.flight);
+        const pilot = autopilot(cockpit.vehicle);
+        let state = cockpit.state;
+        while (state.t < 1.5) state = cockpit.tick(state, pilot);
+        if (cockpit.hardestImpact) throw new Error(`struck before it was pushed: ${JSON.stringify(cockpit.hardestImpact)}`);
+        // the nearest thing standing beside it, looked for round the compass at half its height
+        const here = ecefToSite(site, frame.toFixed(state.r, state.t));
+        let nearest = null;
+        for (let k = 0; k < 32; k++) {
+          const d = [Math.cos((k * Math.PI) / 16), 0, Math.sin((k * Math.PI) / 16)];
+          const hit = solids.world.sweep(here, [here[0] + 80 * d[0], here[1], here[2] + 80 * d[2]], 0.9, state.t);
+          if (hit && (!nearest || hit.fraction < nearest.fraction)) nearest = { ...hit, d };
+        }
+        if (!nearest) throw new Error('nothing stands beside the vehicle');
+        // the one imposed input: 40 m/s toward it (it is there in half a second, still beside what it was aimed at)
+        const start = state.t;
+        state = { ...state, v: add(state.v, scale(frame.toInertial(siteToEcefDirection(site, nearest.d), state.t), 40)) };
+        cockpit.run.samples.length = cockpit.kept;
+        cockpit.run.samples.push(cockpit.vehicle.sample(state));
+        cockpit.kept = cockpit.run.samples.length;
+        const coast = autopilot(cockpit.vehicle, { launch: false, pitch: false, yaw: false, roll: false, sequence: false });
+        let first = null;
+        while (state.t < start + 12 && !state.landing) {
+          state = cockpit.tick(state, coast);
+          if (!first && cockpit.hardestImpact) first = { ...cockpit.hardestImpact };
+          if (first && state.t > first.t + 1.5) break;
+        }
+        cockpit.state = state;
+        stage.setAutoRotate(false);
+        stage.setCamera('chase');
+        const chase = stage.cam.chase;
+        chase.zoomer.set(Math.log(45));
+        chase.distance = 45;
+        chase.handSet = true;
+        stage.frozen = true;
+        // where the hull is at the end, against the site: no sphere of it in anything it was not in at liftoff
+        return { start, first, toward: `${nearest.model}/${nearest.node}`, away: 80 * nearest.fraction, end: state.t };
+      });
+      assert.ok(result.first, `nothing was struck: ${JSON.stringify(result)}`);
+      assert.match(result.first.on, /^pad\//, `what was struck is of the pad: ${JSON.stringify(result.first)}`);
+      assert.ok(result.first.t > result.start && result.first.speed > 1, JSON.stringify(result.first));
+      console.log(
+        `structure: pushed toward ${result.toward}, ${result.away.toFixed(1)} m off; struck ${result.first.name} (${result.first.on}) at T+${result.first.t.toFixed(2)} s, ${result.first.speed.toFixed(1)} m/s, ${(result.first.energy / 1000).toFixed(0)} kJ`,
+      );
+      for (const look of ['real', 'cel']) {
+        await page.evaluate((look) => window.sr.stage.setLook(look), look);
+        const seen = [];
+        for (const t of [result.first.t - 0.3, result.first.t, result.first.t + 1]) {
+          await page.evaluate((t) => window.sr.clock.seek(t), t);
+          await page.waitForFunction((t) => Math.abs(window.sr.stage.lifted.t - t) < 1e-6, t);
+          seen.push(await page.evaluate(() => window.sr.stage.main.position.toArray()));
+          if (frames) {
+            const dir = join(frames, 'structure');
+            await mkdir(dir, { recursive: true });
+            await page.screenshot({ path: join(dir, `${look}-${seen.length}.png`) });
+          }
+        }
+        // the rendered vehicle is somewhere, and moving, through the strike
+        assert.ok(
+          seen.every((p) => p.every(Number.isFinite)),
+          `${look}: the vehicle is drawn`,
+        );
+        assert.ok(Math.hypot(...seen[0].map((v, i) => v - seen[2][i])) > 0.5, `${look}: it moved through the strike`);
+      }
+      assert.deepEqual(errors, []);
+    } finally {
+      await close();
+    }
+  }
 } finally {
   await browser.close();
 }
