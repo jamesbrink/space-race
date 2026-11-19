@@ -7,7 +7,9 @@
 //   node rust/tools/unpack-models.mjs            the first flight and what stands round it
 //   node rust/tools/unpack-models.mjs <a.glb>... those files, given by their path under public/models/
 //
-// A model whose parts move through a launch morning (a pad) is written as it stood at liftoff: pose.mjs.
+// A model is written as built: its nodes where the model script put them. The game plays a pad's morning on the
+// clock from there (sr-game/src/pad/), and the scene is marked so (`extras.pose`), which a pad stood as at liftoff
+// by an older unpacker is not.
 //
 // COLOR_0 is dropped: on these models it is the cabin's baked lamp shade (src/viewer/shade.ts), not a colour, and
 // an engine that met it would multiply the paint by it.
@@ -15,7 +17,6 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { dirname, join, relative, sep } from 'node:path';
-import { standAtLiftoff } from './pose.mjs';
 
 const root = join(import.meta.dirname, '../..');
 const from = join(root, 'public/models');
@@ -205,7 +206,8 @@ function unpack(d, file) {
     if (!gltf[list].length) delete gltf[list];
   }
   compact(gltf);
-  const slider = standAtLiftoff(gltf, file);
+  const scene = gltf.scenes[gltf.scene ?? 0];
+  scene.extras = { ...scene.extras, pose: 'as built' };
   const body = out.bytes();
   gltf.bufferViews = out.views;
   gltf.buffers = [{ byteLength: body.length }];
@@ -225,8 +227,7 @@ function unpack(d, file) {
   const target = join(to, file);
   mkdirSync(dirname(target), { recursive: true });
   writeFileSync(target, Buffer.concat([header, chunk(json.length, 0x4e4f534a), json, chunk(body.length, 0x004e4942), body]));
-  const stood = slider === null ? '' : `, stood as at liftoff (${slider.toFixed(2)} on its slider)`;
-  console.log(`${file} (${nativeTier ? 'native' : 'inventory'}): ${triangles} triangles, ${(body.length / 1e6).toFixed(1)} MB${stood}`);
+  console.log(`${file} (${nativeTier ? 'native' : 'inventory'}): ${triangles} triangles, ${(body.length / 1e6).toFixed(1)} MB, as built`);
 }
 
 const d = await decoder();

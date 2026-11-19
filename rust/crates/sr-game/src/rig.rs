@@ -80,7 +80,8 @@ pub struct Rig {
 
 impl Rig {
     /// Where the eye stands from what it turns about.
-    fn arm(&self) -> DVec3 {
+    #[must_use]
+    pub fn arm(&self) -> DVec3 {
         let (sb, cb) = self.bearing.to_radians().sin_cos();
         let (se, ce) = self.elevation.to_radians().sin_cos();
         (Vec3::new(ce * sb, se, ce * cb) * self.distance).as_dvec3()
@@ -106,7 +107,8 @@ fn mount(
 ) {
     // Open on the whole vehicle from across the pad, from about where a person would stand.
     let stands = showing.0.model(Role::Vehicle).map_or(DVec3::ZERO, |m| DVec3::from_array(m.position));
-    let [bearing, elevation, distance, height] = options.pose.unwrap_or([215.0, 1.0, 68.0, 12.0]);
+    // (bearing 202: from 215 a camera tower beside the launcher stood in front of the Redstone's lower half)
+    let [bearing, elevation, distance, height] = options.pose.unwrap_or([202.0, 1.0, 68.0, 12.0]);
     let named = options.rig.as_deref();
     let kind = Kind::ALL.into_iter().find(|kind| Some(kind.name()) == named).unwrap_or_default();
     let pad = DVec3::new(stands.x, f64::from(height), stands.z);

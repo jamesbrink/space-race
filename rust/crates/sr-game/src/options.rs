@@ -1,9 +1,19 @@
 //! What the command line asked for.
 
+use crate::opening::film::Film;
 use crate::script::Press;
 use std::path::PathBuf;
 
 use bevy::prelude::Resource;
+
+/// Where the game opens.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Begins {
+    /// On the morning, played fast from the curtain to T-12, where the player takes it.
+    Morning,
+    /// At `--at` on the count, straight away.
+    Count,
+}
 
 /// How the game was started.
 #[derive(Resource, Debug, Clone, PartialEq)]
@@ -35,6 +45,10 @@ pub struct Options {
     pub mute: bool,
     /// Fly without a window and write what would have been heard here, a WAV file, instead of opening one.
     pub hear: Option<PathBuf>,
+    /// Where it opens: on the morning played to T-12 (`opening/`) unless something asked to open somewhere else.
+    pub begins: Begins,
+    /// Frames of the curtain and the opening to write, and leave (`--film`, `--frames`).
+    pub film: Option<Film>,
 }
 
 impl Default for Options {
@@ -53,6 +67,8 @@ impl Default for Options {
             rate: 1.0,
             mute: false,
             hear: None,
+            begins: Begins::Morning,
+            film: None,
         }
     }
 }
@@ -63,6 +79,7 @@ space-race [--at <seconds>] [--size <w>x<h>] [--rig <name>] [--rate <n>] [--benc
            [--shot <file.png> [--pose <bearing>,<elevation>,<distance>,<height>] [--until <seconds>]]
            [--eye <east>,<north>,<up>,<bearing>,<elevation>]
            [--keys <time>:<key>[:<held>],...] [--hear <file.wav> [--until <seconds>]]
+           [--film <dir> [--frames <list>]]
 
   --at     seconds from liftoff to open at (default -12)
   --rig    pad | tracking | chase | onboard
@@ -77,7 +94,12 @@ space-race [--at <seconds>] [--size <w>x<h>] [--rig <name>] [--rate <n>] [--benc
   --bench  print what a frame costs once a second
   --mute   open with the sound off (M puts it on)
   --hear   fly without a window, to --until, and write what would have been heard to a WAV file
-  --reference  the straight grade, for judging colours, instead of the film's";
+  --reference  the straight grade, for judging colours, instead of the film's
+  --film   play the curtain and the opening and write frames of them to a folder, then leave
+  --frames which: seconds of the opening, a span with a step, or c for the curtain (c,0,12.5,20:30:0.5)
+
+  With none of --at, --shot, --pose, --eye, --keys, --bench or --hear it opens on the morning: the pad's last
+  three hours played fast to T-12 (any key or click skips to it).";
 
 impl Options {
     /// From the arguments after the program's name.
@@ -87,6 +109,7 @@ impl Options {
     pub fn parse(args: impl IntoIterator<Item = String>) -> Result<Self, String> {
         let mut options = Self::default();
         let mut args = args.into_iter();
+        let mut placed = false;
         while let Some(flag) = args.next() {
             match flag.as_str() {
                 "--bench" => options.bench = true,
@@ -100,13 +123,22 @@ impl Options {
             let value = args.next().ok_or_else(|| format!("{flag} needs a value"))?;
             let bad = || format!("{flag}: cannot read {value:?}");
             match flag.as_str() {
-                "--at" => options.at = value.parse().map_err(|_| bad())?,
+                "--at" => {
+                    options.at = value.parse().map_err(|_| bad())?;
+                    placed = true;
+                }
                 "--rig" => options.rig = Some(value),
                 "--until" => options.until = Some(value.parse().map_err(|_| bad())?),
                 "--rate" => options.rate = value.parse().map_err(|_| bad())?,
                 "--keys" => options.keys = crate::script::parse(&value)?,
                 "--shot" => options.shot = Some(PathBuf::from(value)),
                 "--hear" => options.hear = Some(PathBuf::from(value)),
+                "--film" => options.film = Some(Film::new(PathBuf::from(value), options.film.take())),
+                "--frames" => {
+                    let frames = crate::opening::film::frames(&value).ok_or_else(bad)?;
+                    let film = options.film.take().unwrap_or_else(|| Film::new(PathBuf::from("."), None));
+                    options.film = Some(Film { frames, ..film });
+                }
                 "--size" => {
                     let (w, h) = value.split_once('x').ok_or_else(bad)?;
                     options.size = (w.parse().map_err(|_| bad())?, h.parse().map_err(|_| bad())?);
@@ -123,6 +155,14 @@ impl Options {
                 _ => return Err(format!("unknown option {flag}")),
             }
         }
+        // (anything that asks to open somewhere, or to measure or record a flight, starts there; a film is the opening)
+        let elsewhere = options.shot.is_some() || options.pose.is_some() || options.eye.is_some();
+        let measuring = !options.keys.is_empty() || options.bench || options.hear.is_some();
+        options.begins = if options.film.is_some() || !(elsewhere || measuring || placed) {
+            Begins::Morning
+        } else {
+            Begins::Count
+        };
         Ok(options)
     }
 }
@@ -141,6 +181,17 @@ mod tests {
         assert_eq!((o.at, o.size, o.bench), (30.0, (1280, 720), true));
         assert_eq!(o.pose, Some([215.0, 9.0, 150.0, 14.0]));
         assert_eq!(parse("").unwrap(), Options::default());
+        assert_eq!(
+            (parse("").unwrap().begins, parse("--rate 2").unwrap().begins),
+            (Begins::Morning, Begins::Morning)
+        );
+        assert_eq!(
+            (parse("--at -12").unwrap().begins, parse("--shot a.png").unwrap().begins),
+            (Begins::Count, Begins::Count)
+        );
+        let o = parse("--at 30 --film shots --frames c,0,10:11:0.5").unwrap();
+        assert_eq!(o.begins, Begins::Morning);
+        assert!(o.film.is_some_and(|film| film.frames.len() == 5));
         let o = parse("--keys 0:Space,18:W:9 --until 40 --rate 8").unwrap();
         assert_eq!((o.keys.len(), o.until, o.rate), (2, Some(40.0), 8.0));
     }

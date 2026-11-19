@@ -5,6 +5,7 @@
 //! are the web build's (`missions/**/*.ts`), carried over with their sources; change both together.
 
 pub mod ground;
+pub mod morning;
 pub mod types;
 pub mod usa;
 

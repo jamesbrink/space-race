@@ -3,13 +3,17 @@
 //! light take some frames), and for the flight's clock to reach `--until` if that was given, writes the PNG and
 //! leaves.
 //!
-//! A window the system is not showing (behind another, on another desktop) is not drawn at all, and its capture
-//! comes back black to the last pixel, the readout too: no picture is ever wholly black. So the window is kept on
-//! top while it is shooting, and a capture with nothing in it is taken again, a few times, before giving up.
+//! Frames for files are drawn offscreen: no window, the eye drawing into an image of its own at twice `--size`
+//! (as on the Retina screen the look was judged on), the readout with it. So a frame never takes the desktop, and
+//! it can be taken on a machine with no screen at all (hal9000). `SR_WINDOWED=1` draws in a window as before.
+//! A capture with nothing in it is taken again, a few times, before giving up.
 
+use bevy::camera::RenderTarget;
 use bevy::prelude::*;
+use bevy::render::render_resource::{Extent3d, TextureDimension, TextureFormat, TextureUsages};
 use bevy::render::view::screenshot::{Screenshot, ScreenshotCaptured, save_to_disk};
 use bevy::world_serialization::WorldInstanceReady;
+use sr_render::origin::Eye;
 
 use crate::Options;
 use crate::clock::Clock;
@@ -20,6 +24,49 @@ use crate::stage::Cast;
 const SETTLE: u32 = 90;
 const AGAIN: u32 = 30;
 const TRIES: u32 = 6;
+
+/// Set, frames for files are drawn in a window after all.
+const WINDOWED: &str = "SR_WINDOWED";
+/// Pixels to a point when drawing offscreen.
+const SCALE: u32 = 2;
+
+/// Whether this run draws offscreen: it is making frames for files, and nobody asked for the window.
+#[must_use]
+pub fn offscreen(options: &Options) -> bool {
+    (options.shot.is_some() || options.film.is_some()) && std::env::var_os(WINDOWED).is_none()
+}
+
+/// The image the eye draws into when there is no window: what a frame for a file is taken from.
+#[derive(Resource, Clone)]
+pub struct Offscreen(pub Handle<Image>);
+
+impl Offscreen {
+    /// A capture of the frame as drawn: from the image offscreen, or else the window.
+    #[must_use]
+    pub fn capture(offscreen: Option<&Self>) -> Screenshot {
+        offscreen.map_or_else(Screenshot::primary_window, |o| Screenshot::image(o.0.clone()))
+    }
+}
+
+/// The image, `--size` times [`SCALE`], made to be drawn into and read back.
+fn canvas(size: (u32, u32)) -> Image {
+    let extent = Extent3d { width: size.0 * SCALE, height: size.1 * SCALE, depth_or_array_layers: 1 };
+    let mut image = Image::new_uninit(extent, TextureDimension::D2, TextureFormat::Rgba8UnormSrgb, default());
+    image.texture_descriptor.usage = TextureUsages::TEXTURE_BINDING
+        | TextureUsages::COPY_SRC
+        | TextureUsages::COPY_DST
+        | TextureUsages::RENDER_ATTACHMENT;
+    image
+}
+
+/// The eye, as it is made, draws into the image and carries the readout.
+fn aim(added: On<Add<Eye>>, offscreen: Option<Res<Offscreen>>, mut commands: Commands) {
+    if let Some(offscreen) = offscreen {
+        commands
+            .entity(added.entity)
+            .insert((RenderTarget::Image(offscreen.0.clone().into()), IsDefaultUiCamera));
+    }
+}
 
 #[derive(Resource, Default)]
 struct Progress {
@@ -34,7 +81,15 @@ pub struct ShotPlugin;
 
 impl Plugin for ShotPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Progress>().add_observer(arrived).add_systems(Update, (take, unseen));
+        let options = app.world().get_resource::<Options>().cloned();
+        if let Some(options) = options.filter(offscreen) {
+            let image = app.world_mut().resource_mut::<Assets<Image>>().add(canvas(options.size));
+            app.insert_resource(Offscreen(image)).insert_resource(UiScale(SCALE as f32));
+        }
+        app.init_resource::<Progress>()
+            .add_observer(arrived)
+            .add_observer(aim)
+            .add_systems(Update, (take, unseen));
     }
 }
 
@@ -49,6 +104,7 @@ fn take(
     options: Res<Options>,
     clock: Res<Clock>,
     cast: Query<(), With<Cast>>,
+    offscreen: Option<Res<Offscreen>>,
     mut progress: ResMut<Progress>,
 ) {
     let Some(path) = &options.shot else { return };
@@ -58,7 +114,10 @@ fn take(
     progress.settled += 1;
     if progress.settled > SETTLE && options.until.is_none_or(|until| clock.t >= until) {
         progress.taken = true;
-        commands.spawn(Screenshot::primary_window()).observe(save_to_disk(path.clone())).observe(leave);
+        commands
+            .spawn(Offscreen::capture(offscreen.as_deref()))
+            .observe(save_to_disk(path.clone()))
+            .observe(leave);
     }
 }
 

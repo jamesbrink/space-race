@@ -40,6 +40,8 @@ pub struct SiteDef {
     pub region: Option<Region>,
     /// Its made ground (roads, clearings, paving), if it has been set down.
     pub made: Option<Made>,
+    /// The time kept there that day: its name, and hours from UTC.
+    pub zone: (&'static str, f64),
 }
 
 impl SiteDef {
@@ -365,6 +367,8 @@ pub struct Flight {
     pub events: &'static [Event],
     /// Where this build's simulator misses the record.
     pub misses: &'static [Check],
+    /// How its pad moves through the morning, on the clock, if it does.
+    pub morning: Option<crate::morning::Plays>,
 }
 
 impl Flight {

@@ -45,6 +45,9 @@ pub const LC5: SiteDef = SiteDef {
     ),
     region: Some(REGION),
     made: Some(super::lc5_ground::MADE),
+    // Eastern Standard Time: Florida kept no daylight time in 1961, and every report of the flight gives its times
+    // in EST (`lc-5.ts` `zone`)
+    zone: ("EST", -5.0),
 };
 
 /// What stood round Complex 5 in May 1961, in the pad's frame: the blockhouse, Pad 6 and its gantry, the roads.

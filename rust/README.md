@@ -24,9 +24,34 @@ Or from `rust/`: `cargo run --release -p space-race -- --help`. One frame to a f
 cargo run -p space-race -- --shot out.png --pose 200,6,60,14 [--at <seconds>] [--reference]
 ```
 
+## The opening
+
+Nothing of the world is shown until all of it has arrived and settled: a dark card in the print's palette says
+what is coming (Mercury-Redstone 3, Freedom 7, Cape Canaveral, Launch Complex 5, 5 May 1961) and what is still on
+its way, and fades once the models, the land, the sea and the sky are there and the light has settled
+(`curtain.rs`). Under it no key acts but the sound's (M, - and =).
+
+Then the morning, played fast (`opening/`): from 06:30 EST, the last of the work platforms parting and the
+trailer and the huts taken off the pad, through the service structure rolling back at 06:37, the cherry picker's
+cab rising to the hatch, two and a half hours of holds passing in seconds while the Sun climbs and the cloud
+races, the structure going on to its launch position, the cab away and down, the capsule's mast falling at T-35 s
+and boom drop at T-14 s, to T-12, where the readout fades in and the flight is yours. About fifty seconds; any key
+or a click goes straight to T-12. The foot of the screen says the time on the Cape's clocks, how fast the clock is
+running and the last thing the record has happen on the pad. Every instant shown is the flight's clock and
+everything that happens at it is the flight's data (the pad's keyframes and motions, each time with its
+confidence: `sr-missions/src/usa/mercury/mr3_morning.rs`); what is invented is presentation and labelled so: the
+time-lapse's paces (`opening/pace.rs`) and the shot list (`opening/shots.rs`: each shot's span of the clock, where
+the eye stands, what it looks at or follows, the lens, cut or dipped to dark). `--at`, `--shot`, `--pose`, `--eye`,
+`--keys`, `--bench` and `--hear` open at the count straight away.
+
+The pad's morning plays on the clock at any time (`pad/`): the structure, the cherry picker, the cable masts and
+what is cleared off the pad stand where the morning has them, `--at` or opening alike, and after liftoff the
+cherry picker folds and drives off. `--film <dir> --frames c,0,10:20:0.5` writes frames of the curtain (`c`) and
+of the opening at those of its seconds, drawn as `--shot`'s are, a sixtieth of a second a frame.
+
 ## Fly it
 
-It opens on the pad at T-12 s and the flight is yours: the count runs to zero and holds there until you light the
+After the opening, the flight is yours: the count runs to zero and holds there until you light the
 engine. Nothing is steered for you. The stick works what the vehicle had (the Redstone's jet vanes while its engine
 burns and its air rudders while there is air; the capsule's jets anywhere), the air turns whatever is not held
 against it, and Space does the next thing the flight needs, when you say: light the engine, let the tower go,
@@ -123,7 +148,7 @@ crates/
 apps/
   space-race/    the binary: reads the command line, opens the game
 models/          committed native-tier Draco GLBs for Freedom 7 and its dated surroundings
-tools/           node: build-models.mjs (four native sources), unpack-models.mjs (Draco off, the pad stood as at liftoff)
+tools/           node: build-models.mjs (four native sources), unpack-models.mjs (Draco off, as built)
 assets/          shaders; models/ is made by `pnpm rust:models`
 ```
 
@@ -160,8 +185,11 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
 
 - **Models are unpacked, not read in place.** Bevy's glTF loader does not read Draco, and every GLB requires it.
   `tools/unpack-models.mjs` uses the page's decoder, drops the web cabin-shade channel and shares native finish tiles.
-- **The pad is stood as at liftoff by the unpacker**, by running the web build's own motions
-  (`src/viewer/explode.ts`) at liftoff's place on the pad's slider. The native build does not play the morning.
+- **The pad's morning stands level as built.** Its motions are the web build's (`lc-5.parts.ts`, the flight's
+  `MORNING`) played on the clock, but what runs on something (the structure's trucks on their rails, the trucks
+  on the road) moves level, as built: the web build stands each wheel on the surface under it. The pad's
+  floodlights are not lit at dawn, and the haze does not change with the morning: when the lamps went off and how
+  the haze lifted are not recorded.
 - **The Earth is a sphere** through the site (the engine's atmosphere is one); the web build's is the WGS 84 ellipsoid.
 - **The air is the day's**: ERA5's column over the pad at the hour of liftoff (pressure, temperature and wind at
   38 levels to 49 km, a reanalysis and not a sounding), joined as the web build joins it and eased into the 1976
@@ -274,9 +302,8 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
 
 ## Not here yet
 
-Walking and driving, the gallery, the Lineup and the front page, the map and the predicted path, the pad's
-morning played on the clock, every other flight, the cel look, the web and mobile
-builds (the engine supports them; none was built).
+Walking and driving, the gallery, the Lineup and the front page, the map and the predicted path, every other
+flight, the cel look, the web and mobile builds (the engine supports them; none was built).
 
 ## What it showed
 

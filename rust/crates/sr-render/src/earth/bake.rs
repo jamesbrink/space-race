@@ -34,6 +34,11 @@ const LUMP: [f32; FIELDS] =
 #[derive(Resource)]
 pub struct Baking(Task<Vec<u8>>);
 
+/// Put in the world when the land's bake has landed (or come out unusable, when the ground is worked out as
+/// before): from then on the ground is drawn as it will stay, so a curtain over the start may lift.
+#[derive(Resource, Debug, Clone, Copy, Default)]
+pub struct LandBaked;
+
 /// Where a level's texel `(i, j)` lies, m east and north of the site (rows north first).
 fn at(i: usize, j: usize, half: f32) -> Vec2 {
     let n = TEXELS as f32;
@@ -106,6 +111,7 @@ pub fn land(
     let (Some(mut baking), Some(maps)) = (baking, maps) else { return };
     let Some(data) = block_on(poll_once(&mut baking.0)) else { return };
     commands.remove_resource::<Baking>();
+    commands.insert_resource(LandBaked);
     if data.len() != TEXELS * SETS * 4 * 2 * TEXELS {
         warn!("the land's bake came out the wrong size; the ground is worked out as before");
         return;

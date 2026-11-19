@@ -28,6 +28,8 @@ use bevy::prelude::*;
 
 use material::EarthMaterial;
 
+pub use bake::LandBaked;
+
 /// The region's shore map (`public/globe/<region>.near.png`: `tools/globe-region.mjs`). The region's other maps
 /// are found beside it by its name (`<region>.json`, `<region>.surface.json` and what they name).
 #[derive(Debug, Clone, PartialEq)]

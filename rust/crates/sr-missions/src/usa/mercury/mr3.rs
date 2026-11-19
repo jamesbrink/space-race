@@ -241,4 +241,5 @@ pub static FLIGHT: Flight = Flight {
     plan: PLAN,
     events: &EVENTS,
     misses: &MISSES,
+    morning: Some(crate::morning::Plays(super::mr3_morning::morning)),
 };
