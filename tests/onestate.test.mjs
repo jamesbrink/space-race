@@ -61,6 +61,13 @@ function unexplained(samples) {
   return { worst, steps };
 }
 
+/**
+ * The state the guidance's cut on the orbit is read at: the spacecraft as the coast begins; or, where the stopped stage
+ * goes on pushing before it lets the spacecraft go (`Craft.vents`: an S-IVB's vent and dump), the stack as the stage stopped.
+ */
+const cutOn = (plan, whole) =>
+  plan.craft[0].vents?.length ? whole.ascent.samples.find((x) => x.t >= whole.ascent.stops.at(-1) - 1e-9) : whole.coast.samples[0];
+
 /** The most the last joint of a plan pushes its two sides apart at, m/s. */
 const pushOf = (plan) => {
   const c = plan.craft[0];
@@ -183,7 +190,7 @@ for (const f of part(orbital)) {
   }, () => {
     const o = plan.record.orbit;
     if (!o.period) return;
-    const first = whole.coast.samples[0];
+    const first = cutOn(plan, whole);
     const m = meanOf({ r: frame.toDate(first.r), v: frame.toDate(first.v) });
     const period = periodsOf(m.a, m.e, m.i, m.argp)[o.kind?.is ?? 'nodal'];
     const dry = whole.ascent.left.at(-1) < 1;
@@ -355,7 +362,7 @@ for (const f of part(orbital.filter((x) => varied.includes(x.id)))) {
       const plan = structuredClone(f.plan);
       const later = change(plan);
       const whole = flyWhole(plan, site, frame, sea, steer(plan, site, frame, sea), 10);
-      const first = whole.coast.samples[0];
+      const first = cutOn(plan, whole);
       const m = meanOf({ r: frame.toDate(first.r), v: frame.toDate(first.v) });
       const period = periodsOf(m.a, m.e, m.i, m.argp)[o.kind?.is ?? 'nodal'];
       const moved = whole.ascent.stops.at(-1) - base.ascent.stops.at(-1);
@@ -368,7 +375,8 @@ for (const f of part(orbital.filter((x) => varied.includes(x.id)))) {
       if (whole.ascent.left.at(-1) > 1) assert.ok(Math.abs(period - o.period.value) < 1, `${what}: the period left on is ${period} s`);
       const run = unexplained(whole.ascent.samples);
       assert.ok(run.worst.dv < 1 && run.worst.dr < 1, `${what}: still one state`);
-      assert.deepEqual({ t: first.t, r: first.r }, { t: whole.ascent.separation.t, r: whole.ascent.samples.at(-1).r });
+      const begun = whole.coast.samples[0];
+      assert.deepEqual({ t: begun.t, r: begun.r }, { t: whole.ascent.separation.t, r: whole.ascent.samples.at(-1).r });
     }
   });
 }

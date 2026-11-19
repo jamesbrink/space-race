@@ -455,7 +455,31 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
     const u = unit(sub(r, scale(n, dot(n, r))));
     return { u, h: unit(cross(n, u)) };
   };
-  const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 => {
+  /**
+   * How the launch vehicle lies once it is in orbit and still attached, where the record gives its attitude programme
+   * (`Guidance.attached`): turned from where the law left it (`from`) to the programme's pitch from the local level
+   * along the motion over the alignment, and from the freeze held among the stars. Held, it climbs against the turning
+   * level at the rate the stack goes round (its angular rate now, taken as steady since the freeze: within a few tenths
+   * of a degree over the minutes it is held), so the law needs no memory of the state at the freeze and is the same
+   * for every run. Part of the law: what the stage lets out pushes along it (`stackOf` `vent`).
+   */
+  const attachedAt = (s: State, t: number, from: Vec3): Vec3 => {
+    const a = g.attached!;
+    const [begin, end] = a.align.map((x) => x.value) as [number, number];
+    const up = frame.up(s.r, t);
+    const level = unit(sub(s.v, scale(up, dot(s.v, up))));
+    const freeze = a.freeze.value;
+    const turning = length(cross(s.r, s.v)) / dot(s.r, s.r);
+    const pitch = along(a.pitch, Math.min(t, freeze)) * DEG + (t > freeze ? turning * (t - freeze) : 0);
+    const axis = add(scale(level, Math.cos(pitch)), scale(up, Math.sin(pitch)));
+    const blend = Math.min(1, (t - begin) / (end - begin));
+    return blend >= 1 ? axis : unit(add(scale(from, 1 - blend), scale(axis, blend)));
+  };
+  const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 =>
+    g.attached && m === 'tangent' && t >= g.attached.align[0].value
+      ? attachedAt(s, t, lawAt(s, t, m, wind, thetaTurn))
+      : lawAt(s, t, m, wind, thetaTurn);
+  const lawAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 => {
     // a stored programme is the first part of the law, the gyros' own: it is flown open, as it was, until the tangent takes over
     if (g.programme && m !== 'tangent') return tilted(along(g.programme, t) * DEG);
     if (g.lost && t >= g.lost.at.value) return tilted(along(g.lost.tilt, t) * DEG);
@@ -538,10 +562,24 @@ export function stackOf(plan: FlightPlan) {
   const flows = stages.map((s) => flowOf(s.engine));
   const areas = stages.map((s) => exitAreaOf(s.engine));
   const throttle = (i: number, t: number) => (stages[i]!.throttle ? along(stages[i]!.throttle!, t) : 1);
+  const lastBody = stages[stages.length - 1]!.body.id;
+  const vents = (plan.craft[0]!.vents ?? []).filter((v) => v.body === lastBody);
   return {
     flows,
     areas,
     throttle,
+    /**
+     * What the last stage lets out at `t`, N along the long axis (`Craft.vents`): for whoever flies the stack to add
+     * once that stage has stopped and while it is still on. Nothing outside its curves.
+     */
+    vent: (t: number): number => {
+      let f = 0;
+      for (const v of vents) {
+        const p = v.thrust.points;
+        if (t >= p[0]![0] && t <= p[p.length - 1]![0]) f += along(v.thrust, t);
+      }
+      return f;
+    },
     burned: (i: number, from: number, t: number) => flows[i]! * integral(stages[i]!.throttle, from, t),
     thrust: (i: number, t: number, pressure: number) =>
       nozzleThrust(stages[i]!.count, stages[i]!.engine.thrust.vacuum.value, throttle(i, t), areas[i]!, pressure),
@@ -638,6 +676,8 @@ export function ascend(
       mass -= st.count * burned(i, t);
       if (as >= plan[i]!.from && as < plan[i]!.to) thrust += stack.thrust(i, t, air.air.pressure);
     });
+    // (the last stage, stopped and still on: what it lets out pushes the stack along its axis)
+    if (as >= plan[plan.length - 1]!.to) thrust += stack.vent(t);
     const dragArea = stack.dragArea(as, air.mach);
     const axis = axisAt(s, t, m, air.ground);
     let f: Vec3 = scale(axis, thrust);
@@ -890,7 +930,6 @@ function solve3(A: number[][], b: number[]): number[] {
 export function flyWhole(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel = 0, solved?: Solved, every = 10): FlownWhole {
   const x = solved ?? steer(plan, site, frame, seaLevel);
   const ascent = ascend(plan, site, frame, seaLevel, x);
-  attachedAttitude(plan, frame, ascent);
   ascent.separation = partedOff(plan, ascent);
   const target = targetOf(plan, frame, seaLevel, ascent);
   const coast = flyOrbit(plan, site, frame, seaLevel, every, ascent.separation, undefined, undefined, undefined, target);
@@ -937,32 +976,6 @@ export function partedOff(plan: FlightPlan, ascent: Ascended): { t: number; r: V
   if (!push) return at;
   const axis = ascent.samples.at(-1)!.axis;
   return { t: at.t, r: at.r, v: add(at.v, scale(axis, keptShare(push.value, ascent.parted.kept, ascent.parted.gone))) };
-}
-
-/**
- * How a launch vehicle still attached after its last cutoff lies, where the record gives its attitude programme
- * (`Guidance.attached`): the samples' axis turned from the law's last to the programme's pitch over the alignment, and
- * held where it was frozen. An attitude drawn, with nothing burning: it moves no state.
- */
-function attachedAttitude(plan: FlightPlan, frame: EarthFrame, ascent: Ascended): void {
-  const attached = guidanceOf(plan).attached;
-  if (!attached) return;
-  const [begin, end] = attached.align.map((t) => t.value) as [number, number];
-  let held: Vec3 | null = null;
-  for (const s of ascent.samples) {
-    if (s.t < begin) continue;
-    if (held) {
-      s.axis = held;
-      continue;
-    }
-    const up = frame.up(s.r, s.t);
-    const horizontal = unit(sub(s.v, scale(up, dot(s.v, up))));
-    const pitch = along(attached.pitch, s.t) * DEG;
-    const axis = add(scale(horizontal, Math.cos(pitch)), scale(up, Math.sin(pitch)));
-    const blend = Math.min(1, (s.t - begin) / (end - begin));
-    s.axis = unit(add(scale(s.axis, 1 - blend), scale(axis, blend)));
-    if (s.t >= attached.freeze.value) held = s.axis;
-  }
 }
 
 /**
