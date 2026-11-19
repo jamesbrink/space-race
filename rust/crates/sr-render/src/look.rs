@@ -55,19 +55,20 @@ struct Recipe {
     print: Print,
 }
 
-/// The film's print. Set by printing an undeveloped frame with these figures beside the stills until it sat with
-/// them (`scratchpad` mock-ups of 18 November 2026; the owner chose the direction).
+/// The film's print: the arithmetic of the owner's chosen mock-up ("A: Skira", made with `ImageMagick` from a
+/// frame of this build beside stills of Operation Flashpoint: Dragon Rising), done to every frame: exposure down to
+/// four fifths, colour to 0.42, a sigmoidal contrast of 7 about 52 per cent grey, the grey mapped from deep teal
+/// to warm cream and laid over as a soft light, the corners darkened to 0.35 along a 0.6 power, and grain.
 const FILM: Print = Print {
-    // (a deep teal under the darks, a warm cream over the lights)
-    shade: Vec4::new(0.12, 0.3, 0.36, 0.7),
-    light: Vec4::new(1.0, 0.9, 0.7, 0.8),
-    colour: 0.5,
-    contrast: 3.6,
-    pivot: 0.42,
-    lift: 0.02,
-    corners: 0.45,
+    shade: Vec4::new(0.02, 0.165, 0.2, 1.0),
+    light: Vec4::new(1.0, 0.894, 0.69, 0.0),
+    colour: 0.42,
+    contrast: 7.0,
+    pivot: 0.52,
+    gain: 0.8,
+    corners: 0.35,
     falloff: 0.6,
-    grain: 0.045,
+    grain: 0.05,
     frame: 0.0,
 };
 

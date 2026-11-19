@@ -45,9 +45,11 @@ separate, fire the retrorockets, let the retropack go. The parachutes come out b
 | C, or 1 2 3 4 | the camera: pad, tracking (a long lens on the ground), chase, onboard |
 | drag, wheel | turn the pad and chase cameras; zoom all of them |
 | L | the grade: Film (the game's own) or Reference (straight) |
-| N | the path ahead: where it is going if nothing more is done, its top marked |
+| N | the path ahead: where it is going if nothing more is done, its top marked (off at first) |
 | K | the camera's shake (the engine's noise near it, the air's buffet aboard), on and off |
-| I | the diagnostics: frames a second, the frame's time, what is in the scene |
+| I | the diagnostics: frames a second, the frame's time, what is in the scene (off at first) |
+| F | every figure, or the few that matter |
+| / | the keys, or one line saying where they are |
 | H | put the panels away |
 | M | the sound off, and on |
 | - = | quieter, louder |

@@ -1,6 +1,6 @@
 //! The path ahead, drawn: where the crewed body is going if nothing more is done to it (`sr-sim`'s `predict`),
 //! as a line through the sky with its top marked. It is worked out from where the body is now, a few times a
-//! second, so it follows whatever the pilot does. N puts it away.
+//! second, so it follows whatever the pilot does. N shows it and puts it away.
 
 use avian3d::prelude::{LinearVelocity, Mass, Position, Rotation};
 use bevy::math::DVec3;
@@ -26,7 +26,7 @@ const FALLING: Color = Color::srgba(0.55, 0.9, 1.0, 0.45);
 const MARK: f32 = 0.012;
 
 /// The path ahead, as last worked out.
-#[derive(Resource, Debug, Default)]
+#[derive(Resource, Debug)]
 pub struct Path {
     /// Places along it, in the site's frame, m.
     places: Vec<DVec3>,
@@ -96,5 +96,12 @@ fn draw(path: Res<Path>, origin: Res<Origin>, mut gizmos: Gizmos) {
     if path.top.is_some() {
         let at = seen(&path.places[top]);
         gizmos.sphere(Isometry3d::from_translation(at), at.length() * MARK, RISING);
+    }
+}
+
+impl Default for Path {
+    /// Put away until N asks for it: it is an aid, and the sky is the picture.
+    fn default() -> Self {
+        Self { places: Vec::new(), top: None, hidden: true }
     }
 }

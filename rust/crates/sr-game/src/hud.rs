@@ -13,9 +13,9 @@ use crate::flight::log::Log;
 use crate::flight::{Hand, Sequencer, Telemetry};
 use crate::rig::Rig;
 
-const GLASS: Color = Color::srgba(0.02, 0.03, 0.05, 0.62);
-const INK: Color = Color::srgb(0.93, 0.94, 0.95);
-const FAINT: Color = Color::srgb(0.66, 0.7, 0.74);
+const GLASS: Color = Color::srgba(0.02, 0.03, 0.04, 0.34);
+const INK: Color = Color::srgb(0.9, 0.89, 0.85);
+const FAINT: Color = Color::srgb(0.66, 0.66, 0.62);
 const ALARM: Color = Color::srgb(1.0, 0.72, 0.3);
 /// The structure's strain is called out from this much of its limit.
 const NEAR: f64 = 0.75;
@@ -28,7 +28,11 @@ G  as flown (on the pad)    P  stop the clock\n\
 N  the path ahead    K  camera shake\n\
 L  the grade    I  diagnostics\n\
 M  sound    - =  quieter, louder    H  hide these\n\
+F  every figure    / these keys
 drag  turn    wheel  zoom";
+
+/// What the legend says while it is folded.
+const FOLDED: &str = "/  the keys";
 
 /// Everything the readout draws: what H puts away.
 #[derive(Component)]
@@ -43,6 +47,14 @@ enum Line {
     Pilot,
     Alarm,
     Modes,
+    Keys,
+}
+
+/// What the readout is showing: every figure or the few that matter, and the keys or not.
+#[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
+struct Shown {
+    every: bool,
+    keys: bool,
 }
 
 /// The readout.
@@ -50,7 +62,7 @@ pub struct HudPlugin;
 
 impl Plugin for HudPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, lay).add_systems(Update, (read, tuck));
+        app.init_resource::<Shown>().add_systems(Startup, lay).add_systems(Update, (read, tuck));
     }
 }
 
@@ -119,24 +131,23 @@ fn lay(mut commands: Commands, showing: Res<Showing>) {
     commands.spawn((Panels, page)).with_children(|page| {
         page.spawn(corner(head)).with_children(|row| {
             row.spawn(panel(Node::default())).with_children(|card| {
-                card.spawn(words(flight.name, 22.0, INK));
-                card.spawn(words(flight.line, 12.0, FAINT));
-                card.spawn((Line::Clock, line(30.0, INK)));
-                card.spawn((Line::Event, line(13.0, FAINT)));
+                card.spawn(words(flight.name, 16.0, INK));
+                card.spawn((Line::Clock, line(26.0, INK)));
+                card.spawn((Line::Event, line(12.0, FAINT)));
             });
             row.spawn(panel(Node::default())).with_children(|card| {
-                card.spawn((Line::Pilot, line(14.0, INK)));
-                card.spawn((Line::Alarm, line(14.0, ALARM)));
+                card.spawn((Line::Pilot, line(12.5, INK)));
+                card.spawn((Line::Alarm, line(12.5, ALARM)));
             });
             row.spawn(panel(Node::default())).with_children(|card| {
-                card.spawn((Line::Figures, line(14.0, INK)));
+                card.spawn((Line::Figures, line(12.5, INK)));
             });
         });
         // (kept narrow: the attitude ball has the middle of the foot)
         let keys = Node { bottom: px(14), left: px(14), max_width: px(400), ..default() };
         page.spawn(panel(corner(keys))).with_children(|card| {
-            card.spawn((Line::Modes, line(12.0, INK)));
-            card.spawn(words(KEYS, 12.0, FAINT));
+            card.spawn((Line::Modes, line(11.0, FAINT)));
+            card.spawn((Line::Keys, line(11.0, FAINT)));
         });
     });
 }
@@ -173,6 +184,19 @@ fn heat(f: &Telemetry) -> String {
     }
     let (surface, hot) = (f.heat.surface.to_lowercase(), f.heat.temperature - 273.15);
     format!("{:.0} kW/m2, {surface} {hot:.0} C", f.heat.flux / 1000.0)
+}
+
+/// The figures that matter at a glance: how high, how fast, how hard, what is left, and what it can stand.
+fn few(f: &Telemetry) -> String {
+    let heat = if f.heat.part >= 0.3 { format!("\nHeat       {}", heat(f)) } else { String::new() };
+    format!(
+        "Height     {}\nSpeed      {:.0} m/s\nLoad       {:.1} g\nPropellant {:.0} %\nStructure  {:.0} %{heat}",
+        length_reading(f.height),
+        f.speed,
+        f.g,
+        f.propellant * 100.0,
+        f.stress.part * 100.0,
+    )
 }
 
 fn figures(f: &Telemetry) -> String {
@@ -263,6 +287,7 @@ fn read(
     log: Res<Log>,
     rig: Res<Rig>,
     look: Res<Look>,
+    shown: Res<Shown>,
     mut lines: Query<(&Line, &mut Text)>,
 ) {
     let event = if !clock.ready {
@@ -287,7 +312,9 @@ fn read(
             Line::Pilot if over => debrief(showing.0, &log, &hand),
             Line::Clock => clock_reading(clock.t),
             Line::Event => event.to_owned(),
-            Line::Figures => figures(&telemetry),
+            Line::Figures if shown.every => figures(&telemetry),
+            Line::Figures => few(&telemetry),
+            Line::Keys => (if shown.keys { KEYS } else { FOLDED }).to_owned(),
             Line::Pilot => pilot(&hand, &showing.0.plan, &sequencer.0, &telemetry),
             Line::Alarm => alarm(&hand, &telemetry),
             Line::Modes => {
@@ -304,7 +331,14 @@ fn tuck(
     keys: Res<ButtonInput<KeyCode>>,
     mut panels: Query<&mut Visibility, With<Panels>>,
     mut look: ResMut<Look>,
+    mut shown: ResMut<Shown>,
 ) {
+    if keys.just_pressed(KeyCode::KeyF) {
+        shown.every = !shown.every;
+    }
+    if keys.just_pressed(KeyCode::Slash) {
+        shown.keys = !shown.keys;
+    }
     if keys.just_pressed(KeyCode::KeyH) {
         for mut seen in &mut panels {
             *seen = if *seen == Visibility::Hidden { Visibility::Inherited } else { Visibility::Hidden };

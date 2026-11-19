@@ -22,7 +22,7 @@ pub struct Press {
 }
 
 /// The keys a script may name: what the game listens for.
-const NAMED: [(&str, KeyCode); 28] = [
+const NAMED: [(&str, KeyCode); 30] = [
     ("Space", KeyCode::Space),
     ("W", KeyCode::KeyW),
     ("S", KeyCode::KeyS),
@@ -41,6 +41,8 @@ const NAMED: [(&str, KeyCode); 28] = [
     ("K", KeyCode::KeyK),
     ("N", KeyCode::KeyN),
     ("M", KeyCode::KeyM),
+    ("F", KeyCode::KeyF),
+    ("/", KeyCode::Slash),
     ("-", KeyCode::Minus),
     ("=", KeyCode::Equal),
     ("I", KeyCode::KeyI),

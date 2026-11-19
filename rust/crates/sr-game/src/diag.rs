@@ -32,6 +32,8 @@ impl Plugin for DiagPlugin {
 
 fn lay(mut commands: Commands) {
     let place = Node { position_type: PositionType::Absolute, bottom: px(14), right: px(14), ..default() };
+    // (folded until I asks for it: it is for the one measuring, not the one flying)
+    let place = Node { display: Display::None, ..place };
     commands.spawn((Panels, Card, panel(place))).with_children(|card| {
         card.spawn((Figures, line(12.0, INK)));
     });

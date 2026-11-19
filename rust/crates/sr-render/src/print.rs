@@ -18,9 +18,10 @@ use bevy::shader::ShaderRef;
 #[derive(Component, ExtractComponent, ShaderType, Debug, Clone, Copy, PartialEq)]
 #[extract_app(RenderApp)]
 pub struct Print {
-    /// What the shade is toned toward, and how strongly (alpha): a colour laid over the darks as a soft light.
+    /// The tone laid over the frame as a soft light: the colour its darkest grey is mapped to (`shade`), the
+    /// colour its brightest is (`light`), and in between along the grey; `shade.a` is how strongly.
     pub shade: Vec4,
-    /// What the light is toned toward, and how strongly (alpha).
+    /// As `shade`; its alpha is unused.
     pub light: Vec4,
     /// How much of its colour the frame keeps: 1 all of it, 0 none.
     pub colour: f32,
@@ -28,10 +29,10 @@ pub struct Print {
     pub contrast: f32,
     /// The grey the contrast turns about.
     pub pivot: f32,
-    /// How far the black is lifted off black.
-    pub lift: f32,
-    /// How bright the corners are left, against 1 in the middle, and how tight the darkening is drawn in (1 is
-    /// even from the middle out; less keeps the middle clear).
+    /// What the frame is multiplied by before anything else: the print's exposure.
+    pub gain: f32,
+    /// How bright the corners are left, against 1 in the middle, and the power the fall toward them is taken to
+    /// (1 is even from the middle to the corners; less darkens more of the frame).
     pub corners: f32,
     /// As `corners`.
     pub falloff: f32,
@@ -49,7 +50,7 @@ impl Print {
         colour: 1.0,
         contrast: 0.0,
         pivot: 0.5,
-        lift: 0.0,
+        gain: 1.0,
         corners: 1.0,
         falloff: 1.0,
         grain: 0.0,

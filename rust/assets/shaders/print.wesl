@@ -17,7 +17,7 @@ struct Print {
     colour: f32,
     contrast: f32,
     pivot: f32,
-    lift: f32,
+    gain: f32,
     corners: f32,
     falloff: f32,
     grain: f32,
@@ -60,23 +60,19 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let developed = textureSampleLevel(screen_texture, texture_sampler, in.uv, 0.0);
     var coded = pow(clamp(developed.rgb, vec3(0.0), vec3(1.0)), vec3(1.0 / 2.2));
 
-    // colour held back, then the middle pulled apart
+    // exposure, then colour held back, then the middle pulled apart
+    coded = clamp(coded * print.gain, vec3(0.0), vec3(1.0));
     coded = mix(vec3(dot(coded, BLEACH)), coded, print.colour);
     coded = clamp(pulled(coded, print.contrast, print.pivot), vec3(0.0), vec3(1.0));
 
-    // the shade toned one way and the light the other, each fading out toward the other's end
-    let grey = dot(coded, LUMA);
-    let in_shade = (1.0 - smoothstep(0.0, 0.6, grey)) * print.shade.a;
-    let in_light = smoothstep(0.4, 1.0, grey) * print.light.a;
-    coded = mix(coded, soft_light(coded, print.shade.rgb), in_shade);
-    coded = mix(coded, soft_light(coded, print.light.rgb), in_light);
+    // the grey mapped from the shade's colour to the light's and laid over the frame as a soft light
+    let tone = mix(print.shade.rgb, print.light.rgb, dot(coded, LUMA));
+    coded = mix(coded, soft_light(coded, tone), print.shade.a);
 
-    // a black that is not quite black
-    coded = print.lift + (1.0 - print.lift) * coded;
-
-    // the corners let go
-    let away = length((in.uv - 0.5) * vec2(1.0, 0.82)) / 0.645;
-    coded *= mix(1.0, print.corners, pow(clamp(away, 0.0, 1.0), 1.0 / max(print.falloff, 0.05)));
+    // the corners let go: a gradient from the middle to the corners, taken to a power, its floor raised
+    let across = (in.uv - 0.5) * vec2(16.0, 9.0);
+    let middle = 1.0 - clamp(length(across) / length(vec2(8.0, 4.5)), 0.0, 1.0);
+    coded *= mix(print.corners, 1.0, pow(middle, print.falloff));
 
     // grain: two draws summed (a bell, as a count of silver grains is), mostly the same in all three colours
     let draw = hash33(vec3(in.position.xy, print.frame)) + hash33(vec3(in.position.yx + 17.0, print.frame + 31.0)) - 1.0;
