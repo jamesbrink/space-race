@@ -94,6 +94,37 @@ const PLACE_SAYS: Record<Place, string> = {
 };
 
 /**
+ * The ways from a place, as plain buttons where the switch was on a wide page: from a flight's gallery (its page) on to
+ * its launch site; from the site back to the gallery and on to the launch; from the flight deck back to either. A way
+ * the flight has not got yet is there all the same, and says why (address.ts `lacks`). `at` tells the site's which of
+ * its two places the page is in; a flight kept by hand is marked on the way to it (`markKept`).
+ */
+export function nextStep(flight: Flight, here: 'gallery' | 'site', go: (to: Place) => void): HTMLElement & { at?: (place: Place) => void } {
+  const nav: HTMLElement & { at?: (place: Place) => void } = document.createElement('nav');
+  nav.className = 'ways';
+  nav.setAttribute('aria-label', 'Where to go from here');
+  const back = (to: Place): string =>
+    `<button class="way-back" data-way="${to}" title="${esc(PLACE_SAYS[to])}"><i aria-hidden="true">‹</i><span>${shortName(to)}</span></button>`;
+  const on = (to: Place, name: string): string => {
+    const why = lacks(flight, to);
+    const says = why ? why.replace(/^[^:]*:\s*/, '').replace(/^./, (c) => c.toUpperCase()) : name;
+    return `<button class="way-on" data-way="${to}"${why ? ' aria-disabled="true"' : ''} title="${esc(why ?? PLACE_SAYS[to])}">${icon(to)}<span>${esc(says)}</span>${why ? '' : '<i aria-hidden="true">›</i>'}</button>`;
+  };
+  nav.innerHTML = here === 'gallery' ? on('site', 'Go to the launch site') : `${back('gallery')}${back('site')}${on('fly', 'Launch')}`;
+  nav.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-way]');
+    if (b && b.getAttribute('aria-disabled') !== 'true') go(b.dataset.way as Place);
+  });
+  // (at the site the ways are back to the gallery and on to the launch; flying, back to the site or the gallery)
+  nav.at = (place) => {
+    for (const b of nav.querySelectorAll<HTMLElement>('[data-way]')) b.hidden = b.dataset.way === place;
+    paintKept(nav);
+  };
+  nav.at(here);
+  return nav;
+}
+
+/**
  * The places as a switch: the same three, in the same order, in the same spot, for every flight
  * and in every place. One the flight does not have yet is there all the same, dimmed, and says why
  * when it is pointed at or pressed. `go` is told a place the flight has that is not this one.
@@ -148,14 +179,14 @@ let keptMark: { at: string; phase: string; end: () => void } | null = null;
 /** Say, in every switch of places there is and in those made after, that a flight is kept (or no longer): a mark beside Fly that ends it. */
 export function markKept(at: string | null, end: () => void, phase = 'In flight'): void {
   keptMark = at === null ? null : { at, phase, end };
-  for (const nav of document.querySelectorAll('nav.places')) paintKept(nav);
+  for (const nav of document.querySelectorAll('nav.places, nav.ways')) paintKept(nav);
 }
 
 function paintKept(nav: Element): void {
   nav.querySelector('.kept-mark')?.remove();
-  const fly = nav.querySelector<HTMLElement>('[data-place=fly]');
+  const fly = nav.querySelector<HTMLElement>('[data-place=fly], [data-way=fly]');
   fly?.classList.toggle('kept', keptMark !== null);
-  if (!fly || !keptMark) return;
+  if (!fly || !keptMark || fly.hidden) return;
   const mark = document.createElement('button');
   mark.className = 'kept-mark';
   mark.title = `Your flight is in progress (${keptMark.phase.toLowerCase()}), kept at ${keptMark.at}: Fly resumes it. This throws it away`;
@@ -628,6 +659,7 @@ export class Gallery {
       <div class="tip" hidden><b></b><span></span></div>
       ${CURTAIN}`;
     this.q('.title .sub').after(placesNav(f, 'gallery', (to) => this.host.go(to), this.scope));
+    this.q('.title .places').after(nextStep(f, 'gallery', (to) => this.host.go(to)));
     for (const b of this.root.querySelectorAll<HTMLElement>('[data-plinth]'))
       b.setAttribute('aria-pressed', String(b.dataset.plinth === this.plinth.id));
     this.fill();

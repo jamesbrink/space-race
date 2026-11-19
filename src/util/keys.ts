@@ -137,6 +137,9 @@ export const KEYS = {
   'lineup.along': { slots: WASD, does: 'along the row', when: 'the Lineup' },
   // ---- widgets: a row of tabs, a menu, the wheel of choices (ui/wheel.ts)
   'tabs.step': { slots: ['arrowleft', 'arrowright'], does: 'the tab before · the next', when: 'a row of tabs with the focus' },
+  'front.step': { slots: ['arrowup', 'arrowdown'], does: 'the choice above · below', when: 'the front page' },
+  'front.into': { slots: ['arrowright'], does: 'to the flights', when: 'the front page, on the menu' },
+  'front.back': { slots: [['arrowleft', 'escape']], does: 'back to the menu', when: 'the front page, in the flights' },
   'menu.close': { slots: ['escape'], does: 'close it', when: 'a menu open' },
   'wheel.aim': { slots: ARROWS, does: 'point at a choice', when: 'the wheel open' },
   'wheel.pick': { slots: [['enter', ' ']], does: 'choose it', when: 'the wheel open' },

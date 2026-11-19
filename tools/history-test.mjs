@@ -101,7 +101,7 @@ await scenario('places', async (page) => {
   const g = await arrive(page, 'gallery', MR3);
   check(g.hash === `#${MR3}/gallery` && g.length === start.length + 1, `the front page to Freedom 7's gallery: a step (${g.hash})`);
   await mark(page);
-  await page.locator('#gallery .places [data-place="site"]').click();
+  await page.locator('#gallery :is(.places [data-place=site], .ways [data-way=site]):visible').click();
   const site = await arrive(page, 'site', MR3);
   check(site.hash.startsWith(`#${MR3}/site/`) && site.length === g.length + 1, `the gallery to the launch site: a step (${site.hash})`);
   await page.locator('#ui [data-model="pad"]').click();
@@ -111,7 +111,7 @@ await scenario('places', async (page) => {
     pad.hash === `#${MR3}/site/pad` && pad.length === site.length,
     `a section of the site chosen: the address says it, and no step (${pad.hash})`,
   );
-  await page.locator('#ui .places [data-place="fly"]').click();
+  await page.locator('#ui :is(.places [data-place=fly], .ways [data-way=fly]):visible').click();
   const fly = await arrive(page, 'fly', MR3);
   check(fly.hash === `#${MR3}/fly` && fly.length === site.length + 1, `the site to the flight deck: a step (${fly.hash})`);
 
@@ -170,7 +170,7 @@ await scenario('second craft', async (page) => {
   const part = await state(page);
   check(part.hash === `${dormant}/TargetDockingAdapter` && part.length === linked.length, 'a part belongs to the Agena’s gallery address');
 
-  await page.locator('#gallery .places [data-place="site"]').click();
+  await page.locator('#gallery :is(.places [data-place=site], .ways [data-way=site]):visible').click();
   const site = await arrive(page, 'site', gt10);
   check(site.hash === `#${gt10}/site/pad` && site.length === linked.length + 1, 'the launch site opens on the pad in a new entry');
   check(
@@ -215,7 +215,7 @@ await scenario('crew gallery', async (page) => {
   await page.locator('#gallery [data-node="Helmet"]').click();
   const part = await state(page);
   check(part.hash === `${route}/pilot/Helmet` && part.length === linked.length, 'the helmet is addressed within the pilot’s exhibit');
-  await page.locator('#gallery .places [data-place="site"]').click();
+  await page.locator('#gallery :is(.places [data-place=site], .ways [data-way=site]):visible').click();
   const site = await arrive(page, 'site', flight);
   check(site.length === linked.length + 1, 'going to the launch site is one history step');
   const walkers = await page.evaluate(() => window.sr.flight.models.filter((model) => model.walker).map((model) => model.id));
@@ -308,9 +308,9 @@ await scenario('flown', async (page) => {
   await page.locator(`#title [data-flight="${MR3}"]`).click();
   await arrive(page, 'gallery', MR3);
   await mark(page);
-  await page.locator('#gallery .places [data-place="site"]').click();
+  await page.locator('#gallery :is(.places [data-place=site], .ways [data-way=site]):visible').click();
   await arrive(page, 'site', MR3);
-  await page.locator('#ui .places [data-place="fly"]').click();
+  await page.locator('#ui :is(.places [data-place=fly], .ways [data-way=fly]):visible').click();
   const fly = await arrive(page, 'fly', MR3);
   await page.keyboard.press('Space');
   await page.waitForTimeout(1200);

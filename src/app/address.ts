@@ -526,6 +526,9 @@ export function landed(): void {
   if (to === undefined) history.replaceState({ ...(history.state ?? {}), [STEP]: on }, '');
 }
 
+/** How many steps of its own the page's entry stands on: with none, Back would leave the page for wherever it was come to from. */
+export const stepsIn = (): number => index();
+
 /** Undo a move the page has not taken (`moved`): the entry it was on, which the history still holds. No step is added. */
 export function undo(steps: number): void {
   if (steps) history.go(-steps);
