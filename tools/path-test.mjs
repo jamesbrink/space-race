@@ -26,7 +26,12 @@
 //   - in the map (M), taken from the chase view at every third instant: a view that is not the map's or does not take in
 //     the whole line ahead; no path with its switch off; an orbit drawn over the turning Earth, or not whole (its line
 //     short of a revolution, or ending away from the vehicle); the vehicle's marker off the vehicle; another body that
-//     flies with no line or marker; no outline of the Earth; and, out of it, anything but the chase view it was taken from.
+//     flies with no line or marker; no outline of the Earth; and, out of it, anything but the chase view it was taken from,
+//   - on the pad with guidance off and nothing lit (a page of its own, at 1280 and 390): anything predicted; no line of
+//     the record's (pathref.ts), from the chase view and on the map, in both looks, or one not on the page, or with no
+//     pixels of its own, or whose pixels differ between two frames of a still scene; on the map no outline of the Earth
+//     or no marker on the vehicle; then, the engine lit and flown by hand with a prediction on show and moving, the
+//     record's line anywhere but where it stood on the pad.
 // Then each flight is taken over at seeded instants (--seed) and flown by scripted hands (Freedom 7 pitched hard over
 // and its engine cut early; Vostok 1's ascent pitched and its stages cut early or late, its braking engine fired forward
 // and back in orbit), checked at each step as above, run on to its end with nothing more done, and where it ends held
@@ -816,6 +821,8 @@ class Run {
           p.mesh.material.visible = which === 'ahead' && on;
           if (p.ringMesh) p.ringMesh.material.visible = false;
           if (p.flownMesh) p.flownMesh.material.visible = which === 'flown' && on;
+          // (the record's line is a line of its own: hidden while either of the others is measured, so they are measured as ever)
+          if (p.refMesh) p.refMesh.material.visible = which === 'ref' && on;
           window.sr.stage.dirty = true;
         },
         [on, which],
@@ -839,6 +846,7 @@ class Run {
       p.mesh.material.visible = true;
       if (p.flownMesh) p.flownMesh.material.visible = true;
       if (p.ringMesh) p.ringMesh.material.visible = true;
+      if (p.refMesh) p.refMesh.material.visible = true;
     });
     await page.evaluate((cut) => {
       const u = window.sr.path.uniforms?.uCut;
@@ -867,12 +875,14 @@ class Run {
         const mask = new Uint8Array(w * h);
         // (what changes between two frames drawn alike, with the line both times, is not the line: the fire, a glint; it and two pixels round it are left out)
         const still = new Uint8Array(w * h).fill(1);
+        let unsteady = 0;
         for (let i = 0; i < w * h; i++) {
           const d =
             Math.abs(A.data[i * 4] - C.data[i * 4]) +
             Math.abs(A.data[i * 4 + 1] - C.data[i * 4 + 1]) +
             Math.abs(A.data[i * 4 + 2] - C.data[i * 4 + 2]);
           if (d > INK / 2) {
+            unsteady++;
             const x = i % w;
             const y = (i - x) / w;
             for (let dy = -2; dy <= 2; dy++)
@@ -964,6 +974,7 @@ class Run {
         }
         return {
           area,
+          unsteady,
           pieces: pieces.length,
           dots: dots.length,
           bits: bits.map((p) => `${p.n}px@${p.x0},${p.y0}`),
@@ -1361,6 +1372,149 @@ class Run {
   }
 
   /**
+   * The record's line (path.ts `layRef`, pathref.ts) on the pad, by hand: guidance off and nothing lit, so nothing is
+   * predicted. From the chase view and on the map, in both looks: the line is there, on the page, in pixels of its own
+   * that are the same in two frames of the still scene; the key beside the navball names it; on the map the Earth has
+   * its outline and the vehicle its marker. Then the engine is lit and the flight flown on by hand, a prediction on show
+   * and moving with it: the record's line is where it stood on the pad, to the millimetre.
+   */
+  async reference(where, f) {
+    const page = this.page;
+    const off = await page.evaluate(async () => {
+      const sr = window.sr;
+      const c = sr.cockpit;
+      // (a ballistic deck shows guidance's own plan on the pad while guidance is on: off, there is none to show)
+      if (c.steering.guidance && !c.predict) {
+        c.eventAt = -1e9;
+        c.command('guidance');
+      }
+      sr.path.show(true, false);
+      for (let i = 0; i < 30; i++) await new Promise((r) => requestAnimationFrame(r));
+      return { t: sr.clock.t, wanted: Boolean(sr.path.want()), shown: Boolean(sr.path.shown) };
+    });
+    this.cases++;
+    if (off.wanted || off.shown) return this.fail(where, `on the pad by hand a path is predicted (T+${off.t})`);
+    const T = [1, 30, 120, 300, 600];
+    let stood = null;
+    for (const view of ['chase', 'map']) {
+      for (const look of ['real', 'cel']) {
+        const at = `${where} ${view}${look === 'cel' ? ' cel' : ''}`;
+        this.cases++;
+        const m = await page.evaluate(
+          async ([view, look, T]) => {
+            const sr = window.sr;
+            const st = sr.stage;
+            const p = sr.path;
+            const frames = async (n) => {
+              for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r));
+            };
+            st.frozen = false;
+            st.setAutoRotate(false);
+            st.setLook?.(look);
+            if (view === 'map') {
+              if (st.cameraMode !== 'map') st.setMap(true);
+              for (let i = 0; i < 400 && (st.cameraMode !== 'map' || st.cam.blend || st.cam.map.busy); i++) await frames(1);
+            } else {
+              if (st.cameraMode === 'map') st.setMap(false);
+              st.setCamera('chase');
+              for (let i = 0; i < 400 && (st.cameraMode !== 'chase' || st.cam.blend); i++) await frames(1);
+            }
+            st.frozen = true;
+            await new Promise((r) => setTimeout(r, 300));
+            await frames(30);
+            const c = window.__drawCamera ?? st.camera;
+            const rect = st.viewRect();
+            const v = c.position.clone();
+            const L = p.line();
+            let on = 0;
+            for (let i = 0; i < L.refT.length; i++) {
+              const ahead = v.set(L.ref[i * 3], L.ref[i * 3 + 1], L.ref[i * 3 + 2]).applyMatrix4(c.matrixWorldInverse).z < 0;
+              v.set(L.ref[i * 3], L.ref[i * 3 + 1], L.ref[i * 3 + 2]).project(c);
+              if (ahead && Math.abs(v.x) <= 1 && Math.abs(v.y) <= 1) on++;
+            }
+            const mark = p.craftMark;
+            const row = document.querySelector('[data-path-row=ref]');
+            return {
+              rig: st.cameraMode,
+              shown: Boolean(p.shown),
+              seen: p.mesh.visible && p.refMesh.visible,
+              points: L.refT.length,
+              ahead: L.t.length,
+              on,
+              from: p.drawnRef.from,
+              frame: p.drawnRef.frame,
+              ms: p.drawnRef.ms,
+              key: Boolean(row && !row.hidden),
+              limb: p.limbMesh.visible,
+              marker: Boolean(mark) && !mark.el.classList.contains('gone') && !p.marksEl.hidden,
+              where: T.map((t) => p.refWhere(t)),
+              marks: p.refMarks.length,
+            };
+          },
+          [view, look, T],
+        );
+        if (m.rig !== view) {
+          this.fail(at, `the view is ${m.rig}`);
+          continue;
+        }
+        if (m.shown || m.ahead) this.fail(at, 'a path is predicted on the pad with guidance off');
+        if (!m.seen || m.points < 2) {
+          this.fail(at, `no line of the record's: ${m.points} points${m.seen ? '' : ', not drawn'}`);
+          continue;
+        }
+        if (m.from > 1e-6 || m.frame !== 'surface') this.fail(at, `the record's line starts at T+${m.from}, drawn in ${m.frame}`);
+        if (m.on < 2) this.fail(at, `${m.on} of the ${m.points} points of the record's line are on the page`);
+        if (!m.key) this.fail(at, 'the key beside the navball does not name the record’s line');
+        if (view === 'map' && !m.limb) this.fail(at, 'the Earth has no outline on the map');
+        if (view === 'map' && !m.marker) this.fail(at, 'the vehicle has no marker on the map');
+        const px = await this.pixels(shots ? at.replace(/[ /+]/g, '-') : null, null, 'ref');
+        if (px.area < 30) this.fail(at, `the record's line has ${px.area} pixels of its own`);
+        if (px.unsteady) this.fail(at, `${px.unsteady} pixels differ between two frames of a still scene`);
+        this.log(
+          `  ${at}: the record's line, ${m.points} points (${m.on} on the page, ${m.ms.toFixed(1)} ms), ${px.area} px of its own, ${m.marks} events of its own`,
+        );
+        stood ??= m.where;
+      }
+    }
+    await page.evaluate(async () => {
+      const st = window.sr.stage;
+      st.frozen = false;
+      st.setLook?.('real');
+      st.setMap(false);
+      st.setCamera('chase');
+      for (let i = 0; i < 400 && (st.cameraMode !== 'chase' || st.cam.blend); i++) await new Promise((r) => requestAnimationFrame(r));
+    });
+    // flown on by hand: a prediction on show, and made again as the flight goes; the record's line stays where it stood
+    if (!stood) return;
+    for (const t of [8, 20]) {
+      const s = await this.seek(t);
+      await this.view('chase');
+      await this.turn();
+      const at = `${where} T+${t} by hand`;
+      this.cases++;
+      const m = await page.evaluate(
+        ([T]) => {
+          const p = window.sr.path;
+          return { where: T.map((x) => p.refWhere(x)), frame: p.drawnRef.frame, seen: p.refMesh.visible, ahead: p.line().t.length };
+        },
+        [T],
+      );
+      if (!s.shown || m.ahead < 2) this.log(`  ${at}: no path`);
+      if (!m.seen) {
+        this.fail(at, 'the record’s line is gone');
+        continue;
+      }
+      const moved = Math.max(...stood.map((a, i) => Math.hypot(a[0] - m.where[i][0], a[1] - m.where[i][1], a[2] - m.where[i][2])));
+      if (m.frame !== 'surface' || !(moved <= 1e-3))
+        this.fail(at, `the record's line has moved ${moved.toFixed(3)} m from where it stood on the pad (drawn in ${m.frame})`);
+      else
+        this.log(
+          `  ${at}: the record's line where it stood on the pad (${moved.toExponential(1)} m), ${m.ahead} points predicted beside it`,
+        );
+    }
+  }
+
+  /**
    * The map (M: camera/map.ts, path.ts `mapped`) at the instant on show, taken from the chase view with nobody having
    * set it: the view is the map's and takes in all of the line ahead; the path is drawn whatever its switch says; an
    * orbit is drawn as it lies among the stars and whole, its line coming round to the vehicle; the vehicle's marker is
@@ -1641,6 +1795,21 @@ for (const [W, H] of handsOnly || at ? [] : quick ? [SIZES[0]] : SIZES) {
           await r.coasting(`${key} ${W} orbit from T+${f.coast}`);
         },
       });
+  }
+}
+
+// On the pad by hand, a page of its own at the widest and the narrowest: the record's line with nothing predicted.
+for (const [W, H] of handsOnly || at ? [] : SIZES.filter(([w]) => w === 1280 || w === 390)) {
+  for (const [key, f] of Object.entries(FLIGHTS)) {
+    if (only && only !== key) continue;
+    tasks.push({
+      name: `${key} ${W} pad`,
+      weight: 3,
+      run: async (r) => {
+        await r.open(W, H, f);
+        await r.reference(`${key} ${W} pad`, f);
+      },
+    });
   }
 }
 
