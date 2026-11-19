@@ -56,6 +56,54 @@ produce another impact. `tests/contact.test.mjs` checks momentum, absorbed energ
 a near miss, and leaving and returning. `tests/separation.test.mjs` checks clearance on the historical
 runs. `pnpm test:separation` checks detached nodes in the running viewer.
 
+## What is solid at a site
+
+The simulator has no three.js and no GLB loader, so what stands at a site is baked for it. `pnpm collision`
+(tools/collision-bake.mjs) reads the committed GLBs in node (Draco, by the page's own decoder; no Blender) and writes
+`<model>.solid.bin` beside each model of every flight that has a site. Nothing is written by hand for a site: a new
+flight or pad is baked by being in `missions/index.ts`, and `tests/collision.test.mjs` fails until the files are
+current with their GLBs and with the flight's moves (run `pnpm collision` after `pnpm model`). A file's digest knows
+its GLB and its flight's data, not the tool: change what the bake makes and bake everything again
+(`pnpm collision --force`); the same test bakes one flight again and holds the committed bytes to it.
+
+- **A structure** (a model that stands at the site and is neither a person nor what flies) is `pieces` (sim/solids.ts).
+  A piece is a node that is rigid by itself: a part's top-level node, or a node inside it that a move names (an arm, a
+  boom, a wagon). Its shape is axis-aligned boxes in its own frame: the model is cut into cells of 0.25 m and each cell
+  that holds surface keeps the box round what is in it, so a wall or a deck is exactly where the model has it and only
+  what crosses a cell at an angle is squared off, by no more than a cell. Cells that line up are joined.
+- **Where a piece stands** is its pose at liftoff and, where it moves after, a track on the flight's clock. The bake
+  plays the viewer's own moves (viewer/explode.ts) against the GLB's nodes, so a piece is where the page draws it: a
+  structure rolled back before liftoff is baked rolled back, a support arm falling away is tracked as it falls.
+- **A vehicle** (the model `flies.model` names) has `hulls`: for each top-level node, and for each node the flight
+  sheds (`flies.drops`: a fairing's half), a string of spheres up the stack. A node is cut into slices; a slice's
+  radius is the distance within which 95% of its surface lies. A node shorter than it is wide is a layer of spheres
+  across it instead.
+- **The world** (sim/siteworld.ts `SiteWorld`) places each structure as its flight does and answers, in the site's
+  frame at an instant: the first thing a swept sphere meets (by conservative advancement, so no speed passes through
+  a sheet), what a sphere touches, and what is under a point. A piece's boxes are in a tree built when first asked.
+  What a sphere starts in is not met: a vehicle stands in its launcher until it has left it.
+
+**Nothing in the simulator strikes these yet.** This is the data and the questions; the vehicle's contact with them
+is the next step, and until it lands a vehicle flown by hand still passes through its tower.
+
+Simplified, and to be kept in mind by whoever uses it:
+
+- Shapes are as fine as a cell. A piece that would be more than 16,000 boxes within 50 m of the launch axis, or 4,000
+  beyond it, is cut twice as coarse, and again, until it fits, and records it (`SolidPiece.cell`): Tyuratam's flame pit
+  and the domed blockhouse of Complex 34 are. These budgets are ours, chosen for the files' size (18 MB in 72 files for
+  the 42 flights there are; without them, 256 MB).
+- A closed volume is a shell: nothing is inside it.
+- Before liftoff nothing is right: the simulator does not fly then, and no pose before it is kept.
+- What a hand has worked out of its programme on foot (a platform held open) is not known here.
+- People are not solid: a part whose people walk (`going`), and a node put out of sight by no machine.
+- A hull's spheres leave out what lies beyond its 95% radius (fins, aerials) and do not fill a cone to its rim. A
+  ring is filled across: it has no hole. A node that is not round is a round one of its 95% radius.
+- The place's own models round the pad (a neighbouring complex, a blockhouse of the place's model) and its land are
+  not baked: they are set down by the place's code in the viewer.
+- A vehicle that no `flies` names (a flight with a launch site and no Fly) is baked as a structure standing there.
+- A pad that is one model for several flights (a place's own: Site 1 for the Soyuz flights) is one file. Flights that
+  posed it differently could not share it: the bake refuses, and the model wants a file a flight.
+
 ## The core
 
 The rules every simulator, predictor and deck keeps. Each names the one place it lives; a second copy is a bug.
