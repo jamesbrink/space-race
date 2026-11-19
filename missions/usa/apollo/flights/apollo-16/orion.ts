@@ -1,0 +1,307 @@
+import type { Part } from '../../../../../src/types.ts';
+import { lmPort, lower, lunarGallery, upper } from '../../vehicles/lunar-gallery.ts';
+
+const stageParts: [string, string, string, string, string][] = [
+  [
+    'LMPlumeDeflectors',
+    'Four plume deflectors',
+    lower,
+    'Look below each downward-firing jet for a curved shield on a truss.',
+    'The shields protected the descent stage from hot exhaust. At lunar liftoff all four stayed at Descartes. The thrusters rose with the ascent stage.',
+  ],
+  [
+    'LMRover',
+    'Folded lunar roving vehicle',
+    lower,
+    'Four electric wheels, a crew deck and two hinged chassis sections fit upright in quadrant I.',
+    'The aft end of the center deck pointed up. The front and rear sections folded back over the two seats, with all four suspensions turned inward. Young and Duke lowered the package on tapes and locked three of the wheels by hand. Their vehicle had new dust covers on the bags under the seats. As it swung out, the chassis straightened and the wheels dropped into driving position. Isolate the rover to see the hardware behind its thermal cover.',
+  ],
+  [
+    'LMFarUV',
+    'Far-ultraviolet camera and spectrograph',
+    lower,
+    'A three-inch Schmidt camera and folded tripod rode in a bag on the quadrant III payload pallet.',
+    'John Young carried the instrument into Orion’s shadow, then put its battery in sunlight. Turning the mount in altitude and azimuth let the crew photograph Earth’s upper atmosphere and astronomical targets. They recovered the 35 mm film transport on the final excursion. Isolate the camera to see inside the launch cover.',
+  ],
+  [
+    'LMCosmicRayDetector',
+    'Cosmic-ray detector panels',
+    lower,
+    'Four panels on the aft wall collected particle tracks on the way to the Moon.',
+    'Built into a narrow vertical frame beside quadrant II, this passive detector was already collecting data when the spacecraft encountered a solar flare. On the surface the crew pulled a lanyard to uncover fresh material on panel four. They folded the stack into a packet for the return to Earth.',
+  ],
+  [
+    'LMRoverPallet',
+    'Rover equipment pallet',
+    lower,
+    'A separate pallet held the folding hand-tool carrier for the back of the rover.',
+    'The rover used virtually the whole of quadrant I. Its surface equipment therefore travelled separately. The aft equipment pallet carried a magnetometer, scoop, penetrometer, sample bags and hand tools. On the modeled carrier, look for the three-axis meter, its cable reel, the recording penetrometer and tongs. Its neighbor held the ultraviolet telescope. The crew fitted the carrier to the aft end of the rover for their geology traverses.',
+  ],
+  [
+    'LMSurfaceEquipment',
+    'Enlarged equipment rack and TV camera',
+    lower,
+    'Young lowered this equipment rack from beside the ladder.',
+    'The enlarged MESA in quadrant IV could carry 600 lb gross. It held sample cases, camera gear, fresh life-support batteries and lithium hydroxide cartridges. Its ground-commanded TV camera was transferred to the rover. The lunar surface drill and sample return cases rode in this rack.',
+  ],
+  [
+    'LMScienceBay',
+    'Scientific equipment bay',
+    lower,
+    'Two ALSEP subpackages rode diagonally opposite the MESA.',
+    'One carried the central station and the other the finned generator. At Descartes the station collected measurements from the seismometers and magnetometer. The crew laid out the heat-flow equipment, but a broken cable prevented measurements. The view shows representative packed instrument envelopes and the separate generator cradle.',
+  ],
+  [
+    'LMFuelCask',
+    'SNAP-27 fuel cask',
+    lower,
+    'A separate cask rode upright outside the experiment bay.',
+    'The astronauts tilted the cradle on the surface to transfer the fuel capsule into the generator. The generator itself travelled inside the scientific equipment bay.',
+  ],
+  [
+    'LMHammocks',
+    'Crew hammocks',
+    upper,
+    'Young and Duke slept inside Orion between their three rover traverses.',
+    'Two fabric hammocks rode rolled up in the cabin for flight. The sleeping arrangements were part of a stay of over 71 hours on the surface. The rolled dimensions and installation positions are estimated.',
+  ],
+  [
+    'LMDescentPower',
+    'Five descent batteries',
+    lower,
+    'Five silver-zinc batteries supplied the descent-stage buses.',
+    'All five batteries were mounted behind the descent stage on the minus-Z bulkhead. Each was rated at 415 ampere-hours. Modified separators protected the cases and a manual valve controlled the battery coolant flow. Local case positions are reconstructed.',
+  ],
+  [
+    'LMAscentPower',
+    'Ascent battery bay',
+    upper,
+    'A separate pair of silver-zinc batteries went back into orbit with the cabin.',
+    'The pair supplied the ascent buses when the descent stage was left at Descartes. Each case uses the ribbed cover and opposite-end terminals introduced on LM-8. Their placement is approximate.',
+  ],
+  [
+    'LMDescentConsumables',
+    'Descent water, oxygen and waste tanks',
+    lower,
+    'Two descent water tanks and two descent oxygen tanks served the crew.',
+    'Extra stores in quadrant IV supported the longer surface stay. The higher-pressure oxygen recharge serviced the astronauts’ portable life-support systems. Urine and backpack condensate drained to a separate five-gallon tank.',
+  ],
+  [
+    'LMAscentLifeSupport',
+    'Oxygen, water and suit circuit',
+    upper,
+    'Two oxygen tanks and two water tanks stayed with the crew after staging.',
+    'The cabin suit circuit removed moisture and carbon dioxide. The model includes the storage vessels, a suit-circuit assembly, cartridges and ducts.',
+  ],
+  [
+    'LMLandingRadar',
+    'Landing radar antenna',
+    lower,
+    'The antenna looked down from beneath Orion during powered descent.',
+    'Radar height and velocity helped the guidance computer during the approach. Young passed Double Spot Craters and moved forward and right to clear a 15-metre crater before landing in the Cayley plains.',
+  ],
+  [
+    'LMDescent',
+    'Thermal blankets and outriggers',
+    lower,
+    'Look beside the ladder for the rover bay and enlarged MESA.',
+    'The rover occupied quadrant I and the enlarged MESA quadrant IV. New insulation and heaters protected the packed hardware on the way to Descartes. The legs fold against the stage inside the adapter and swing out for landing.',
+  ],
+  [
+    'LMPorch',
+    'Forward porch and handrails',
+    lower,
+    'The porch projected over the ladder beneath the forward hatch.',
+    'Twin handrails bordered the platform. Young stepped from this platform onto the ladder, and Duke followed.',
+  ],
+  [
+    'LMLandingGear',
+    'Landing gear, ladder and probes',
+    lower,
+    'Three probes signalled surface contact. The leg under the ladder had none.',
+    'A ladder ran along the forward primary strut. In the launch stack the four assemblies fold inward beneath the outriggers. Metallic shielding covered the secondary struts. The model assumes the shortened deployment-truss shield documented for LM-6. Hinge positions and illustrated deployment paths are estimated from NASA TN D-6850.',
+  ],
+  [
+    'LMDescentStructure',
+    'Cruciform thrust structure',
+    lower,
+    'Two pairs of beams divided the descent stage into bays.',
+    'The central compartment held the engine. Four neighbouring bays held its propellants. Cut away the blankets or isolate the propulsion system to see the beam layout.',
+  ],
+  [
+    'LMDescentEngine',
+    'Extended descent engine',
+    lower,
+    'Orion landed with a descent-engine skirt ten inches longer than the earlier version.',
+    'A lighter exit cone and quartz-lined chamber accompanied the nozzle extension. The crushable skirt ran closer to the ground on this flight. The model shows the engine before touchdown.',
+  ],
+  [
+    'LMDPSTanks',
+    'Elongated descent propellant tanks',
+    lower,
+    'Four lengthened tanks carried the extra propellant needed to land the rover and science payload.',
+    'Each tank was extended 3.36 inches. Two held fuel and two oxidizer. Feed lines and tank supports changed with the increase in size. Tank stations, strap widths and pipe routing are reconstructed.',
+  ],
+  [
+    'LMAscent',
+    'Crew compartment and docking tunnel',
+    upper,
+    'Young and Duke flew standing up behind two triangular windows.',
+    'A third window above the commander looked up toward the docking target. Casper’s probe met the conical drogue in the tunnel atop the midsection.',
+  ],
+  [
+    lmPort.part,
+    'Docking ring and drogue',
+    upper,
+    'Orion carried the receiving half of the docking system above its overhead hatch.',
+    'After translunar injection Mattingly turned Casper to dock with Orion in the adapter. The same drogue received the command module’s probe again after Orion returned from Descartes. The crew removed the docking hardware for the transfer between cabins.',
+  ],
+  [
+    'LMStations',
+    'Two standing flight stations',
+    upper,
+    'Armrests and restraints held each pilot in position.',
+    'Young stood on the left and Duke on the right. The deck, side lockers, armrests, restraints and eye positions are reconstructed. Enter either station to look through the glazing.',
+  ],
+  [
+    'LMControlPanels',
+    'Displays and hand controllers',
+    upper,
+    'Young and Duke shared the central guidance keyboard. The computer ran Luminary.',
+    'The instrument boards, attitude displays and hand controllers are static. Panel relief and positions are estimated from the LM handbook.',
+  ],
+  [
+    'LMAscentEngine',
+    'Fixed ascent engine',
+    upper,
+    'A separate engine powered the ascent stage back to Casper.',
+    'The bell sits above a recessed blast deflector in the descent deck. As the stages part, the deflector stays below. Its chamber, jacket, mount and external feed fittings leave with the cabin. Its nominal thrust was 3,500 lbf.',
+  ],
+  [
+    'LMAPSTanks',
+    'Ascent propellant and helium tanks',
+    upper,
+    'Two spherical tanks supplied the pressure-fed ascent engine.',
+    'One held fuel and the other oxidizer. Two smaller helium vessels supplied pressurization. Their external envelopes and feed runs are reconstructed.',
+  ],
+  [
+    'LMEquipment',
+    'Attitude thrusters, radar and antennas',
+    upper,
+    'Sixteen thrusters let Orion turn and translate independently.',
+    'Four outriggers stand at 45° to the pitch and roll axes. Each cluster carries two opposed vertical jets and two horizontal jets at right angles. The rendezvous radar tracked Casper. The 26-inch S-band antenna provided a separate link to Earth.',
+  ],
+  [
+    'LMReactionSupply',
+    'Reaction-control tankage',
+    upper,
+    'Two independent systems supplied the four thruster clusters.',
+    'Each system had a fuel tank, an oxidizer tank and a helium vessel. External envelopes and installed positions are approximate.',
+  ],
+];
+const facts: Record<string, Part['facts']> = {
+  LMFuelCask: [['Stowage', 'Outside quadrant II · LM-10 and subsequent handbook §1.3']],
+  LMScienceBay: [['Payload', 'Apollo lunar surface experiments package · J-2 science plan fig. 2-14']],
+  LMRover: [
+    ['Wheels', 'Four, each 32 × 9 in · Apollo 16 press kit p. 109'],
+    ['Deployed length / wheelbase', '122 / 90 in · Apollo 16 press kit pp. 105, 111'],
+  ],
+  LMFarUV: [
+    ['Entrance aperture', '3 in · J-2 science plan §2.3.2.6'],
+    ['Film transport', '35 mm · Apollo 16 press kit p. 71'],
+  ],
+  LMCosmicRayDetector: [
+    ['Panel 2 exposed area', '14.7 × 22.6 cm · NASA SP-315 §15A'],
+    ['Mount', 'Four hinged panels · J-2 science plan fig. 2-32'],
+  ],
+  LMRoverPallet: [['Stowage', 'Quadrant III · Apollo 16 surface procedures fig. 3.4-1']],
+  LMDescentPower: [['Battery complement', '5 × 415 Ah · LM-10 type rating assumed for LM-11']],
+  LMDescentConsumables: [
+    ['Water loaded', '193.9 + 199.4 lb · Apollo 16 Mission Report §7.8.5'],
+    ['Oxygen loaded', '46.7 + 46.6 lb · Apollo 16 Mission Report §7.8.4'],
+  ],
+  LMDescent: [['Width across flats', '166 in · assumed from LM-3 fig. A.2-2']],
+  LMLandingGear: [
+    ['Pads', '4 × 37 in · Apollo 16 press kit p. 146'],
+    ['Contact probes', '3 × 68 in · Apollo 16 press kit p. 146'],
+    ['Tread radius', '167.57 in · NASA TN D-6850 p. 6'],
+  ],
+  LMDescentEngine: [
+    ['Increase in nozzle length', '10 in · LM-10 extension assumed for LM-11'],
+    ['Mount', 'Two-axis gimbal · J-mission type, Apollo 15 press kit, Descent Propulsion System'],
+  ],
+  LMDPSTanks: [['Loaded fuel / oxidizer', '7,530.4 / 12,028.9 lb · Apollo 16 Mission Report §7.8.1']],
+  LMAPSTanks: [['Loaded fuel / oxidizer', '2,017.8 / 3,224.7 lb · Apollo 16 Mission Report §7.8.2']],
+  LMAscentEngine: [['Overall length / exit diameter', 'Approx. 51 / 31 in · NASA engine specifications, table I']],
+  LMAscent: [
+    ['Crew compartment', '92 in diameter × 42 in deep · LM handbook, crew compartment; assumed'],
+    ['Forward hatch', '32 in square · LM handbook, crew compartment; assumed'],
+  ],
+};
+
+export { lmPort as orionPort };
+export const {
+  model: orionModel,
+  stackParts: orionStackParts,
+  views: orionViews,
+} = lunarGallery(
+  'apollo-16',
+  'Orion',
+  'LM-11 Orion',
+  [
+    {
+      node: 'LM_CommanderStation',
+      label: 'Young’s standing station',
+      from: 'LMAscent',
+      open: [96 * 3600 + 13 * 60 + 31, 177 * 3600 + 41 * 60 + 18],
+    },
+    {
+      node: 'LM_PilotStation',
+      label: 'Duke’s standing station',
+      from: 'LMAscent',
+      open: [96 * 3600 + 13 * 60 + 31, 177 * 3600 + 41 * 60 + 18],
+    },
+  ],
+  stageParts,
+  facts,
+  false,
+);
+
+orionModel.scale = '31 ft over deployed pads · model antenna crest 23 ft 1 in · press kit overall height 22 ft 11 in';
+
+orionViews.push(
+  { id: 'rover', label: 'Folded lunar rover', nodes: ['LMRover'], onSelect: true, isolate: true, from: [-1, 0.28, 0.72] },
+  { id: 'cosmic-rays', label: 'Cosmic-ray detector', nodes: ['LMCosmicRayDetector'], onSelect: true, isolate: true, from: [1, 0.24, 0.38] },
+  { id: 'far-uv', label: 'Far-ultraviolet telescope', nodes: ['LMFarUV'], onSelect: true, isolate: true, from: [-0.3, 0.24, 1] },
+  {
+    id: 'rover-pallet',
+    label: 'Rover equipment pallet',
+    nodes: ['LMRoverPallet'],
+    onSelect: true,
+    isolate: true,
+    from: [-0.68, 0.2, 1],
+  },
+  { id: 'deflectors', label: 'Plume deflectors', nodes: ['LMPlumeDeflectors', 'LMEquipment'], isolate: true, from: [1, 0.15, -0.45] },
+  { id: 'mesa', label: 'MESA and TV camera', nodes: ['LMSurfaceEquipment'], onSelect: true, isolate: true, from: [1, 0.5, 0.65] },
+  { id: 'cask', label: 'External fuel cask', nodes: ['LMFuelCask'], onSelect: true, isolate: true, from: [1, 0.5, 0.35] },
+  { id: 'hammocks', label: 'Crew hammocks', nodes: ['LMHammocks'], onSelect: true, isolate: true, from: [1, 0.5, 0.35] },
+  { id: 'seq', label: 'Scientific equipment bay', nodes: ['LMScienceBay'], onSelect: true, isolate: true, from: [-1, 0.62, -0.65] },
+);
+
+export const orionStackViews = orionViews.filter((view) =>
+  [
+    'porch',
+    'dps',
+    'aps',
+    'drogue',
+    'mesa',
+    'seq',
+    'cask',
+    'deflectors',
+    'hammocks',
+    'rover',
+    'far-uv',
+    'cosmic-rays',
+    'rover-pallet',
+  ].includes(view.id),
+);
