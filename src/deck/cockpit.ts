@@ -975,6 +975,7 @@ export class Cockpit extends Deck {
     const prompt = this.cells.get('prompt')!;
     const text = [...due, ...cues].join(' · ');
     if (prompt.textContent !== text) prompt.textContent = text;
+    if (prompt.title !== text) prompt.title = text;
     prompt.hidden = !text || replay;
     prompt.classList.toggle('due', due.length > 0);
   }
