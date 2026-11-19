@@ -169,6 +169,24 @@ export const MA2_NOZZLES = {
   },
 } satisfies Record<string, Nozzle>;
 
+/**
+ * The MA-5's nozzles, the Atlas SLV-3's (the Gemini targets'), for the shape of their fires as the MA-2's are: the booster
+ * chambers (LR89-NA-7) from SP-8120's own row, the sustainer and the verniers the MA-2's (their MA-5 builds' not read).
+ */
+export const MA5_NOZZLES = {
+  booster: {
+    chamber: doc(578 * 6894.757, `${SP8120}: 578 psia at sea level for the LR89-NA-7, the MA-5's booster`),
+    expansion: doc(8, `${SP8120}: 8 for the LR89-NA-7, its exit 45.83 in across`),
+    exit: estimated(67_230, expanded(578, 8, 0.66)),
+  },
+  sustainer: {
+    chamber: assumed(MA2_NOZZLES.sustainer.chamber.value, `the MA-2's LR105-5, taken: ${MA2_NOZZLES.sustainer.chamber.source}`),
+    expansion: doc(25, 'NASA SP-8120, p. 32: "The Atlas sustainer (expansion ratio of 25)"'),
+    exit: MA2_NOZZLES.sustainer.exit,
+  },
+  vernier: MA2_NOZZLES.vernier,
+} satisfies Record<string, Nozzle>;
+
 /** The orbital flights' figures that are the type's: the capsule on its Atlas. */
 export const SPEC = {
   heatShield: {

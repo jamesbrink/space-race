@@ -13,7 +13,8 @@
  */
 import { assumed, derived, doc, estimated, type Measure } from '../../../../src/measure.ts';
 import type { Guidance, OrbitResults } from '../../../../src/sim/orbital.ts';
-import type { BodyDef, Craft, EngineDef, EventDef, FlightPlan, JointDef, PlanCheck, TankDef } from '../../../../src/sim/plan.ts';
+import type { BodyDef, Craft, EngineDef, EventDef, FlightPlan, JointDef, Nozzle, PlanCheck, TankDef } from '../../../../src/sim/plan.ts';
+import { MA5_NOZZLES } from '../../mercury/vehicles/mercury-atlas.ts';
 import type { Curve, ShedBody } from '../../../../src/types.ts';
 import { orbital as friendship7 } from '../../mercury/flights/ma-6-friendship-7/orbital.ts';
 import {
@@ -164,9 +165,17 @@ const VERNIERS = { sea: 1_150, vac: 1_445 };
 const SUSTAINER_ISP = 308.9;
 
 /** One engine's figures from its two thrusts (lbf) and its vacuum impulse: the sea-level impulse in the same ratio, the flow being the same. */
-function atlasEngine(name: string, count: number, thrust: { sea: number; vac: number }, isp: Measure, note: string): AtlasEngine {
+function atlasEngine(
+  name: string,
+  count: number,
+  thrust: { sea: number; vac: number },
+  isp: Measure,
+  note: string,
+  nozzle: Nozzle,
+): AtlasEngine {
   return {
     name,
+    nozzle,
     count,
     thrust: {
       seaLevel: doc((thrust.sea / count) * LBF, `${note}: ${thrust.sea.toLocaleString('en-US')} lbf at liftoff (${ENGINES})`),
@@ -262,6 +271,7 @@ export function targetRecord(f: LaunchFigures, payload: 'agena' | 'atda'): Targe
           `${boosterIsp.toFixed(1)} s: their vacuum thrust over the flow the record's weights leave them, what all five burned from liftoff (${w.liftoff.toLocaleString('en-US')} lb) to their cutoff (${w.beco.toLocaleString('en-US')} lb, ${weights}) less the sustainer's and the verniers' (${SLV3A} has 296.8 s)`,
         ),
         'the two chambers',
+        MA5_NOZZLES.booster,
       ),
       cutoff: doc(t.beco, `booster engine cutoff (${times})`),
       separation: doc(t.staging, `booster section jettison, cutoff + 3 s (${times})`),
@@ -281,7 +291,7 @@ export function targetRecord(f: LaunchFigures, payload: 'agena' | 'atda'): Targe
         (tankMass - dry) * LB,
         'the tank section at liftoff less what it weighed at vernier engine cutoff: what the five engines burned, all drawn here from the one tank (the verniers’ own start tanks are not flown)',
       ),
-      engine: atlasEngine('Sustainer (Rocketdyne MA-5)', 1, SUSTAINER, sustainerIsp, 'the sustainer'),
+      engine: atlasEngine('Sustainer (Rocketdyne MA-5)', 1, SUSTAINER, sustainerIsp, 'the sustainer', MA5_NOZZLES.sustainer),
       cutoff: doc(t.seco, `sustainer engine cutoff, by the guidance's command (${times})`),
       ...(t.secoSpeed ? { velocity: doc(t.secoSpeed.value * FT, t.secoSpeed.source) } : {}),
     },
@@ -292,6 +302,7 @@ export function targetRecord(f: LaunchFigures, payload: 'agena' | 'atda'): Targe
         VERNIERS,
         vernierIsp,
         'the two together (LMSC’s catalog has each derated to 670 lbf at sea level, which 1,150 each would contradict)',
+        MA5_NOZZLES.vernier,
       ),
       cutoff: doc(t.veco, `vernier engine cutoff, by the guidance's command (${times})`),
     },

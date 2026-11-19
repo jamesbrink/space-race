@@ -28,6 +28,10 @@ test('a fire without a nozzle record uses the neutral display fallback', () => {
 const FALLBACK = {
   'usa/apollo/apollo-7': ['h1-inboard', 'h1-outboard', 'sivb-j2', 'sps'],
   'usa/gemini/gt-3': ['forward-thrusters', 'aft-thrusters'],
+  // (the Agena's Bell 8247: its 45:1 expansion is documented, LMSC-A604166-2 14.2.1, but no chamber pressure was read)
+  ...Object.fromEntries(
+    ['gatv-5001', 'gatv-5002', 'gatv-5003', 'gatv-5005', 'gatv-5006'].map((id) => [`usa/gemini/${id}`, ['agena-engine']]),
+  ),
 };
 const SOLIDS = ['retrorockets', 'launch-escape-motor'];
 
