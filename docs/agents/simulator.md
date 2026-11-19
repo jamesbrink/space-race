@@ -206,7 +206,10 @@ of a slice's radius and a box is squared to its cell, which is what that hand's 
 
 `pnpm test:impact` does it in the page: Freedom 7, a second and a half up, is pushed at 40 m/s toward whatever of
 its pad stands nearest, the page's own deck flies it on the solids the page fetched, and the deck says what was
-struck; in both looks.
+struck; in both looks. And what is shed: Freedom 7 is aborted six seconds up, the escape rocket takes the capsule,
+and the booster goes on up, falls back and is down eleven seconds later lying across its launch pedestal, on the
+solids and the land the page has; the deck says what it struck, and the booster as it is drawn is on the ground and
+not in it, in both looks.
 
 Not yet, and a vehicle flown by hand shows it:
 
