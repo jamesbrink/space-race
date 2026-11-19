@@ -1589,11 +1589,12 @@ class Run {
 const browser = await launch();
 const tasks = [];
 
-// (a flight whose Fly is not on this branch yet: its flight.ts has no plan)
+// (a flight whose Fly is not on this branch yet: its flight.ts has no plan, and it has no orbital record to write one from)
 for (const [key, f] of Object.entries(FLIGHTS)) {
   const [nation, programme, flight] = f.id.split('/');
   const file = join('missions', nation, programme, 'flights', flight, 'flight.ts');
-  if (!existsSync(file) || !readFileSync(file, 'utf8').includes('plan:')) {
+  const record = join('missions', nation, programme, 'flights', flight, 'orbital.ts');
+  if (!existsSync(file) || !(readFileSync(file, 'utf8').includes('plan:') || existsSync(record))) {
     console.log(`${key}: ${f.id} cannot be flown on this branch: passed over`);
     delete FLIGHTS[key];
   }
