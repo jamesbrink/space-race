@@ -4,19 +4,21 @@ import type { ModelDef } from '../../../../src/types.ts';
 export function lc39Crew(
   names: [string, string, string],
   lunarModule: boolean,
-  commanderSuit?: Pick<ModelDef, 'url' | 'scale'>,
+  suits: readonly (Pick<ModelDef, 'url' | 'scale'> & { torso?: string })[] = [],
 ): ModelDef[] {
   return names.map((who, i) => {
     const ev = lunarModule && i !== 1;
     const type = ev ? 'EV' : 'IV';
+    const suit = suits[i];
     const parts = [
       ['Helmet', 'Pressure helmet', 'The pressure bubble seals to the neck ring above the communications carrier.'],
       [
         'Torso',
         'Pressure garment',
-        ev
-          ? 'The EV garment has extra chest connections for transferring to portable life support.'
-          : 'The IV garment connects to the cabin oxygen circuit.',
+        suit?.torso ??
+          (ev
+            ? 'The EV garment has extra chest connections for transferring to portable life support.'
+            : 'The IV garment connects to the cabin oxygen circuit.'),
       ],
       ['Arms', 'Sleeves', 'The loose outer fabric covers the arm joints.'],
       ['Gloves', 'Pressure gloves', 'Wrist rings connect the gloves to the suit.'],
@@ -29,9 +31,8 @@ export function lc39Crew(
       backdrop: 'ground',
       wide: false,
       home: 'figure',
-      url: ev ? 'models/usa/apollo/apollo-9/a7l-ev.glb' : 'models/usa/apollo/apollo-8/a7l-iv.glb',
-      scale: `${who} · A7L ${type} launch suit · representative fit`,
-      ...(i === 0 && commanderSuit),
+      url: suit?.url ?? (ev ? 'models/usa/apollo/apollo-9/a7l-ev.glb' : 'models/usa/apollo/apollo-8/a7l-iv.glb'),
+      scale: suit?.scale ?? `${who} · A7L ${type} launch suit · representative fit`,
       walker: { eyes: 'Helmet_Eyes', forward: [0, 1] },
       position: [-90, -47 * 0.3048 - (90 - 170 * 0.3048) * 0.05, -18 + i * 2.2],
       rotationY: Math.PI / 2 - 0.17,

@@ -18,7 +18,7 @@ def paint(name, rgb, **kwargs):
     return bpy.data.materials.get(name) or material(name, rgb, **kwargs)
 
 
-def garment(who, *, ev=False):
+def garment(who, *, ev=False, a7lb=False):
     body = fl.B
     cloth = paint("suit-beta-cloth", (0.88, 0.87, 0.81), roughness=0.9)
     dark = paint("apollo-suit-rubber", (0.04, 0.045, 0.05), roughness=0.8)
@@ -55,7 +55,7 @@ def garment(who, *, ev=False):
     for mesh, name, mat in [
         (cap, "Cap", cloth),
         (phones, "Earphones", dark),
-        (ring, "NeckRing", blue),
+        (ring, "NeckRing", red if a7lb else blue),
         (bubble, "PressureBubble", paint("glass-visor", (0.8, 0.86, 0.88), alpha=0.13, roughness=0.06)),
     ]:
         fl.emit(mesh, "Helmet_" + name, mat, helmet)
@@ -69,7 +69,28 @@ def garment(who, *, ev=False):
     fl.emit(trunk, "Torso_BetaCloth", cloth, trunk_node)
     # Disconnects let cabin air into the garment and carry expired air back to the suit circuit.
     connections = [(-0.58, 10, outlets), (0.51, 10, inlets), (0.63, 19, ports)]
-    if ev:
+    if a7lb:
+        # The flown J suits carry four blue and two red disconnects in two triangles.
+        # The CMP used a distinct rear-entry garment with three disconnects.
+        connections = (
+            [(-0.79, 16, inlets), (-0.28, 14, inlets), (-0.56, 5, outlets), (0.27, 14, inlets), (0.78, 16, inlets), (0.55, 5, outlets)]
+            if ev
+            else [(-0.55, 10, outlets), (0.50, 10, inlets), (0.58, 19, inlets)]
+        )
+        waist = body.waist_z - body.torso_z0
+        closure = MeshBuilder()
+        if ev:
+            # Trace the covered entry closure diagonally around the side and back.
+            rows = []
+            for i in range(49):
+                t = i / 48
+                d, theta = waist + 22 - 24 * t, -0.30 + 3.5 * t
+                rows.append([torso.at(d + dz, theta, 0.55) for dz in (-1.35, 1.35)])
+            fl.skin(closure, rows, torso.centre(waist + 10))
+        else:
+            torso.patch(closure, waist - 6, torso.length - 4, 1.45, 1.69, 0.6)
+        fl.emit(closure, "Torso_SideEntry" if ev else "Torso_RearEntry", paint("a7lb-closure-cloth", (0.73, 0.72, 0.67), roughness=0.9), trunk_node)
+    elif ev:
         # Extra chest connections on the EV garment. The PLSS backpack stayed off for launch.
         connections += [(-0.62, 20, outlets), (0.55, 0.5, inlets), (-0.47, 0.5, ports)]
     for az, height, connector in connections:
@@ -78,8 +99,14 @@ def garment(who, *, ev=False):
         m = frame(torso.at(d, theta), torso.normal(d, theta))
         connector.lathe([(0, -0.2), (3.1, -0.2), (3.2, 0.7), (2.4, 1.2), (2.4, 2.5), (1.9, 2.7), (1.6, 2.3)], 24, matrix=m)
         insert.lathe([(0, 2.0), (1.7, 2.0), (1.6, 2.3), (0, 2.3)], 20, matrix=m)
-    for mesh, label, mat in [(outlets, "Exhaust", red), (inlets, "Supply", blue), (ports, "Electrical", metal), (insert, "Caps", dark)]:
-        fl.emit(mesh, "Torso_" + label, mat, trunk_node)
+    for mesh, label, mat in [
+        (outlets, "Exhaust", red),
+        (inlets, "BlueConnectors" if a7lb else "Supply", blue),
+        (ports, "Electrical", metal),
+        (insert, "Caps", dark),
+    ]:
+        if mesh.verts:
+            fl.emit(mesh, "Torso_" + label, mat, trunk_node)
     arm_node, glove_node, leg_node = fl.group("Arms"), fl.group("Gloves"), fl.group("Legs")
     rings = {-1: MeshBuilder(), 1: MeshBuilder()}
     fingers = []
@@ -87,16 +114,18 @@ def garment(who, *, ev=False):
         tube.mesh(sleeves, 32, tube.rows(body.sleeve_hem), caps=(False, True), sunk=lambda d: 1.1 * fl.smooth(d, tube.length - 5, tube.length))
         hand, palm = fl.gloved_hand(gloves, sign, tube.path[-1] - tube.path[-2], fingers)
         wrist = palm.centre(2.2)
-        rings[sign].lathe(
-            [(4.4, -1.7), (5.5, -1.7), (5.6, -0.6), (5.85, 0), (5.5, 1.4), (4.4, 1.4)], 32, matrix=frame(wrist, palm.centre(3.2) - palm.centre(1.2))
-        )
+        wrist_frame = frame(wrist, palm.centre(3.2) - palm.centre(1.2))
+        if a7lb and ev:
+            # The J-mission lunar suits had larger wrist disconnects (MSC-05161, appendix A.3.1).
+            wrist_frame = wrist_frame @ Matrix.Diagonal((1.09, 1.09, 1, 1))
+        rings[sign].lathe([(4.4, -1.7), (5.5, -1.7), (5.6, -0.6), (5.85, 0), (5.5, 1.4), (4.4, 1.4)], 32, matrix=wrist_frame)
         leg = legs[sign]
         d = leg.key_d(body.knee_at) + 4.5
         theta = leg.toward((sign * 0.6, -1, 0), d)
         leg.patch(pocket, d, d + 13, theta - 0.66, theta + 0.66, 0.65, nd=8, nt=8)
     gloves.share = fingers
     fl.emit(sleeves, "Arms_Sleeves", cloth, arm_node)
-    fl.emit(gloves, "Gloves_PressureGloves", cloth, glove_node)
+    fl.emit(gloves, "Gloves_PressureGloves", paint("a7lb-iv-glove", (0.018, 0.028, 0.048), roughness=0.53) if a7lb else cloth, glove_node)
     for sign, mesh in rings.items():
         fl.emit(mesh, "Gloves_Wrist" + ("Right" if sign < 0 else "Left"), red if sign < 0 else blue, glove_node)
     fl.emit(trousers, "Legs_Trousers", cloth, leg_node)
@@ -106,7 +135,7 @@ def garment(who, *, ev=False):
     fl.laced_boots(upper, sole, laces, hooks, tongue, 25, 30, body.stature / 180.3, lace_lift=1.35)
     for mesh, label, mat in [
         (upper, "Upper", cloth),
-        (sole, "Sole", dark),
+        (sole, "Sole", paint("a7lb-launch-sole", (0.57, 0.36, 0.095), roughness=0.88) if a7lb else dark),
         (laces, "Laces", cloth),
         (hooks, "Hooks", metal),
         (tongue, "Tongue", cloth),
@@ -121,12 +150,12 @@ def fit(who, stature=None):
     fl.use(body)
 
 
-def standing(who, *, stature=None, ev=False):
+def standing(who, *, stature=None, ev=False, a7lb=False):
     fit(who, stature)
     fl.start()
-    garment(who, ev=ev)
+    garment(who, ev=ev, a7lb=a7lb)
     fl.rig_standing()
-    return f"{who}, {'EV' if ev else 'IV'} A7L pressure garment"
+    return f"{who}, {'EV' if ev else 'CMP' if a7lb else 'IV'} {'A7LB' if a7lb else 'A7L'} pressure garment"
 
 
 def seated(parent, base):
@@ -183,3 +212,17 @@ def dress_harness(who, index, chest):
     shift = max(lift(v.co) for v in buckle.data.vertices)
     for label in ("Buckle", "Release"):
         bpy.data.objects[f"CM_Couch{label}_{index}"].location += chest * shift
+
+
+def commander_bands():
+    stripe = paint("a7l-commander-red", (0.58, 0.035, 0.025), roughness=0.9)
+    # The garment UV's second coordinate is the station along each limb in metres.
+    # Colour existing rows of cloth so the bands bend with the sleeves and trousers.
+    for name, station in (("Arms_Sleeves", 0.32), ("Legs_Trousers", 0.30 + 0.50)):
+        mesh = bpy.data.objects[name].data
+        mesh.materials.append(stripe)
+        uv = mesh.uv_layers.active.data
+        for face in mesh.polygons:
+            along = sum(uv[i].uv.y for i in face.loop_indices) / len(face.loop_indices)
+            if abs(along - station) < 0.019:
+                face.material_index = 1
