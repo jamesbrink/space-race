@@ -56,18 +56,19 @@ struct Recipe {
 }
 
 /// The film's print: the arithmetic of the owner's chosen mock-up ("A: Skira", made with `ImageMagick` from a
-/// frame of this build beside stills of Operation Flashpoint: Dragon Rising), done to every frame: exposure down to
-/// four fifths, colour to 0.42, a sigmoidal contrast of 7 about 52 per cent grey, the grey mapped from deep teal
-/// to warm cream and laid over as a soft light, the corners darkened to 0.35 along a 0.6 power, and grain.
+/// frame of this build beside stills of Operation Flashpoint: Dragon Rising), opened up after the owner found the
+/// day reading as night: full exposure, colour to 0.45, a sigmoidal contrast of 5 about 44 per cent grey, the grey
+/// mapped from deep teal to warm cream and laid over as a soft light at 0.85, the corners to 0.5 along a 0.5
+/// power, and grain. The day stays bright; what makes it the print is the held-back colour and the toning.
 const FILM: Print = Print {
-    shade: Vec4::new(0.02, 0.165, 0.2, 1.0),
+    shade: Vec4::new(0.02, 0.165, 0.2, 0.85),
     light: Vec4::new(1.0, 0.894, 0.69, 0.0),
-    colour: 0.42,
-    contrast: 7.0,
-    pivot: 0.52,
-    gain: 0.8,
-    corners: 0.35,
-    falloff: 0.6,
+    colour: 0.45,
+    contrast: 5.0,
+    pivot: 0.44,
+    gain: 1.0,
+    corners: 0.5,
+    falloff: 0.5,
     grain: 0.05,
     frame: 0.0,
 };

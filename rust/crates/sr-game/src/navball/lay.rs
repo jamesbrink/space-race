@@ -14,7 +14,7 @@ use crate::hud::Panels;
 const LAYER: usize = 1;
 /// How big the ball is on the page and how far it stands off the foot of the window, points; and its picture's
 /// size, texels (twice as fine, for a dense screen).
-const SIZE: f32 = 176.0;
+const SIZE: f32 = 120.0;
 const FOOT: f32 = 14.0;
 const PICTURE: u32 = 352;
 
