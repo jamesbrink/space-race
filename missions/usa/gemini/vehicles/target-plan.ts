@@ -460,7 +460,12 @@ export function targetRecord(f: LaunchFigures, payload: 'agena' | 'atda'): Targe
       period: doc(ins.period * 60, `${ins.period} min, osculating at insertion (${ins.source})`),
     },
     injection: {
-      at: doc(agena ? t.cutoff! : t.separation, `insertion (${times})`),
+      // (an Agena whose engine never lit has no cutoff: the last instant it was flown to is its separation, and the orbit
+      // here is the one planned, which it was never on)
+      at: doc(
+        engine ? t.cutoff! : t.separation,
+        engine || !agena ? `insertion (${times})` : `the Agena let go, its engine never lit: no insertion (${times})`,
+      ),
       heading: 'north',
       arc: derived(
         ((ins.range * NMI) / 6_371_000) * (180 / Math.PI),

@@ -495,6 +495,27 @@ test('a plan that names what is not there says so', () => {
   assert.ok(said.some((s) => s.includes('nothing arms it')));
 });
 
+// GATV-5004's Agena never lit, and its record's insertion was written from a cutoff it never had: an instant with no
+// value, which flew the coast from the published orbit from no time at all and threw in the day's air (`pnpm figures`,
+// November 2026). A figure that is not a number is said here, wherever in the plan it is.
+test('a figure that is not a number is a problem, wherever it is in the plan', () => {
+  for (const bad of [undefined, Number.NaN, '12']) {
+    const broken = structuredClone(gemini);
+    broken.craft[0].mass.value = bad;
+    broken.craft[0].joints[0].push = { value: bad, confidence: 'documented', source: 'x' };
+    const said = problems(broken);
+    assert.ok(
+      said.some((s) => s.includes('plan.craft[0].mass is not a number')),
+      `${String(bad)}: ${said.join('; ')}`,
+    );
+    assert.ok(said.some((s) => s.includes('craft[0].joints[0].push is not a number')));
+  }
+  // (an instant that never comes is a number)
+  const never = structuredClone(gemini);
+  never.craft[0].joints[0].push = { value: Infinity, confidence: 'documented', source: 'x' };
+  assert.deepEqual(problems(never), []);
+});
+
 /** The Gemini targets' records (target-plan.ts: `payload`): the Mercury flights' Atlas, and what it carried. */
 for (const f of orbital.filter((x) => 'payload' in recordFrom(x))) {
   const o = recordFrom(f);

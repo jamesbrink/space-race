@@ -62,3 +62,13 @@ test('the days flown: their exosphere by day and by night, and the air at 200 km
   // every day held has its eight Kp and a flux
   for (const d of DAYS.values()) assert.ok(d.kp.length === 8 && d.flux > 0 && d.mean > 0, d.date);
 });
+
+// An instant that is no instant (a run handed a time that is not a number) is a day the table does not hold, as any
+// other outside it: the standard air, said by null, and nothing thrown. It used to throw from the date's formatting.
+test('an instant that is not a number, or is beyond any date, is a day not held: null, never a throw', () => {
+  for (const jd of [Number.NaN, Infinity, -Infinity, 1e300, -1e300, undefined]) {
+    assert.equal(kpAt(jd), null, `Kp at ${jd}`);
+    assert.equal(exosphere(jd, 0.5, 0.4, 0), null, `the exosphere at ${jd}`);
+    assert.equal(ratioOf(200_000, jd, 0.5, 0.4, 0), null, `the ratio at ${jd}`);
+  }
+});
