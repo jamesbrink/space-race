@@ -150,7 +150,14 @@ blow takes the motion into the surface and keeps the motion along it; ten kilome
 deck; a blow off the axis turns the vehicle; a capsule alone comes down on a deck and, on a slope, is turned along
 it; a structure that has swung away is not struck.
 
+`pnpm test:impact` does it in the page: Freedom 7, a second and a half up, is pushed at 40 m/s toward whatever of
+its pad stands nearest, the page's own deck flies it on the solids the page fetched, and the deck says what was
+struck; in both looks.
+
 Not yet, and a vehicle flown by hand shows it:
+
+- **A hard strike on the site is said to break parts free, and frees none**: the deck's line is the one every hard
+  impact has, but only a contact with something shed lets the retropack go (sim/shed.ts `ballistic`).
 
 - **What a vehicle has shed does not strike the site**: a spent stage falls through a tower to the simulator's floor
   (sim/shed.ts flies those, and knows no site).
