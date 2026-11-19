@@ -49,6 +49,8 @@ separate, fire the retrorockets, let the retropack go. The parachutes come out b
 | K | the camera's shake (the engine's noise near it, the air's buffet aboard), on and off |
 | I | the diagnostics: frames a second, the frame's time, what is in the scene |
 | H | put the panels away |
+| M | the sound off, and on |
+| - = | quieter, louder |
 
 It is a rigid body in a physics engine. It stands on its launcher by its own weight, as a Redstone did; cut the
 engine low and it falls back and breaks. The readout's Structure is how near it is to what it stands: turn its
@@ -68,6 +70,26 @@ separation, `--at 620` the main parachute); `--rate 8` opens with the clock runn
 frame costs once a second. A hand-flown flight can be scripted, to fly it again exactly or to take a frame of it:
 `--keys 0:Space,18:W:9,140:X` presses Space as the count ends, holds W for nine seconds from T+18 and presses X at
 T+140, and `--shot out.png --until 60` takes the frame when the clock reaches T+60.
+
+It is heard as well as seen, and there is no audio file anywhere: everything is synthesised from the flight's
+state as it is flown (`sr-game/src/sound/`, the web build's rules: docs/agents/sound.md). What is heard left the
+vehicle its distance over the speed of sound ago, so from across the pad the roar comes a fifth of a second after
+the flame, and from further off later, lower and with its top taken by the air; it thins as the air does, and out
+of the air nothing is heard but what the structure carries to the cabin. Each camera is a pair of ears: the pad's
+and the tracking camera's stand on the ground, the chase camera's fly beside the vehicle in its wind, and the
+onboard camera's are the pilot's, helmet on. A vehicle faster than sound is silent to anyone outside its Mach
+cone, and the cone's passing is the boom. Nobody at the pad hears one, as nobody at the Cape did: the vehicle
+leaves going away. The chase camera does. Beside the vehicle it simply loses the engine as Mach 1 is passed and
+is left with the wind; turned to look up from behind and below, it keeps the engine until the cone closes past it
+some seventy-seven seconds up, with a blow; and ridden down, it hears the capsule's own shock as it slows through
+Mach 1 and again under the drogue, when the sea has sent it back up. Stopped, the flight is silent and the place
+is not; faster than twice life it is a low bed and nothing that happens once is played. `--mute` opens with it
+off.
+
+Nobody building this can hear it, so it is measured: `cargo run --release -p sr-game --example hear -- --hear
+out.wav --at -4 --keys 0:Space --until 60 --rig pad` flies without a window, as fast as it will go, and writes
+what would have been heard, with `out.wav.txt` beside it (each second's level, peak and spectrum, how late the
+engine's sound was arriving, and everything that happened once: what, when, how loud, from how far).
 
 The flight is tried without a window too (`flight/trial.rs`, in `cargo test`): it stands on its launcher under
 its own weight, climbs as its thrust and mass say when it is lit, breaks up when it falls back, and flown as the
@@ -139,14 +161,48 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
 - **The pad is stood as at liftoff by the unpacker**, by running the web build's own motions
   (`src/viewer/explode.ts`) at liftoff's place on the pad's slider. The native build does not play the morning.
 - **The Earth is a sphere** through the site (the engine's atmosphere is one); the web build's is the WGS 84 ellipsoid.
-- **The air is the 1976 standard atmosphere, still.** The web build flies each day's ERA5 column and its winds.
+- **The air is the day's**: ERA5's column over the pad at the hour of liftoff (pressure, temperature and wind at
+  38 levels to 49 km, a reanalysis and not a sounding), joined as the web build joins it and eased into the 1976
+  standard atmosphere above. The wind is taken as blowing along the site's own east and north everywhere, and
+  only the one hour is read: the surface's hours round it are not.
 - **Gravity has no J2.** The frame turns with the Earth, so Coriolis and centrifugal accelerations are in.
 - **The Sun is the Almanac's low-precision formula** (0.01 degrees), not DE440; UTC is taken for UT1.
 - **The pilot's standing figure is not shown**: at liftoff he is aboard.
-- **The land near the site is a designed ground** in the repo's palette over the region's shore map. The web
-  build's painted relief, roads, plants, the far complexes and the lighthouse are not here.
-- **The flame is two shells of light**, bright where they are seen squarely, not a marched volume; it lights the
-  pad. The dust it raises is a few dozen soft puffs. Brightness, glare and dust are estimates and say so.
+- **The land near the site is a designed ground** in the repo's palette (`docs/terrain.md`): what grows where
+  follows the web build's rules, its roads and clearings are the place's own record, and its scrub stands as
+  plants out to 400 m. It has no relief: the dune and the swales are painted on a sphere, not raised. The far
+  complexes and the lighthouse are not here.
+- **The sea is a sum of wave trains, not a simulation**: their slopes add up to Cox and Munk's for the wind, and
+  the Sun's glitter is drawn from the same statistics. The wind at the surface is taken to be the cumulus's drift
+  and the swell is a constant; lagoon and lake beds are one shallow tone; there is no sea ice.
+- **A fire's shape is worked, its look is judged.** Each motor's fire is a marched volume (`plume/`, `plume.wesl`)
+  whose width, shock cells, core and spread in thin air come from its chamber and exit pressures by
+  one-dimensional isentropic flow (`plume/jet.rs`: Prandtl and Pack's cell, SP-8072's core). How bright it is, its
+  colours, how its streaks run (the gas passes far faster than a frame can follow: what is drawn is a slower beat)
+  and the sheet it throws along the ground are estimates, each named with the still it was judged on. The A-7's
+  fire is drawn as the stills have it, pale and seen through, a third as bright as sunlit white paint: it does not
+  bloom by day. It adds its light to what is behind it and is not dimmed by smoke in front of it. The solid
+  motors' chamber and exit pressures and their fires' colour were not found: estimates. The tower's jettison
+  rocket is one nozzle, as the model has it (it had three). No heat shimmer. The posigrades' fire is drawn; their
+  push is still the plan's single step of speed.
+- **The air round the pad is a fluid on a coarse grid** (`fumes/`, `fumes_solve.wesl`): 96 x 24 x 64 m about the
+  pad, velocity and pressure in 1 m cells, dust and vapour in half-metre ones, sixty steps to a second of the
+  flight's clock. The jet's strike is fed to it from a ring no smaller than 3 m at no more than 45 m/s, where the
+  real sheet is several times faster and a hand's breadth thick; eddies smaller than a cell are a repeating block
+  of curl noise, and the picture cuts the fumes' edges with more noise. Nothing solid stands in the flow but the
+  ground: the launcher, the vehicle and the gantry do not turn it. What reaches the box's sides is gone, so a
+  drifting haze ends some 60 m down the wind. A clock run faster than twice leaves the air behind it. How much
+  dust the apron gives up, the vapour of the engine's first fire and of the oxygen tank's vent, how long each
+  hangs and how hot the sheet is are estimates set against the stills named in `mercury/fires.rs`.
+- **The fumes' light**: the Sun through the fumes themselves is marched 8 m and no further, the scattering
+  orders after the first are a gain, and the fire lights them as a point. Their shadow is cast by chance, texel
+  by texel, into the Sun's own shadow maps (a stochastic shadow map), with the fumes on each sunbeam taken as
+  even between the first and the last of them; it falls on the ground, the models and the fumes, and is as
+  grainy as the engine's shadow filter leaves it. The fire's light casts shadows only down its jet and only
+  while the ground is within 60 m. The fumes do not shade the clouds' haze nor the fire.
+- **A burst booster's cloud is forty puffs** (`smoke.rs`, `puff.wesl`), each a marched ball, thrown the same way
+  every time; no fire is drawn in it. Frost shed at liftoff is the vapour only: the flecks of ice in the stills
+  are not drawn.
 - **The cloud's light is part estimate**: the sky's light on it, the ground's albedo under it and the gain that
   stands for the scattering orders not marched are constants in `clouds.wesl` and `clouds/mod.rs`, each labelled.
   The cover, bases, depth, size and wind are the flight's record. The altocumulus is gathered into banks, which
@@ -170,10 +226,25 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
   the two tanks separately.
 - **Parachutes are drawn from their documented diameters**; their lines' length and inflated shape are estimates.
 - **Exposure follows height** (a stop less out of the air) rather than what is in view.
+- **Every loudness and every timbre is an estimate**, and `sound/figures.rs` lists each with where it came from.
+  The engine's sound is half a per cent of its jet's power, peaking at a Strouhal number of 0.02 (NASA SP-8072's
+  most probable values; the A-7's own was not found measured). The cabin's wall and the helmet are SP-45's design
+  environment (150 dB outside, 130 inside, 110 at the ear). The air on the skin is Robertson's coefficients, with
+  our guess at where the flow separates. The boom is Carlson's simplified prediction (NASA TP-1122) asked for what
+  it was not made for (a camera sixty metres off, a body slowing through Mach 1), its two atmosphere factors
+  taken as one. The cabin's fans, the bolts, the mortar, the wind and the surf are synthesised impressions: no
+  recording was measured or used. Levels are squeezed two decibels to one, as the web build's are, since no
+  loudspeaker does 150 dB and surf together; the last stage is a limiter that cannot pass full scale.
+- **The sound's path is physics through a plain air**: late by distance over the speed of sound, inverse-square,
+  Doppler, and nothing through a vacuum; but it goes in straight lines (no refraction and no wind, so no focused
+  booms and no shadows), the air takes from it what ISO 9613 says sea-level air at 20 C does the whole way, the
+  ground is a flat mirror, and only the crewed body is heard: the spent booster and the tower fall in silence. The
+  jets hiss at one strength whatever the stick asks. The place's bed (wind, surf, a far hum) is the web build's
+  for the Cape, which is an estimate there too.
 
 ## Not here yet
 
-Walking and driving, the gallery, the Lineup and the front page, sound, the map and the predicted path, the pad's
+Walking and driving, the gallery, the Lineup and the front page, the map and the predicted path, the pad's
 morning played on the clock, every other flight, the cel look, the web and mobile
 builds (the engine supports them; none was built).
 

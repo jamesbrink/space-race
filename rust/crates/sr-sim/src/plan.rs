@@ -4,6 +4,7 @@
 use sr_measure::Measure;
 use sr_world::earth::G0;
 
+use crate::aloft::{Aloft, Sky};
 use crate::heat::Heating;
 use crate::{Curve, Limits, air};
 
@@ -121,6 +122,9 @@ pub struct Plan {
     pub drogue: Chute,
     /// The main parachute.
     pub main: Chute,
+    /// The day's air over the site, if it has been read; without it the flight flies the standard atmosphere,
+    /// calm.
+    pub aloft: Option<Aloft>,
     /// What the structure stands.
     pub limits: Limits,
     /// What the air's heat is worked on.
@@ -128,6 +132,12 @@ pub struct Plan {
 }
 
 impl Plan {
+    /// The air the flight flies through.
+    #[must_use]
+    pub fn sky(&self) -> Sky {
+        Sky::of(self.aloft)
+    }
+
     /// The propellant the engine can pass before one of them runs out, kg.
     #[must_use]
     pub fn usable_propellant(&self) -> f64 {

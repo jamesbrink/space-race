@@ -16,6 +16,7 @@ pub mod rig;
 pub mod script;
 pub mod shake;
 pub mod shot;
+pub mod sound;
 pub mod stage;
 
 use std::path::PathBuf;
@@ -70,11 +71,13 @@ pub fn run(options: Options) -> AppExit {
         .insert_resource(Showing(flight))
         .insert_resource(stage::sky(flight, 0.0))
         .insert_resource(stage::ground(flight))
+        .insert_resource(stage::marks(flight))
         .insert_resource(stage::air(flight, 0.0))
         .insert_resource(if options.reference { Look::Reference } else { Look::Film })
         .insert_resource(options)
         .add_plugins((RenderPlugins, clock::ClockPlugin, stage::StagePlugin, flight::FlightPlugin))
         .add_plugins((navball::NavballPlugin, shake::ShakePlugin, path::PathPlugin))
+        .add_plugins(sound::SoundPlugin)
         .add_plugins((
             rig::RigPlugin,
             hud::HudPlugin,

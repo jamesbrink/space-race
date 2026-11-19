@@ -13,10 +13,11 @@ const HIGH: u32 = 512;
 const ROUND: u32 = 72;
 const UP: u32 = 36;
 
-const SKY: [f32; 3] = [0.13, 0.36, 0.72];
-const GROUND: [f32; 3] = [0.42, 0.25, 0.1];
-const LINE: [f32; 3] = [0.95, 0.95, 0.92];
-const NORTH: [f32; 3] = [0.95, 0.22, 0.16];
+// (the print's own palette, so the ball sits in the picture: slate for the sky, umber for the ground)
+const SKY: [f32; 3] = [0.3, 0.42, 0.5];
+const GROUND: [f32; 3] = [0.3, 0.23, 0.15];
+const LINE: [f32; 3] = [0.88, 0.87, 0.8];
+const NORTH: [f32; 3] = [0.82, 0.3, 0.2];
 
 /// How far a figure is from the nearest multiple of `every`, both in the same unit.
 fn off(figure: f32, every: f32) -> f32 {

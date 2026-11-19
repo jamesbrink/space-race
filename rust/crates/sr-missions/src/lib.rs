@@ -4,6 +4,7 @@
 //! flights. A place is built once and knows no flight; a flight chooses what stood there on its day. The figures
 //! are the web build's (`missions/**/*.ts`), carried over with their sources; change both together.
 
+pub mod ground;
 pub mod types;
 pub mod usa;
 

@@ -8,12 +8,14 @@ pub mod canopy;
 pub mod clouds;
 pub mod earth;
 pub mod eye;
+pub mod fumes;
 pub mod look;
 pub mod materials;
 pub mod models;
 pub mod noise;
 pub mod origin;
 pub mod plume;
+pub mod print;
 pub mod sky;
 pub mod smoke;
 
@@ -35,7 +37,9 @@ impl Plugin for RenderPlugins {
             plume::PlumePlugin,
             canopy::CanopyPlugin,
             smoke::SmokePlugin,
+            fumes::FumesPlugin,
             look::LookPlugin,
+            print::PrintPlugin,
         ));
     }
 }

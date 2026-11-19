@@ -1,16 +1,21 @@
-//! The grade: how a finished frame is developed. One place, named looks, flipped with a key by the game.
+//! The grade: how a finished frame is developed and printed. One place, named looks, flipped with a key by the
+//! game.
 //!
-//! `Film` is the art direction: the naturalistic daylight of Arma 3 printed the way Operation Flashpoint: Dragon
-//! Rising printed its island, a little bleached, cool in the shade and warm in the light, as 1961's film stock was.
+//! `Film` is the art direction, chosen by the owner from mock-ups set beside stills of Operation Flashpoint:
+//! Dragon Rising: a hard, bleached print. The colour is held far back; the shade is toned teal and the light
+//! cream; the darks are pressed down under a sky that glows and blooms into whatever stands against it; the
+//! corners are let go; and it has grain.
 //! `Reference` is the same frame developed straight, for judging colours against a source.
+//!
+//! Every figure here is a judgement of the eye, set against those stills (`rust/docs/look.md`): none is measured.
 
 use bevy::core_pipeline::tonemapping::Tonemapping;
-use bevy::post_process::bloom::Bloom;
-use bevy::post_process::effect_stack::Vignette;
+use bevy::post_process::bloom::{Bloom, BloomCompositeMode, BloomPrefilter};
 use bevy::prelude::*;
-use bevy::render::view::{ColorGrading, ColorGradingGlobal, ColorGradingSection};
+use bevy::render::view::{ColorGrading, ColorGradingGlobal};
 
 use crate::origin::Eye;
+use crate::print::Print;
 
 /// A way of developing the frame.
 #[derive(Resource, Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -47,8 +52,24 @@ struct Recipe {
     curve: Tonemapping,
     grading: ColorGrading,
     bloom: Bloom,
-    vignette: Vignette,
+    print: Print,
 }
+
+/// The film's print. Set by printing an undeveloped frame with these figures beside the stills until it sat with
+/// them (`scratchpad` mock-ups of 18 November 2026; the owner chose the direction).
+const FILM: Print = Print {
+    // (a deep teal under the darks, a warm cream over the lights)
+    shade: Vec4::new(0.12, 0.3, 0.36, 0.7),
+    light: Vec4::new(1.0, 0.9, 0.7, 0.8),
+    colour: 0.5,
+    contrast: 3.6,
+    pivot: 0.42,
+    lift: 0.02,
+    corners: 0.45,
+    falloff: 0.6,
+    grain: 0.045,
+    frame: 0.0,
+};
 
 fn recipe(look: Look) -> Recipe {
     match look {
@@ -56,20 +77,23 @@ fn recipe(look: Look) -> Recipe {
             curve: Tonemapping::AcesFitted,
             grading: ColorGrading::default(),
             bloom: Bloom { intensity: 0.08, ..Bloom::NATURAL },
-            vignette: Vignette { intensity: 0.0, ..default() },
+            print: Print::STRAIGHT,
         },
-        // A print, not a transparency: the shade a little thin and cool, the light a little warm, the colours
-        // held back from their brightest, and the corners let go.
         Look::Film => Recipe {
             curve: Tonemapping::AcesFitted,
-            grading: ColorGrading {
-                global: ColorGradingGlobal { post_saturation: 0.86, ..default() },
-                shadows: ColorGradingSection { saturation: 0.82, contrast: 1.04, gain: 1.03, ..default() },
-                midtones: ColorGradingSection { saturation: 0.96, contrast: 1.05, ..default() },
-                highlights: ColorGradingSection { saturation: 0.9, ..default() },
+            // (the print does the grading; the negative is developed straight)
+            grading: ColorGrading { global: ColorGradingGlobal { exposure: 0.0, ..default() }, ..default() },
+            // The sky's glow: wide, and laid over the frame, so a bright sky spills round the edge of whatever
+            // stands against it and the Sun, the flame and a glint on the sea burn.
+            bloom: Bloom {
+                intensity: 0.38,
+                low_frequency_boost: 0.85,
+                low_frequency_boost_curvature: 0.9,
+                prefilter: BloomPrefilter { threshold: 0.85, threshold_softness: 0.7 },
+                composite_mode: BloomCompositeMode::Additive,
+                ..Bloom::NATURAL
             },
-            bloom: Bloom { intensity: 0.12, ..Bloom::NATURAL },
-            vignette: Vignette { intensity: 0.3, radius: 0.92, smoothness: 0.75, ..default() },
+            print: FILM,
         },
     }
 }
@@ -94,11 +118,6 @@ fn develop(
     }
     let made = recipe(*look);
     for eye in &eyes {
-        commands.entity(eye).insert((
-            made.curve,
-            made.grading.clone(),
-            made.bloom.clone(),
-            made.vignette.clone(),
-        ));
+        commands.entity(eye).insert((made.curve, made.grading.clone(), made.bloom.clone(), made.print));
     }
 }

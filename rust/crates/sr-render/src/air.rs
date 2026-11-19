@@ -33,3 +33,14 @@ pub struct Air {
     /// Seconds on the flight's clock: what the cloud's drift is reckoned from, so a stopped clock stops the sky.
     pub clock: f32,
 }
+
+/// The day's map of the weather far from the site: how much of the sky each kind of cloud covers (red the heaped
+/// cloud, green the high, blue the layered), on a square so far across, centred on the site. The game puts one in
+/// the world if the flight has one; without it the cloud is the site's own everywhere.
+#[derive(Resource, Debug, Clone, PartialEq)]
+pub struct DayMap {
+    /// The map.
+    pub image: Handle<Image>,
+    /// How far across it is, m.
+    pub extent: f32,
+}

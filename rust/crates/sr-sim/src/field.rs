@@ -15,6 +15,10 @@ pub struct Field {
     pub centre: V3,
     /// The Earth's rotation in the site's frame, rad/s.
     pub spin: V3,
+    /// East and north at the site, in its frame: what a wind's two parts are along.
+    pub east: V3,
+    /// As `east`.
+    pub north: V3,
 }
 
 impl Field {
@@ -22,7 +26,13 @@ impl Field {
     #[must_use]
     pub fn at(site: &Site, above_sea: f64) -> Self {
         let radius = site.radius();
-        Self { sea_radius: radius - above_sea, centre: V3::new(0.0, -radius, 0.0), spin: site.rotation() }
+        Self {
+            sea_radius: radius - above_sea,
+            centre: V3::new(0.0, -radius, 0.0),
+            spin: site.rotation(),
+            east: site.from_enu(V3::new(1.0, 0.0, 0.0)),
+            north: site.from_enu(V3::Y),
+        }
     }
 
     /// Height above the sea, m.
@@ -41,6 +51,13 @@ impl Field {
     #[must_use]
     pub fn range(&self, position: V3) -> f64 {
         self.up(position).dot(V3::Y).clamp(-1.0, 1.0).acos() * self.sea_radius
+    }
+
+    /// A wind given by its east and north parts (m/s) as a velocity in the site's frame. The site's own east
+    /// and north are taken everywhere: 500 km down range they have turned by four degrees.
+    #[must_use]
+    pub fn blowing(&self, [east, north]: [f64; 2]) -> V3 {
+        self.east * east + self.north * north
     }
 
     /// What every body feels whatever it is, m/s^2: the Earth's attraction and the turning frame's accelerations.

@@ -73,6 +73,9 @@ pub struct Rig {
     pub distance: f32,
     /// How much the wheel has closed the tracking camera's lens: 1 as it was.
     pub zoom: f32,
+    /// A camera placed by hand (`--eye`): where it stands and the way it looks, in the site's frame. While set, it
+    /// takes the place of the pad's rig.
+    pub free: Option<(DVec3, DVec3)>,
 }
 
 impl Rig {
@@ -95,14 +98,26 @@ impl Plugin for RigPlugin {
     }
 }
 
-fn mount(mut commands: Commands, showing: Res<Showing>, options: Res<Options>) {
+fn mount(
+    mut commands: Commands,
+    showing: Res<Showing>,
+    options: Res<Options>,
+    ground: Option<Res<sr_render::earth::Ground>>,
+) {
     // Open on the whole vehicle from across the pad, from about where a person would stand.
     let stands = showing.0.model(Role::Vehicle).map_or(DVec3::ZERO, |m| DVec3::from_array(m.position));
     let [bearing, elevation, distance, height] = options.pose.unwrap_or([215.0, 1.0, 68.0, 12.0]);
     let named = options.rig.as_deref();
     let kind = Kind::ALL.into_iter().find(|kind| Some(kind.name()) == named).unwrap_or_default();
     let pad = DVec3::new(stands.x, f64::from(height), stands.z);
-    commands.insert_resource(Rig { kind, pad, bearing, elevation, distance, zoom: 1.0 });
+    let free = options.eye.zip(ground.as_deref()).map(|([e, n, h, b, el], g)| {
+        let (east, north) = (g.east.as_dvec3(), g.north.as_dvec3());
+        let at = east * f64::from(e) + north * f64::from(n) + DVec3::Y * f64::from(h);
+        let (sb, cb) = f64::from(b).to_radians().sin_cos();
+        let (se, ce) = f64::from(el).to_radians().sin_cos();
+        (at, (east * sb + north * cb) * ce + DVec3::Y * se)
+    });
+    commands.insert_resource(Rig { kind, pad, bearing, elevation, distance, zoom: 1.0, free });
     commands.spawn(eye());
 }
 
@@ -153,6 +168,9 @@ fn view(rig: &Rig, crew: Option<(DVec3, Quat)>, up: DVec3) -> View {
     let axis = (turned * Vec3::Y).as_dvec3();
     match rig.kind {
         Kind::Pad => {
+            if let Some((at, toward)) = rig.free {
+                return View { at, toward, up: DVec3::Y, field: FIELD };
+            }
             let mut at = rig.pad + rig.arm();
             at.y = at.y.max(CLEAR);
             View { at, toward: rig.pad - at, up: DVec3::Y, field: FIELD }

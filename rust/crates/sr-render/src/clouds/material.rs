@@ -1,52 +1,32 @@
-//! The clouds' material: `shaders/clouds.wesl` marched through the day's layers, drawn on a ball round the eye.
+//! Laying the clouds over the frame: `shaders/clouds_lay.wesl`, drawn on a ball round the eye before anything else
+//! that is seen through. It reads the three half-size targets [`super::pass`] marched and puts them on at full
+//! size, choosing for each pixel the rays that went about as far as what is solid there.
 
 use bevy::mesh::MeshVertexBufferLayoutRef;
 use bevy::pbr::{MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    AsBindGroup, CompareFunction, RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError,
+    AsBindGroup, CompareFunction, RenderPipelineDescriptor, SpecializedMeshPipelineError,
 };
 use bevy::shader::ShaderRef;
 
-/// What the march needs to know each frame.
-#[derive(ShaderType, Debug, Clone, Copy, Default)]
-pub struct CloudFrame {
-    /// The vertical at the eye; `w` the eye's height above the ground, m.
-    pub up: Vec4,
-    /// East at the site, in the site's frame; `w` the ground's radius, m.
-    pub east: Vec4,
-    /// North at the site; `w` the clock, s.
-    pub north: Vec4,
-    /// Toward the Sun; `w` how far one can see, m.
-    pub sun: Vec4,
-    /// The Sun's light on the cloud, lux, red green and blue.
-    pub sunlight: Vec4,
-    /// The sky's light on the cloud, cd/m^2.
-    pub skylight: Vec4,
-    /// Where the eye is over the ground in each layer's own drifting frame, m: the cumulus' east and north, then
-    /// the deck's.
-    pub over: Vec4,
-    /// The cumulus: cover, base (m), depth (m), a cloud's size (m).
-    pub cumulus: Vec4,
-    /// The deck above it, the same.
-    pub deck: Vec4,
-}
-
-/// The clouds.
+/// The clouds and the haze, as marched, to be laid on.
 #[derive(Asset, AsBindGroup, TypePath, Debug, Clone)]
-pub struct CloudMaterial {
-    /// This frame's figures.
-    #[uniform(0)]
-    pub frame: CloudFrame,
-    /// The noise ([`super::volume`]).
-    #[texture(1, dimension = "3d")]
-    #[sampler(2)]
-    pub volume: Handle<Image>,
+pub struct CloudLay {
+    /// The cloud's light, and how much of what is behind it it hides.
+    #[texture(0)]
+    pub cloud: Handle<Image>,
+    /// The haze's light, and how much comes through it.
+    #[texture(1)]
+    pub haze: Handle<Image>,
+    /// How far each ray went, where its cloud began and where its haze ended.
+    #[texture(2)]
+    pub reach: Handle<Image>,
 }
 
-impl Material for CloudMaterial {
+impl Material for CloudLay {
     fn fragment_shader() -> ShaderRef {
-        "shaders/clouds.wesl".into()
+        "shaders/clouds_lay.wesl".into()
     }
 
     fn alpha_mode(&self) -> AlphaMode {

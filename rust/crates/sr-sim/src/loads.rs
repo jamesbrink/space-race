@@ -3,7 +3,7 @@
 
 use sr_world::V3;
 
-use crate::{Field, Plan, Sequence, air};
+use crate::{Field, Plan, Sequence};
 
 /// The bodies a ballistic flight comes apart into.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -40,6 +40,8 @@ pub struct Loads {
     pub thrust: V3,
     /// Drag, N, in the site's frame.
     pub drag: V3,
+    /// Its velocity through the air, m/s, in the site's frame: over the Earth, less the wind there.
+    pub through: V3,
     /// Mach number.
     pub mach: f64,
     /// Dynamic pressure, Pa.
@@ -101,8 +103,10 @@ pub fn loads(
     m: &Moment,
     drive: &Drive,
 ) -> Loads {
-    let air = air::at(field.height(m.position));
-    let speed = m.velocity.length();
+    let (sky, height) = (plan.sky(), field.height(m.position));
+    let air = sky.air(height);
+    let through = m.velocity - field.blowing(sky.wind(height));
+    let speed = through.length();
     let mach = speed / air.sound;
     let q = 0.5 * air.density * speed * speed;
     let (thrust, drag_area) = match body {
@@ -119,8 +123,8 @@ pub fn loads(
         Body::Booster => (0.0, plan.booster_drag_area.value),
         Body::Tower => (drive.tower, plan.ascent_drag.at(mach) * plan.area.value * 0.3),
     };
-    let drag = if speed > 0.0 { m.velocity * (-q * drag_area / speed) } else { V3::ZERO };
-    Loads { mass: drive.mass, thrust: m.axis * thrust, drag, mach, q, pressure: air.pressure }
+    let drag = if speed > 0.0 { through * (-q * drag_area / speed) } else { V3::ZERO };
+    Loads { mass: drive.mass, thrust: m.axis * thrust, drag, through, mach, q, pressure: air.pressure }
 }
 
 /// Which way the retrorockets push the capsule: rearward, and below the level by the retro attitude's pitch.

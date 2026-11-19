@@ -6,6 +6,7 @@
 //! record the miss is written down (`sr-missions`, each flight's `MISSES`).
 
 pub mod air;
+pub mod aloft;
 pub mod curve;
 pub mod field;
 pub mod fly;

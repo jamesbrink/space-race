@@ -1,8 +1,10 @@
-//! Smoke, steam and dust: soft puffs that are born, drift, swell and thin away on the flight's clock.
+//! Smoke and vapour let go in the open air: puffs that are born, drift, swell and thin away on the flight's
+//! clock.
 //!
-//! The game lets a [`Puff`] go where there is something to raise one (the flame on the pad); this moves and
-//! draws them, each a ball whose edge is soft because it is seen less squarely there (`shaders/puff.wesl`), lit
-//! by the Sun and the sky. They keep their places in doubles like everything else.
+//! The game lets a [`Puff`] go where something bursts or burns away from the pad (a tank that breaks up; the
+//! air round the pad itself is [`crate::fumes`]); this moves and draws them, each a billow marched as a volume
+//! inside its ball (`shaders/puff.wesl`), lit by the Sun through itself and by the sky. They keep their places
+//! in doubles like everything else.
 
 use bevy::camera::visibility::NoFrustumCulling;
 use bevy::light::NotShadowCaster;
@@ -10,7 +12,7 @@ use bevy::mesh::{MeshTag, MeshVertexBufferLayoutRef};
 use bevy::pbr::{MaterialPipeline, MaterialPipelineKey};
 use bevy::prelude::*;
 use bevy::render::render_resource::{
-    AsBindGroup, RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError,
+    AsBindGroup, CompareFunction, Face, RenderPipelineDescriptor, ShaderType, SpecializedMeshPipelineError,
 };
 use bevy::shader::ShaderRef;
 
@@ -69,7 +71,12 @@ impl Material for PuffMaterial {
         _layout: &MeshVertexBufferLayoutRef,
         _key: MaterialPipelineKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
-        descriptor.primitive.cull_mode = None;
+        // (seen by its far side, so an eye inside it still sees it; what is in front is found from the depth)
+        descriptor.primitive.cull_mode = Some(Face::Front);
+        if let Some(depth) = descriptor.depth_stencil.as_mut() {
+            depth.depth_compare = Some(CompareFunction::Always);
+            depth.depth_write_enabled = Some(false);
+        }
         Ok(())
     }
 }
@@ -135,8 +142,9 @@ fn drift(
         // It is thrown out fast and the air stops it: its speed falls away as it ages.
         at.0 += (puff.velocity * (1.0 - age).powi(3) * passed).as_dvec3();
         transform.scale = Vec3::splat(puff.grows[0] + (puff.grows[1] - puff.grows[0]) * age.sqrt());
+        // (its age, and which puff it is: no two are cut to the same shape)
         if let Some(mut tag) = tag {
-            tag.value = (age * 1000.0) as u32;
+            tag.value = (age * 1000.0) as u32 | ((entity.index_u32() & 255) << 10);
         }
     }
 }

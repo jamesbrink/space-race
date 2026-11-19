@@ -6,7 +6,7 @@ use avian3d::prelude::*;
 use bevy::math::DVec3;
 use bevy::prelude::*;
 use sr_sim::loads::{Moment, loads};
-use sr_sim::{Body, Loads, Plan, Sequence, Strain, air, guidance, stress};
+use sr_sim::{Body, Loads, Plan, Sequence, Strain, guidance, stress};
 use sr_world::V3;
 
 use super::attitude::Turning;
@@ -64,7 +64,7 @@ fn turn(
     if let (true, Some(toward)) = (hand.guided, programmed) {
         return Turn::To((axis.cross(dvec(toward)) * STEER).clamp_length_max(SLEW));
     }
-    let wind = dvec(m.velocity);
+    let wind = dvec(l.through);
     let burning = body == Body::Stack && l.thrust != V3::ZERO;
     let turning = Turning { body, axis, pitch, spin, wind, q: l.q, burning };
     // A parachute pulls the small end back along the way the capsule is going.
@@ -126,16 +126,23 @@ pub fn fly(
 }
 
 /// The pieces let go: they fall through the air.
-pub fn fall(clock: Res<Clock>, course: Res<Course>, mut pieces: Query<(&Loose, Forces)>) {
+pub fn fall(
+    clock: Res<Clock>,
+    showing: Res<Showing>,
+    course: Res<Course>,
+    mut pieces: Query<(&Loose, Forces)>,
+) {
     if !clock.ready {
         return;
     }
+    let sky = showing.0.plan.sky();
     for (piece, mut forces) in &mut pieces {
         let position = v3(forces.position());
         let velocity = v3(forces.linear_velocity().as_dvec3());
-        let speed = velocity.length();
-        let density = air::at(course.field.height(position)).density;
-        let drag = velocity * (-0.5 * density * speed * piece.drag_area / piece.mass);
+        let height = course.field.height(position);
+        let through = velocity - course.field.blowing(sky.wind(height));
+        let drag =
+            through * (-0.5 * sky.air(height).density * through.length() * piece.drag_area / piece.mass);
         let acceleration = drag + course.field.acceleration(position, velocity);
         forces.apply_linear_acceleration(dvec(acceleration).as_vec3());
     }

@@ -16,9 +16,13 @@ use super::{Loose, Parts};
 const THROWN: f64 = 6.0;
 const TUMBLES: f64 = 0.9;
 /// The burst: how many puffs, how fast they spread, m/s, and how big they get, m. Estimated.
-const PUFFS: u32 = 36;
-const SPREADS: f32 = 22.0;
-const SWELLS: f32 = 16.0;
+const PUFFS: u32 = 40;
+const SPREADS: f32 = 26.0;
+const SWELLS: f32 = 20.0;
+/// How long the burst hangs in the air, s, and how much of the booster's own speed it starts with (the air
+/// stops it within a few seconds: a puff's speed dies away as it ages). Estimated.
+const LASTS: f32 = 14.0;
+const CARRIED: f32 = 0.35;
 
 /// A direction for the `i`th of something, spread evenly over the sphere (the golden angle's spiral).
 fn spread(i: u32, of: u32) -> DVec3 {
@@ -44,15 +48,17 @@ pub fn shatter(commands: &mut Commands, parts: &Parts, from: &State, flight: &Fl
     let middle = from.at + from.axis() * flight.solids.booster.balance.value;
     for i in 0..PUFFS {
         let way = spread(i, PUFFS).as_vec3();
-        let size = 0.5 + 0.5 * (i % 5) as f32 / 4.0;
+        // (no two alike: each its own size and speed, by turns, so the burst is a ragged cloud and not a ball)
+        let size = 0.35 + 0.65 * ((i * 7) % 11) as f32 / 10.0;
+        let speed = 0.25 + 0.75 * ((i * 5) % 9) as f32 / 8.0;
         commands.spawn((
             Puff {
                 born: t as f32,
-                lasts: 5.0 + 5.0 * size,
-                grows: [2.0, SWELLS * size],
-                velocity: way * SPREADS * size,
+                lasts: LASTS * (0.6 + 0.4 * size),
+                grows: [2.5 * size, SWELLS * size],
+                velocity: from.velocity.as_vec3() * CARRIED + way * SPREADS * speed,
             },
-            WorldPos(middle + (way * 3.0).as_dvec3()),
+            WorldPos(middle + (way * 3.0 * speed).as_dvec3()),
         ));
     }
 }

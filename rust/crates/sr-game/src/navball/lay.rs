@@ -18,10 +18,10 @@ const SIZE: f32 = 176.0;
 const FOOT: f32 = 14.0;
 const PICTURE: u32 = 352;
 
-const AHEAD: Color = Color::srgb(0.98, 0.86, 0.2);
-const BEHIND: Color = Color::srgb(0.6, 0.52, 0.16);
-const FLOWN: Color = Color::srgb(0.3, 0.95, 0.45);
-const NOSE: Color = Color::srgb(1.0, 0.5, 0.1);
+const AHEAD: Color = Color::srgb(0.95, 0.83, 0.35);
+const BEHIND: Color = Color::srgb(0.55, 0.48, 0.25);
+const FLOWN: Color = Color::srgb(0.45, 0.85, 0.6);
+const NOSE: Color = Color::srgb(0.95, 0.55, 0.25);
 
 pub fn lay(
     mut commands: Commands,

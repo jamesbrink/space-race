@@ -4,13 +4,14 @@
 
 use avian3d::prelude::{LinearVelocity, Position, Rotation};
 use bevy::prelude::*;
+use sr_sim::Body;
 use sr_sim::heat::{Lie, Thermal};
-use sr_sim::{Body, air};
 
 use super::bodies::v3;
 use super::{Course, Crewed, Flier};
 use crate::Showing;
 use crate::clock::Clock;
+use crate::stage::dvec;
 
 /// The crewed body's heating.
 #[derive(Resource, Debug, Clone, PartialEq)]
@@ -53,11 +54,13 @@ pub fn warm(
         return;
     }
     let heating = &showing.0.plan.heating;
-    let airspeed = f64::from(velocity.0.length());
+    let (sky, height) = (showing.0.plan.sky(), course.field.height(v3(at.0)));
+    let through = velocity.0.as_dvec3() - dvec(course.field.blowing(sky.wind(height)));
+    let airspeed = through.length();
     // How it lies to the air: nose first is 0, blunt end first 1.
-    let along = if airspeed > 1.0 { f64::from((turned.0 * Vec3::Y).dot(velocity.0)) / airspeed } else { 1.0 };
+    let along = if airspeed > 1.0 { (turned.0 * Vec3::Y).as_dvec3().dot(through) / airspeed } else { 1.0 };
     let lie = Lie { airspeed, blunt: (1.0 - along) / 2.0, covered: body == Body::Stack };
-    let air = air::at(course.field.height(v3(at.0)));
+    let air = sky.air(height);
     heat.0.advance(heating, &air, &lie, time.delta_secs_f64());
 }
 

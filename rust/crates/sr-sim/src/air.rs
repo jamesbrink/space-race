@@ -1,7 +1,7 @@
 //! The air: the U.S. Standard Atmosphere, 1976, to 86 km, and an exponential tail above it.
 //!
-//! The web build flies each flight through its own day's ERA5 column (`aloft.ts`); this build flies the standard
-//! day, which `rust/README.md` lists among what is simplified.
+//! A flight with its own day's column flies that ([`crate::aloft`]) and comes to this above it; one without flies
+//! this, calm.
 
 /// Sea-level pressure, Pa.
 pub const P0: f64 = 101_325.0;

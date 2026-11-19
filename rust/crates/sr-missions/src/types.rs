@@ -1,5 +1,6 @@
 //! What a flight and a place are made of (`src/types/*.ts`, cut to what the native build draws and flies).
 
+use crate::ground::Made;
 use sr_measure::Measure;
 use sr_sim::Plan;
 use sr_world::{Instant, Site};
@@ -37,6 +38,8 @@ pub struct SiteDef {
     pub grade: Measure,
     /// The region round it, if it has been mapped.
     pub region: Option<Region>,
+    /// Its made ground (roads, clearings, paving), if it has been set down.
+    pub made: Option<Made>,
 }
 
 impl SiteDef {
@@ -179,7 +182,8 @@ pub struct Solids {
     pub breaks: &'static [Fragment],
 }
 
-/// An engine's fire, as it is drawn (`src/viewer/flames.ts`, `plume.ts`).
+/// A motor's fire, as it is drawn: the pressures and the gas that shape its jet, and the look of what it burns
+/// (`src/viewer/flames.ts`, `plume.ts`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Flame {
     /// The node of the vehicle's model the nozzle is part of: the fire goes where it goes.
@@ -190,10 +194,96 @@ pub struct Flame {
     pub exit_radius: Measure,
     /// Pressure of the gas at the exit, Pa.
     pub exit_pressure: Measure,
+    /// Pressure in the chamber, Pa.
+    pub chamber_pressure: Measure,
+    /// The burned gas's ratio of specific heats.
+    pub gamma: Measure,
     /// Length of the visible flame at sea level, in exit radii.
     pub length: Measure,
+    /// How bright the flame is seen through its heart at the exit, cd/m^2.
+    pub luminance: Measure,
+    /// How much of what is behind its heart at the exit the flame hides, 0 to 1: its soot and smoke.
+    pub hides: Measure,
     /// Linear colours from the core out: core, hot, warm, cool, and what is left in a vacuum.
     pub colours: [[f32; 3]; 5],
+}
+
+/// Which of the flight's motors a fire is: when it burns is the plan's.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Burns {
+    /// One of the tower's motors, by its place in the plan's `tower_motors`.
+    Tower(usize),
+    /// One of the retrorockets, by its place in the plan's `retro_fires`.
+    Retro(usize),
+    /// The posigrade rockets, lit as the capsule separates, for this long, s.
+    Posigrade(Measure),
+}
+
+/// One nozzle of a motor: where its exit's centre is across the vehicle's axis, m (the model's x and z), and
+/// how far its jet is tilted out from the axis, degrees.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Nozzle {
+    /// The exit's centre, m across the axis.
+    pub across: [f64; 2],
+    /// The jet's tilt outward from straight aft, degrees.
+    pub cant: Measure,
+}
+
+/// The fire of a motor other than the engine: its flame at each of its nozzles, burning when the plan says.
+/// The flame's `exit_height` is the plane its nozzles end in.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Fire {
+    /// What it is called.
+    pub name: &'static str,
+    /// The flame at each nozzle.
+    pub flame: Flame,
+    /// Its nozzles.
+    pub nozzles: &'static [Nozzle],
+    /// Which of the flight's motors it is.
+    pub burns: Burns,
+}
+
+/// The air at the pad on the day, for what the engine's blast does to it: the wind at the ground, the dust the
+/// hardstand gives up, and the vapour of the engine's first fire.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PadAir {
+    /// Where the wind at the ground blows from, degrees true.
+    pub wind_from: Measure,
+    /// How fast it blows, at 10 m, m/s.
+    pub wind_speed: Measure,
+    /// The dust a metre of air passing over the hardstand raises once it is faster than `dust_over`, as what
+    /// a metre of the dust takes out of a ray: 1/m for each metre passed and each m/s over.
+    pub dust: Measure,
+    /// The speed the air must pass before it raises any, m/s.
+    pub dust_over: Measure,
+    /// The vapour the engine's first fire throws out round the launcher as it lights, as what a metre of it
+    /// takes out of a ray, each second (1/m a second), and how long that lasts, s.
+    pub vapour: Measure,
+    /// As `vapour`.
+    pub vapour_lasts: Measure,
+    /// What the vehicle vents into it.
+    pub vents: &'static [Vent],
+}
+
+/// A vent in the vehicle's side: cold vapour let out while it is open.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Vent {
+    /// What it is.
+    pub name: &'static str,
+    /// Where it is, in the vehicle's frame, m, and which way it blows.
+    pub at: [f64; 3],
+    /// As `at`.
+    pub toward: [f64; 3],
+    /// How fast the vapour leaves, m/s.
+    pub speed: Measure,
+    /// How much colder than the air it is, K: it is heavier, and falls.
+    pub cold: Measure,
+    /// The vapour it gives each second, as what a metre of it takes out of a ray (1/m a second).
+    pub vapour: Measure,
+    /// It blows from this instant of the clock until that, s.
+    pub from: Measure,
+    /// As `from`.
+    pub until: Measure,
 }
 
 /// Which of a flight's figures a check is of.
@@ -258,6 +348,10 @@ pub struct Flight {
     pub solids: Solids,
     /// Its engine's fire.
     pub flame: Flame,
+    /// The fires of its other motors.
+    pub fires: &'static [Fire],
+    /// The air at its pad that day.
+    pub pad_air: PadAir,
     /// Its parachutes' two colours, linear.
     pub canopy: [[f32; 3]; 2],
     /// What it is flown from.

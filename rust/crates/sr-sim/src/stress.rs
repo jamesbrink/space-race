@@ -47,9 +47,9 @@ pub fn stress(limits: &Limits, body: Body, m: &Moment, l: &Loads) -> Stress {
     let load = l.felt().length() / G0;
     let (bending, load) = match body {
         Body::Stack => {
-            let speed = m.velocity.length();
-            let off =
-                if speed > 1.0 { (m.axis.dot(m.velocity) / speed).clamp(-1.0, 1.0).acos() } else { 0.0 };
+            // (off the wind it meets, which is not quite the way it is going when the air itself is moving)
+            let speed = l.through.length();
+            let off = if speed > 1.0 { (m.axis.dot(l.through) / speed).clamp(-1.0, 1.0).acos() } else { 0.0 };
             (l.q * off / limits.bending.value, load / limits.stack_load.value)
         }
         Body::Capsule => (0.0, load / limits.capsule_load.value),
@@ -74,16 +74,18 @@ mod tests {
         capsule_load: Measure::estimated(25.0, "a test's"),
     };
 
-    fn loads(q: f64, thrust: f64) -> Loads {
-        Loads { mass: 1000.0, thrust: V3::Y * thrust, drag: V3::ZERO, mach: 1.0, q, pressure: 0.0 }
+    fn loads(q: f64, thrust: f64, through: V3) -> Loads {
+        Loads { mass: 1000.0, thrust: V3::Y * thrust, drag: V3::ZERO, through, mach: 1.0, q, pressure: 0.0 }
     }
 
     #[test]
     fn a_stack_flown_nose_to_the_wind_is_not_bent_and_one_flown_across_it_is() {
         let straight = Moment { t: 60.0, position: V3::ZERO, velocity: V3::Y * 400.0, axis: V3::Y };
-        assert!(stress(&LIMITS, Body::Stack, &straight, &loads(40_000.0, 0.0)).part < 1e-9);
+        assert!(
+            stress(&LIMITS, Body::Stack, &straight, &loads(40_000.0, 0.0, straight.velocity)).part < 1e-9
+        );
         let across = Moment { axis: V3::new(0.3, 1.0, 0.0).normalized(), ..straight };
-        let bent = stress(&LIMITS, Body::Stack, &across, &loads(40_000.0, 0.0));
+        let bent = stress(&LIMITS, Body::Stack, &across, &loads(40_000.0, 0.0, across.velocity));
         assert_eq!(bent.strain, Strain::Bending);
         assert!(bent.part > 1.0, "{}", bent.part);
     }
@@ -91,7 +93,7 @@ mod tests {
     #[test]
     fn a_capsule_is_strained_by_its_load_alone() {
         let m = Moment { t: 500.0, position: V3::ZERO, velocity: V3::new(2000.0, 0.0, 0.0), axis: V3::Y };
-        let s = stress(&LIMITS, Body::Capsule, &m, &loads(40_000.0, 1000.0 * G0 * 12.5));
+        let s = stress(&LIMITS, Body::Capsule, &m, &loads(40_000.0, 1000.0 * G0 * 12.5, m.velocity));
         assert_eq!(s.strain, Strain::Load);
         assert!((s.part - 0.5).abs() < 1e-9);
     }

@@ -44,6 +44,7 @@ pub const LC5: SiteDef = SiteDef {
          under the concrete: 12 cm is chosen",
     ),
     region: Some(REGION),
+    made: Some(super::lc5_ground::MADE),
 };
 
 /// What stood round Complex 5 in May 1961, in the pad's frame: the blockhouse, Pad 6 and its gantry, the roads.

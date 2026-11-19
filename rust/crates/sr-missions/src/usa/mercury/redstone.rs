@@ -303,16 +303,45 @@ const BREAKS: [Fragment; 3] = [
 pub const FLAME: Flame = Flame {
     node: "RedstoneEngine",
     exit_height: Measure::derived(
-        -17.855,
-        "the bell's lip in vehicle.glb (node Engine_A7), below the capsule's widest plane",
+        -18.146,
+        "the chamber's lip in vehicle.glb: the lowest ring of Engine_ChamberLiner and Engine_ChamberWall, below the \
+         capsule's widest plane. (Engine_A7's own lowest ring, -17.855, which the web build's note took for the lip, \
+         is a collar 291 mm up the bell; the carbon vanes hang from -17.907 to -18.181, in the gas)",
     ),
-    exit_radius: Measure::derived(0.366, "the radius of a circle of the exit area: sqrt(0.4207 / pi)"),
+    exit_radius: Measure::derived(
+        0.394,
+        "the inside of that ring, in Engine_ChamberLiner: the fire fills the bell as it is modelled, 31.0 in across. \
+         (The exit area the thrust is worked from, 652 sq in, is a circle of 0.366 m; the engine's rated figures give \
+         749 sq in, 0.393 m: mercury-redstone.ts, EXIT_AREA)",
+    ),
     exit_pressure: Measure::estimated(
         0.9 * 101_325.0,
         "about nine tenths of an atmosphere: the chamber's 318 psia over the nozzle's pressure ratio, as first \
          estimated for the fire",
     ),
-    length: Measure::estimated(38.0, "exit radii at sea level, judged against film of the launches"),
+    chamber_pressure: Measure::documented(
+        318.0 * 6894.757,
+        "Aircraft Engine Historical Society, \"The Redstone Engine\": 318 psia (secondary)",
+    ),
+    gamma: Measure::estimated(
+        1.2,
+        "alcohol's, kerosene's and the hydrazines' burned gas all lie near 1.2: one figure for all (plume.ts, GAMMA)",
+    ),
+    length: Measure::estimated(
+        35.3,
+        "exit radii at sea level: 13.9 m, judged against film of the launches (plume.ts has it as 38 of the 0.366 m \
+         radius it was first drawn with)",
+    ),
+    luminance: Measure::estimated(
+        8000.0,
+        "cd/m^2: in the colour stills of MR-3 and MR-2 leaving the pad (NASA 6100884, S61-01928, S63-22731) the \
+         free jet is paler than the sunlit concrete behind it and a little brighter than the hazy sky, so it adds \
+         about a third of a sunlit white surface's 25,000 cd/m^2",
+    ),
+    hides: Measure::estimated(
+        0.0,
+        "an alcohol flame makes no soot: the pad is seen through it in the same stills",
+    ),
     colours: [[1.0, 0.93, 0.78], [1.0, 0.9, 0.62], [1.0, 0.56, 0.15], [1.0, 0.3, 0.05], [0.7, 0.8, 1.0]],
 };
 

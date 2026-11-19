@@ -84,6 +84,7 @@ pub const PLAN: Plan = Plan {
     ),
     drogue: redstone::DROGUE,
     main: redstone::MAIN,
+    aloft: Some(super::mr3_aloft::ALOFT),
     limits: redstone::LIMITS,
     heating: heat::heated(Measure::estimated(
         300.0,
@@ -180,14 +181,14 @@ pub const MISSES: [Check; 5] = [
             101.2 * NMI,
             "the Postlaunch Report, 4.2: maximum altitude 101.2 n. mi.",
         ),
-        simulated: 200_085.5,
+        simulated: 198_488.9,
         why: "it leaves the booster fast: see the speed at separation",
     },
     Check {
         figure: Figure::Range,
         label: "Range",
         recorded: Measure::documented(263.1 * NMI, "the Postlaunch Report, 4.2: range 263.1 n. mi."),
-        simulated: 540_385.1,
+        simulated: 538_378.4,
         why: "as the height",
     },
     Check {
@@ -197,7 +198,7 @@ pub const MISSES: [Check; 5] = [
             6414.0 * FT,
             "the Postlaunch Report, 4.2: Earth-fixed velocity 6414 ft/s",
         ),
-        simulated: 2_047.3,
+        simulated: 2_042.5,
         why: "the tilt curve is Figure 4-9 stretched, not MR-3's own, and the ascent's drag is the capsule's alone",
     },
     Check {
@@ -217,7 +218,7 @@ pub const MISSES: [Check; 5] = [
             922.0,
             "the Postlaunch Report, 4.1: main chute disconnect, at landing, 15:22.0",
         ),
-        simulated: 936.2,
+        simulated: 928.4,
         why: "as the height",
     },
 ];
@@ -234,6 +235,8 @@ pub static FLIGHT: Flight = Flight {
     parts: redstone::PARTS,
     solids: redstone::SOLIDS,
     flame: redstone::FLAME,
+    fires: &super::fires::FIRES,
+    pad_air: super::fires::MR3_PAD_AIR,
     canopy: redstone::CANOPY,
     plan: PLAN,
     events: &EVENTS,
