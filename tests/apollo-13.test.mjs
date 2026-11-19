@@ -2,9 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { BufferAttribute, BufferGeometry, Matrix4 } from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
+import { flight as apollo10 } from '../missions/usa/apollo/flights/apollo-10/flight.ts';
 import { aquariusStackParts } from '../missions/usa/apollo/flights/apollo-13/aquarius.ts';
 import { flight } from '../missions/usa/apollo/flights/apollo-13/flight.ts';
-import { lacks } from '../src/app/address.ts';
+import { lacks, openingFor } from '../src/app/address.ts';
 import { readGlb } from '../tools/glb-geometry.mjs';
 import { assertAdapterClearance } from './apollo-adapter-clearance.mjs';
 import { framesOf } from './glb.mjs';
@@ -12,11 +13,11 @@ import { framesOf } from './glb.mjs';
 const [stack, lander] = flight.models;
 test('Apollo 13 offers the stack and Aquarius in the Gallery with the flown crew assignments', () => {
   assert.equal(lacks(flight, 'gallery'), null);
-  assert.ok(lacks(flight, 'site'));
+  assert.equal(lacks(flight, 'site'), null);
   assert.ok(lacks(flight, 'fly'));
   assert.deepEqual(
     flight.models.map((m) => m.id),
-    ['vehicle', 'aquarius'],
+    ['vehicle', 'aquarius', 'pad', 'crew', 'pilot', 'lmp'],
   );
   assert.deepEqual(
     stack.seats.map((s) => s.label),
@@ -26,6 +27,42 @@ test('Apollo 13 offers the stack and Aquarius in the Gallery with the flown crew
     lander.seats.map((s) => s.label.split('’')[0]),
     ['Lovell', 'Haise'],
   );
+});
+
+test('Apollo 13 opens at Pad A on ML-3 and dates the crew and closeout operations to 11 April', () => {
+  const pad = flight.models.find((m) => m.id === 'pad');
+  const earlier = apollo10.models.find((model) => model.id === 'pad');
+  assert.equal(pad.name, 'Mobile launcher 3');
+  assert.equal(earlier.name, pad.name);
+  assert.match(earlier.url, /pad-b\.glb$/);
+  assert.equal(
+    earlier.parts.some((part) => part.node === 'Substation'),
+    false,
+  );
+  assert.ok(pad.parts.some((part) => part.node === 'Substation'));
+  assert.match(pad.url, /pad-a-1970-04\.glb$/);
+  assert.deepEqual(flight.site.zone, { name: 'EST', utcOffset: -5 });
+  assert.deepEqual(openingFor(flight, { fly: false, named: '', clockAt: 0, running: false }), {
+    at: -43200,
+    model: 'pad',
+    view: 'launcher',
+  });
+  assert.deepEqual(
+    stack.seats.map((s) => [flight.models.find((m) => m.id === s.figure).name, ...s.open]),
+    [
+      ['Lovell', -9660, -7943],
+      ['Swigert', -9660, -7943],
+      ['Haise', -9660, -7943],
+    ],
+  );
+  assert.equal(pad.sequence.find((k) => k.event.includes('leaves the hatch')).at, -2580);
+  assert.equal(pad.sequence.find((k) => k.event.includes('First vehicle motion')).at, 0.3);
+  const side = stack.parts.find((p) => p.node === 'SideHatch').clocked;
+  const cover = stack.parts.find((p) => p.node === 'BoostCover').clocked;
+  assert.ok(cover[0].to < side[0].to && side[0].to <= -12600);
+  assert.ok(cover[1].from > side[1].to);
+  assert.equal(cover[1].to, -5397);
+  assert.equal(flight.weather.observed.at, flight.launch);
 });
 
 for (const level of ['', '.lod1', '.lod2']) {

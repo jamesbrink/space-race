@@ -467,6 +467,7 @@ export const flight: Flight = {
     },
     snoopyModel,
     mobileLauncher(3, {
+      pad: 'b',
       ingress: boarding[0],
       parkedBy: -2760,
       pao: 'Apollo 10 launch-day PAO commentary, crew insertion and prelaunch countdown.',

@@ -46,7 +46,7 @@ async function surfaces(model, level) {
   }
   return { meshes, pose };
 }
-for (const [flight, serial] of flights) {
+for (const [flight, serial, firstMotion] of flights) {
   const stack = flight.models.find((m) => m.id === 'vehicle'),
     pad = flight.models.find((m) => m.id === 'pad');
   const levels = ['', '.lod1', '.lod2'];
@@ -127,11 +127,20 @@ for (const [flight, serial] of flights) {
     }
   });
   test(`${flight.id} releases its four links, closes its working hoods and withdraws all three tail masts on the pad clock`, async () => {
-    // First motion relative to range zero in the AS-506 and AS-507 flight evaluations.
-    const firstMotion = serial === 507 ? 0.25 : 0.3;
     const links = pad.parts.find((part) => part.node === 'Holddown_Arms').clocked.filter((move) => move.node.startsWith('Holddown_Link_'));
     assert.equal(links.length, 4);
     for (const link of links) assert.equal(link.from, firstMotion, link.node);
+    if (serial === 508) {
+      // AS-508 §3.6.1: all three masts retracted together and their hoods closed within
+      // four seconds of aft umbilical plate separation. Individual stroke times were lost.
+      const moves = pad.parts.flatMap((part) => part.clocked ?? []);
+      for (const mast of ['1_2', '3_2', '3_4']) {
+        const carrier = moves.find((move) => move.node === `Tail_Carrier_${mast}`);
+        const visor = moves.find((move) => move.node === `Tail_Visor_${mast}`);
+        assert.equal(carrier.from, firstMotion);
+        assert.ok(visor.to >= carrier.to && visor.to - carrier.from <= 4, mast);
+      }
+    }
     for (const level of ['', '.lod1', '.lod2']) {
       const { gltf } = await readGlb(file(pad, level));
       const root = hierarchy(gltf);
