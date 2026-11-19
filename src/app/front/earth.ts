@@ -2,7 +2,7 @@ import { DEEP, GLINT_GLSL, ICE, LAND, seaSlopes, WATER_GLSL } from '../../viewer
 import * as THREE from 'three';
 import { ATMOSPHERE_GLSL, TOP, type atmosphereUniforms } from '../../viewer/atmosphere.ts';
 import { vec3 } from '../../viewer/glsl.ts';
-import { WGS84_A, WGS84_B } from '../../world/bodies.ts';
+import { EARTH } from '../../world/bodies.ts';
 import type { Mat3, Vec3 } from '../../world/frames.ts';
 import { RELIEF_GLSL } from '../../world/relief.ts';
 
@@ -38,6 +38,9 @@ import { RELIEF_GLSL } from '../../world/relief.ts';
  * wind and this Earth, which has no station's day, from a fair 7 m/s.
  */
 const SEA_SLOPES = seaSlopes(7);
+/** The Earth's figure, metres: the one body (world/bodies.ts `EARTH`) the globe under a flight is drawn on too (viewer/globemesh.ts). */
+const A = EARTH.equatorialRadius.value;
+const B = EARTH.polarRadius.value;
 /** Distances to the shore are kept to this many texels of the globe's own maps (tools/globe.mjs: SPREAD). */
 const SPREAD = 8;
 
@@ -58,7 +61,7 @@ const FRAGMENT = /* glsl */ `
   ${ATMOSPHERE_GLSL}
   ${WATER_GLSL}
   ${RELIEF_GLSL}
-  const float A = ${WGS84_A.toFixed(1)}, SQUASH = ${(WGS84_B / WGS84_A).toFixed(9)}, SHELL = ${(WGS84_A + TOP).toFixed(1)};
+  const float A = ${A.toFixed(1)}, SQUASH = ${(B / A).toFixed(9)}, SHELL = ${(A + TOP).toFixed(1)};
 
   ${GLINT_GLSL}
   const vec2 SEA = vec2(${SEA_SLOPES.toFixed(5)}, ${(Math.PI * SEA_SLOPES).toFixed(5)});
@@ -211,7 +214,7 @@ export class FarEarth {
     );
     this.mesh.name = 'earth';
     this.mesh.frustumCulled = false;
-    this.mesh.scale.set(WGS84_A + TOP, WGS84_A + TOP, (WGS84_A + TOP) * (WGS84_B / WGS84_A));
+    this.mesh.scale.set(A + TOP, A + TOP, (A + TOP) * (B / A));
     this.mesh.renderOrder = 1;
     void this.load(base, lighter);
   }
@@ -277,7 +280,7 @@ export class FarEarth {
       axes[0][2] * v[0] + axes[1][2] * v[1] + axes[2][2] * v[2],
     ];
     const eye = back([-centre[0], -centre[1], -centre[2]]);
-    (this.uniforms.uEye!.value as THREE.Vector3).set(eye[0], eye[1], eye[2] * (WGS84_A / WGS84_B));
+    (this.uniforms.uEye!.value as THREE.Vector3).set(eye[0], eye[1], eye[2] * (A / B));
     const s = back(sun);
     (this.uniforms.uSun!.value as THREE.Vector3).set(s[0], s[1], s[2]).normalize();
     const surfaced = this.surfacedAt ? Math.min(1, (now - this.surfacedAt) / SURFACING) : 0;

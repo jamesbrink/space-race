@@ -12,7 +12,7 @@ import {
   sub,
   type Vec3,
 } from '../world/frames.ts';
-import { EARTH_SPHERE, WGS84_A, WGS84_B } from '../world/bodies.ts';
+import { EARTH as BODY, EARTH_SPHERE } from '../world/bodies.ts';
 import { planeAt, surfaceDirection } from '../world/region.ts';
 import { RELIEF_GLSL } from '../world/relief.ts';
 import { ellipsoidNormal, gaussianRadius, horizonDistance, seaPoint } from '../world/surface.ts';
@@ -1245,7 +1245,7 @@ export class Globe {
           // height above the sea of a point of the scene, metres: radially over the ellipsoid, which at these heights is the same as along its normal
           float globeHeight(vec3 p) {
             vec3 q = uGlobeOrigin + uGlobeAxes * p;
-            float s = sqrt(dot(q.xy, q.xy) / ${(WGS84_A ** 2).toExponential(10)} + q.z * q.z / ${(WGS84_B ** 2).toExponential(10)});
+            float s = sqrt(dot(q.xy, q.xy) / ${(BODY.equatorialRadius.value ** 2).toExponential(10)} + q.z * q.z / ${(BODY.polarRadius.value ** 2).toExponential(10)});
             return length(q) * (1.0 - 1.0 / s) - uGlobeSeaLevel;
           }`,
         )

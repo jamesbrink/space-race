@@ -1016,6 +1016,9 @@ The Earth from out by the Moon (`src/app/front/`, its Moon `viewer/moon.ts`) is 
 `Stage`: it has no models, no looks, no picking, no post-processing. What it keeps of this file's rules, in its own
 terms:
 
+- **The same Earth.** The ball's figure is the one body the globe under a flight is drawn on (`EARTH` in
+  world/bodies.ts, WGS 84's radii: app/front/earth.ts and viewer/globemesh.ts both read it); `EARTH_SPHERE` is
+  the sphere taken where a sphere will do, never a second figure for the ball.
 - **Drawn from the eye.** Positions are doubles in the Moon's frame (view.ts). The camera stays at the origin and
   only turns; the Earth is placed by where it is from the eye and the Moon's ground by the eye's place over it, so a
   float never holds 370,000 km and a metre together. The Earth's own arithmetic (where a pixel's ray meets its air

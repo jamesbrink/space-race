@@ -163,6 +163,7 @@ export const SUN: Body = {
   pole: pole(286.13, 63.87),
 };
 
+/** The Earth: one body for everything drawn of it, the globe under a flight (viewer/globemesh.ts) and the front page's ball (app/front/earth.ts) alike. */
 export const EARTH: Body = {
   id: 'earth',
   name: 'Earth',
