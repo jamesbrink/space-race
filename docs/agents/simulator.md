@@ -784,6 +784,15 @@ read gives enough of to fly (issue #10).
   stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
   deck's own (a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
   both, Space is the next thing on both, and the throttle is the deck's own on both (below, "The throttle").
+- **The deck is an instrument, not a page.** What is always there: the navball and the path in the left corner; the
+  phase and the two switches, the five figures, the throttle and the one action with its abort in the middle; the supplies
+  as bars and the lamps (braking, lock, jets, what burns) on the right. Secondary detail is folded: the readings (the air,
+  where it is, how it points) under Details in the systems panel (prefs `deckDetails`, remembered), and every other key
+  behind Keys (More on a phone), Flight first, then Show, Camera and Clock. The foot line holds the six that steer and the
+  time's pace (`[` `]`, the rate beside them); Leave is the clock's (Esc). The prompt beside the action is a line or two,
+  the whole of what there is to know in its title (a hot staging's note), and the next action's label wraps in its button
+  rather than squeeze the prompt to nothing. What the engine is doing is the throttle row's, not a row of the systems'.
+  The page's diagnostics line is away while the deck is flown.
 - **The throttle is one lever for every flight** (deck.ts `lever`, sim/lever.ts): the up and down arrows a notch, Z full,
   Cut nothing, its slider in a row of the middle panel under the figures, the same on every flight and at every width. It
   starts full, which is the record's setting, so a flight nobody touches is the record's to the bit. Moving it takes a

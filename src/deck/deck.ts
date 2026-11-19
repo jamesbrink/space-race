@@ -2,6 +2,7 @@ import type { Impact } from '../sim/contact.ts';
 import type { EscapeSweep } from '../sim/launchescape.ts';
 import type { TowerEscape } from '../sim/plan.ts';
 import '../ui/cockpit.css';
+import { prefs } from '../app/prefs.ts';
 import { leftWhen, runs } from '../app/runs.ts';
 import type { Run } from '../sim/run.ts';
 import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
@@ -97,6 +98,8 @@ export interface ThrottleView {
   mass: number;
   /** Where the lever does not reach what burns now, why (said beside it): the lever is then shown and not worked. */
   not?: string;
+  /** What the engines are doing when none burns ('not lit', 'cut off', 'out of propellant'): 'not lit' unless given. */
+  doing?: string;
 }
 
 /** What a flight kind puts in the deck when it is built (the rest it fills as it flies). */
@@ -303,6 +306,8 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       const key = (KEYS['orbit.zoom'].slots[i] as readonly string[])[0]!;
       return `<button data-press="${key}" data-held title="${about} (${capOf(key)})"><kbd>${capOf(key)}</kbd></button>`;
     };
+    const warp = (i: number, about: string) =>
+      `<button data-press="${slot('clock.rate', i)}" title="${about} (${capOf(slot('clock.rate', i))})"><kbd>${capOf(slot('clock.rate', i))}</kbd></button>`;
     const rate = (i: number, about: string, label: string) =>
       `<button data-press="${slot('clock.rate', i)}" title="${about} (${capOf(slot('clock.rate', i))})"><kbd>${capOf(slot('clock.rate', i))}</kbd>${label}</button>`;
     const { steering, events, restart } = spec.labels ?? { steering: 'Steering', events: 'Events', restart: 'Restart as flown' };
@@ -320,7 +325,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         </div>
         <p class="cockpit-phase"><b data-cell="phase"></b><span data-cell="mode"></span>
           <span class="deck-modes">
-            <span class="deck-takeover">Tap either switch to take control</span>
+            <span class="deck-takeover">A switch, the action or the throttle takes control</span>
             <button data-do="guidance" class="switch" aria-pressed="true" title="${spec.guidance} (${capsOf('deck.guidance').join(' ')})">${kbd('deck.guidance')}<span class="for-keys">Guidance</span><span class="for-touch">${steering} · <span class="deck-auto">Auto</span><span class="deck-manual">Manual</span></span></button>
             <button data-do="sequence" class="switch" aria-pressed="true" title="${spec.sequence} (${capsOf('deck.sequence').join(' ')})">${kbd('deck.sequence')}<span class="for-keys">Sequencer</span><span class="for-touch">${events} · <span class="deck-auto">Auto</span><span class="deck-manual">Manual</span></span></button>
           </span></p>
@@ -346,10 +351,15 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         <p class="deck-foot">
           <span class="deck-steer for-keys">${hold(pitchDown, 'Pitch the nose downrange')}${hold(pitchUp, 'Pitch the nose back')}<em>pitch</em>${hold(yawLeft, 'Yaw left')}${hold(yawRight, 'Yaw right')}<em>yaw</em>${hold(rollLeft, 'Roll left')}${hold(rollRight, 'Roll right')}<em>roll</em></span>
           <span class="for-touch">Stick steers · ⟲ ⟳ roll</span>
-          <button data-do="leave" class="for-keys" title="Leave the flight deck (${capsOf('deck.leave').join(' ')})">${kbd('deck.leave')}Leave</button>
+          <span class="deck-turn deck-warp for-keys" title="How fast time runs: slower, faster (${capsOf('clock.rate').join(' ')})">${warp(0, 'Time runs slower')}${warp(1, 'Time runs faster')}<em data-cell="warp">1×</em></span>
           <button data-do="keys" aria-expanded="false" title="Every key and control of the flight deck"><span class="for-keys">Keys</span><span class="for-touch">More</span><i class="chevron"></i></button>
         </p>
         <div class="cockpit-keys" hidden>
+          <div><h4>Flight</h4><p>
+            ${spec.flightKeys}
+            <button data-do="again" title="${restart} (${capsOf('deck.again').join(' ')})">${kbd('deck.again')}${restart}</button>
+            <button data-do="leave" title="Leave the flight deck (${capsOf('deck.leave').join(' ')})">${kbd('deck.leave')}Leave</button>
+          </p></div>
           <div><h4>Show</h4><p>
             <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (${capsOf('path.show').join(' ')})">${kbd('path.show')}Path</button>
             <button data-press="${KEYS['map.show'].slots[0]}" data-map class="switch" aria-pressed="false" title="The map: the whole path from far out, the way it came and what else flies, the Earth turning under it; again for the view it was taken from (${capsOf('map.show').join(' ')})">${kbd('map.show')}Map</button>
@@ -372,18 +382,15 @@ export abstract class Deck<F extends Flight = SitedFlight> {
             ${rate(1, 'Time runs faster', 'Faster')}
             <button data-press="${KEYS['sound.toggle'].slots[0]}" title="Sound on or off (${capsOf('sound.toggle').join(' ')})">${kbd('sound.toggle')}Sound</button>
           </p></div>
-          <div><h4>Flight</h4><p>
-            ${spec.flightKeys}
-            <button data-do="again" title="${restart} (${capsOf('deck.again').join(' ')})">${kbd('deck.again')}${restart}</button>
-            <button data-do="leave" title="Leave the flight deck (${capsOf('deck.leave').join(' ')})">${kbd('deck.leave')}Leave</button>
-          </p></div>
         </div>
       </section>
       <section class="deck-sys" aria-label="Systems">
         <div class="systems" data-cell="systems"></div>
-        <div class="sys-rule"></div>
-        <div class="readings">
-          ${spec.readings.map(pair).join('\n          ')}
+        <button class="sys-more" data-do="details" aria-expanded="false" title="The air on the vehicle, where it is and how it points: shown, or folded away"><span>Details</span><i class="chevron"></i></button>
+        <div class="sys-detail">
+          <div class="readings">
+            ${spec.readings.map(pair).join('\n            ')}
+          </div>
         </div>
         <em data-cell="load" class="cockpit-load" hidden title="The bending load on the stack (dynamic pressure times the angle off the wind) against what it can take: amber past four fifths, red over. Half a second over, or half as much again at once, breaks it"></em>
         <em data-cell="heat" hidden title="The heat shield's temperature against its limit, and the heat flux at its stagnation point: amber past four fifths of the limit"></em>
@@ -458,6 +465,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     root.addEventListener('click', (e) => {
       const b = (e.target as HTMLElement).closest<HTMLElement>('button');
       if (b?.dataset.do === 'keys') this.showKeys(!root.classList.contains('keys-open'));
+      else if (b?.dataset.do === 'details') this.showDetails(!root.classList.contains('details-open'));
       else if (b?.dataset.work) this.work(b.dataset.work);
       else if (b?.dataset.do) this.act(b.dataset.do);
       else if (b?.dataset.press && !('held' in b.dataset)) {
@@ -491,6 +499,9 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       this.scope.on(window, 'blur', () => set(false));
     }
     this.showKeys(false);
+    this.showDetails(prefs.get('deckDetails'), false);
+    // (the clock's pace beside the keys that set it)
+    clock.listen(() => this.put('warp', `${clock.rate}×`));
 
     // the way in: beside the clock, which is always on show
     this.button = document.createElement('button');
@@ -786,7 +797,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     const cut = r ? at < r.least - 1e-9 : false;
     const pct = (x: number) => `${Math.round(x * 100)}`;
     const lever = r ? (cut ? 'Cut' : `${pct(at)} %`) : 'Solid';
-    const what = `${view.engines}${view.burning ? ` · ${(view.thrust / 1000).toFixed(view.thrust < 20_000 ? 1 : 0)} kN` : ' · not lit'}`;
+    const what = `${view.engines} · ${view.burning ? `${(view.thrust / 1000).toFixed(view.thrust < 20_000 ? 1 : 0)} kN` : (view.doing ?? 'not lit')}`;
     const burn = view.flow > 0 && view.burning ? view.left / view.flow : Number.NaN;
     const dv = view.left > 0 && view.mass > view.left && view.isp > 0 ? view.isp * G0 * Math.log(view.mass / (view.mass - view.left)) : 0;
     const time = (x: number) => (x >= 60 ? `${Math.floor(x / 60)}:${String(Math.floor(x % 60)).padStart(2, '0')}` : `${x.toFixed(0)} s`);
@@ -839,6 +850,13 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     this.root.querySelector<HTMLElement>('.cockpit-keys')!.hidden = !open;
     this.root.querySelector('[data-do=keys]')!.setAttribute('aria-expanded', String(open));
     this.root.classList.toggle('keys-open', open);
+  }
+
+  /** The systems' readings (the air, where it is, how it points), shown or folded under Details: remembered. */
+  protected showDetails(open: boolean, remember = true): void {
+    if (remember) prefs.set('deckDetails', open);
+    this.root.querySelector('[data-do=details]')!.setAttribute('aria-expanded', String(open));
+    this.root.classList.toggle('details-open', open);
   }
 
   /** The deck's panels show, the way in becomes the way out, and the page makes way. */

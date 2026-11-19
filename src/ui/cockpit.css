@@ -151,6 +151,14 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .tank.jets u.on::before { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
 .cockpit u { text-decoration: none; }
 .sys-rule { height: 1px; margin: 6px 0; background: var(--line); }
+/* the readings fold under Details, as every panel tucks: a chevron, remembered (prefs `deckDetails`) */
+.sys-more { display: flex; align-items: center; gap: 8px; width: 100%; margin-top: 6px; padding: 5px 14px 0; border-top: 1px solid var(--line); color: var(--faint); font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; }
+.sys-more:hover { color: var(--ink); }
+.sys-more .chevron { display: block; width: 12px; margin-left: auto; }
+.cockpit:not(.details-open) .sys-detail { display: none; }
+.sys-detail .readings { padding-top: 4px; }
+/* the clock's pace beside the keys that set it */
+.deck-warp em[data-cell='warp'] { min-width: 3ch; margin-right: 0; color: var(--dim); font-variant-numeric: tabular-nums; }
 .readings { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding: 0 14px; }
 .reading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-height: 20px; }
 .reading b i { margin-left: 3px; font: 10px/1.4 var(--mono); font-style: normal; color: var(--faint); }
@@ -395,7 +403,7 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 }
 
 /* the diagnostics line keeps clear of the deck: up in the corner, as far as the clock; on a small screen there is no room for it */
-#ui.piloting .stats { white-space: nowrap; bottom: auto; top: var(--edge); max-width: calc(50vw - 250px - var(--edge)); overflow: hidden; text-overflow: ellipsis; }
+#ui.piloting .stats { display: none; }
 .cockpit.keys-open .deck-foot > [data-do='leave'] { display: none; }
 @media (max-width: 960px), (max-height: 520px) { #ui.piloting .stats { display: none; } }
 /* From the couch the model's own panel is in front of the pilot: the deck is put away unless it is asked for (P; main.ts panelOnly), and with it the navball and the path's labels */
