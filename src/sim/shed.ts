@@ -21,6 +21,10 @@
  * Something let go standing on the ground stays there, and so does something let go onto what
  * stands under it (`Release.stands`). Nearby airborne parts exchange contact impulses in `Sheds`. A body that has come down is not
  * integrated again. Its mass does not change: a motor's propellant is not taken off it.
+ *
+ * At a site (`ShedOptions.site`, on a flight flown live with the page's solids: sitecontact.ts) each tick of a body is
+ * also put to what stands there and to the land: it strikes them by the spheres its other contacts use, is turned and
+ * slowed by them, and where it lies still it is down (`ShedRun`). A recorded run is given no site and ends on the floor.
  */
 import type { ShedBody } from '../types.ts';
 import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
@@ -49,6 +53,7 @@ import { ballisticOf, MEAN_RADIUS } from './fly.ts';
 import { airForces, floorAt, pieceOf, type Release, type Shape } from './forces.ts';
 import type { FlightPlan } from './plan.ts';
 import { aboutAxis, euler, fixedAndFluid, fromAxes, multiply, normalize, type Quat, rotateFor, spin, turn, unturn } from './rigid.ts';
+import { type HullBead, Lying, type SiteStrike, type SiteSurfaces } from './sitecontact.ts';
 import { TICK, type Vehicle, type VehicleState } from './vehicle.ts';
 
 /** Under this dynamic pressure, Pa, the air is left out of a coarse step; and how many ticks such a step is. */
@@ -96,6 +101,8 @@ export interface Shedder {
   start(): ShedState;
   /** One step: a tick, or COARSE of them above the air. */
   tick(state: ShedState): ShedState;
+  /** The body down where `state` has it at `at`, having come down at those speeds (m/s down the plumb line and over the ground): at rest on something at a site. */
+  rests(state: ShedState, at: number, vertical: number, horizontal: number): ShedState;
   /** What the air and its rocket are doing to it: height (m), dynamic pressure (Pa), Mach number, the angle between its +X and its motion through the air (rad), and every force but gravity (N, in the frame). */
   feel(state: ShedState): { altitude: number; q: number; mach: number; alpha: number; airspeed: number; force: Vec3 };
 }
@@ -105,6 +112,13 @@ export interface ShedOptions {
   floor?: (latitude: number, longitude: number) => number;
   /** The frame the vehicle that let it go is flown in (world/earthframe.ts): fixed at liftoff unless given. */
   frame?: EarthFrame;
+  /**
+   * What stands at the site and its land (sitecontact.ts), once there are any to ask: each body is put to them as it
+   * is flown. Asked each tick, so it may answer null until the page has the site's solids.
+   */
+  site?: () => SiteSurfaces | null;
+  /** What the site's pieces are called, for the deck (`model/part` to the part's name). */
+  names?: ReadonlyMap<string, string>;
 }
 
 interface Dyn {
@@ -296,6 +310,10 @@ export function shedder(
     release,
     start,
     tick,
+    rests(s, at, vertical, horizontal) {
+      const d: Dyn = { r: s.r, v: s.v, q: s.q, w: s.w };
+      return { ...s, landing: { ...landed(d, at), speed: Math.hypot(vertical, horizontal), vertical } };
+    },
     feel(s) {
       const d: Dyn = { r: s.r, v: s.v, q: s.q, w: s.w };
       const f = forces(d, s.t, false, thrust(s.t + TICK / 2 - release.t));
@@ -311,11 +329,42 @@ export class ShedRun {
   brokenAt = Infinity;
   private state: ShedState;
   private readonly kept: { t: number; r: Vec3; v: Vec3; q: Quat; w: Vec3 }[] = [];
+  /** The site it is put to as it flies, by its own spheres, if it has one (`ShedOptions.site`). */
+  private readonly site: SiteBody | null;
+  private readonly lying = new Lying();
+  /** What it has struck at its site hard enough to say, not yet told (`Sheds.siblings` takes them). */
+  readonly struck: SiteStrike[] = [];
 
-  constructor(shedder: Shedder) {
+  constructor(shedder: Shedder, site: SiteBody | null = null) {
     this.shedder = shedder;
+    this.site = site;
     this.state = shedder.start();
     this.keep();
+  }
+
+  /**
+   * A tick against the site: the state as the contacts there leave it, or null if it touched nothing. A tick that
+   * ended on the floor and met something on the way was stopped by that first: it goes on from where it was left.
+   */
+  private atSite(before: ShedState, next: ShedState): ShedState | null {
+    const site = this.site;
+    const surfaces = site?.surfaces();
+    if (!site || !surfaces) return null;
+    const { centre: station, mass, roll, across } = this.shedder.release;
+    const pose = (s: ShedState): ContactPose => ({ t: s.t, r: s.r, v: s.v, q: s.q, w: s.w, station, mass, centre: station });
+    const [a, b] = [pose(before), pose(next)];
+    const middle = (p: ContactPose): Vec3 => add(p.r, turn(p.q, [site.middle[0] - station, site.middle[1], site.middle[2]]));
+    if (!surfaces.near(middle(a), a.t, middle(b), b.t, site.round)) {
+      this.lying.note(next.t, false, [], 0, 0);
+      return null;
+    }
+    const met = surfaces.resolve(a, b, site.beads, { centre: station, inertia: [roll, across, across], wide: site.wide }, site.name);
+    const coming = surfaces.coming(before, before.t);
+    const rest = this.lying.note(next.t, met.touched, surfaces.placed({ ...met, t: next.t }, site.round), coming.down, coming.along);
+    if (!met.touched) return null;
+    this.struck.push(...met.hits);
+    const left: ShedState = { ...next, r: met.r, v: met.v, q: met.q, w: met.w, ticks: (next.t - this.from) / TICK, landing: null };
+    return rest ? this.shedder.rests(left, next.t, rest.vertical, rest.horizontal) : left;
   }
 
   private keep(): void {
@@ -338,7 +387,17 @@ export class ShedRun {
     if (t === Infinity) t = this.from + LIMIT;
     const every = Math.round(KEEP / TICK);
     while (!this.state.landing && this.state.t < t) {
-      this.state = this.shedder.tick(this.state);
+      const before = this.state;
+      const next = this.shedder.tick(before);
+      const met = this.site ? this.atSite(before, next) : null;
+      if (met) {
+        // a blow changes its velocity at once: both sides of it are kept, as `strike` keeps them
+        if (this.kept.at(-1)!.t < before.t) this.kept.push({ t: before.t, r: before.r, v: before.v, q: before.q, w: before.w });
+        this.state = met;
+        this.keep();
+        continue;
+      }
+      this.state = next;
       if (this.state.landing || this.state.ticks % every === 0) this.keep();
     }
   }
@@ -369,7 +428,7 @@ export class ShedRun {
   /** Continue a copy at a handover. Earlier corrected states are shared as immutable samples.
    * A contact or a look ahead on the new run cannot rewrite the source run. */
   fork(t: number): ShedRun {
-    const next = new ShedRun(this.shedder);
+    const next = new ShedRun(this.shedder, this.site);
     const at = this.at(t);
     if (!at) return next;
     next.kept.length = 0;
@@ -427,6 +486,17 @@ export class ShedRun {
     const q = normalize([0, 1, 2, 3].map((i) => a.q[i]! + (sign * b.q[i]! - a.q[i]!) * s) as unknown as Quat);
     return { r, v, q, w: add(a.w, scale(sub(b.w, a.w), s)), down: false };
   }
+}
+
+/** A shed body as a site meets it: its spheres in its own frame as it flies loose, a sphere round them all, and what a struck piece is called. */
+export interface SiteBody {
+  surfaces: () => SiteSurfaces | null;
+  beads: readonly HullBead[];
+  middle: Vec3;
+  round: number;
+  /** Its radius across, m. */
+  wide: number;
+  name: (key: string) => string | undefined;
 }
 
 /** The flown reference point, where it lies along the original stack, and its motion. */
@@ -660,9 +730,29 @@ export class Sheds {
     if (had) return had;
     const def = sourceOf(this.plan).sheds.find((d) => d.on === release.on);
     if (!def) return undefined;
-    const run = new ShedRun(shedder(this.plan, this.site, this.seaLevel, def, release, this.options));
+    const run = new ShedRun(shedder(this.plan, this.site, this.seaLevel, def, release, this.options), this.atSite(def));
     this.runs.set(release.on, run);
     return run;
+  }
+
+  /** A body as the site meets it: the spheres of its hull as it flies loose (the ones its contacts with the vehicle and its siblings use). */
+  private atSite(def: ShedBody): SiteBody | null {
+    const surfaces = this.options.site;
+    const h = this.hulls.get(def.on);
+    if (!surfaces || !h || h.radius <= 0) return null;
+    const beads: HullBead[] = (h.loosePoints ?? h.points).map(([x, y, z]) => ({
+      node: def.on,
+      at: [x, h.looseOffset[1] + y, h.looseOffset[2] + z],
+      radius: h.radius,
+    }));
+    return {
+      surfaces,
+      beads,
+      middle: [(h.from + h.to) / 2, h.looseOffset[1], h.looseOffset[2]],
+      round: h.bound + length(h.looseOffset),
+      wide: h.width,
+      name: (key) => this.options.names?.get(key),
+    };
   }
 
   /** Preserve an earlier stage's entire flight, including contacts before the coast handover. */
@@ -851,7 +941,35 @@ export class Sheds {
             energy: hit.energy,
           });
       }
+    return [...hits, ...this.atSiteSince()];
+  }
+
+  /** What the loose bodies have struck at the site since this was last asked, as the deck says an impact: a hard one breaks the body. */
+  private atSiteSince(): Impact[] {
+    const hits: Impact[] = [];
+    for (const run of this.runs.values())
+      for (const hit of run.struck.splice(0)) {
+        const def = run.shedder.def;
+        hits.push({
+          on: `${def.on}/${hit.on}`,
+          name: `${def.name} and ${hit.name.charAt(0).toLowerCase()}${hit.name.slice(1)}`,
+          broken: breakAt(hit, hit.t, [run]),
+          t: hit.t,
+          speed: hit.speed,
+          energy: hit.energy,
+        });
+      }
     return hits;
+  }
+
+  /**
+   * The vehicle itself has struck its site (sitecontact.ts): the first blow hard enough breaks parts free of it, as one
+   * from something shed does (`meet`), and a later one does not again. True if this is that blow.
+   */
+  broke(hit: Impact): boolean {
+    if (!isBreakupImpact(hit) || hit.t >= this.activeBrokenAt) return false;
+    this.activeBrokenAt = hit.t;
+    return true;
   }
 
   /** The body the event `on` let go, if it has. */
