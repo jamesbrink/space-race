@@ -284,13 +284,17 @@ export function lc19Parts(day: Lc19Day): Part[] {
     machine: BY.northDoor,
   }));
   const lines = Array.from({ length: 7 }, (_, k) =>
-    // each falls about its boom's tip, toward the tower, to hang; the lower ones a moment after the upper
+    // Each falls about its boom's tip, toward the tower, to hang; the lower ones a moment after the upper. Let go at
+    // liftoff with a dropweight, a line a few metres long is down in a second or so, as a pendulum from near level is
+    // (a quarter of the stretch the keyframes give the fall, and a little more each line down: estimated, the record
+    // has only that they let go at liftoff). Falling over most of that stretch, the top line was still at the equipment
+    // section when the vehicle rose into it a second after liftoff (tests/sitecontact.test.mjs flies it).
     swing(
       `UmbilicalTower_Line_${k + 1}`,
       [-LINE[1], 0, -LINE[0]],
       78,
       s.lines[0],
-      s.lines[0] + (s.lines[1] - s.lines[0]) * (0.6 + 0.05 * k),
+      s.lines[0] + (s.lines[1] - s.lines[0]) * (0.25 + 0.02 * k),
       BY.lines,
     ),
   );
