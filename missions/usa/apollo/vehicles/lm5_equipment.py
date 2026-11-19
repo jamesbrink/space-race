@@ -19,17 +19,18 @@ def tube(mesh, a, b, radius):
     mesh.tube(point(*a), point(*b), radius * IN, segs=12)
 
 
-def ladder(hinge, silver, dark, prefix="LM5"):
+def ladder(hinge, silver, dark, prefix="LM5", *, flag_on_ladder=True):
     """The tube and covered plaque travel with the ladder. AS11-40-5900."""
     carrier, straps, cover = MeshBuilder(), MeshBuilder(), MeshBuilder()
     # Coordinates relative to the +X deployment hinge. Brackets sit by the left rail.
-    a, b = (18, -9.6, -23), (39, -9.6, -67)
-    tube(carrier, a, b, 1.8)
-    for t in (0.14, 0.85):
-        x, y, z = (lo + t * (hi - lo) for lo, hi in zip(a, b))
-        tube(straps, (x, y, z), (x, -6.9, z), 1.0)
-    carrier.build(f"{prefix}_FlagContainer", silver, group("FlagKit", hinge))
-    straps.build(f"{prefix}_FlagBrackets", dark, hinge)
+    if flag_on_ladder:
+        a, b = (18, -9.6, -23), (39, -9.6, -67)
+        tube(carrier, a, b, 1.8)
+        for t in (0.14, 0.85):
+            x, y, z = (lo + t * (hi - lo) for lo, hi in zip(a, b))
+            tube(straps, (x, y, z), (x, -6.9, z), 1.0)
+        carrier.build(f"{prefix}_FlagContainer", silver, group("FlagKit", hinge))
+        straps.build(f"{prefix}_FlagBrackets", dark, hinge)
     # A thin curved cover around the primary strut, behind the rungs.
     for j in range(8):
         angles = [math.radians(45 + 90 * k / 8) for k in (j, j + 1)]

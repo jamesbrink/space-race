@@ -292,7 +292,7 @@ def instrument_unit(parent, steel, metal, impact_radio=False):
         )
 
     for bay in range(1, 25):
-        if bay != 8 and not (impact_radio and bay == 24):  # access door; plate 24 travels with the SA-508 equipment
+        if bay != 8 and not (impact_radio and bay == 24):  # access door; plate 24 travels with the impact radio
             plates.box((1.25 * IN, 28 * IN, 26 * IN), pose(bay, 0, 17, 127))
     # Tangential offsets, case widths and heights traced from the perspective
     # views. Space is left for the open access door and the spherical assemblies.
@@ -340,8 +340,9 @@ def instrument_unit(parent, steel, metal, impact_radio=False):
         mark_shells([mesh.build("IU503_" + name, paint, parent).name])
 
 
-def lunar_impact_radio(iu, white, black, alloy, steel):
+def lunar_impact_radio(iu, white, black, alloy, steel, serial):
     """AS-508 evaluation, table B-4: CCS hardware and battery 6D20 on cold plate 24."""
+    prefix = f"IU{serial}_"
     bay = -math.pi / 4
     # The outer cork was painted white opposite the plate. Divide the skin at its paint edges.
     meshes = [MeshBuilder(), MeshBuilder()]
@@ -349,18 +350,18 @@ def lunar_impact_radio(iu, white, black, alloy, steel):
         arc = (bay + math.radians(start), bay + math.radians(end))
         meshes[index].lathe(prof([(UPPER_RADIUS, THIRD_TOP), (UPPER_RADIUS, IU_TOP)]), segs=segs, arc=arc)
     for mesh, name, paint in zip(meshes, ("Barrel", "WhiteCork"), (black, white)):
-        mark_shells([mesh.build("IU508_" + name, paint, iu).name])
+        mark_shells([mesh.build(prefix + name, paint, iu).name])
 
     radio = group("LunarImpactRadio")
     radio["lineup_enclosed"] = True
-    mount = group("IU508_EquipmentMount", radio)
+    mount = group(prefix + "EquipmentMount", radio)
     mount.location = radial(127, bay, THIRD_TOP + 17)
     mount.rotation_euler.z = bay
 
     def case(name, dims, centre, paint):
         envelope = MeshBuilder()
         envelope.box(tuple(d * IN for d in dims), Matrix.Translation(tuple(c * IN for c in centre)))
-        envelope.build("IU508_" + name, paint, mount, smooth=False)
+        envelope.build(prefix + name, paint, mount, smooth=False)
 
     case("ColdPlate24", (1.25, 28, 26), (0, 0, 0), alloy)
     # MSFC-MAN-508 fig. 7-4, sheet 2: broad low case with a bolted lid and three stiffeners.
@@ -381,10 +382,10 @@ def lunar_impact_radio(iu, white, black, alloy, steel):
         fittings.tube((-13.28 * IN, -10.5 * IN, z * IN), (-14.1 * IN, -10.5 * IN, z * IN), 0.52 * IN)
     for y in (3.0, 6.5, 10):
         fittings.tube((-3.8 * IN, y * IN, 9.46 * IN), (-3.8 * IN, y * IN, 10.4 * IN), 0.65 * IN)
-    fittings.build("IU508_BatteryAndRadioFittings", alloy, mount, smooth=False)
+    fittings.build(prefix + "BatteryAndRadioFittings", alloy, mount, smooth=False)
 
 
-def build(*, lunar_module=None, adapter_number=None, impact_radio=False):
+def build(*, lunar_module=None, adapter_number=None, impact_radio=None):
     white = material("saturn-white", (0.86, 0.87, 0.83), roughness=0.64)
     black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
     steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
@@ -411,7 +412,7 @@ def build(*, lunar_module=None, adapter_number=None, impact_radio=False):
     barrel("SIVB_Interstage_", taper, [(SECOND_TOP, mid, r, (r + u) / 2, 0b11000011), (mid, TAPER_TOP, (r + u) / 2, u, 0b00001111)], white, black)
     barrel("SIVB_", third, [(TAPER_TOP, THIRD_TOP, u, u, 0)], white, black)
     if impact_radio:
-        lunar_impact_radio(iu, white, black, alloy, steel)
+        lunar_impact_radio(iu, white, black, alloy, steel, impact_radio)
     else:
         barrel("IU_", iu, [(THIRD_TOP, IU_TOP, u, u, 255)], white, black)
     fairings(first, white, fairing_black, shield)
@@ -477,6 +478,30 @@ def build(*, lunar_module=None, adapter_number=None, impact_radio=False):
         payload(group("LunarTestArticle"), steel, alloy)
     else:
         lunar_module(IU_TOP)
+
+
+def pogo_accumulator():
+    """SA-509 evaluation fig. 6-11. Annular reservoir above the center J-2's oxygen pump; external profile estimated."""
+    part = group("PogoAccumulator")
+    part["lineup_enclosed"] = True
+    # Match the engine cluster's -45 degree index and the existing pump inlet at (21, 0, 14).
+    part.rotation_euler.z = math.radians(-45)
+    mount = group("SII9_AccumulatorMount", part)
+    mount.location = (21 * IN, 0, station(1664 + 14) * IN)
+    alloy = bpy.data.materials["saturn-machined-alloy"]
+    steel = bpy.data.materials["saturn-engine-steel"]
+    # A continuous vessel wall narrows to the pipe at each end; the bore remains open.
+    profile = [(4.4, 0), (4.4, 3), (8.8, 4), (11.3, 6), (12, 8), (12, 20), (11.3, 22), (8.8, 24), (4.4, 25), (4.4, 29), (3.8, 29), (3.8, 0), (4.4, 0)]
+    lathe_obj("SII9_AccumulatorVessel", prof(profile), alloy, mount)
+    if interior():
+        feed = MeshBuilder()
+        path = [(0, 0, 29), (0, 0, 33), (0, 0, 37), (-4, 0, 44), (-11, 0, 52), (-15, 0, 57)]
+        feed.loft([structure.metric(point) for point in path], [(4.4 * IN, 4.4 * IN)] * len(path), caps=(False, False), resample=3)
+        feed.build("SII9_OxygenFeed", steel, mount)
+        lines = MeshBuilder()
+        for side in (-1, 1):
+            structure.pipe(lines, [(side * 9, 0, 23.7), (side * 9, 0, 27), (side * 14, 0, 31), (side * 19, 0, 32)], 0.45)
+        lines.build("SII9_AccumulatorConnections", alloy, mount)
 
 
 def sii_external_equipment(stage_number=7):
