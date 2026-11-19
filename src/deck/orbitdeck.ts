@@ -583,6 +583,8 @@ export class OrbitDeck extends Deck {
     if (to) {
       this.guidance = to.guidance ?? true;
       this.sequence = to.sequence ?? true;
+      this.options.guidance = this.guidance;
+      this.options.sequence = this.sequence;
     }
     return { guidance: this.guidance, sequence: this.sequence };
   }
@@ -1166,23 +1168,22 @@ export class OrbitDeck extends Deck {
     this.options.guidance = this.guidance;
     this.options.sequence = this.sequence;
     this.options.memo ??= { thetaTurn: null };
+    // (the pilot is given the deck's own options, not a copy: the switches thrown after this are read every tick)
+    const options = this.options;
+    options.hands = () => {
+      const p = this.push();
+      return this.guidance ? { pitch: 0, yaw: 0, roll: p.roll } : p;
+    };
+    options.steps = () => this.asked.splice(0);
     const inner = stagedPilot(
       v,
       orbitalFlown(this.flight).ascent.solved,
       siteFrame(this.flight.site),
       this.frame,
       this.flight.site.seaLevel.value,
-      {
-        ...this.options,
-        hands: () => {
-          const p = this.push();
-          return this.guidance ? { pitch: 0, yaw: 0, roll: p.roll } : p;
-        },
-        steps: () => this.asked.splice(0),
-      },
+      options,
     );
-    const options = this.options;
-    // (the switches are read every tick: one pilot flies the whole flight, so the law's turn is the one it began)
+    // (one pilot flies the whole flight, so the law's turn is the one it began)
     this.pilot = (st) => {
       if (this.guidance) {
         const p = this.push();
