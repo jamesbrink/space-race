@@ -13,6 +13,16 @@ fn main() -> ExitCode {
             return ExitCode::from(2);
         }
     };
+    // Heard and not seen: fly without a window and write the sound to a file.
+    if options.hear.is_some() {
+        return match sr_game::sound::offline::hear(&options) {
+            Ok(_) => ExitCode::SUCCESS,
+            Err(wrong) => {
+                eprintln!("{wrong}");
+                ExitCode::FAILURE
+            }
+        };
+    }
     match sr_game::run(options) {
         AppExit::Success => ExitCode::SUCCESS,
         AppExit::Error(code) => ExitCode::from(code.get()),

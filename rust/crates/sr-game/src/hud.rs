@@ -27,7 +27,7 @@ G  as flown (on the pad)    P  stop the clock\n\
 [ ]  slower, faster    C  camera (1 2 3 4)\n\
 N  the path ahead    K  camera shake\n\
 L  the grade    I  diagnostics\n\
-H  hide these\n\
+M  sound    - =  quieter, louder    H  hide these\n\
 drag  turn    wheel  zoom";
 
 /// Everything the readout draws: what H puts away.

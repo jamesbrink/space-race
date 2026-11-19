@@ -73,7 +73,7 @@ space-race [--at <seconds>] [--size <w>x<h>] [--rig <name>] [--rate <n>] [--benc
   --until  take that frame when the flight's clock reaches this
   --rate   seconds of the flight in one of ours, to open at (1, 2, 4 ... 64)
   --keys   keys pressed by themselves at instants of the clock: 0:Space,18:W:9 is Space at liftoff's hold and
-           W held nine seconds from T+18 (Space W S A D Q E T Z X B G P C L I H 1 2 3 4 [ ])
+           W held nine seconds from T+18 (Space W S A D Q E T Z X B G P C L K N M - = I H 1 2 3 4 [ ])
   --bench  print what a frame costs once a second
   --mute   open with the sound off (M puts it on)
   --hear   fly without a window, to --until, and write what would have been heard to a WAV file
