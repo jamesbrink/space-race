@@ -36,6 +36,8 @@
               pkgs.biome
               # The native build (rust/): rustup reads rust/rust-toolchain.toml and fetches that toolchain.
               pkgs.rustup
+              # removes old build artefacts from rust/target (fly-clean)
+              pkgs.cargo-sweep
             ]
             ++ lib.optionals pkgs.stdenv.isLinux [ pkgs.blender ];
             # The native build's helpers: `menu` lists them. Each runs from rust/, where cargo finds the toolchain.
@@ -71,6 +73,12 @@
                 name = "fly-models";
                 help = "unpack public/models for the native build (after a model is rebuilt)";
                 command = ''node "$PRJ_ROOT/rust/tools/unpack-models.mjs" "$@"'';
+              }
+              {
+                category = "native build";
+                name = "fly-clean";
+                help = "give disk back: old build artefacts down to 20 GB (fly-clean 10 for less, --all for everything)";
+                command = ''"$PRJ_ROOT/rust/tools/clean.sh" "$@"'';
               }
             ];
             # A commit that touches rust/ is held to its rules (.githooks/pre-commit).

@@ -60,9 +60,13 @@ float_cmp = "allow"
 # Debug builds: our code quick to compile, the engine fast enough to look at.
 [profile.dev]
 opt-level = 1
+# Line tables only: a panic still names its file and line, and the debug tree is a fraction of the size.
+debug = "line-tables-only"
 
 [profile.dev.package."*"]
 opt-level = 3
+# (the engine and the other dependencies carry no debug information at all: tens of gigabytes otherwise)
+debug = false
 
 [profile.release]
 lto = "thin"
