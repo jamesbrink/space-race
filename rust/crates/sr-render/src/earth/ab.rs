@@ -5,9 +5,7 @@
 //! `LAND_DETAIL`, `SEA_DETAIL` and `GLINT` in `shaders/earth.wesl` and `PLANTS` in `earth/grove.rs` take them out of
 //! the build altogether.)
 
-use bevy::diagnostic::DiagnosticsStore;
 use bevy::prelude::*;
-use bevy::render::diagnostic::RenderDiagnosticsPlugin;
 
 use super::maps::Maps;
 use super::material::EarthMaterial;
@@ -62,31 +60,5 @@ pub fn turn(
     let hide = !on && ab.parts[2];
     for mut seen in &mut plants {
         *seen = if hide { Visibility::Hidden } else { Visibility::Inherited };
-    }
-}
-
-/// With `SR_EARTH_GPU` set in the environment, what the opaque pass (the ground, the sea, the plants and everything
-/// else solid) took on the graphics card is logged once a second, by the card's own clock, so that the A/B switch can
-/// be read on a machine whose card and processors others are using too.
-pub fn gpu_clock(app: &mut App) {
-    if std::env::var_os("SR_EARTH_GPU").is_some() {
-        app.add_plugins(RenderDiagnosticsPlugin).add_systems(Last, say_gpu);
-    }
-}
-
-fn say_gpu(time: Res<Time<Real>>, store: Res<DiagnosticsStore>, ab: Res<EarthAb>, mut said: Local<f32>) {
-    if time.elapsed_secs() - *said < 1.0 {
-        return;
-    }
-    *said = time.elapsed_secs();
-    let opaque = store
-        .iter()
-        .find(|d| {
-            let path = d.path().as_str();
-            path.contains("main_opaque_pass_3d") && path.ends_with("elapsed_gpu")
-        })
-        .and_then(bevy::diagnostic::Diagnostic::average);
-    if let Some(ms) = opaque {
-        info!("earth gpu: opaque pass {ms:.2} ms, earth {}", if ab.on { "on" } else { "off" });
     }
 }

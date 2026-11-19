@@ -34,7 +34,7 @@ const FORWARD: f32 = 0.75;
 const STRENGTH: f32 = 5.0;
 // (see `lit` below)
 const EDGE_GAIN: f32 = 1.0;
-const SHADOW_GAIN: f32 = 0.25;
+const SHADOW_GAIN: f32 = 0.08;
 // Where a march's ray went no further than this, km, it met something solid (clouds.wesl REACH less a little).
 const OPEN_SKY: f32 = 699.0;
 // Switch: off, there are no rays (for measuring what they cost, and for comparing). Leave it on.

@@ -15,6 +15,7 @@ import super::sea::{Waves, waves, Surf, surf, water, SEA, DEEP, LAGOON, LAGOON_E
 import super::earth_glint::{sunlight, to_sun, glint, sun_on_water};
 import super::earth_frame::{Plane, EarthFrame, through_cloud};
 import super::earth_baked::fields_at;
+import super::earth_far::ground_far;
 import bevy_pbr::render::mesh_view_bindings as view_bindings;
 
 // The made ground round the site (sr-render/src/earth/marks.rs).
@@ -47,6 +48,9 @@ struct EarthMarks {
 // the sea's waves, foam and depth colour. With one off, that part is a flat tone. Leave them on.
 // (and `earth.day.w` turns the land's (1) and the sea's (2) off: the A/B switch, sr-render/src/earth/ab.rs)
 const LAND_DETAIL: bool = true;
+// The ground a pixel covers (m) over which the near ground gives way to the small one (earth_far.wesl). Chosen by
+// looking: past it nothing the near ground draws is more than a pixel across.
+const FAR: vec2<f32> = vec2(0.4, 0.7);
 const SEA_DETAIL: bool = true;
 // And the Sun's glint on the water (earth_glint.wesl): off, the water has the Sun's light through it and none off it.
 const GLINT: bool = true;
@@ -279,7 +283,19 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
             site.steep = saturate(dot(up, pbr.V));
             site.f = fields_at(en, length(in.world_position.xyz - view_bindings::view.world_position), earth.baked);
             site.wind = select(vec2(-1.0, 0.0), normalize(earth.wind.xy), dot(earth.wind.xy, earth.wind.xy) > 1.0e-4);
-            let soil = ground(site);
+            // (where a pixel covers more than half a metre, the small ground: earth_far.wesl)
+            let far = smoothstep(FAR.x, FAR.y, seen_square);
+            var soil: Soil;
+            if far < 1.0 {
+                soil = ground(site);
+            }
+            if far > 0.0 {
+                let distant = ground_far(site);
+                soil.colour = mix(soil.colour, distant.colour, far);
+                soil.slope = mix(soil.slope, distant.slope, far);
+                soil.rough = mix(soil.rough, distant.rough, far);
+                soil.sky = mix(soil.sky, distant.sky, far);
+            }
             colour = mix(colour, soil.colour, own);
             slope = mix(slope, soil.slope, own);
             rough = mix(rough, soil.rough, own);
