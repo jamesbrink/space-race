@@ -250,27 +250,81 @@ function joinable(geometries: readonly THREE.BufferGeometry[]): boolean {
   });
 }
 
+/** Small transparent panes can submit both sides in one draw. Three draws BackSide first (reversed
+ * winding and negated lighting normal) and FrontSide second. Store those same triangles in that order
+ * and let the GPU cull each face, even when windows overlap or cross the camera's near plane. */
+function glassSides(geometry: THREE.BufferGeometry, material: THREE.Material): THREE.BufferGeometry | null {
+  const m = material as THREE.MeshPhysicalMaterial;
+  const normal = geometry.getAttribute('normal');
+  if (
+    !m.name.startsWith('glass') ||
+    !m.isMeshPhysicalMaterial ||
+    !m.transparent ||
+    m.side !== THREE.DoubleSide ||
+    m.forceSinglePass ||
+    m.depthWrite ||
+    m.flatShading ||
+    m.transmission ||
+    m.normalMap ||
+    m.bumpMap ||
+    m.clearcoatNormalMap ||
+    m.displacementMap ||
+    m.wireframe ||
+    m.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile ||
+    geometry.drawRange.start !== 0 ||
+    geometry.drawRange.count < (geometry.index?.count ?? normal?.count ?? 0) ||
+    geometry.hasAttribute('tangent') ||
+    !normal ||
+    normal.count > 512
+  )
+    return null;
+  if (!geometry.index) geometry.setIndex(Array.from({ length: normal.count }, (_, i) => i));
+  const back = geometry.clone();
+  const original = geometry.index!;
+  const reversed = back.index!;
+  for (let i = 0; i < original.count; i += 3) {
+    reversed.setX(i + 1, original.getX(i + 2));
+    reversed.setX(i + 2, original.getX(i + 1));
+  }
+  const n = back.getAttribute('normal');
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, -n.getX(i), -n.getY(i), -n.getZ(i));
+  const both = mergeGeometries([back, geometry]);
+  back.dispose();
+  return both;
+}
+
 /** Meshes in a material of their own, joined among themselves where they can be: as floats, in the level's frame. */
 function joinOwn(sources: readonly Source[]): Piece[] {
   const placed = sources.map((s) => {
     const g = s.geometry.clone().applyMatrix4(s.matrix);
-    if (s.matrix.determinant() < 0 && g.index) {
-      const a = g.index.array;
+    if (s.matrix.determinant() < 0) {
+      if (!g.index) g.setIndex(Array.from({ length: g.getAttribute('position').count }, (_, i) => i));
+      const a = g.index!.array;
       for (let i = 0; i + 2 < a.length; i += 3) [a[i + 1], a[i + 2]] = [a[i + 2]!, a[i + 1]!];
     }
     return g;
   });
   const first = sources[0]!;
-  const one = (geometry: THREE.BufferGeometry): Piece => ({
-    geometry,
-    paints: null,
-    material: first.material,
-    craft: first.craft,
-    part: '',
-    renderOrder: first.renderOrder,
-    at: new THREE.Vector3(),
-    scale: 1,
-  });
+  const one = (geometry: THREE.BufferGeometry): Piece => {
+    let material = first.material;
+    const both = glassSides(geometry, material);
+    if (both) {
+      geometry.dispose();
+      geometry = both;
+      material = material.clone();
+      material.side = THREE.FrontSide;
+    }
+    return {
+      geometry,
+      paints: null,
+      material,
+      craft: first.craft,
+      part: '',
+      renderOrder: first.renderOrder,
+      at: new THREE.Vector3(),
+      scale: 1,
+    };
+  };
   if (placed.length === 1) return [one(placed[0]!)];
   const joined = joinable(placed) ? mergeGeometries(placed) : null;
   if (!joined) return placed.map(one);

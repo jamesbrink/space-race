@@ -824,6 +824,7 @@ JavaScript heap and 125 MB of decoded pictures.
   vehicles, two of them with a docking target beside them, 152, 173, 173, the row in 210 draw calls of the 220 it is held to), and the row's
   share to 1.8 a vehicle: at 1.55 the 240 it was held to would hold some seventy-eight vehicles (twenty-six before), and
   the launch site's 350 some hundred and forty-nine.
+  With Apollo 13, the 45-vehicle overview takes 217 draw calls at 1280 px. Small transparent panes submit their back faces before their front faces in a single draw, preserving the blend order where the panes overlap.
 - **Another flight lets the last one go** (app/main.ts, session.ts; gallery.md, "Back and Forward"). The page is not
   loaded again: the site's stage is loaded again (`Stage.load`), and lets go of every model the next flight has not
   got and the place round its pad if the next is at another place or on another day (`Settings.drop`: the place's
