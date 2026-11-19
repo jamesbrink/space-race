@@ -157,7 +157,7 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'orbital' && f.site)
 
   const x = steer(plan, site, dated, sea);
   put(flight, 'solved', x);
-  const shown = flyWhole(plan, site, dated, sea, x, 10, 'published');
+  const shown = flyWhole(plan, site, dated, sea, x, 10);
   const a = shown.ascent;
   put(flight, 'ascent', a.summary);
   for (const [id, e] of Object.entries(a.at)) put(flight, `ascent@${id}`, { t: e.t, altitude: e.altitude, speed: e.speed, mass: e.mass });
@@ -167,8 +167,7 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'orbital' && f.site)
     for (const [id, l] of Object.entries(shown.down.landed)) put(flight, `down:${id}`, l);
     put(flight, 'down', { apart: shown.down.apart });
   }
-  const flown = flyWhole(plan, site, dated, sea, x, 10, 'flown');
-  put(flight, 'flown', { ...flown.coast.results, samples: flown.coast.samples.length });
+  put(flight, 'flown', { samples: shown.coast.samples.length });
 
   // the live staged vehicle, from the pad, by its pilot: steered, and with the law's attitude placed
   for (const prescribed of [false, true]) {

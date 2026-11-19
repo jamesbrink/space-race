@@ -421,8 +421,17 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
     timed('staging', 'Staging: the second stage lit through the interstage', s2.ignition, [{ ignite: 'second-stage-engine' }]),
     timed('first-stage-engine:cut', 'First stage cutoff', s1.cutoff, [{ cut: 'first-stage-engine' }]),
     timed('staging-nuts:separate', 'Drop the first stage', o.titan.staging, [{ separate: 'staging-nuts' }]),
-    timed('second-stage-engine:cut', 'Second stage engine cutoff', s2.cutoff, [{ cut: 'second-stage-engine' }]),
-    timed('adapter-separation:separate', 'Separate the spacecraft', o.separation.at, [{ separate: 'adapter-separation' }]),
+    // The second stage is shut down by the radio guidance on the velocity for the orbit, not by the clock: the run cuts it
+    // on the state it has flown, when its orbit has the record's period (plan.ts `{ orbit }`), and the record's instant is
+    // held as a figure. The spacecraft parts as long after the stage stops as the record has between the two.
+    {
+      ...timed('second-stage-engine:cut', 'Second stage engine cutoff', s2.cutoff, [{ cut: 'second-stage-engine' }]),
+      when: [{ orbit: 'published' }],
+    },
+    {
+      ...timed('adapter-separation:separate', 'Separate the spacecraft', o.separation.at, [{ separate: 'adapter-separation' }]),
+      when: [{ after: 'second-stage-engine:cut', wait: o.separation.at.value - s2.cutoff.value }],
+    },
     timed('fairings:separate', fairings.label, fairings.at, [{ separate: 'fairings' }]),
     ...moves,
     timed('retrosequence', 'Retrosequence: to retrofire attitude', r.sequence, [{ attitude: 'retrofire-attitude' }]),

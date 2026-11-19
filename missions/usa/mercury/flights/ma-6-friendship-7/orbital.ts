@@ -196,8 +196,9 @@ export const orbital: MercuryAtlasRecord = {
         at: 'seco',
         altitude: doc(
           528_381 * FT,
-          `${TABLE_6_I}: 528,381 ft at cutoff (over what is not said: taken over the reference ball, as the orbit's heights)`,
+          `${TABLE_6_I}: 528,381 ft at cutoff. Over what is not said: taken over the oblate earth under the cutoff, as a trajectory table's height is, because the table's own speed then gives its own orbit (25,730 ft/s at 161.05 km over the ellipsoid at 30.5° N, 6,533.7 km from the centre, tops out 263 km over the reference ball, where the table has 261; over the ball it would be 280). Until November 2026 it was taken over the ball`,
         ),
+        over: 'ellipsoid',
         climb: doc(
           -0.047,
           `${TABLE_6_I}: flight-path angle −0.047°, "only .05 of a degree low" (${SP4201}, p. 426); SP-12's same table for MA-8 calls it space-fixed`,

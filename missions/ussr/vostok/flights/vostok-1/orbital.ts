@@ -31,6 +31,7 @@ import {
 import {
   ascent8K72K,
   BOBKOV,
+  FINAL_STAGE,
   GCTC,
   KICK,
   NK,
@@ -92,8 +93,8 @@ export const orbital: VostokRecord = {
       throttle: {
         points: [
           [0, 1],
-          [290, 1],
-          [290.01, 0.104],
+          [300 - FINAL_STAGE.value, 1],
+          [300 - FINAL_STAGE.value + 0.01, 0.104],
           [300, 0.104],
         ],
         confidence: 'estimated',

@@ -3,7 +3,8 @@ import { derived } from '../measure.ts';
 import { G0 } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { add, angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { elementsOf, type State, step } from '../world/orbit.ts';
+import { meanOf } from '../world/meanelements.ts';
+import { type State, step } from '../world/orbit.ts';
 import { airAt, airDrag } from './air.ts';
 import { isBreakupImpact } from './breakup.ts';
 import type { Impact } from './contact.ts';
@@ -156,6 +157,9 @@ export function planAfterEscape(plan: FlightPlan, towerMode: TowerEscape, jettis
   return out;
 }
 
+/** How near the perigee asked for a contingency orbit counts as reached, m: the burn is made at about that height, and cannot lift the perigee over it. */
+export const ORBIT_SLACK = 5_000;
+
 /** Give a separated spacecraft its abort translation before the service module is released. */
 export function withEscapeTranslation(plan: FlightPlan, engine: string, at: number, duration: number, axis: Vec3): FlightPlan {
   const out = partingAt(givenUp(plan), at + duration);
@@ -257,11 +261,12 @@ export function withServiceAbort(
   const evaluate = (duration: number): number => {
     const branch = prepare(duration);
     const stop = longer ? (shipOf(branch).moves.find((move) => move.engine === mode.engine)?.off ?? burnAt) : Infinity;
-    const coast = flyOrbit(branch, site, frame, seaLevel, 120, from, undefined, undefined, false, stop);
+    const coast = flyOrbit(branch, site, frame, seaLevel, 120, from, undefined, undefined, stop);
     if (longer) {
       const at = coast.samples.at(-1);
       if (!at) return -Infinity;
-      const orbit = elementsOf(at.r, at.v);
+      // (the perigee as a published one is read: of the mean orbit, over the ball the record's heights are over)
+      const orbit = meanOf({ r: frame.toDate(at.r), v: frame.toDate(at.v) });
       return orbit.a * (1 - orbit.e) - radius;
     }
     const last = coast.samples.at(-1)!;
@@ -281,11 +286,14 @@ export function withServiceAbort(
   const residual = (value: number) => (longer ? value - target : target - value);
   if (residual(lo) >= 0) return { plan: prepare(lower), duration: lower, achieved: lo };
   const hi = evaluate(upper);
-  if (residual(hi) < 0) return { plan: prepare(upper), duration: upper, achieved: hi };
+  // A burn along the motion cannot lift the perigee over the height it is made at: where the perigee asked for is out of
+  // reach, the burn is the shortest that comes within a fifth of `ORBIT_SLACK` of the most that can be had, not all there is.
+  const most = longer && residual(hi) < 0 ? hi - ORBIT_SLACK / 5 - target : 0;
+  if (residual(hi) < 0 && !longer) return { plan: prepare(upper), duration: upper, achieved: hi };
   while (upper - lower > 0.05) {
     const mid = (lower + upper) / 2;
     const value = evaluate(mid);
-    if (residual(value) >= 0) upper = mid;
+    if (residual(value) >= most) upper = mid;
     else lower = mid;
   }
   return { plan: prepare(upper), duration: upper, achieved: evaluate(upper) };

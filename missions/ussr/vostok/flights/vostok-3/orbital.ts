@@ -35,6 +35,7 @@ import {
 } from '../../vehicles/vostok-3ka.ts';
 import {
   ascent8K72K,
+  BLOCK_E_CUT,
   BOBKOV,
   coreThrottle,
   KICK,
@@ -95,13 +96,7 @@ export const orbital: VostokRecord = {
         720,
         `${KAMANIN}, 14 August: «На 720-й секунде произошло отделение корабля от носителя и „Восток-3“, расправив свои антенны ...»`,
       ),
-      velocity: {
-        apparent: true,
-        speed: estimated(
-          2_283.52,
-          'm/s of apparent velocity: Vostok 1’s flight task’s setting for its third stage (the 2011 documents), for an orbit of 180 km perigee. NOT this flight’s: E103-23’s flight task is not published',
-        ),
-      },
+      orbit: BLOCK_E_CUT,
     },
   }),
   events: [

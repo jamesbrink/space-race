@@ -453,6 +453,28 @@ export function fromPublished(o: PublishedOrbit, at: OnOrbit): { state: State; m
  * height. Its place and direction are kept, so its eccentricity and perigee are what they give, not the heights'.
  * For `osculating`, vis-viva on the published axis (what src/sim/staged.ts `published` has always given).
  */
+/**
+ * How far a state falls short of a published orbit, as `alongPublished` reads it: the published period less the period of
+ * the state's own mean orbit, s (or, with no period published, the mean orbit's axis less the state's, m; for `osculating`,
+ * the published axis less the osculating one, m). Positive while it is short; it falls through nothing as the speed reaches
+ * the one `alongPublished` gives at that place and heading. What a guidance that cuts its engine on the orbit watches
+ * (sim/plan.ts: a trigger `{ orbit }`): the same reading of the published figures as the coast's, so an ascent cut there
+ * is on the published orbit by its period and not by a speed written in afterwards.
+ */
+export function shortOfPublished(o: PublishedOrbit): (r: Vec3, v: Vec3) => number {
+  const orbit = meanOrbitOf(o);
+  const kind = orbit.kind;
+  const T = o.period;
+  if (kind === 'osculating') return (r, v) => orbit.a - 1 / (2 / length(r) - (length(v) * length(v)) / GM);
+  return (r, v) => {
+    // (far short of an orbit the mean elements mean nothing, and are not asked for: the osculating axis says so)
+    const a = 1 / (2 / length(r) - (length(v) * length(v)) / GM);
+    if (!(a > 0.9 * orbit.a)) return Number.POSITIVE_INFINITY;
+    const m = meanOf({ r, v });
+    return T === undefined ? orbit.a - m.a : T - periodsOf(m.a, m.e, m.i, m.argp)[kind];
+  };
+}
+
 export function alongPublished(o: PublishedOrbit, r: Vec3, v: Vec3): { state: State; mean: MeanElements; orbit: MeanOrbit } {
   const orbit = meanOrbitOf(o);
   const way = unit(v);

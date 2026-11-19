@@ -34,7 +34,17 @@ import {
   THROWN,
   TORN,
 } from '../../vehicles/vostok-3ka.ts';
-import { ascent8K72K, BOBKOV, coreThrottle, KICK, SIDDIQI, stages8K72K, strapOnThrottle, VERTICAL } from '../../vehicles/vostok-8k72k.ts';
+import {
+  ascent8K72K,
+  BLOCK_E_CUT,
+  BOBKOV,
+  coreThrottle,
+  KICK,
+  SIDDIQI,
+  stages8K72K,
+  strapOnThrottle,
+  VERTICAL,
+} from '../../vehicles/vostok-8k72k.ts';
 import { assumed, derived, doc, estimated, measure } from '../../../../../src/measure.ts';
 
 /** Seconds from liftoff, 14:58:58 Moscow time on 14 June 1963, of a Moscow time on a day of June 1963. */
@@ -84,13 +94,7 @@ export const orbital: VostokRecord = {
         687.08,
         `${TYPE('spacecraft’s separation')}, ten seconds after the cutoff. «В момент разделения видел снежинки» (${REPORT})`,
       ),
-      velocity: {
-        apparent: true,
-        speed: assumed(
-          2_283.52,
-          'm/s of apparent velocity: Vostok 1’s flight task’s setting for its third stage (the 2011 documents), for an orbit of 180 km perigee. NOT this flight’s: E103-24’s flight task is not published, and the stage is said to have fallen short of what was asked (Siddiqi, p. 368, with no source)',
-        ),
-      },
+      orbit: BLOCK_E_CUT,
     },
   }),
   events: [

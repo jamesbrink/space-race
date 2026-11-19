@@ -61,9 +61,16 @@ import type { CoastRotation } from './rigid.ts';
  * `target.altitude` above the orbit's reference ball, climbing at `target.climb`, in an orbit of `target.inclination`:
  * the design conditions, as a guidance designer's would be. They are results of the solution (`Steered.solved`), never
  * inputs, and the three targets are therefore not independent checks of the flight.
+ *
+ * With the aiming `azimuth` given the launch plane is the record's, and what is solved in its place is the yaw the tangent
+ * holds out of that plane, so that the inclination is still reached (the closed loop steering to the orbit's plane). With a
+ * stored `programme` the law's first part, to `turn`, is that programme flown open, and the tangent takes over from an
+ * angle the law solves for. The last cutoff itself is the plan's event: at an instant, on a setting, or the guidance's own
+ * on the orbit reached (plan.ts: a trigger `{ orbit }`), which is what makes the flight come out as it did on whatever
+ * the vehicle as modelled gives (docs/agents/simulator.md, "One state, changed only by what pushes it").
  */
 export interface Guidance {
-  /** Space-fixed nose tilt downrange from the original launch vertical, degrees against seconds. */
+  /** Space-fixed nose tilt downrange from the original launch vertical, degrees against seconds: flown open until `turn`, held flat past its last point. */
   programme?: import('../types.ts').Curve;
   /** Roll about the stack's axis, relative to the completed roll alignment, degrees against seconds. */
   roll?: import('../types.ts').Curve;
@@ -82,6 +89,11 @@ export interface Guidance {
     /** The event whose instant is the last cutoff: the record's id of it (a plan event's `record.id`, or a mark's). */
     at: string;
     altitude: Measure;
+    /**
+     * What `altitude` is over, where it is not the orbit's reference ball: `ellipsoid`, the WGS 84 ellipsoid under the place
+     * of the cutoff, as a trajectory table's height at cutoff is (a height taken from the orbit's perigee is over the ball).
+     */
+    over?: 'ellipsoid';
     climb: Measure;
     inclination: Measure;
   };
@@ -554,7 +566,10 @@ export function injectionState(plan: FlightPlan, site: Geodetic, frame: EarthFra
   return { r: frame.fromDate(s.r), v: frame.fromDate(s.v) };
 }
 
-/** Convert a tracking fix into the same inertial frame as the integrator. */
+/**
+ * A tracking fix as a state in the integrator's frame: what a run is compared with at that instant, its residual recorded.
+ * Never a state a run is put on: a run's state is changed by what pushes it and by nothing else.
+ */
 export function trackedState(fix: OrbitFix, frame: EarthFrame): State {
   const place = { latitude: fix.latitude.value, longitude: fix.longitude.value, height: fix.altitude.value };
   const t = fix.at.value;
@@ -566,38 +581,6 @@ export function trackedState(fix: OrbitFix, frame: EarthFrame): State {
   const climb = fix.climb.value * DEG;
   const flat = add(scale(north, Math.cos(heading)), scale(east, Math.sin(heading)));
   return { r, v: scale(add(scale(flat, Math.cos(climb)), scale(up, Math.sin(climb))), fix.speed.value) };
-}
-
-/**
- * A continuous replay joins the free integration to the next published fix. Turn and scale the
- * free arc gradually, preserving its turns round Earth. Match the recorded velocity at the fix
- * with a short cubic adjustment. These corrections never drive the hand-flown simulation.
- */
-export function trackingArc(from: number, to: number, predicted: State, tracked: State): (s: State, t: number) => State {
-  const axis = unit(cross(predicted.r, tracked.r));
-  const angle = Math.atan2(length(cross(predicted.r, tracked.r)), dot(predicted.r, tracked.r));
-  const ratio = length(tracked.r) / length(predicted.r) - 1;
-  const turn = (v: Vec3, a: number) => {
-    if (!angle) return v;
-    return add(add(scale(v, Math.cos(a)), scale(cross(axis, v), Math.sin(a))), scale(axis, dot(axis, v) * (1 - Math.cos(a))));
-  };
-  const remaining = sub(tracked.v, scale(turn(predicted.v, angle), 1 + ratio));
-  const span = to - from;
-  const tail = Math.min(120, span);
-  return (s, t) => {
-    const u = (t - from) / span;
-    const blend = u * u * (3 - 2 * u);
-    const rate = (6 * u * (1 - u)) / span;
-    const rotated = turn(s.r, angle * blend);
-    const radius = 1 + ratio * blend;
-    const r = scale(rotated, radius);
-    const v = add(scale(turn(s.v, angle * blend), radius), add(scale(rotated, ratio * rate), scale(cross(axis, r), angle * rate)));
-    const k = Math.max(0, 1 - (to - t) / tail);
-    return {
-      r: add(r, scale(remaining, tail * k * k * (k - 1))),
-      v: add(v, scale(remaining, k * (3 * k - 2))),
-    };
-  };
 }
 
 /**
@@ -1107,7 +1090,6 @@ export function flyOrbit(
   from?: { t: number; r: Vec3; v: Vec3 },
   hands?: DescentHands,
   contacts?: CoastContacts,
-  tracking = false,
   stopAt = Infinity,
 ): OrbitFlown {
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
@@ -1122,8 +1104,8 @@ export function flyOrbit(
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
   let t = from ? from.t : ship.orbit.injection.at.value;
   let state: State = from ? { r: from.r, v: from.v } : injectionState(plan, site, frame);
-  const fixes = tracking ? (plan.record?.coastFixes ?? []).filter((fix) => fix.at.value >= t) : [];
-  if (fixes[0]?.at.value === t) state = trackedState(fixes.shift()!, frame);
+  // (the record's tracking fixes are instants a sample is kept at, so the run can be held against each: they move nothing)
+  const fixes = (plan.record?.coastFixes ?? []).filter((fix) => fix.at.value > t);
   let aim: Vec3 = [0, 0, 0];
   /** The line the braking engine pushes along, fixed where it lay as the engine lit. */
   const aimAt = (s: State, at: number): Vec3 =>
@@ -1285,7 +1267,6 @@ export function flyOrbit(
     .filter(Number.isFinite)
     .sort((p, q) => p - q);
   const samples: OrbitSample[] = [sample()];
-  let fixed = 0;
   let kept = t;
   let before = samples[0]!;
   /** Where it was over as it came through the interface: the landing's miss is measured along the line from there. */
@@ -1333,16 +1314,6 @@ export function flyOrbit(
     while (readings.length && readings[0]!.at <= t) {
       const x = readings.shift()!;
       read(x.at === t ? state : step(last, as, x.at - as, (s, at) => pushAs(s, at, as)), x.ids);
-    }
-    if (fixes[0]?.at.value === t) {
-      const want = trackedState(fixes.shift()!, frame);
-      const correct = trackingArc(samples[fixed]!.t, t, state, want);
-      for (let i = fixed + 1; i < samples.length; i++) {
-        const s = samples[i]!;
-        samples[i] = { ...sample(correct(s, s.t), s.t), phase: s.phase };
-      }
-      state = want;
-      fixed = samples.length;
     }
     arrive();
     let now = sample();

@@ -197,28 +197,51 @@ export const strapOnThrottle = (separation: number): Curve => ({
 });
 
 /**
+ * How long the core burns on its final stage of thrust, s: Vostok 1's launch cyclogram, from the command that puts out the
+ * main chambers to the one that puts out the steering chambers.
+ */
+export const FINAL_STAGE: Measure = doc(
+  7.0,
+  'Vostok 1’s launch cyclogram: «Предварительная» at 305.74 s and «Главная» at 312.74 s (Lissov and Afanasyev, «106 минут Гагарина в свете рассекреченных документов», Novosti Kosmonavtiki 2011 No. 6, p. 4, from «Первый пилотируемый полёт», book 1, p. 431). Until November 2026 it was flown as “about 10 s”, read off Siddiqi’s 300 s and nothing else',
+);
+
+/**
  * The core's final stage of thrust, on its four steering chambers alone, for a flight whose record does not give its own:
- * Vostok 1's reading (10 s at the most those chambers give), put before the flight's own cutoff. Estimated.
+ * the cyclogram's length (`FINAL_STAGE`) at the most those chambers give, put before the flight's own cutoff. Its level is estimated.
  */
 export const coreThrottle = (cutoff: number): Curve => ({
   points: [
     [0, 1],
-    [cutoff - 10, 1],
-    [cutoff - 9.99, 0.104],
+    [cutoff - FINAL_STAGE.value, 1],
+    [cutoff - FINAL_STAGE.value + 0.01, 0.104],
     [cutoff, 0.104],
   ],
   confidence: 'estimated',
   source:
     '«За несколько секунд до выключения двигателя РД-108 переводится на конечную ступень тяги, на которой работают только рулевые КС, и при том – на пониженном режиме» (lpre.de). ' +
-    'Neither its level nor its length was found for this flight: as Vostok 1’s reading of its cyclogram, about 10 s before the main command, at the four steering chambers’ rated 2.5 tf each (RKK Energia 1946–1996), ' +
+    'Neither its level nor its length was found for this flight: the length is Vostok 1’s cyclogram’s, 7.00 s before the main command (`FINAL_STAGE`), at the four steering chambers’ rated 2.5 tf each (RKK Energia 1946–1996), ' +
     `10 tf of the engine’s 96.4 in vacuum, 10.4 per cent, the most it can be; put before this flight’s cutoff at ${cutoff} s`,
 });
+
+/**
+ * How Block E is cut on a flight whose own flight task has not been published: by its integrator, at the apparent velocity
+ * the task set for that flight's orbit. Vostok 1's setting is the only one found (2,283.52 m/s, for its own orbit), and
+ * another flight's is not it; so the run cuts the stage on the state it has flown, when the orbit it is on has that flight's
+ * own published period (plan.ts `{ orbit }`), and the recorded instant of the cutoff is a figure it is held to. Until
+ * November 2026 these flights were flown on Vostok 1's setting, labelled estimated.
+ */
+export const BLOCK_E_CUT: NonNullable<StageRecord['orbit']> = {
+  confidence: 'assumed',
+  source:
+    'the type’s way, taken for this flight: Block E shut down by its integrator on the apparent velocity its flight task set (Vostok 1’s task, ЦА РКВ ф. 19, оп. 114сс, д. 15, л. 126: «Главная» at 2,283.52 m/s, for its own orbit). ' +
+    'This flight’s task is not published, so the cutoff is flown where the orbit reached is the one published for it; the recorded instant is held as a check',
+};
 
 /** When a flight's stages were lit, cut and let go, as its own record has them; a throttle it does not give is the type's reading above. */
 export interface Staging {
   boosters: { cutoff: Measure; separation: Measure; throttle?: Curve };
   core: { cutoff: Measure; separation: Measure; throttle?: Curve };
-  third: { ignition: Measure; cutoff: Measure; separation: Measure; velocity?: StageRecord['velocity'] };
+  third: { ignition: Measure; cutoff: Measure; separation: Measure; velocity?: StageRecord['velocity']; orbit?: StageRecord['orbit'] };
 }
 
 /** The three stages of a flight on the 8K72K, in order (orbital.ts `stages`). */
@@ -238,6 +261,7 @@ export function stages8K72K(day: Staging): StageRecord[] {
       cutoff: third.cutoff,
       separation: third.separation,
       ...(third.velocity ? { velocity: third.velocity } : {}),
+      ...(third.orbit ? { orbit: third.orbit } : {}),
     },
   ];
 }

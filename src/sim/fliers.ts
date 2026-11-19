@@ -28,6 +28,7 @@ import { EARTH_ROTATION_RATE } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, dot, type Geodetic, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { alongPublished } from '../world/meanelements.ts';
 import { airDrag, blowing, skyOf } from './air.ts';
 import { crossing, integrate, sensed, trapezoid } from './apparent.ts';
 import { AIR_TOP } from './atmosphere.ts';
@@ -35,11 +36,22 @@ import { Descent, type DescentContext, type DownBody, downOf } from './descent.t
 import { ballisticOf, chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
-import { aimFor, aimOf, type DescentFlown, type DescentHands, heightsBall, movingAt, shipOf, shipPush, solarAt } from './orbital.ts';
+import {
+  aimFor,
+  aimOf,
+  type DescentFlown,
+  type DescentHands,
+  heightsBall,
+  movingAt,
+  publishedOf,
+  shipOf,
+  shipPush,
+  solarAt,
+} from './orbital.ts';
 import type { FlightPlan } from './plan.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
-import { airOf as airOfStack, lawOf, type Mode, type Solved, sequenceOf, stackOf, stagesOf } from './staged.ts';
+import { airOf as airOfStack, lawOf, type Mode, pushAhead, type Solved, sequenceOf, stackOf, stagesOf } from './staged.ts';
 import type { StagedState, StagedVehicle, Step } from './stagedlive.ts';
 
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
@@ -503,7 +515,7 @@ export interface GuidedNow {
   state: Pick<StagedState, 'stages' | 'drops' | 'apparent'>;
   /** Whether the sequencer sets off the record's steps; with it off nothing is lit, cut or let go but what runs dry. */
   sequence: boolean;
-  /** A hand-flown ascent hands over its share of the joint's push. The batch ascent ends at its incoming velocity. */
+  /** A hand-flown ascent (the deck's). Every ascent, the record's too, hands the spacecraft its share of the joint's push. */
   live?: boolean;
   /** How far the hands have leaned the law, radians; and the law's angle as its tangent took over, where it has. */
   trim?: { pitch: number; yaw: number };
@@ -517,8 +529,9 @@ export interface GuidedNow {
  * with `now` as it stands. The law is staged.ts's (`lawOf`), its axis worked as the live vehicle and the batch run work it; the forces are theirs (`stackOf`'s thrust, drag and shape flown, the live vehicle's mass). Its
  * steps are at their instants, worked out first in one sweep over the time ahead (a stage cut on its apparent velocity at
  * the instant its integrator's sum reaches the setting: its vacuum thrust over the mass, summed, as stagedlive.ts sums
- * it), so the propagator ends a step on each; a stage runs dry when its load is gone. A stage cut on its space-fixed speed
- * keeps the record's instant: no stage of the record's is cut so. The attitude is the law's, placed (the live vehicle's
+ * it), so the propagator ends a step on each; a stage runs dry when its load is gone. A stage cut on its space-fixed speed,
+ * or by its guidance on the orbit reached, is cut where the path reaches that (`faster`), and what the plan lets go so
+ * long after such a cut follows it. The attitude is the law's, placed (the live vehicle's
  * steering lag, a few hundredths of a degree, is not stepped), as the batch run places it.
  */
 export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: { t: number; r: Vec3; v: Vec3 }, now: GuidedNow): Flier {
@@ -572,15 +585,55 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
   // apparent velocity found by summing the integrator over the time ahead with the steps before it applied. Worked out in
   // slices (`prepare`, which the propagator runs in its own: a few milliseconds in one go was a phone's whole frame).
   const plan: { at: number; step: Step }[] = [];
-  /** A stage's space-fixed speed its guidance cuts it at (a Mercury-Atlas's sustainer), or null: found as the path reaches it (`faster`). */
+  // A stage its guidance cuts on the orbit (plan.ts `{ orbit }`): the speed at which the state last asked of the forces is on
+  // the record's orbit, going as it goes (world/meanelements.ts `alongPublished`: the reading `orbitShort` falls through
+  // nothing at). It moves with the place by a few hundredths of a metre a second over a step, so the step that passes it is
+  // flown back to it as a fixed speed's is.
+  const record = seq.stages.some((k) => k.orbit) ? publishedOf(fp, site) : null;
+  const ahead = record ? pushAhead(fp) : 0;
+  let seen: { r: Vec3; v: Vec3 } = { r: start.r, v: start.v };
+  let onOrbit: { of: { r: Vec3; v: Vec3 }; speed: number } | null = null;
+  const orbitSpeed = (): number => {
+    // (less what the parting will add: staged.ts `orbitShort` cuts for the orbit the spacecraft is left on)
+    if (onOrbit?.of !== seen) onOrbit = { of: seen, speed: length(alongPublished(record!, seen.r, seen.v).state.v) - ahead };
+    return onOrbit.speed;
+  };
+  /** A stage's space-fixed speed its guidance cuts it at (a Mercury-Atlas's sustainer; the orbit's, above), or null: found as the path reaches it (`faster`). */
   const speedOf = (i: number): number | null => {
+    if (seq.stages[i]!.orbit) return orbitSpeed();
     const speed = seq.stages[i]!.speed;
     return speed && !speed.apparent ? speed.value : null;
   };
+  /** The speed `faster` last gave: what the step was flown back to. */
+  let asked = Number.POSITIVE_INFINITY;
   /** The steps cut on a space-fixed speed still ahead, while the sequence is on. */
   const spaced: Step[] = now.sequence
     ? v.sequence.filter((k) => !doneIn(k.step, cur) && k.step.kind === 'cut' && speedOf(k.step.stage) !== null).map((k) => k.step)
     : [];
+  // A stage let go so long after its own stop, where its cut is not the clock's (staged.ts `sequenceOf`: `wait`): placed
+  // when the stage stops, cut or dry.
+  const following: { step: Step; stage: number; wait: number }[] = [];
+  const follows = (k: Step): number | null => (k.kind === 'separate' ? seq.stages[k.stage]!.wait : null);
+  /** When a stage stopped, by `t`: its cut, or its running dry. Null while it burns or before it is lit. */
+  const stopped = (i: number, t: number): number | null => {
+    const st = cur.stages[i]!;
+    if (Number.isFinite(st.to)) return st.to;
+    if (!Number.isFinite(st.from)) return null;
+    const dry = v.dry(i, st.from, cur);
+    return dry <= t + 1e-9 ? dry : null;
+  };
+  /** Each step that follows a stage's stop put at its instant, once the stage has stopped. */
+  const place = (t: number): void => {
+    for (let j = following.length - 1; j >= 0; j--) {
+      const k = following[j]!;
+      const at = stopped(k.stage, t);
+      if (at === null) continue;
+      plan.push({ at: Math.max(at + k.wait, t), step: k.step });
+      plan.sort((a, b) => a.at - b.at);
+      marks = [...new Set([...marks, at + k.wait].filter((x) => x > t))].sort((a, b) => a - b);
+      following.splice(j, 1);
+    }
+  };
   /** One more piece of the sweep ahead; false when there is no more. */
   let sweepOn: () => boolean = () => false;
   if (now.sequence) {
@@ -588,8 +641,12 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       const speed = seq.stages[i]!.speed;
       return speed?.apparent ? speed.value : null;
     };
+    for (const k of v.sequence) {
+      const wait = follows(k.step);
+      if (wait !== null && !doneIn(k.step, cur)) following.push({ step: k.step, stage: (k.step as { stage: number }).stage, wait });
+    }
     const ahead = v.sequence
-      .filter((k) => !doneIn(k.step, cur) && !spaced.includes(k.step))
+      .filter((k) => !doneIn(k.step, cur) && !spaced.includes(k.step) && follows(k.step) === null)
       .map((k) => ({ at: Math.max(k.at, start.t), step: k.step }));
     const summed = ahead.filter((k) => k.step.kind === 'cut' && setting(k.step.stage) !== null);
     const timed = ahead.filter((k) => !summed.includes(k)).sort((a, b) => a.at - b.at);
@@ -642,6 +699,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
     plan.sort((a, b) => a.at - b.at);
     marks = [...new Set([...plan.map((p) => p.at), law.tVertical, law.tTurn].filter((x) => x > start.t))].sort((a, b) => a - b);
     lastCut = plan.find((p) => p.step.kind === 'cut' && p.step.stage === last)?.at ?? null;
+    place(start.t);
     ready = true;
     return true;
   };
@@ -674,6 +732,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
     burning: () => (alone ? alone.burning() : lit()),
     push(at, p, u, altitude) {
       if (alone) return alone.push(at, p, u, altitude);
+      if (record) seen = { r: p, v: u };
       const air = sky.air(altitude);
       const over = sub(u, cross(SPIN, p));
       const wind = sky.blow ? sub(over, blowing(v.frame, sky.blow, v.frame.place(p, at), altitude, at)) : over;
@@ -705,6 +764,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
         const i = (k as { stage: number }).stage;
         if (!doneIn(k, cur) && v.burning(cur, i, since)) most = Math.min(most, speedOf(i)!);
       }
+      asked = most;
       return most;
     },
     arrive(t, r, u, altitude, by): Arrival {
@@ -714,7 +774,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       if (by === 'speed')
         for (const k of spaced) {
           const i = (k as { stage: number }).stage;
-          if (doneIn(k, cur) || speedOf(i)! > length(u) + 1e-9) continue;
+          if (doneIn(k, cur) || (seq.stages[i]!.orbit ? asked : speedOf(i)!) > length(u) + 1e-9) continue;
           apply(k, t, cur);
           if (i === last) {
             lastCut = t;
@@ -724,20 +784,20 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       // the law's own change: the tangent takes over from the axis it had then (staged.ts `ascend`)
       if (thetaTurn === null && law.modeAt(t) === 'tangent') {
         const s = { r, v: u };
-        const { u: up } = law.localAt(s.r);
-        thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, t, 'turn', airOf(s, t).ground, 0), up))));
+        thetaTurn = law.thetaAt(s, t, airOf(s, t).ground);
       }
+      place(t);
       for (const p of plan) {
         if (p.at > t + 1e-9 || doneIn(p.step, cur)) continue;
         const parting = p.step.kind === 'separate' && p.step.stage === last;
-        const before = parting && now.live ? v.mass(cur, t) : 0;
+        const before = parting ? v.mass(cur, t) : 0;
         apply(p.step, t, cur);
         if (p.step.kind === 'cut' && p.step.stage === last) events.push('cutoff');
         if (parting) {
           events.push('separation');
           since = t;
           const kept = v.mass(cur, t);
-          const speed = now.live ? v.separationSpeed(kept, before - kept) : 0;
+          const speed = v.separationSpeed(kept, before - kept);
           const outgoing = speed ? add(u, scale(axisAt(r, u, t), speed)) : u;
           alone = spacecraft(now.plan, v.frame, site, seaLevel, { t, r, v: outgoing });
           const then = alone.arrive(t, r, outgoing, altitude, 'time');

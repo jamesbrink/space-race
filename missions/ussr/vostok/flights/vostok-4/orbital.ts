@@ -34,6 +34,7 @@ import {
 } from '../../vehicles/vostok-3ka.ts';
 import {
   ascent8K72K,
+  BLOCK_E_CUT,
   BOBKOV,
   coreThrottle,
   KICK,
@@ -87,13 +88,7 @@ export const orbital: VostokRecord = {
         `${TYPE('third stage’s cutoff')}: 677.08 s flown. Kamanin: the launch «мало чем отличались» from Vostok 3’s (14 August), whose end the bunker counted at 687 s. Cut here on its integrator (below), so this is a result`,
       ),
       separation: estimated(687.08, 'ten seconds after the cutoff, the type’s (Titov’s, on Vostok 2): not recorded for this flight'),
-      velocity: {
-        apparent: true,
-        speed: estimated(
-          2_283.52,
-          'm/s of apparent velocity: Vostok 1’s flight task’s setting for its third stage (the 2011 documents). NOT this flight’s: E103-22’s flight task is not published',
-        ),
-      },
+      orbit: BLOCK_E_CUT,
     },
   }),
   events: [

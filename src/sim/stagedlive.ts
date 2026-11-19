@@ -56,6 +56,7 @@ import {
   lawOf,
   type Mode,
   type Solved,
+  orbitShort,
   sequenceOf,
   drawnFrom,
   stagesOf,
@@ -507,7 +508,7 @@ export function stagedVehicle(
       else if (k.kind === 'separate' && craft.joints[id.joint] && !Number.isFinite(craft.joints[id.joint]!.loose)) {
         // the command that lets it go shuts its engines down where the plan has no cut of their own (they stop at its separation)
         const own = seq.stages[k.stage]!;
-        if (own.cut === null && own.speed === null) craft = act(plan, craft, { cut: id.engine }, s.t, s.held).state;
+        if (own.cut === null && own.speed === null && !own.orbit) craft = act(plan, craft, { cut: id.engine }, s.t, s.held).state;
         craft = act(plan, craft, { separate: id.joint }, s.t, s.held).state;
       }
     };
@@ -836,6 +837,12 @@ export function stagedPilot(
   let last: { t: number; target: Vec3; rate: Vec3 | null } | null = null;
   const inSequence = new Set(v.sequence.map((k) => k.event));
   const index = new Map(stagesOf(v.plan).map((s, i) => [s.engine.id, i]));
+  // a stage the guidance cuts on the orbit (plan.ts `{ orbit }`): how far the state is short of the record's, read every tick
+  const short = orbitShort(v.plan, site);
+  // (and such a stage that has stopped short of it, dry or cut by a hand, has made its cutoff: what the plan has follow
+  // that cut, the spacecraft's parting, then follows)
+  const onOrbit = sequenceOf(v.plan).stages.flatMap((k, i) => (k.orbit ? [i] : []));
+  const stopped = (s: StagedState) => onOrbit.some((i) => Number.isFinite(s.stages[i]!.from) && !v.burning(s, i));
   return (s) => {
     const steps: Step[] = [...(options.steps?.() ?? [])];
     // each event of the record's sequence that has not happened, as it comes due (craft.ts `due`): at its instant, or a
@@ -852,6 +859,7 @@ export function stagedPilot(
             apparent: (id) => s.apparent[index.get(id)!]!,
             g: Number.NaN,
             held: s.held,
+            ...(short ? { short: stopped(s) ? 0 : short(s.r, s.v) } : {}),
           },
           (e) => inSequence.has(e.id),
         ).map((e) => e.id)
@@ -861,19 +869,13 @@ export function stagedPilot(
     if (options.prescribed) {
       // as staged.ts flies it: the part of the law fixed for the tick, thetaTurn from the instant the tangent took over
       const mode = law.modeAt(s.t);
-      if (mode === 'tangent' && memo.thetaTurn === null) {
-        const { u } = law.localAt(s.r);
-        memo.thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, s.t, 'turn', air(s, s.t).ground, 0), u))));
-      }
+      if (mode === 'tangent' && memo.thetaTurn === null) memo.thetaTurn = law.thetaAt(s, s.t, air(s, s.t).ground);
       const theta = memo.thetaTurn ?? 0;
       return { pitch: 0, yaw: 0, roll: 0, steps, events, prescribed: (st, at) => law.axisAt(st, at, mode, air(st, at).ground, theta) };
     }
     // the law's axis now, leaned by the hands' trim
     const here = air(s, s.t);
-    if (law.modeAt(s.t) === 'tangent' && memo.thetaTurn === null) {
-      const { u } = law.localAt(s.r);
-      memo.thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(law.axisAt(s, s.t, 'turn', here.ground, 0), u))));
-    }
+    if (law.modeAt(s.t) === 'tangent' && memo.thetaTurn === null) memo.thetaTurn = law.thetaAt(s, s.t, here.ground);
     const trim = options.trim ?? { pitch: 0, yaw: 0 };
     const aim = (st: State, at: number): Vec3 => {
       const mode: Mode = law.modeAt(at);

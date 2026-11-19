@@ -36,6 +36,7 @@ import {
 } from '../../vehicles/vostok-3ka.ts';
 import {
   ascent8K72K,
+  BLOCK_E_CUT,
   BOBKOV,
   coreThrottle,
   KICK,
@@ -100,13 +101,7 @@ export const orbital: VostokRecord = {
         687.08,
         `about ten seconds after the cutoff: «Третья ступень отработала, выключилась, и секунд через десять произошло отделение» (${REPORT}, p. 184), on the type’s cutoff; McDowell’s catalogue: 06:11 UTC, to the minute`,
       ),
-      velocity: {
-        apparent: true,
-        speed: estimated(
-          2_283.52,
-          'm/s of apparent velocity: Vostok 1’s flight task’s setting for its third stage (the 2011 documents), for an orbit of 180 km perigee. NOT this flight’s: E103-17’s flight task is not published. Its planned perigee was the same 180 km (doc. 184)',
-        ),
-      },
+      orbit: BLOCK_E_CUT,
     },
   }),
   events: [

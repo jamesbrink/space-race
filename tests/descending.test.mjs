@@ -43,7 +43,7 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
   const sea = f.site.seaLevel.value;
   const where = { site, seaLevel: sea, frame: dated };
   let whole;
-  const flown = () => (whole ??= flyWhole(f.plan, site, dated, sea, undefined, 10, 'published'));
+  const flown = () => (whole ??= flyWhole(f.plan, site, dated, sea, undefined, 10));
   const predicted = (flier, start) => {
     const p = propagate(flier, start, where);
     p.run();

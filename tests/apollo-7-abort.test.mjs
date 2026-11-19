@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { BoxGeometry, Mesh, Vector3 } from 'three';
 import { flight } from '../missions/usa/apollo/flights/apollo-7/flight.ts';
 import { downOf } from '../src/sim/descent.ts';
-import { launchEscape, planAfterEscape, withEscapeTranslation, withServiceAbort } from '../src/sim/launchescape.ts';
+import { launchEscape, ORBIT_SLACK, planAfterEscape, withEscapeTranslation, withServiceAbort } from '../src/sim/launchescape.ts';
 import { coastEngineState, flyDown, flyOrbit, shipOf } from '../src/sim/orbital.ts';
 import { detachedStageAt, targetAt } from '../src/sim/orbital-target.ts';
 import { abortAt } from '../src/sim/plan.ts';
@@ -132,7 +132,10 @@ test('Apollo 7 Mode III fires retrograde and Mode IV preserves a deorbit reserve
     assert.ok(burn.fuel > 0);
     assert.equal(coastEngineState(result.plan, 'sps', burn.off).starts, 7);
     if (mode.goal.kind === 'orbit') {
-      assert.ok(result.achieved >= mode.goal.target.value);
+      // (the abort is made at the insertion's own height: the perigee comes within the slack of the one asked for, on a
+      // burn that is not all the propellant there is)
+      assert.ok(result.achieved >= mode.goal.target.value - ORBIT_SLACK, `perigee ${result.achieved} for ${mode.goal.target.value}`);
+      assert.ok(result.duration < 90, `a burn of ${result.duration} s`);
       assert.ok(coastEngineState(result.plan, 'sps', burn.off).kg >= ship.fuel);
       assert.equal(ship.parted, Number.MAX_SAFE_INTEGER);
     } else {

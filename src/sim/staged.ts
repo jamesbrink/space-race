@@ -1,7 +1,7 @@
 /**
  * The powered ascent of an orbital flight (its plan's stages and steering law), flown: stages burning together and in turn,
- * each dropped when the record says it left, on a stated steering law; then handed to the coast (orbital.ts: flyOrbit)
- * at the spacecraft's separation, so the whole flight is flown from the pad. Nothing here knows which flight it is:
+ * each dropped when the record says it left, on a stated steering law; then flown on by the coast (orbital.ts: flyOrbit)
+ * from the state it has at the spacecraft's separation, so the whole flight is one state flown from the pad. Nothing here knows which flight it is:
  * every stage, event and figure is the flight's plan, and the law is its attitude held by a stated law (`{ law }`).
  *
  * Forces, in the flight's frame (world/earthframe.ts: of date, as the coast's), on a point that is the vehicle:
@@ -44,12 +44,13 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { alongPublished } from '../world/meanelements.ts';
-import { elementsOf, hermite, period, planeThrough, type State, step } from '../world/orbit.ts';
+import { shortOfPublished } from '../world/meanelements.ts';
+import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
 import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { integrate, sensed } from './apparent.ts';
 import { downOf } from './descent.ts';
 import { ALONE, along, MEAN_RADIUS, RIDING } from './fly.ts';
+import { keptShare } from './forces.ts';
 import { ENTRY_G } from './loads.ts';
 import {
   aimFor,
@@ -71,8 +72,6 @@ import {
   type OrbitFlown,
   publishedOf,
   shipOf,
-  trackedState,
-  trackingArc,
 } from './orbital.ts';
 import { type Action, type BodyDef, clockAt, type EngineDef, type EventDef, eventOf, type FlightPlan, type TankDef } from './plan.ts';
 import { aboutAxis, fromAxes, multiply, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
@@ -82,11 +81,18 @@ import type { LiveSample } from './vehicle.ts';
 /** The integration step, s. */
 export const STEP = 0.05;
 
-/** What the law solves for: the launch plane's inclination, the pitch-over's angle (both radians), and the tangent's rate of fall, 1/s. */
+/**
+ * What the law solves for: the launch plane's inclination, the pitch-over's angle (both radians), and the tangent's rate of
+ * fall, 1/s. Where the record gives the aiming azimuth the plane is the record's (`plane` is then not a number) and what is
+ * solved in its place is `yaw`: how far the closed loop holds the thrust out of the launch plane, toward the vehicle's
+ * left, radians, from the instant the tangent takes over. After a stored programme, `kick` is the step in the thrust's
+ * angle above the level as the tangent takes over from it (`lawOf`).
+ */
 export interface Solved {
   plane: number;
   kick: number;
   rate: number;
+  yaw?: number;
 }
 
 /** The flight at one instant of the ascent. */
@@ -183,8 +189,13 @@ export interface Ascended {
   /** For each stage: when its engine stopped, s (earlier than its cutoff if it ran dry), and the propellant left in each unit then, kg (of `usable`, or of `propellant`). */
   stops: number[];
   left: number[];
-  /** The spacecraft's state as it separates, for the coast. */
+  /**
+   * The spacecraft's state as it separates, for the coast: from `ascend`, as the stack was that instant (the last sample's);
+   * from `flyWhole`, pushed off by the joint that let it go (`partedOff`), which is what the coast begins from.
+   */
   separation: { t: number; r: Vec3; v: Vec3 };
+  /** What parted there, kg: the spacecraft that goes on, and the last stage as it was let go. */
+  parted: { kept: number; gone: number };
   /** The launch plane's pole (the law's thrust lies square to it): the vehicle's left, as it stood on the pad. */
   plane: Vec3;
   /** The thrust's angle above the local level as the tangent law took over (`Guidance`), radians: what the law flies from there. */
@@ -293,7 +304,7 @@ export function schedule(plan: FlightPlan, seq = sequenceOf(plan)): { from: numb
   // is, past that; one with no cut of its own is shut down as it is let go)
   const cutoffOf = (i: number) => {
     const k = seq.stages[i]!;
-    return k.speed ? k.from + (10 * stages[i]!.load) / flowOf(stages[i]!.engine) : (k.cut ?? k.sep);
+    return k.speed || k.orbit ? k.from + (10 * stages[i]!.load) / flowOf(stages[i]!.engine) : (k.cut ?? k.sep);
   };
   /** When a tank several stages draw on is empty, each burning from its lighting to its own cut: Infinity if it never is. */
   const sharedDry = (shares: number[]): number => {
@@ -356,11 +367,21 @@ export function sequenceOf(plan: FlightPlan) {
       const cut = doing((a) => 'cut' in a && a.cut === e.id);
       const joint = firstJoint(e.body);
       const speed = cut?.when.find((w) => 'speed' in w);
+      const orbit = Boolean(cut?.when.some((w) => 'orbit' in w));
+      const parting = joint && doing((a) => 'separate' in a && a.separate === joint.id);
+      // let go so long after its own cut, where that cut is not the clock's (the guidance's, on the orbit): the record's
+      // interval, kept from whenever the run cuts it
+      const follows = cut && parting?.when.length === 1 ? parting.when.find((w) => 'after' in w && w.after === cut.id) : undefined;
+      const wait = follows && 'after' in follows ? (follows.wait ?? 0) : null;
       return {
         from: timeOf(doing((a) => 'ignite' in a && a.ignite === e.id)) ?? Infinity,
-        cut: cut && !speed ? timeOf(cut) : null,
+        cut: cut && !speed && !orbit ? timeOf(cut) : null,
         speed: speed && 'speed' in speed ? { value: speed.speed, apparent: Boolean(speed.apparent) } : null,
-        sep: (joint && timeOf(doing((a) => 'separate' in a && a.separate === joint.id))) ?? Infinity,
+        /** Cut by its guidance when the orbit it is on is the record's (a trigger `{ orbit }`). */
+        orbit,
+        /** When it is let go: at an instant of the clock's; or, let go `wait` after a cut that is not the clock's, the record's instant of it (the run's own is its stop and `wait`). */
+        sep: (parting && (timeOf(parting) ?? (wait !== null ? (parting.at?.value ?? null) : null))) ?? Infinity,
+        wait: parting && timeOf(parting) === null ? wait : null,
         /** The joint that lets it go, and the record's instant of its own cut, where it has one. */
         joint: joint?.id ?? null,
         cutAt: cut?.at?.value ?? null,
@@ -426,7 +447,8 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
     return { u, h: unit(cross(n, u)) };
   };
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 => {
-    if (g.programme) return tilted(along(g.programme, t) * DEG);
+    // a stored programme is the first part of the law, the gyros' own: it is flown open, as it was, until the tangent takes over
+    if (g.programme && m !== 'tangent') return tilted(along(g.programme, t) * DEG);
     if (m === 'vertical') return up0;
     if (m === 'turn') {
       // along the motion over the ground, in the plane (the turn the programme was made for: in calm air the motion through
@@ -439,11 +461,53 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
     }
     const { u, h } = localAt(s.r);
     const theta = Math.atan(Math.tan(thetaTurn) - x.rate * (t - tTurn));
-    return add(scale(h, Math.cos(theta)), scale(u, Math.sin(theta)));
+    const inPlane = add(scale(h, Math.cos(theta)), scale(u, Math.sin(theta)));
+    // out of the launch plane by the yaw the law solved for (the closed loop steering to the orbit's plane): none, in it
+    return x.yaw ? add(scale(inPlane, Math.cos(x.yaw)), scale(n, Math.sin(x.yaw))) : inPlane;
   };
   /** Which part of the law holds at `t`. */
   const modeAt = (t: number): Mode => (t < tVertical ? 'vertical' : t < tTurn ? 'turn' : 'tangent');
-  return { n, pad, up0, down0, localAt, axisAt, modeAt, tVertical, tKicked, tTurn };
+  /**
+   * The thrust's angle above the local level as the tangent takes over at a state, radians: where the turn left the axis;
+   * after a stored programme, that and the step the law solves for (`Solved.kick`: the closed loop's first command, which
+   * need not be where the open programme left the axis).
+   */
+  const thetaAt = (s: State, t: number, wind: Vec3): number => {
+    const theta = Math.asin(Math.max(-1, Math.min(1, dot(axisAt(s, t, 'turn', wind, 0), localAt(s.r).u))));
+    return g.programme ? theta + x.kick : theta;
+  };
+  return { n, pad, up0, down0, localAt, axisAt, modeAt, thetaAt, tVertical, tKicked, tTurn };
+}
+
+/**
+ * How far a state is short of the record's orbit (world/meanelements.ts `shortOfPublished`: nothing or less, reached), for a
+ * plan whose guidance cuts a stage on it (plan.ts: a trigger `{ orbit }`); null for a plan with no such cut. One reading
+ * for the batch run, the live vehicle's pilot and the path ahead.
+ */
+export function orbitShort(plan: FlightPlan, site: Geodetic): ((r: Vec3, v: Vec3) => number) | null {
+  if (!sequenceOf(plan).stages.some((k) => k.orbit)) return null;
+  const short = shortOfPublished(publishedOf(plan, site));
+  // The orbit that counts is the one the spacecraft is left on, so the guidance cuts for what the parting will add: the
+  // spacecraft's share of its last joint's push (`partedOff`), by the plan's own masses (the spacecraft as it is in orbit,
+  // the last stage empty), along the way it is going. A guidance knows its own vehicle; it is not told the flight's state.
+  const push = pushAhead(plan);
+  if (!push) return short;
+  return (r, v) => short(r, add(v, scale(unit(v), push)));
+}
+
+/**
+ * The speed the last joint's push will give the spacecraft as it parts, m/s, by the plan's masses: the spacecraft as it is
+ * in orbit against its last stage with its tanks empty. Nothing, for a plan whose last joint pushes nothing.
+ */
+export function pushAhead(plan: FlightPlan): number {
+  const c = plan.craft[0]!;
+  const last = stagesOf(plan).at(-1)!;
+  const joint = sequenceOf(plan).stages.at(-1)!.joint;
+  const push = c.joints.find((j) => j.id === joint)?.push ?? c.sheds?.find((shed) => shed.on === joint)?.push;
+  const kept = plan.record?.orbit?.mass.value;
+  if (!push || !kept) return 0;
+  const held = c.tanks.filter((t) => t.body === last.body.id).reduce((sum, t) => sum + (t.usable ?? t.load).value, 0);
+  return keptShare(push.value, kept, last.body.count * (last.body.mass.value - held));
 }
 
 /** The air at a state of the ascent, in the plan's air (air.ts `skyOf`: the day's column and its wind where it has one). */
@@ -480,9 +544,18 @@ export function stackOf(plan: FlightPlan) {
 
 /**
  * Fly the ascent with the law's unknowns as given. `site` and `frame` as flyOrbit's; `every`: how often a sample is
- * kept, s. Ends at the spacecraft's separation from the last stage.
+ * kept, s. Ends at the spacecraft's separation from the last stage; with `toCutoff`, at the last stage's stop, which is
+ * all the law's solution reads (`steer`: the summary there), so a stage carried on round the Earth is not flown to solve it.
  */
-export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: number, x: Solved, every = 0.5): Ascended {
+export function ascend(
+  fp: FlightPlan,
+  site: Geodetic,
+  frame: EarthFrame,
+  seaLevel: number,
+  x: Solved,
+  every = 0.5,
+  toCutoff = false,
+): Ascended {
   const stages = stagesOf(fp);
   const liftoff = fp.craft[0]!.mass.value;
   const g = guidanceOf(fp);
@@ -499,8 +572,14 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
   const throttle = stack.throttle;
   const { tVertical, tKicked, tTurn } = law;
   const tEnd = seq.instant(g.target.at);
-  // the spacecraft parts from the last stage as it is let go
-  const tPart = seq.stages[seq.stages.length - 1]!.sep;
+  // the spacecraft parts from the last stage as it is let go: at its instant, or (where the plan lets it go so long after a
+  // cut that is the guidance's) that long after the stage stops, which the run finds
+  const lastOf = seq.stages[seq.stages.length - 1]!;
+  let tPart = lastOf.wait === null ? lastOf.sep : Infinity;
+  // a stage its guidance cuts on the orbit: how far the state is short of the record's (nothing or less: reached)
+  const short = orbitShort(fp, site);
+  /** How far past its guidance's cut a stage cut on the state is: its space-fixed speed over its setting, m/s, or the orbit's period over the record's, s. */
+  const past = (i: number, s: State): number => (seq.stages[i]!.orbit ? -short!(s.r, s.v) : length(s.v) - cutAt[i]!);
   // a stage cut on its apparent velocity: the instant its integrator reaches its setting, found here from the mass flown
   // (the rocket's own thrust over its mass, summed from its ignition; in vacuum, with nothing else pushing, that is all an
   // accelerometer along the axis senses), before anything is flown. The stage's own thrust in vacuum: it is lit above the air
@@ -530,7 +609,6 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
 
   let mode: Mode = 'vertical';
   let thetaTurn = 0; // the thrust's angle above the local level as the tangent law takes over
-  const localAt = law.localAt;
   const airHere = airOf(seaLevel, frame, skyOf(fp));
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 => law.axisAt(s, t, m, wind, thetaTurn);
   /**
@@ -597,7 +675,7 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
       ...(fp.record?.coastFixes ?? []).map((fix) => fix.at.value),
     ]),
   ]
-    .filter((m) => m > 0 && m <= tPart)
+    .filter((m) => m > 0 && m <= tPart && Number.isFinite(m))
     .sort((p, q) => p - q);
 
   let t = 0;
@@ -642,12 +720,15 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
     // a stage cut on its velocity, when it reaches it in this step: the step is flown again to the instant it does, found by
     // the secant on the step's length (so the instant is a smooth function of the inputs, as the law's solution needs)
     const crossing = seq.stages.findIndex(
-      (k, i) => k.speed && !k.speed.apparent && t > plan[i]!.from && t <= plan[i]!.to && length(state.v) >= cutAt[i]!,
+      (k, i) => (k.orbit || (k.speed && !k.speed.apparent)) && t > plan[i]!.from && t <= plan[i]!.to && past(i, state) >= 0,
     );
-    if (crossing >= 0 && length(before.v) < cutAt[crossing]!) {
-      const want = cutAt[crossing]!;
-      const at = (k: number) => length(step(before, t0, h * k, (q, tt) => forces(q, tt, m, gone, t0).accel).v) - want;
-      let [k0, f0, k1, f1] = [0, length(before.v) - want, 1, length(state.v) - want];
+    if (crossing >= 0 && past(crossing, before) < 0) {
+      const at = (k: number) =>
+        past(
+          crossing,
+          step(before, t0, h * k, (q, tt) => forces(q, tt, m, gone, t0).accel),
+        );
+      let [k0, f0, k1, f1] = [0, past(crossing, before), 1, past(crossing, state)];
       for (let n = 0; n < 8 && Math.abs(f1) > 1e-9; n++) {
         const k2 = Math.min(1, Math.max(0, k1 - (f1 * (k1 - k0)) / (f1 - f0)));
         [k0, f0, k1, f1] = [k1, f1, k2, at(k2)];
@@ -655,6 +736,12 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
       state = step(before, t0, h * k1, (q, tt) => forces(q, tt, m, gone, t0).accel);
       t = t0 + h * k1;
       plan[crossing]!.to = t;
+    }
+    // the last stage has stopped: the spacecraft is let go so long after, where the plan has it follow the stop
+    if (tPart === Infinity && lastOf.wait !== null && t >= plan[plan.length - 1]!.to) {
+      tPart = plan[plan.length - 1]!.to + lastOf.wait;
+      marks.push(tPart);
+      marks.sort((p, q) => p - q);
     }
     const s = sample(state, t);
     // the loads, as they stand before whatever happens at this instant
@@ -664,16 +751,22 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
     else if (t <= plan[plan.length - 1]!.to) summary.lastG = Math.max(summary.lastG, s.g);
     if (t === 60) summary.minuteG = s.g;
     for (const x of seq.instants) if (x.at === t) at[x.id] = s;
-    if (t === plan[plan.length - 1]!.to) Object.assign(summary, atCutoff(fp, t, state, pad));
+    if (t === plan[plan.length - 1]!.to) {
+      Object.assign(summary, atCutoff(fp, t, state, pad));
+      if (toCutoff) {
+        tPart = t;
+        samples.push(s);
+        break;
+      }
+    }
     // the law's own changes, at the end of a step
     if (mode === 'vertical' && t >= tVertical) mode = 'turn';
     if (mode === 'turn' && t >= tTurn) {
-      const f = forces(state, t, mode, droppedBy(t));
-      const { u } = localAt(state.r);
-      thetaTurn = Math.asin(Math.max(-1, Math.min(1, dot(f.axis, u))));
+      thetaTurn = law.thetaAt(state, t, airHere(state, t).ground);
       mode = 'tangent';
     }
-    if (t - kept >= interval - 1e-9 || marks.includes(t)) {
+    // (kept at every mark, and where a stage its guidance cut on the state stopped: the run's own instant of it)
+    if (t - kept >= interval - 1e-9 || marks.includes(t) || plan.some((p) => p.to === t)) {
       samples.push(s);
       kept = t;
     }
@@ -692,32 +785,43 @@ export function ascend(fp: FlightPlan, site: Geodetic, frame: EarthFrame, seaLev
     stops: plan.map((p) => p.to),
     left: stages.map((s, i) => s.load - drawnFrom(stages, s.holder.id, (j) => burned(j, plan[i]!.to))),
     separation: { t: tPart, r: state.r, v: state.v },
+    parted: { kept: summary.massLeft, gone: lastLeft },
     plane: n,
     thetaTurn,
   };
 }
 
 /**
- * Solve the law's three unknowns so that the last cutoff comes at the target's height over the reference ball, its
- * climb and its inclination: Newton's method on finite differences, from a start that is the target's inclination, a
- * pitch-over of eight degrees and a tangent falling a thousandth a second. Throws if it does not converge:
- * a law that cannot reach its target is a finding, not something to paper over.
+ * Solve the law's three unknowns so that the last cutoff comes at the target's height (over the reference ball, or over the
+ * ellipsoid under the cutoff where the record's height is that: `target.over`), its climb and its inclination: Newton's method on finite
+ * differences. With no aiming azimuth the unknowns are the launch plane, the pitch-over and the tangent's rate, from a
+ * start that is the target's inclination, a pitch-over of eight degrees and a tangent falling a thousandth a second. With
+ * one, the plane is the record's and the third unknown is the yaw the tangent holds out of it (from none); after a stored
+ * programme the pitch-over's place is taken by the step in the axis as the tangent takes over (from none). Throws if it
+ * does not converge: a law that cannot reach its target is a finding, not something to paper over.
  */
 export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel = 0): Solved {
   const g = guidanceOf(plan);
-  if (g.programme && g.azimuth) return { plane: Number.NaN, kick: 0, rate: 0 };
   const radius = heightsBall(plan, site);
   const want = [radius + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
-  if (g.azimuth) return steer2(plan, site, frame, seaLevel, want);
+  const aimed = Boolean(g.azimuth);
+  const vec = (x: Solved) => (aimed ? [x.kick, x.rate, x.yaw ?? 0] : [x.plane, x.kick, x.rate]);
+  const of = (v: number[]): Solved =>
+    aimed ? { plane: Number.NaN, kick: v[0]!, rate: v[1]!, yaw: v[2]! } : { plane: v[0]!, kick: v[1]!, rate: v[2]! };
   const miss = (x: Solved): number[] => {
-    const s = ascend(plan, site, frame, seaLevel, x, Infinity).summary;
-    return [(s.cutoffAltitude + radius - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!, s.inclination * DEG - want[2]!];
+    const a = ascend(plan, site, frame, seaLevel, x, Infinity, true);
+    const s = a.summary;
+    // (a sample's altitude is over the sea, which stands `seaLevel` over the ellipsoid)
+    const high = g.target.over ? a.samples.at(-1)!.altitude + seaLevel - g.target.altitude.value : s.cutoffAltitude + radius - want[0]!;
+    return [high / 10_000, s.cutoffClimb * DEG - want[1]!, s.inclination * DEG - want[2]!];
   };
-  const vec = (x: Solved) => [x.plane, x.kick, x.rate];
-  const of = (v: number[]): Solved => ({ plane: v[0]!, kick: v[1]!, rate: v[2]! });
-  let x: Solved = { plane: want[2]!, kick: 8 * DEG, rate: 1e-3 };
-  const eps = [1e-6, 1e-6, 1e-9];
-  for (let k = 0; k < 30; k++) {
+  let x: Solved = aimed
+    ? { plane: Number.NaN, kick: g.programme ? 0 : 8 * DEG, rate: 1e-3, yaw: 0 }
+    : { plane: want[2]!, kick: 8 * DEG, rate: 1e-3 };
+  // (the angles a millionth of a radian, the rate a thousand-millionth a second)
+  const eps = aimed ? [1e-6, 1e-9, 1e-6] : [1e-6, 1e-6, 1e-9];
+  const angles = aimed ? [0, 2] : [0, 1];
+  for (let k = 0; k < 40; k++) {
     const f = miss(x);
     if (Math.hypot(...f) < 1e-8) return x;
     const v = vec(x);
@@ -731,34 +835,9 @@ export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLe
       [0, 1, 2].map((i) => [0, 1, 2].map((j) => J[j]![i]!)),
       f.map((y) => -y),
     );
-    // a damped step: never more than two degrees of pitch-over or plane at once
-    const most = Math.max(Math.abs(d[0]!) / (2 * DEG), Math.abs(d[1]!) / (2 * DEG), 1);
+    // a damped step: never more than two degrees of any angle at once
+    const most = Math.max(...angles.map((i) => Math.abs(d[i]!) / (2 * DEG)), 1);
     x = of(v.map((y, i) => y + d[i]! / most));
-  }
-  throw new Error('the ascent’s steering law did not reach its target');
-}
-
-/** The law with its plane given by the aiming azimuth: two unknowns, the pitch-over and the tangent's rate, for height and climb. */
-function steer2(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: number, want: number[]): Solved {
-  const radius = heightsBall(plan, site);
-  const miss = (v: number[]): number[] => {
-    const s = ascend(plan, site, frame, seaLevel, { plane: Number.NaN, kick: v[0]!, rate: v[1]! }, Infinity).summary;
-    return [(s.cutoffAltitude + radius - want[0]!) / 10_000, s.cutoffClimb * DEG - want[1]!];
-  };
-  let v = [8 * DEG, 1e-3];
-  const eps = [1e-6, 1e-9];
-  for (let k = 0; k < 30; k++) {
-    const f = miss(v);
-    if (Math.hypot(...f) < 1e-8) return { plane: Number.NaN, kick: v[0]!, rate: v[1]! };
-    const J = [0, 1].map((j) => {
-      const w = [...v];
-      w[j]! += eps[j]!;
-      return miss(w).map((y, i) => (y - f[i]!) / eps[j]!);
-    }); // J[j][i] = d f_i / d x_j
-    const det = J[0]![0]! * J[1]![1]! - J[1]![0]! * J[0]![1]!;
-    const d = [(-f[0]! * J[1]![1]! + f[1]! * J[1]![0]!) / det, (-f[1]! * J[0]![0]! + f[0]! * J[0]![1]!) / det];
-    const most = Math.max(Math.abs(d[0]!) / (2 * DEG), 1);
-    v = v.map((y, i) => y + d[i]! / most);
   }
   throw new Error('the ascent’s steering law did not reach its target');
 }
@@ -773,104 +852,49 @@ function solve3(A: number[][], b: number[]): number[] {
   return [0, 1, 2].map((j) => det(A.map((row, i) => row.map((y, k) => (k === j ? b[i]! : y)))) / D);
 }
 
-/** Fly the whole flight: the ascent on its solved law, then the coast from the spacecraft's separation (orbital.ts: flyOrbit). */
-export function flyWhole(
-  plan: FlightPlan,
-  site: Geodetic,
-  frame: EarthFrame,
-  seaLevel = 0,
-  solved?: Solved,
-  every = 10,
-  handover: 'flown' | 'published' = 'flown',
-): FlownWhole {
+/**
+ * Fly the whole flight: the ascent on its solved law, then the coast from the spacecraft's separation (orbital.ts: flyOrbit),
+ * begun from the state the ascent left it in and no other: one state from the pad to the ground, changed only by what
+ * pushes it. The record's orbit, tracking and landing are what the run is held against, never what it is put on.
+ */
+export function flyWhole(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel = 0, solved?: Solved, every = 10): FlownWhole {
   const x = solved ?? steer(plan, site, frame, seaLevel);
   const ascent = ascend(plan, site, frame, seaLevel, x);
-  if (handover === 'published') followAscentFixes(plan, site, frame, seaLevel, ascent);
-  const coast = flyOrbit(
-    plan,
-    site,
-    frame,
-    seaLevel,
-    every,
-    handover === 'published' ? published(plan, site, ascent.separation) : ascent.separation,
-    undefined,
-    undefined,
-    handover === 'published',
-  );
+  attachedAttitude(plan, frame, ascent);
+  ascent.separation = partedOff(plan, ascent);
+  const coast = flyOrbit(plan, site, frame, seaLevel, every, ascent.separation);
   const end = coast.samples[coast.samples.length - 1]!;
   const down = downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end) : null;
   return { ascent, coast, down };
 }
 
-/** Join the attached stack’s ascent and orbital coast to the recorded tracking states. */
-function followAscentFixes(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: number, ascent: Ascended): void {
-  const fixes = plan.record?.coastFixes?.filter((fix) => fix.at.value <= ascent.separation.t);
-  if (!fixes?.length) return;
-  const samples = ascent.samples;
-  const guidance = guidanceOf(plan);
-  const insertion = plan.record!.orbit!.injection.at.value;
-  const airHere = airOf(seaLevel, frame, skyOf(plan));
-  const pad = geodeticToEcef(site);
-  // Keep the force-integrated rise through the vertical programme. Published ascent fixes measure
-  // residuals against that same powered trajectory. Coast fixes start a fresh gravity arc instead.
-  let start = samples.findIndex((s) => s.t === guidance.vertical.value);
-  if (start < 0 || fixes[0]!.at.value <= guidance.vertical.value) start = 0;
-  let residual: State = { r: [0, 0, 0], v: [0, 0, 0] };
-  for (const fix of fixes) {
-    const end = samples.findIndex((s) => s.t === fix.at.value);
-    if (end <= start) continue;
-    const want = trackedState(fix, frame);
-    const first = samples[start]!;
-    const last = samples[end]!;
-    let stateAt: (s: AscentSample, i: number) => State;
-    if (first.t < insertion) {
-      const before = residual;
-      residual = { r: sub(want.r, last.r), v: sub(want.v, last.v) };
-      stateAt = (s) => {
-        const d = hermite(first.t, before.r, before.v, last.t, residual.r, residual.v, s.t);
-        return { r: add(s.r, d.r), v: add(s.v, d.v) };
-      };
-    } else {
-      const arc: State[] = [];
-      let state: State = first;
-      for (let i = start + 1; i <= end; i++) {
-        const previous = samples[i - 1]!.t;
-        state = step(state, previous, samples[i]!.t - previous);
-        arc.push(state);
-      }
-      const correct = trackingArc(first.t, last.t, state, want);
-      stateAt = (s, i) => correct(arc[i - start - 1]!, s.t);
-    }
-    for (let i = start + 1; i <= end; i++) {
-      const s = samples[i]!;
-      const state = i === end ? want : stateAt(s, i);
-      const air = airHere(state, s.t);
-      const up = frame.upOver(air.here, s.t);
-      const climb = (v: Vec3) => 90 - angleBetween(v, up) / DEG;
-      samples[i] = {
-        ...s,
-        ...state,
-        altitude: air.altitude,
-        latitude: air.here.latitude,
-        longitude: air.here.longitude,
-        downrange: angleBetween(frame.toFixed(state.r, s.t), pad) * MEAN_RADIUS,
-        speed: length(state.v),
-        groundSpeed: air.airspeed,
-        climb: climb(state.v),
-        groundClimb: climb(air.wind),
-        q: air.q,
-        mach: air.mach,
-      };
-    }
-    start = end;
-  }
-  const last = samples.at(-1)!;
-  if (last.t === samples[start]!.t) ascent.separation = { t: last.t, r: last.r, v: last.v };
+/**
+ * The spacecraft as it leaves its last stage: the stack's state at the parting, with the spacecraft's share of the speed the
+ * joint pushes the two apart at (its `push`, or that of what it sheds; forces.ts `keptShare`, by the two masses) along the
+ * long axis as it lay. The one impulse of the ascent's end, and the live vehicle's own (stagedlive.ts `separationSpeed`):
+ * the record's run and a flight flown by hand part alike.
+ */
+export function partedOff(plan: FlightPlan, ascent: Ascended): { t: number; r: Vec3; v: Vec3 } {
+  const c = plan.craft[0]!;
+  const joint = sequenceOf(plan).stages.at(-1)!.joint;
+  const push = c.joints.find((j) => j.id === joint)?.push ?? c.sheds?.find((shed) => shed.on === joint)?.push;
+  const at = ascent.separation;
+  if (!push) return at;
+  const axis = ascent.samples.at(-1)!.axis;
+  return { t: at.t, r: at.r, v: add(at.v, scale(axis, keptShare(push.value, ascent.parted.kept, ascent.parted.gone))) };
+}
+
+/**
+ * How a launch vehicle still attached after its last cutoff lies, where the record gives its attitude programme
+ * (`Guidance.attached`): the samples' axis turned from the law's last to the programme's pitch over the alignment, and
+ * held where it was frozen. An attitude drawn, with nothing burning: it moves no state.
+ */
+function attachedAttitude(plan: FlightPlan, frame: EarthFrame, ascent: Ascended): void {
   const attached = guidanceOf(plan).attached;
   if (!attached) return;
   const [begin, end] = attached.align.map((t) => t.value) as [number, number];
   let held: Vec3 | null = null;
-  for (const s of samples) {
+  for (const s of ascent.samples) {
     if (s.t < begin) continue;
     if (held) {
       s.axis = held;
@@ -905,19 +929,6 @@ export function flyOn(
   const coast = flyOrbit(plan, site, frame, seaLevel, every, from, hands, contacts);
   const end = coast.samples[coast.samples.length - 1]!;
   return { ascent, coast, down: downOf(plan) && end.phase === 'down' ? flyDown(plan, frame, seaLevel, end, hands) : null };
-}
-
-/**
- * The spacecraft where the ascent flown left it, moving as fast as the published orbit has it there (vis-viva on its
- * semi-major axis, over the record's reference ball) along the way the ascent flown left it going. For a flight whose
- * ascent as flown does not reach the published orbit: the coast and what follows are then the record's orbit's, begun from
- * the place and instant the ascent gives instead of the estimated `injection`. What the scene and the deck show
- * (sim/run.ts `orbitalFlown`), and the run the coast's and the descent's checks are held to (tests/staged.test.mjs).
- */
-export function published(plan: FlightPlan, site: Geodetic, at: { t: number; r: Vec3; v: Vec3 }): { t: number; r: Vec3; v: Vec3 } {
-  // (the speed that puts it on the published orbit read as mean elements, its period nodal: world/meanelements.ts)
-  const s = alongPublished(publishedOf(plan, site), at.r, at.v).state;
-  return { t: at.t, r: at.r, v: s.v };
 }
 
 /** Draw a passively stable sphere from the release attitude. Air drag can tip the heavy side

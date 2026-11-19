@@ -328,6 +328,13 @@ export type Trigger =
   | { height: number; going: 'up' | 'down' }
   /** A speed reached, m/s: in the frame that does not turn, or the apparent velocity an engine's integrator has summed since it lit. */
   | { speed: number; apparent?: string }
+  /**
+   * The record's orbit reached: the guidance's own cutoff, on the state as flown. It holds once the orbit the state is on
+   * has the published period (world/meanelements.ts `shortOfPublished`: the published figures read as the coast reads
+   * them), so the engine is cut on what the flight has done and not at an instant. The record's instant of it is then a
+   * figure to hold the run to (`at`), not a command.
+   */
+  | { orbit: 'published' }
   /** A load reached, g, rising or falling through it. */
   | { g: number; going: 'up' | 'down' }
   /** A hand's command, by name. */
@@ -485,7 +492,10 @@ export function abortAt(plan: FlightPlan, t: number, preferOrbit = false): Abort
 
 /** The record's own figures that a run is not flown from. */
 export interface PlanRecord {
-  /** Ground-tracking fixes for the historical replay, in time order. A hand-flown trajectory uses its own state. */
+  /**
+   * Ground-tracking fixes, in time order: what a run is compared with (a sample is kept at each instant; the difference
+   * is the run's residual: tools/residuals.mjs). No run, the record's or a hand's, is put on one.
+   */
   coastFixes?: OrbitFix[];
   /** Lead time for the rendered slew into a coast maneuver's thrust direction, seconds. */
   manoeuvreTurn?: Measure;
@@ -685,6 +695,10 @@ export function problems(plan: FlightPlan): string[] {
       out.push(`${where} waits to be armed, and nothing arms it`);
   }
   if (!plan.attitude.length) out.push('the plan has no attitude to hold from liftoff');
+  // (a launch vehicle flown on a steering law is turned by something: with no authority stated its live vehicle cannot follow
+  // the law or a hand, and goes where it was pointed on the pad)
+  if (plan.attitude.some((a) => 'law' in a.hold) && !plan.craft.some((c) => c.thrusters.some((t) => t.authority && t.authority.value > 0)))
+    out.push('the plan is steered by a law and nothing steers it: no thruster set states the angular acceleration it gives (`authority`)');
   for (const k of plan.checks)
     if (k.when && 'aboard' in k.when)
       for (const b of [...k.when.aboard, ...(k.when.gone ?? [])]) need(n.bodies, 'body', b, `check '${k.id}'`);

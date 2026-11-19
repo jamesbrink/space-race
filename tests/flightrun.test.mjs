@@ -66,7 +66,9 @@ for (const f of flights) {
     for (const j of plan.craft[0].joints) {
       if (!j.at) continue;
       const release = plan.events.find((e) => e.do.some((action) => 'separate' in action && action.separate === j.id));
-      const at = release?.when.some((w) => 'height' in w) ? (run.events.find((e) => e.event === release.id)?.t ?? j.at.value) : j.at.value;
+      // (a joint the run parts itself, at a height or so long after a cut its guidance made on the state, parts when the run has it)
+      const runs = release?.when.some((w) => 'height' in w) || (release && !Number.isFinite(clockAt(plan, release)));
+      const at = runs ? (run.events.find((e) => e.event === release.id)?.t ?? j.at.value) : j.at.value;
       for (const b of j.gone) assert.ok(run.bodies[b] <= at + 1e-9, `${f.id}: ${b} gone by ${j.id}'s ${at} s (${run.bodies[b]})`);
     }
     // what it gave for each check: one row a check, each a number

@@ -143,6 +143,20 @@ export const BLOCK_I: Omit<Hardware, 'ignition'> = {
   },
 };
 
+/**
+ * How Block I is cut: by the control system, when the velocity set for the orbit is reached. No setting of an 11A57's has been
+ * found (on the 8K72K the third stage's integrator was set in apparent velocity, Vostok 1's flight task: its record flies
+ * that), so the run cuts it on the state it has flown, when the orbit it is on has the record's period, and the record's
+ * instant of the cutoff is a figure it is held to.
+ */
+const BLOCK_I_CUT: NonNullable<StageRecord['orbit']> = {
+  confidence: 'assumed',
+  source:
+    'the R-7’s way, taken for the 11A57: the last stage shut down by the control system’s integrator on the velocity its flight task set ' +
+    '(Vostok 1’s task, ЦА РКВ ф. 19, оп. 114сс, д. 15, л. 126: Block E’s «Главная» at 2,283.52 m/s of apparent velocity). No task or setting of an 11A57 was found, ' +
+    'so the cutoff is flown where the orbit reached is the published one; the recorded instant is held as a check',
+};
+
 /** When a flight's stages were lit, cut and let go, as its own record has them. */
 export interface Staging {
   boosters: { cutoff: Measure; separation: Measure };
@@ -156,7 +170,7 @@ export function stages11A57(day: Staging): StageRecord[] {
   return [
     { ...STRAP_ONS_11A57, throttle: strapOnThrottle(boosters.separation.value), cutoff: boosters.cutoff, separation: boosters.separation },
     { ...CORE_11A57, throttle: coreThrottle(core.cutoff.value), cutoff: core.cutoff, separation: core.separation },
-    { ...BLOCK_I, ignition: third.ignition, cutoff: third.cutoff, separation: third.separation },
+    { ...BLOCK_I, ignition: third.ignition, cutoff: third.cutoff, separation: third.separation, orbit: BLOCK_I_CUT },
   ];
 }
 

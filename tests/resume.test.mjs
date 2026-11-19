@@ -20,7 +20,7 @@ import { ballisticOf } from '../src/sim/fly.ts';
 import { coastOf } from '../src/sim/orbital.ts';
 import { aboutAxis, multiply, normalize, turn } from '../src/sim/rigid.ts';
 import { orbitalFlown } from '../src/sim/run.ts';
-import { byHand, flyOn, givenUp, published, sequenceOf } from '../src/sim/staged.ts';
+import { byHand, flyOn, givenUp, sequenceOf } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { TICK, vehicle } from '../src/sim/vehicle.ts';
 import { Clock } from '../src/world/clock.ts';
@@ -432,8 +432,7 @@ test('Vostok 1 turned and its braking engine fired by hand: the attitude, the co
   }
   assert.equal(pack(again.q), pack(h.q), 'the attitude turned by hand: the same');
   // the braking engine fired by hand along it, and the rest of the flight flown from there
-  const fly = (q) =>
-    flyOn(byHand(givenUp(plan), burnAt, turn(q, retro)), site, frame, sea, record.ascent, published(plan, site, record.ascent.separation));
+  const fly = (q) => flyOn(byHand(givenUp(plan), burnAt, turn(q, retro)), site, frame, sea, record.ascent, record.ascent.separation);
   const whole = fly(h.q);
   const taken = fly(again.q);
   const sample = (w, t) => w.coast.samples.find((s) => s.t >= t);
