@@ -1,0 +1,10 @@
+/* Full screen, in and out (fullscreen.ts): a small button in the window's top right corner, in the margin the panels leave, on every page.
+   Its word comes out beside it when it is pointed at or has the focus. */
+#fullscreen { position: fixed; top: 3px; right: 3px; z-index: 40; display: flex; align-items: center; gap: 7px; height: 22px; padding: 0 4px; color: var(--dim); background: var(--glass); border: 1px solid var(--line); border-radius: 2px; opacity: 0.75; transition: opacity 0.15s, color 0.15s; }
+#fullscreen svg { width: 13px; height: 13px; flex: none; }
+#fullscreen span { display: none; font: 10px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; padding-left: 4px; }
+#fullscreen:is(:hover, :focus-visible) { opacity: 1; color: var(--ink); border-color: var(--faint); }
+#fullscreen:is(:hover, :focus-visible) span { display: inline; }
+#fullscreen[aria-pressed='true'] { color: var(--amber); }
+/* (the front page's menu has the switch itself: the corner's is for coming out, once full) */
+body.titled #fullscreen[aria-pressed='false'] { display: none; }

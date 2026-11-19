@@ -1,4 +1,5 @@
 import { flights } from '../../missions/index.ts';
+import '../ui/fullscreen.ts';
 import { flightFor, namesFront, namesLineup, parseAddress, where } from './address.ts';
 
 /**

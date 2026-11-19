@@ -456,9 +456,9 @@ test('going to another place is a step in the history; anything else rewrites th
   }
 });
 
-test('a launch site opens at the instant its flight says, and every other at liftoff (Flight.opens)', () => {
+test('a launch site opens at the start of its day, every slider at its left end, on the section its flight says (Flight.opens)', () => {
   const first = { fly: false, named: '', clockAt: 0, running: false };
-  // Vostok 1 opens on the morning the film shows at 43:26: the bus stopped, the Commission and the send-off on the apron
+  // Vostok 1 opens on its pad, framed for the send-off, as the morning begins
   const v = openingFor(vostok, first);
   assert.ok(v);
   assert.equal(v.model, 'pad');
@@ -468,19 +468,11 @@ test('a launch site opens at the instant its flight says, and every other at lif
     pad.views.some((w) => w.id === v.view),
     "the view is one of the section's own",
   );
-  // the instant is one of the morning's keyframes, and the clock and the slider agree on it
-  const key = pad.sequence.find((k) => k.at === v.at);
-  assert.ok(key, "the instant is a keyframe of the pad's sequence");
-  assert.match(key.event, /bus stops/);
-  // the bus has come to a stop, and the Commission and the send-off have not yet gone
-  const clocked = (node) => pad.parts.flatMap((p) => p.clocked ?? []).filter((m) => m.node === node);
-  assert.ok(clocked('Bus_In').length > 0);
-  for (const m of clocked('Bus_In')) assert.ok(m.to <= v.at, 'the bus is parked');
-  for (const node of ['StateCommission', 'Escort', 'SendOff', 'BusDoorParty']) {
-    const route = pad.parts.find((p) => p.node === node).going;
-    assert.ok(route.length > 0, node);
-    for (const leg of route) assert.ok(leg.at.value >= v.at, `${node} is still there`);
-  }
+  // the instant is the first of the morning's keyframes: the slider is at its left end
+  assert.equal(v.at, pad.sequence[0].at);
+  assert.equal(pad.sequence[0].slider, 0);
+  // and no model of the flight has a slider that begins before it
+  for (const m of vostok.models) if (m.sequence?.[0]) assert.ok(m.sequence[0].at >= v.at, m.id);
   // an address that names a section keeps it, at the same instant; the flight's own view is only for its own section
   assert.deepEqual(openingFor(vostok, { ...first, named: 'vehicle' }), { at: v.at, model: 'vehicle', view: null });
   assert.deepEqual(openingFor(vostok, { ...first, named: 'pad' }), v);
@@ -488,8 +480,8 @@ test('a launch site opens at the instant its flight says, and every other at lif
   assert.equal(openingFor(vostok, { ...first, fly: true }), null);
   assert.equal(openingFor(vostok, { ...first, clockAt: -60 }), null);
   assert.equal(openingFor(vostok, { ...first, running: true }), null);
-  // every flight that says how its site opens opens there: on one of its pad's own views, at a keyframe of its morning
-  // with its bus parked; every other opens as it always did, at liftoff, on what is asked for or its first section
+  // every flight that says how its site opens opens on one of that section's own views; and every flight with a slider
+  // anywhere opens at the earliest instant its sliders have, each at its left end; one with neither opens at liftoff
   for (const f of flights.filter((f) => f.opens)) {
     const o = openingFor(f, first);
     const section = f.models.find((m) => m.id === o.model);
@@ -497,15 +489,13 @@ test('a launch site opens at the instant its flight says, and every other at lif
       section.views.some((w) => w.id === o.view),
       `${f.id}: the view is the section's own`,
     );
-    assert.ok(
-      section.sequence?.some((k) => k.at === o.at),
-      `${f.id}: the instant is a keyframe of its morning`,
-    );
-    for (const m of section.parts.flatMap((p) => p.clocked ?? []).filter((m) => m.node === 'Bus_In'))
-      assert.ok(m.to <= o.at, `${f.id}: the bus is parked`);
   }
-  for (const f of flights.filter((f) => !f.opens)) assert.equal(openingFor(f, first), null, f.id);
-  assert.equal(openingFor(mr3, first), null);
+  for (const f of flights) {
+    const starts = f.models.flatMap((m) => (m.sequence?.[0] ? [m.sequence[0].at] : []));
+    const o = openingFor(f, first);
+    if (starts.length) assert.equal(o.at, Math.min(...starts), `${f.id}: the start of its day`);
+    else if (!f.opens) assert.equal(o, null, f.id);
+  }
 });
 
 test('the Lineup has an address of its own: the row, a programme’s section, one chosen, several compared', () => {

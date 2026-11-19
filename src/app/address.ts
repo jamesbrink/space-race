@@ -264,9 +264,10 @@ export function opensIn(flight: Placed, asked: Place | null = null): Place {
 }
 
 /**
- * How the launch site first shows, as it is first gone to (`Flight.opens`): the instant to put the clock at, the section
- * and the view. Null where it opens as it always has (liftoff, the section asked for or the first, its home view): a
- * flight that says nothing, the flight deck (which starts at liftoff: cockpit.ts), or a clock that has been run or moved
+ * How the launch site first shows, as it is first gone to: the instant to put the clock at (the start of the day there:
+ * the earliest instant of its models' sliders, so each stands at its left end; a flight with no slider, its own
+ * `Flight.opens.at`), the section and the view (`Flight.opens`). Null where it opens at liftoff on the section asked
+ * for or the first: a flight with neither, the flight deck (which starts at liftoff: cockpit.ts), or a clock that has been run or moved
  * already, which is the visitor's. `named`: the section the address names ('' for none), which wins over the flight's.
  */
 export function openingFor(
@@ -274,10 +275,15 @@ export function openingFor(
   how: { fly: boolean; named: string; clockAt: number; running: boolean },
 ): { at: number; model: string; view: string | null } | null {
   const o = flight.opens;
-  if (!o || how.fly || how.running || how.clockAt !== 0) return null;
-  const own = !how.named || how.named === (o.model ?? flight.models[0]?.id);
-  const model = how.named || (o.model ?? flight.models[0]?.id ?? '');
-  return { at: o.at, model, view: own ? (o.view ?? null) : null };
+  if (how.fly || how.running || how.clockAt !== 0) return null;
+  // the day begins at its beginning: the earliest instant any model's slider has (the first thing that happened at the
+  // site: the bus arriving, the gantry rolling back), so every slider stands at its left end as the site is first seen
+  const starts = flight.models.flatMap((m) => (m.sequence?.[0] ? [m.sequence[0].at] : []));
+  const at = starts.length ? Math.min(...starts) : o?.at;
+  if (at === undefined) return null;
+  const own = !how.named || how.named === (o?.model ?? flight.models[0]?.id);
+  const model = how.named || (o?.model ?? flight.models[0]?.id ?? '');
+  return { at, model, view: own ? (o?.view ?? null) : null };
 }
 
 /** One choice of what stands in the gallery: all of the vehicle, or the parts under one heading of its parts list. */

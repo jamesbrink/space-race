@@ -1,5 +1,6 @@
 import './title.css';
 import { type Browse, browseOf, exhibit, lacks, listed, PLACE_NAME, PLACES, type Place, programmeName } from '../app/address.ts';
+import { toggleFullscreen } from './fullscreen.ts';
 import { emblem, flag, icon } from './icons.ts';
 import { logo } from './logo.ts';
 import type { Flight } from '../types.ts';
@@ -138,17 +139,7 @@ export class Title {
       const id = on('[data-flight]')?.dataset.flight;
       const resumed = on('[data-resume]')?.dataset.resume;
       const by = on('[data-nation], [data-programme]');
-      if (on('[data-full]'))
-        void (
-          document.fullscreenElement
-            ? document.exitFullscreen()
-            : document.documentElement
-                .requestFullscreen()
-                // (full screen, the browser would take Escape to leave it before the page heard it: kept for the page, where it can be)
-                .then(() =>
-                  (navigator as Navigator & { keyboard?: { lock?: (keys: string[]) => Promise<void> } }).keyboard?.lock?.(['Escape']),
-                )
-        ).catch(() => {});
+      if (on('[data-full]')) toggleFullscreen();
       else if (resumed) enter(resumed, 'fly');
       else if (id) enter(id, 'gallery');
       else if (on('[data-lineup]')) lineup?.();

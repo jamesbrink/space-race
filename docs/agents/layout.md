@@ -153,6 +153,7 @@ src/
   ui/timebar.ts  ui/time.css          the clock's control
   ui/callout.ts  ui/callout.css       the idle show's callouts
   ui/title.ts  ui/logo.ts  ui/title.css  the front page's words (the way into the Lineup, the list of flights) and the mark
+  ui/fullscreen.ts                    full screen, in and out, from every page: the small button in the window's top right corner (its looks: fullscreen.css), and `toggleFullscreen` for the front page's switch
   ui/icons.ts  ui/icons.css           the page's small pictures as inline SVG: the icons (a flight's places, the Lineup, walking, the camera), the
                                       nations' flags (`FLAGS`, by the nation's word in an id) and the programmes' emblems (`EMBLEMS`, by programme id)
   ui/lineup.ts  ui/lineup.css         the Lineup's page: the card, the programmes, the timeline's strip and its words, and what is written on the picture
