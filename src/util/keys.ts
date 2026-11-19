@@ -142,6 +142,19 @@ export const KEYS = {
   'deck.full': { slots: ['z'], does: 'throttle full', when: 'the flight deck: every liquid engine' },
   'deck.code': { slots: ['0', ...DIGITS], does: 'a digit of the lock’s code', when: 'the orbital deck, the spacecraft alone and locked' },
   // ---- the gallery (ui/gallery.ts)
+  'rover.drive': {
+    slots: [
+      ['w', 'arrowup'],
+      ['a', 'arrowleft'],
+      ['s', 'arrowdown'],
+      ['d', 'arrowright'],
+    ],
+    does: 'forward · left · reverse · right',
+    when: 'driving a lunar rover',
+  },
+  'rover.brake': { slots: [' '], does: 'brake', when: 'driving a lunar rover' },
+  'rover.camera': { slots: ['c'], does: 'chase · driver’s seat', when: 'driving a lunar rover' },
+  'rover.leave': { slots: ['escape'], does: 'return to the Gallery', when: 'driving a lunar rover' },
   'gallery.next': { slots: ['n', 'b'], does: 'next part · the one before', when: 'the gallery' },
   'gallery.sit': { slots: ['c'], does: 'sit in the cabin', when: 'the gallery, with a seat' },
   'gallery.cut': { slots: [['y', 'x']], does: 'cutaway', when: 'the gallery, a vehicle that opens (X was its key before Y)' },

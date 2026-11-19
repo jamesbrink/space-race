@@ -402,3 +402,9 @@ running) goes between the places with slow loads and real keys and checks what i
 usa/mercury/mr-3-freedom-7/gallery "" 1440 900 --ui` takes its picture.
 
 A flight may give another exhibit a `galleryCraft` label. Its URL is `#<flight>/gallery/<model>`, optionally followed by a part or seat. Both the gallery-only and launch-site sessions switch exhibits on the gallery stage. Gemini X uses this for the dormant Agena Collins visited; the active docking target stands beside the Titan in the primary exhibit. A crew figure can be inspected alone in the gallery and walked at the launch site. The site projection keeps its walkers and drops the separate target exhibits, the primary target's parts, and views that select only those parts.
+
+### Driving the lunar rovers
+
+A Gallery craft with `lunarRover` opens its own driving scene. The Gallery keeps its inspection pose while the driver uses the rover’s assembled model and a separately loaded seated crew. Each rover remembers its own parking position for the browser session. The two scenes share the renderer. Returning to the exhibit releases the terrain, crew and driving controls.
+
+The ground uses nested elevation grids centred 12 m east of the flight’s lunar module. Both tyre contacts and the drawn surface interpolate the same triangles. The inner grid resolves 2 m samples, the outer grids retain the topographic horizon, and a local plane beneath the lander fits the terrain around its pads. Lander heading, soil grain and small gravel are estimated. A 6.7 m keep-out radius around the lander accounts for the rover body and landing legs. The driveable radius is 9 km. Regenerate the checked-in terrain with `uv run --script tools/lunar-rover-terrain.py`.

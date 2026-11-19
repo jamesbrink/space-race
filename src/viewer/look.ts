@@ -77,6 +77,11 @@ export class Looks {
     });
   }
 
+  dispose(): void {
+    for (const root of this.roots) this.remove(root);
+    this.tones.dispose();
+  }
+
   set(look: Look): void {
     if (look === this.look) return;
     this.look = look;

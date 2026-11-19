@@ -273,7 +273,7 @@ export class Stage {
   /** The orbiting camera's lens, vertical degrees. Views are framed for it even while the walker's wider one is easing in or out. */
   private readonly lens = 35;
 
-  private readonly renderer: THREE.WebGLRenderer;
+  readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(35, 1, 0.05, 9000);
   /** The camera: every rig, and the hands on the page (camera/index.ts). Nothing else moves the view when nobody is being walked as. */
@@ -2617,6 +2617,26 @@ export class Stage {
       rest(object);
       return object;
     });
+  }
+
+  /** A separate, assembled model for an interactive exhibit. The caller owns its resources and pose. */
+  async exhibitModel(url: string, signal: AbortSignal): Promise<THREE.Group> {
+    const response = await fetch(import.meta.env.BASE_URL + url, { signal });
+    if (!response.ok) throw new Error(`Could not load ${url} (${response.status})`);
+    const { scene } = await this.loader.parseAsync(await response.arrayBuffer(), '');
+    try {
+      signal.throwIfAborted();
+      await fitPictures(scene);
+      signal.throwIfAborted();
+      fitIndices(scene);
+      scene.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) o.castShadow = o.receiveShadow = true;
+      });
+      return scene;
+    } catch (error) {
+      disposeTree(scene);
+      throw error;
+    }
   }
 
   /** What the section's model has had taken off the stage (`only`), and where each piece goes back. */
