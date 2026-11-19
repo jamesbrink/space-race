@@ -93,19 +93,28 @@ and [Apollo 7 Mission Report, Tables 2-II and 3-II](https://apollojournals.org/a
 The coast integrates the engine impulses, gravity and atmospheric drag across the
 11-day mission, from the state the ascent left and from nothing else. The reported
 states at each SPS ignition are a reference the run is held against, not states it
-is put on. With the rendezvous flown by guidance (below) the run is 530 km ahead of
-the tracking at the first SPS firing at 26:24:55, 400 km at the second, and at
-75:48, as the third lights, 198 km ahead and 0.2 km in height. That firing lowers
-the perigee to 90 nautical miles, and from there the run falls behind: 1,240 km by
-the fourth firing at 120:43, 3,700 km by the fifth, 6,300 by the sixth, and 5,400 km
-by the deorbit firing. Each firing after the rendezvous is lit by the clock and
-aimed as the plan has it wherever the run then is. The air is the cause that can be
-named: at that perigee the spacecraft's drag (its base end on to the air, 12 m², an
-estimate of an attitude it did not hold for eleven days) and the day's density
-decide the period. With its side to the air on the average (32 m²) the same run is
-as far ahead as this one is behind. The same shortage shows before the rendezvous,
-where the S-IVB falls back on the spacecraft too slowly. Nothing is adjusted to
-either. The simulator treatsthe recorded place. The simulator treats
+is put on. In orbit the spacecraft's drag is on a quarter of its outside (27.9 m²,
+derived from its own sizes): the area a body presents on the average over every
+way it can lie, its attitude assumed random, since it drifted for most of eleven
+days and no timeline of how it lay is in anything read. With that, the vent and
+dump (above) and the rendezvous flown by guidance (below), the run against the
+tracking, along the orbit and in height:
+
+| Tracked state | Along, km | Height, km |
+| --- | --- | --- |
+| 26:24:55, SPS 1 | +573 | −31 |
+| 28:00:56, SPS 2 | +404 | −15 |
+| 75:48, SPS 3 | +349 | −8 |
+| 120:43, SPS 4 | −25 | +4 |
+| 165:00, SPS 5 | −20 | +7 |
+| 210:08, SPS 6 | +3 | +11 |
+| 239:06, SPS 7 | −276 | −4 |
+| 259:39, deorbit | −402 | +3 |
+
+The firings after the rendezvous are lit by the clock and aimed as the plan has
+them, but the last: the deorbit firing is timed by guidance for the place the
+spacecraft came down at, as the ground timed it (`PlanRecord.landing.aimed`), and
+is lit 50 s before the record's instant. The simulator treatsthe recorded place. The simulator treats
 positions published on the Fischer ellipsoid as corresponding WGS 84 positions.
 Takeover retains the trajectory and fuel usage up to the handover, then integrates
 forward from the current state under the same forces, exactly as the record's own
@@ -149,9 +158,9 @@ takes. The record's impulses and ranges are checks on the result.
 | Beside the stage, 2:55:37 to 3:20:10 | Rest 100 ft ahead of it (the distance is the photograph's; the side and the times of the turn-round are estimates) | 3.2 ft/s; 31 m at 3:16 | about 100 ft at 3:16 |
 | First phasing, 3:20:09.9 | As recorded: what it was aimed at is not in anything read | 5.7 ft/s | 5.7 ft/s |
 | Second phasing, 15:52:00.9 | As recorded | 7.0 ft/s | 7.02 ft/s |
-| Corrective combination, SPS 1, 26:24:55.7 | The stage 80 nautical miles ahead and 7.8 above as the coelliptic maneuver lights, and in its plane | 224.5 ft/s in 11.0 s, from a lead of 210 nautical miles | 204.1 ft/s in 9.4 s, from a lead of about 84 |
-| Coelliptic maneuver, SPS 2, 28:00:56.5 | An orbit of the stage's shape, the height between them constant | 180.8 ft/s in 8.1 s | 173.8 ft/s in 7.8 s |
-| Terminal phase initiation, 29:16:33 | Arrive at the stage at the report's theoretical intercept, 29:51:46 (7 min 51 s after the braking began: §3.2.1) | 17.7 ft/s | 17.4 ft/s in Table 3-IV, 17.7 in §3.2.1 |
+| Corrective combination, SPS 1, 26:24:55.7 | The stage 80 nautical miles ahead and 7.8 above as the coelliptic maneuver lights, and in its plane | 226.5 ft/s in 11.1 s, from a lead of 230 nautical miles | 204.1 ft/s in 9.4 s, from a lead of about 84 |
+| Coelliptic maneuver, SPS 2, 28:00:56.5 | An orbit of the stage's shape, the height between them constant | 182.1 ft/s in 8.2 s | 173.8 ft/s in 7.8 s |
+| Terminal phase initiation, 29:16:33 | Arrive at the stage at the report's theoretical intercept, 29:51:46 (7 min 51 s after the braking began: §3.2.1) | 17.8 ft/s | 17.4 ft/s in Table 3-IV, 17.7 in §3.2.1 |
 | Braking, 29:43:55, and the station kept to 30:20 | Rest 70 ft from the stage by 29:55:43, and held | 18.0 ft/s, from 1.41 nautical miles | 18.2 ft/s resultant to 29:55:43 (49.1 ft/s spent in all), from 1.2 nautical miles |
 | Separation, 30:20 | As recorded: 2 ft/s, taken along the motion (the report gives neither its instant nor its direction) | 2.0 ft/s | 2 ft/s (§8) |
 
@@ -160,30 +169,12 @@ The braking is a thrust commanded from the range and its rate, within what two
 phase's midcourse correction (2 ft/s aft and 0.5 up at 29:30:42) is not flown, its
 aim not being in anything read; the braking takes up what it would have. The
 propellant a solved firing draws is what its own impulse costs. After the
-separation the two part by the burn and the air: 125 nautical miles at 45:30 and
-252 at 53:20, where the sextant's tracking ended at 160 and 320 (`src/sim/misses.ts`).
-
-The spent S-IB, escape tower and boost cover, service module and forward heat
-shield follow detached trajectories. Their contact radii, inertial moments and
-drag areas approximate the modeled bodies. The tower carries its own jettison
-motor. The service module's clearance uses the reconstructed 25–30 ft/s speed
-increase. Radar and visual observations suggest it tumbled after separation,
-with uncertain roll thruster operation. Its transient rotation and possible
-shock interaction with the command module are omitted. [Apollo 7 Press Kit,
-spacecraft structure and systems](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A07_PressKit.pdf)
-and [Apollo 7 Mission Report, §3.4](https://apollojournals.org/afj/ap07fj/pdf/a07-mission-report.pdf).
-
-The service-module translation plume follows the flight’s effective thrust
-during phasing, terminal initiation and braking. The display uses the four
-aft-facing nozzle mouths of the modeled quads. Their outward cants cancel
-in axial translation. The simulated CSM turns into the reported net thrust
-direction over an estimated 30 seconds before each maneuver. The plume level
-follows the averaged force. The roughly 12-minute intermittent braking
-sequence appears at reduced intensity.
-The report does not give a time history of thruster selections and pulse widths
-for those maneuvers. The exhaust expansion pressure is a display estimate.
-[Apollo 7 Mission Report, §3.2.1 and Table 3-IV](https://apollojournals.org/afj/ap07fj/pdf/a07-mission-report.pdf)
-and [Service-module RCS geometry](../../vehicles/reaction-control.md).
+separation the two part by the burn and the air: 116 nautical miles at 45:30 and
+231 at 53:20, where the sextant's tracking ended at 160 and 320. The stage is flown
+on a quarter of its own outside too. The spacecraft's own drift against the tracking
+asks for no more air than the day's; the stage's drift from the spacecraft, before
+the rendezvous and after it, asks for about 1.7 times the stage's drag. Its
+adapter's four panels stood open and are not counted (`src/sim/misses.ts`).
 
 ## Entry and splashdown
 
@@ -203,12 +194,15 @@ and [NASA TN D-6725, Table I](https://ntrs.nasa.gov/api/citations/19720013191/do
 The flight report gives a peak load of 3.41 g in the structural analysis and
 the reconstructed trajectory 3.33 g; the run's is held against it in
 `src/sim/misses.ts`. Flown from the pad on its own forces, the simulated capsule
-splashes down 58 minutes after the reported 260:09:03, a quarter of the way round
-the Earth from the recovery force's position: the deorbit firing is lit by the
-clock, 5,400 km back along the orbit from where the tracked spacecraft then was
-(above). With every tracking state joined, as until November 2026, it was 41 s late
-and 47 km off: that agreement was the tracking's, not the simulator's. The first
-run on its own forces came down 92 km off, by where its perigee lay. The twin drogues
+splashes down 66 s after the reported 260:09:03, 59 km from the recovery force's
+position: level with it along its track, which is what the deorbit firing is timed
+for, and 59 km to the right, which no timing takes off. Lit by the clock instead it
+is 98 s late and 219 km off. With every tracking state joined, as until November
+2026, it was 41 s late and 47 km off: that agreement was the tracking's, not the
+simulator's. The entry itself is not yet the flight's: the run reaches the interface
+961 s after the burn where the flight took 851, and the bank angles, still flown at
+the record's instants after the burn, turn the lift aside 110 s early: 5.66 g for
+3.33. The twin drogues
 have one equivalent drag area and the three mains another. The opening model
 approximates staged reefing with continuous inflation. [Apollo 7 Mission
 Report, Tables 2-I and 3-VI and §§5.1, 5.5 and 5.16](https://apollojournals.org/afj/ap07fj/pdf/a07-mission-report.pdf).

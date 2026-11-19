@@ -587,6 +587,19 @@ const sheds: ShedBody[] = [
   },
 ];
 
+/** The outside of the command and service modules as a convex body, m²: the command module's cone, the service module's barrel with its fairing, a frustum to the engine's exit, and the exit's disc. */
+const CSM_OUTSIDE = (() => {
+  const [radius, exit] = [77 * IN, (94.5 / 2) * IN];
+  const [barrel, extension] = [(155 + 26) * IN, 112 * IN];
+  const cone = 406.25 * IN - barrel - extension;
+  return (
+    Math.PI * radius * Math.hypot(cone, radius) +
+    2 * Math.PI * radius * barrel +
+    Math.PI * (radius + exit) * Math.hypot(extension, radius - exit) +
+    Math.PI * exit * exit
+  );
+})();
+
 export const apollo7Plan: FlightPlan = {
   kind: 'orbital',
   craft: [
@@ -890,7 +903,10 @@ export const apollo7Plan: FlightPlan = {
           2.2,
           'King-Hele, The Prediction of Satellite Lifetimes, §9.1, customary effective drag coefficient for perigees of 150–400 km',
         ),
-        area: derived(capsuleArea, 'Command-module base cross section, 154 in nominal diameter'),
+        area: derived(
+          CSM_OUTSIDE / 4,
+          'A quarter of the outside of the command and service modules, which is the area a convex body presents on the average over every way it can lie (Cauchy). The outside is the modules’ own sizes (flight.ts: 406.25 in long over all, 154 in across, the barrel and fairing 181 in, the engine’s extension 112 in to a 94.5 in exit) taken as a cone, a cylinder and a frustum to the engine’s exit, closed there: 111.6 m². Its attitude is assumed random: the ship drifted for most of eleven days and no timeline of how it lay is in anything read. Where it was held (the firings, the rendezvous) is not told apart',
+        ),
         length: doc(154 * 0.0254, 'Apollo 7 press kit p.25, CM diameter'),
       },
       lands: { on: 'sea', ship: 'the command module' },
@@ -972,9 +988,9 @@ export const apollo7Plan: FlightPlan = {
       586_392.8 - (450_830.9 + 2_995.5 - 6_277.3) - 4_025.2 - 16_528.0 - 233_269 * LB,
       `${ASCENT}, Table 6-I, the stage, instrument unit and adapter at first motion, less the whole propellant load (S-IVB-205 Stage Flight Evaluation Report, §14.2.1): what little was left aboard after the dump and the venting is not taken off`,
     ),
-    dragArea: estimated(
+    dragArea: derived(
       2.2 * 117,
-      'King-Hele’s customary 2.2 (The Prediction of Satellite Lifetimes, §9.1) on 117 m²: a quarter of the outside of the stage, instrument unit and adapter taken as a cylinder 260 in across and 44 ft long and a cone 28 ft long down to 154 in (press kit, pp. 26, 32 and 33), which is the area a convex body turning every way presents on the average. How the stage lay after its control was let go is not in anything read; the adapter’s open panels are not counted',
+      'King-Hele’s customary 2.2 (The Prediction of Satellite Lifetimes, §9.1) on 117 m²: a quarter of the outside of the stage, instrument unit and adapter taken as a cylinder 260 in across and 44 ft long and a cone 28 ft long down to 154 in (press kit, pp. 26, 32 and 33), which is the area a convex body presents on the average over every way it can lie (Cauchy). Its attitude is assumed random: the crew found it tumbling at the rendezvous, and how it lay after its control was let go is not in anything read. The adapter’s open panels are not counted',
     ),
   },
   events: [
@@ -1106,6 +1122,10 @@ export const apollo7Plan: FlightPlan = {
       latitude: doc(27.54, `${REPORT}, §5.16.1, recovery forces estimate`),
       longitude: doc(-64.07, `${REPORT}, §5.16.1, recovery forces estimate`),
       near: 'the Atlantic near USS Essex',
+      aimed: {
+        confidence: 'documented',
+        source: `${REPORT}, §3.2.2 and §3.3: the eighth firing was the deorbit maneuver, computed by the ground for the planned landing area; the spacecraft came down within sight of the recovery ship`,
+      },
     },
     ground: doc(0, `${REPORT}, §5.5, the Atlantic`),
     supplies: doc(11, 'Apollo 7 press kit, open-ended mission up to eleven days'),

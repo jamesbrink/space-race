@@ -74,20 +74,10 @@ const OSCULATING =
 const SHORT_TYPE =
   'Vostok 2’s ascent is the type’s, flown on Vostok 1’s instants (no document of E103-17’s ascent was found: its mission.md), Block E cut by the guidance where the orbit reached has the published period, ' +
   `its own integrator’s setting not being known (vostok-8k72k.ts \`BLOCK_E_CUT\`): at 676.0 s, level at the planned 180 km. ${OSCULATING}`;
-const PHASE =
-  'The published orbit read as mean elements with a nodal period (world/meanelements.ts, issue #8) and flown round under J2 from where the ascent left the spacecraft crosses the equator northbound every 88.45 min, ' +
-  'the published period: at 11:48:45 and 17:42:34, where TASS’s crossings are 11:48 and 17:42 (read as osculating, as until November 2026, it went round in 88.66 min and was four minutes behind the record’s orbit by the burn). ' +
-  'What is left is the place on the orbit at cutoff, which is the type’s ascent and not this flight’s, and the burn’s aim along the line from the Sun (`retro.aim`)';
 /** Vostok 3's ascent is the type's but for the third stage's cutoff, which Kamanin heard counted. */
 const SHORT_V3 =
   'Vostok 3’s ascent is the type’s, flown on Vostok 1’s instants (no cyclogram or flight task of E103-23 was found: its mission.md), Block E cut by the guidance where the orbit reached has the period flown for this flight, ' +
   `its own integrator’s setting not being known (vostok-8k72k.ts \`BLOCK_E_CUT\`): at 677.2 s, level at the planned 180 km. ${OSCULATING}`;
-/** Vostok 3's four days: where the ship is at the burn is the published period carried round 64 times. */
-const PERIOD_64 =
-  'Over 64 revolutions the period sets where the ship is when the burn comes: a second a revolution is some 470 km along the track by the landing, and no period is known to better than a hundredth of a minute (300 km). ' +
-  'No published period with this flight’s heights has a traceable source, so it is flown on the period the heights give over the ellipsoid under the apsis, 88.34 min (derived: mission.md, "The orbit"; the reading heights published without a period take, world/meanelements.ts `CONVENTION.radius`, which the sister flights’ own heights and periods require: tests/apsis.test.mjs), with the joined ship’s free-molecule drag in the air of the day’s Sun (world/thermosphere.ts): the ship is down 1,540 km short. ' +
-  'Over the mean Earth (88.54 min, until November 2026) it was 4,664 km short, and on the untraced 88.33 min 1,083 km. ' +
-  'TASS’s orbit of the 12th, held as a check at 12:12 that day, is still 5 s shorter than the one flown there (within its tolerance, outside its rounding of 3 s): carried round as it stands, that would be some 2,500 km more along the track, which says more decay or a shorter start, and is an expectation, not a target. Not adjusted';
 /** Where Vostok 1's and Vostok 5's own heights and period put the apsis, against where the run has the perigee. */
 const APSIS_OPEN =
   'Each flight is flown on the ball its own published heights and period imply (orbital.ts `heightsBall`), so its figures hold. For Vostok 1 (6,369.1 km) and Vostok 5 (6,366.7) that is the ellipsoid under an apsis at 41 and 47 degrees, where the run puts the perigee at the injection, 63 degrees N: an open inconsistency, recorded and not resolved (tests/apsis.test.mjs, the flights’ mission.md)';
@@ -134,28 +124,6 @@ const COAST_VK2 =
 const SHORT_V4 =
   'Vostok 4’s ascent is the type’s, flown on Vostok 1’s instants (no document of E103-22’s ascent was found: its mission.md), Block E cut by the guidance where the orbit reached has the published period, ' +
   `its own integrator’s setting not being known (vostok-8k72k.ts \`BLOCK_E_CUT\`): at 676.3 s, level at the planned 180 km. ${OSCULATING}`;
-/** Vostok 4's three days, as Vostok 3's four. */
-const PERIOD_48 =
-  'Over 48 revolutions the period sets where the ship is when the burn comes, as on Vostok 3 (PERIOD_64): a second a revolution is some 350 km along the track by the landing, and TASS’s 88.3 min, the one traceable period of this ship, is given to a tenth of a minute (2,100 km). ' +
-  'On it, with the joined ship’s free-molecule drag in the air of the day’s Sun, the ship comes down 2,344 km long (633 km long on the ball’s continuum drag, until November 2026), the only long flight that lands beyond (TASS’s one period of it, its first hour’s, the coast holds to 0.1 s, and no later orbit of it was read): no period published is good enough to hold the landing over three days. Not adjusted: the period was chosen before the flight was flown (mission.md, "The orbit")';
-
-/** Faith 7's coast, from the published orbit and from where the ascent left it. */
-const MA9_COAST =
-  'Twenty-two revolutions, a day and a half, from the published orbit begun at Aurora 7’s arc (no place for MA-9’s cutoff read), its 88:45 flown as a Kepler period ' +
-  '(`orbit.kind`, assumed from Sigma 7’s, whose own figures decide it: tests/periods.test.mjs; as a diagnosis, read as nodal it comes down 2,234 km short, on its heights alone 8 km short). Two seconds of period, the printed figure’s own precision, are ' +
-  '330 km here. The retrofire by hand at 33:59:30 at 34°, no yaw recorded, on the motors’ specified impulse over Sigma 7’s weight at retrofire (127.4 m/s); the drag in orbit a capsule ' +
-  'turning every way. Which input owns it is not established; not adjusted';
-const MA9_SHOWN =
-  'Flown on from the state the ascent left the capsule in: the guidance cuts the sustainer on the published orbit 21.7 s before the recorded instant (the Atlas as modelled reaches it early), so the capsule is so much further on round the orbit at any instant after';
-
-/** Sigma 7's coast, from the published orbit and from where the ascent left it. */
-const MA8_COAST =
-  'The retrofire is the record’s: at 08:52:00 by the automatic sequence, at −34° with no yaw (held within half a degree, the pilot), the impulse the report’s own integration used, 38,975 lb s, ' +
-  'over its 2,994 lb at retrofire, 127.6 m/s; that integration came down within a mile of the retrieval point (TN D-4807, p. 108). Six revolutions from the published orbit begun at the ' +
-  'cutoff’s place, its 88:55 flown as a Kepler period (orbital.ts `orbit.kind`, derived: its own heights and period decide it, tests/periods.test.mjs; as a diagnosis, read as nodal it comes down 236 km short), in orbit attitude’s drag ' +
-  'throughout where Schirra drifted for hours. Friendship 7’s and Aurora 7’s coasts come down some 105 km long on the same model. Which input owns it is not established; not adjusted';
-const MA8_SHOWN =
-  'Flown on from the state the ascent left the capsule in: the guidance cuts the sustainer on the published orbit 17.8 s before the recorded instant (the Atlas as modelled reaches it early), so the capsule is so much further on round the orbit at any instant after';
 
 /** Aurora 7's coast, from the published orbit and from where the ascent left it. */
 const MA7_RETRO =
@@ -174,8 +142,6 @@ const MA6_RETRO =
   'capsule’s own drag curve (TM X-491), the retropack kept on and burning away not modelled; and where on the orbit it began is reckoned by hand (`injection.arc`). The record itself ' +
   'landed some 40 nautical miles short of the planned point because the retrofire was worked without the consumables spent (This New Ocean, p. 433): a miss of the planners’, not of these figures. ' +
   'Which input owns this one is not established (tests/orbital.test.mjs prints what each is worth); not adjusted';
-const MA6_SHOWN =
-  'Flown on from the state the ascent left the capsule in: the guidance cuts the sustainer on the published orbit 8.1 s before the recorded instant (the Atlas as modelled reaches it early), so the capsule is so much further on round the orbit at any instant after';
 
 const GT3_ENTRY =
   'Of the entry nothing is spacecraft 3’s own measure but where it came down: its lift over drag is the programme’s average as flown, 0.19 (SP-138, p. 159), on the Mercury capsule’s ' +
@@ -355,20 +321,9 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       },
     },
     coast: {
-      alongTrack: {
-        by: 103_912,
-        slack: 3_000,
-        why: `The drogue comes out 104 km beyond where the capsule was picked up, along the track. ${MA6_RETRO}`,
-      },
       crossTrack: { by: 29_454, slack: 2_000, why: `And 29 km to the right of it. ${MA6_RETRO}` },
     },
-    shown: {
-      alongTrack: {
-        by: 62_630,
-        slack: 5_000,
-        why: `63 km beyond the pick-up point along the track (215 km until November 2026, begun from the ascent’s place at the published orbit’s speed, in a plane 0.2 degrees under the record’s: the law now steers to the inclination). ${MA6_SHOWN}. ${MA6_RETRO}`,
-      },
-    },
+    shown: {},
     descent: {},
   }),
   'usa/mercury/ma-7-aurora-7': inUnits({
@@ -436,18 +391,13 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         short: 'the Atlas D’s figures, not 113-D’s',
       },
     },
-    coast: {
-      alongTrack: {
-        by: 47_805,
-        slack: 3_000,
-        why: `The drogue comes out 48 km beyond where the capsule was picked up, along the track. ${MA8_COAST}`,
-      },
-    },
+    coast: {},
     shown: {
-      alongTrack: {
-        by: 173_500,
-        slack: 8_000,
-        why: `174 km beyond the pick-up point along the track (420 km until November 2026, begun from the ascent’s place at the published orbit’s speed). ${MA8_SHOWN}. ${MA8_COAST}`,
+      entryAt: {
+        by: -40.7,
+        slack: 10.0,
+        why: '0.05 g: 32459 where the record has 32500. Since November 2026 the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 21.3 s before the record’s instant on the run from the pad, so what follows the burn comes as much sooner or later than the record has it, and by what the descent itself takes besides. Not adjusted',
+        short: 'the burn timed for the landing place',
       },
     },
     descent: {},
@@ -473,29 +423,34 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       },
     },
     coast: {
-      alongTrack: {
-        by: 370_964,
-        slack: 10_000,
-        why: `The drogue comes out 371 km beyond where the capsule was picked up, along the track. ${MA9_COAST}`,
+      ejectionAt: {
+        by: -55.2,
+        slack: 8.3,
+        why: 'Drogue out, by hand at 42,000 ft: 123193 where the record has 123248. Since November 2026 the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 44.9 s before the record’s instant on the run from the pad, so what follows the burn comes as much sooner or later than the record has it, and by what the descent itself takes besides. Not adjusted',
+        short: 'the burn timed for the landing place',
+      },
+      entryAt: {
+        by: -85.0,
+        slack: 12.7,
+        why: '0.05 g, as the ground predicted it: 122874 where the record has 122959. Since November 2026 the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 44.9 s before the record’s instant on the run from the pad, so what follows the burn comes as much sooner or later than the record has it, and by what the descent itself takes besides. Not adjusted',
+        short: 'the burn timed for the landing place',
       },
     },
     shown: {
-      alongTrack: {
-        by: 367_200,
-        slack: 15_000,
-        why: `367 km beyond the pick-up point along the track (590 km until November 2026, begun from the ascent’s place at the published orbit’s speed). ${MA9_SHOWN}. ${MA9_COAST}`,
+      ejectionAt: {
+        by: -46.4,
+        slack: 7.5,
+        why: 'Drogue out, by hand at 42,000 ft: 123202 where the record has 123248. Since November 2026 the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 44.9 s before the record’s instant on the run from the pad, so what follows the burn comes as much sooner or later than the record has it, and by what the descent itself takes besides. Not adjusted',
+        short: 'the burn timed for the landing place',
+      },
+      entryAt: {
+        by: -75.3,
+        slack: 11.3,
+        why: '0.05 g, as the ground predicted it: 122884 where the record has 122959. Since November 2026 the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 44.9 s before the record’s instant on the run from the pad, so what follows the burn comes as much sooner or later than the record has it, and by what the descent itself takes besides. Not adjusted',
+        short: 'the burn timed for the landing place',
       },
     },
-    descent: {
-      'mercury-capsule.at': {
-        by: 74.4,
-        slack: 4,
-        why:
-          'Down 74 s late. The drogue is out 4 s late, with the coast flown on from the ascent (within its tolerance); the rest is the main, at the barostat’s height assumed from Sigma 7 (10,600 ft), on the canopy as ' +
-          'derived on Freedom 7, bringing the capsule (Sigma 7’s weight) down at 8.9 m/s where Cooper read “about 34 feet per second”, 10.4. The main’s height and the capsule’s weight are not ' +
-          'MA-9’s own: nothing is changed',
-      },
-    },
+    descent: {},
   }),
   'ussr/vostok/vostok-1': inUnits({
     coast: {
@@ -588,9 +543,10 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'ussr/vostok/vostok-2': inUnits({
     coast: {
       separationAltitude: {
-        by: -29_188,
+        by: -31924.6,
         slack: 1_500,
         why:
+          'Now -31925 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 76.8 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was -29188). ' +
           'At 10:07, the instant the record has the cable bundle burn through, it is at 61 km where the record’s research has 80 to 100 (a reckoning), 16 minutes after the burn’s command. ' +
           'Not the drag: up to the parting the joined ship flies its free-molecule figure (SHIP_RAREFIED) bridged on its 2.43 m to the ball’s continuum curve, at the whole ship’s mass; without the free-molecule figure it would be 3.6 km higher, on the coast’s drag until November 2026 2.8 km higher, in the mean air 1.4 km lower (what parts flies only after it: the ball on its own figure, the instrument module not at all). ' +
           'At a fixed instant the height is the burn’s: 9 km for each minute it came later, 11 km lower straight against the motion (the line from the Sun is 0.72 against it, 0.26 down, 0.65 across), 14 km higher on 120 m/s for the type’s 136 (estimated). ' +
@@ -599,14 +555,11 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
           'Read as osculating, as until November 2026, it was at 81 km (PHASE). No physical correction found (issue #23). Not adjusted',
       },
       crossTrack: {
-        by: -68_089,
+        by: -59039.4,
         slack: 3_000,
-        why: 'It comes down 68 km across the track from the record’s landing. The Sun stood 38 degrees out of the plane at the burn, so a push along the line from it has much of itself across the track (`retro.aim`, as Vostok 1’s). Read as osculating it was 154 km: the coast then fell four minutes behind the record’s orbit (PHASE) and the Earth had turned less under the track',
-      },
-      alongTrack: {
-        by: -378_360,
-        slack: 10_000,
-        why: 'It comes down 378 km short along the track (453 km on the ball’s continuum drag in the mean air, until November 2026; 345 km on the joined ship’s free-molecule drag in the mean air; the day’s thinner air gives back 33 km). Read as mean elements (PHASE) the coast keeps the record’s period, where read as osculating it fell four minutes behind and came down 1,427 km short; what is left is `injection.arc` (no source: 97 km a degree here) and `retro.aim` (straight against the motion: 421 km shorter)',
+        why:
+          'Now -59039 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 76.8 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was -68089). ' +
+          'It comes down 68 km across the track from the record’s landing. The Sun stood 38 degrees out of the plane at the burn, so a push along the line from it has much of itself across the track (`retro.aim`, as Vostok 1’s). Read as osculating it was 154 km: the coast then fell four minutes behind the record’s orbit (PHASE) and the Earth had turned less under the track',
       },
     },
     ascent: {
@@ -614,33 +567,25 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     },
     shown: {
       separationAltitude: {
-        by: -35_780,
+        by: -39266.4,
         slack: 1_500,
-        why: `${PUBLISHED}. At 10:07, the instant the record has the cable bundle burn through, it is at 54 km where the record’s research has 80 to 100, as the coast from the injection (61 km): the burn’s instant, line and impulse and the record’s clock own it, not the drag (the coast’s miss). Read as osculating it was at 79 km and within`,
-      },
-      alongTrack: {
-        by: -471_950,
-        slack: 10_000,
-        why: `${PUBLISHED}. It comes down 472 km short along the track and 12 km across it (which holds): ${PHASE}. With the ascent cut at 180 km over the record’s old ball, until November 2026, 422 km. Read as osculating, as until November 2026, it came down over Anatolia, 1,493 km short`,
+        why:
+          'Now -39266 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 76.8 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was -35780). ' +
+          `${PUBLISHED}. At 10:07, the instant the record has the cable bundle burn through, it is at 54 km where the record’s research has 80 to 100, as the coast from the injection (61 km): the burn’s instant, line and impulse and the record’s clock own it, not the drag (the coast’s miss). Read as osculating it was at 79 km and within`,
       },
     },
     descent: {
       'pilot.at': {
-        by: 242.4,
+        by: 298.6,
         slack: 10,
-        why: 'Late by the type’s descent, as Vostok 1’s is: from the burn he is 32.6 min to the ground where the record’s 09:51 to 10:18 is 27, and four kilometres under a canopy at 5 m/s is 13 minutes by itself (Vostok 1’s miss)',
+        why:
+          'Now 299 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 76.8 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was 242). ' +
+          'Late by the type’s descent, as Vostok 1’s is: from the burn he is 32.6 min to the ground where the record’s 09:51 to 10:18 is 27, and four kilometres under a canopy at 5 m/s is 13 minutes by itself (Vostok 1’s miss)',
       },
     },
   }),
   'ussr/vostok/vostok-3': inUnits({
-    coast: {
-      crossTrack: {
-        by: -186_268,
-        slack: 10_000,
-        why: `It comes down 186 km to the left of the record’s landing (785 km on the heights over the mean Earth): the burn is in the wrong place on the orbit (over 63 degrees south) and the Earth has turned under it by the minutes the ship is out. ${PERIOD_64}`,
-      },
-      alongTrack: { by: -1_540_500, slack: 30_000, why: PERIOD_64 },
-    },
+    coast: {},
     ascent: {
       cutoffAt: {
         by: -9.815,
@@ -654,26 +599,40 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       },
       apogee: { by: -15_890, slack: 300, why: `The osculating apogee at the cutoff, 219 km for the published 235: ${SHORT_V3}` },
     },
-    shown: {
-      alongTrack: { by: -1_360_000, slack: 30_000, why: `${PUBLISHED}. ${PERIOD_64}` },
-    },
+    shown: {},
     descent: {
       'module.at': {
-        by: 208.9,
+        by: 392.2,
         slack: 10,
-        why: 'The module comes down at 09:43:56, 5.7 minutes before the pilot; the record has twelve minutes between them (09:39:59 and 09:52), as on Vostok 4. From 7 km the module takes six minutes on the type’s three parachutes; what put both flights’ modules down so long before their pilots is not in anything read. The rest is the pilot’s own miss: not adjusted',
-      },
-      'pilot.at': {
-        by: -170.3,
-        slack: 10,
-        why: 'Nikolayev comes down at 09:49:38, 2.4 minutes early (4.8 minutes late on the heights over the mean Earth). The burn is timed from his landing (derived), and from it he takes less than Vostok 1’s 27.9 minutes from command to landing: where on the orbit the burn comes follows from the period (PERIOD_64). Not adjusted',
+        why:
+          'Now 392 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 171 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was 209). ' +
+          'The module comes down at 09:43:56, 5.7 minutes before the pilot; the record has twelve minutes between them (09:39:59 and 09:52), as on Vostok 4. From 7 km the module takes six minutes on the type’s three parachutes; what put both flights’ modules down so long before their pilots is not in anything read. The rest is the pilot’s own miss: not adjusted',
       },
     },
   }),
   'ussr/vostok/vostok-5': inUnits({
+    descent: {
+      'pilot.at': {
+        by: 384.8,
+        slack: 60,
+        why: 'Bykovskiy is on the ground 385 s after the record’s instant. Since November 2026 the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`): on the run from the pad it is lit 430 s after the record’s instant, the run being 3,700 km behind where the record’s clock would have it after five days (its period carried round 81 times), and everything after the burn comes as much later, with what the type’s descent takes besides. Not adjusted',
+        short: 'the burn timed for the landing place',
+      },
+      'module.at': {
+        by: 503.5,
+        slack: 75,
+        why: 'The descent module is on the ground 503 s after the record’s instant. Since November 2026 the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`): on the run from the pad it is lit 430 s after the record’s instant, the run being 3,700 km behind where the record’s clock would have it after five days (its period carried round 81 times), and everything after the burn comes as much later, with what the type’s descent takes besides. Not adjusted',
+        short: 'the burn timed for the landing place',
+      },
+    },
     coast: {
-      crossTrack: { by: -252_667, slack: 5_000, why: `It comes down 253 km across the track. ${COAST_V5}` },
-      alongTrack: { by: -3_313_660, slack: 20_000, why: `It comes down 3,314 km short along the track, over Arabia. ${COAST_V5}` },
+      crossTrack: {
+        by: -104055.3,
+        slack: 5_000,
+        why:
+          'Now -104055 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 430 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was -252667). ' +
+          `It comes down 253 km across the track. ${COAST_V5}`,
+      },
       'tass18.period': {
         by: 6.387,
         slack: 1,
@@ -703,14 +662,24 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 1,
         why: `${PUBLISHED}. At 15:00 on 18 June it goes round in 87.94 min where TASS has 87.8. ${COAST_V5}`,
       },
-      crossTrack: { by: -241_728, slack: 5_000, why: `${PUBLISHED}. ${COAST_V5}` },
-      alongTrack: { by: -3_716_810, slack: 20_000, why: `${PUBLISHED}. ${COAST_V5}` },
+      crossTrack: {
+        by: -71552.8,
+        slack: 5_000,
+        why:
+          'Now -71553 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 430 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was -241728). ' +
+          `${PUBLISHED}. ${COAST_V5}`,
+      },
     },
   }),
   'ussr/vostok/vostok-6': inUnits({
     coast: {
-      crossTrack: { by: -175_679, slack: 5_000, why: `It comes down 176 km across the track. ${COAST_V6}` },
-      alongTrack: { by: -2_726_340, slack: 20_000, why: `It comes down 2,726 km short along the track, over Iran. ${COAST_V6}` },
+      crossTrack: {
+        by: -72958.3,
+        slack: 5_000,
+        why:
+          'Now -72958 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 326 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was -175679). ' +
+          `It comes down 176 km across the track. ${COAST_V6}`,
+      },
     },
     ascent: {
       apogee: {
@@ -719,33 +688,29 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         why: `The osculating apogee at the cutoff, 212 km for the published 231: ${SHORT_V6}`,
       },
     },
-    shown: {
-      crossTrack: { by: -113_745, slack: 5_000, why: `${PUBLISHED}. ${COAST_V6}` },
-      alongTrack: { by: -2_685_530, slack: 20_000, why: `${PUBLISHED}. ${COAST_V6}` },
-    },
+    shown: {},
     descent: {
       'pilot.at': {
-        by: -200.7,
+        by: 160.6,
         slack: 10,
-        why: 'Down at 11:16:39, 3 min 21 s before TASS’s 11:20: from the burn, derived from the cycle’s command and its “approximately” 71 minutes (Kogutenko), she takes 26.0 min to the ground. The minute of the burn is the owner: Vostok 1’s 27.9 min from command to pilot would have it at 10:52:06. Not adjusted',
+        why:
+          'Now 161 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 326 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was -201). ' +
+          'Down at 11:16:39, 3 min 21 s before TASS’s 11:20: from the burn, derived from the cycle’s command and its “approximately” 71 minutes (Kogutenko), she takes 26.0 min to the ground. The minute of the burn is the owner: Vostok 1’s 27.9 min from command to pilot would have it at 10:52:06. Not adjusted',
       },
     },
   }),
   'ussr/vostok/vostok-4': inUnits({
-    coast: {
-      alongTrack: { by: 2_343_960, slack: 30_000, why: PERIOD_48 },
-    },
+    coast: {},
     ascent: {
       apogee: { by: -16_800, slack: 300, why: `The osculating apogee at the cutoff, 220 km for the published 237: ${SHORT_V4}` },
     },
-    shown: {
-      alongTrack: { by: 2_455_000, slack: 30_000, why: `${PUBLISHED}. ${PERIOD_48}` },
-    },
+    shown: {},
     descent: {
-      'module.at': {
-        by: 340.3,
-        slack: 10,
-        why: 'The module comes down at 09:53:16, 5.8 minutes before the pilot (who holds, 4 s late); the record has twelve minutes between them (09:46:33 and 09:59), as on Vostok 3. From 7 km the module takes six minutes on the type’s three parachutes; what put both flights’ modules down so long before their pilots is not in anything read: not adjusted',
+      'pilot.at': {
+        by: -393.8,
+        slack: 59.1,
+        why: 'Popovich on the ground: 254993 where the record has 255387. Since November 2026 the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 253 s before the record’s instant on the run from the pad, so what follows the burn comes as much sooner or later than the record has it, and by what the descent itself takes besides. Not adjusted',
+        short: 'the burn timed for the landing place',
       },
     },
     group: {
@@ -757,69 +722,57 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     },
   }),
   'usa/apollo/apollo-7': inUnits({
-    coast: {},
     shown: {
       entryG: {
-        by: 0.5294,
-        slack: 0.08,
+        by: 2.329,
+        slack: 0.3,
         why:
-          'The entry’s greatest load is 3.86 g where the reconstructed trajectory has 3.33 and the structural analysis 3.41. The deorbit burn is lit by the clock, 5,400 km back along the orbit from where the tracked spacecraft then was (cm.at, under descent), ' +
-          'so it lowers the perigee at another place on the orbit and the path into the air is steeper. Not adjusted',
-        short: 'the deorbit burn lit by the clock, far from the place',
+          'The entry’s greatest load is 5.66 g where the reconstructed trajectory has 3.33 and the structural analysis 3.41. The run comes through the interface 961 s after its deorbit burn where the flight took 851: its orbit there is not the flight’s (the apsides lie elsewhere after eleven days), though the burn is timed to bring it down at the place. ' +
+          'The bank angles are still flown at the record’s instants after the burn, so the roll to 55 degrees comes 110 s early in the entry and the lift is turned aside before the load’s peak. They want commanding on the entry’s own events, as the crew and the computer flew them; that is not done. Not adjusted',
+        short: 'the banks flown by the clock, early in a later entry',
       },
       'sps-1.velocity': {
-        by: 6.205,
-        slack: 0.6,
+        by: 6.823,
+        slack: 0.7,
         why:
-          'The corrective combination is solved by guidance on where the run and its S-IVB are as it lights (sim/pursuit.ts): 224.5 ft/s to leave the stage 80 nautical miles ahead and 7.8 above at the coelliptic manoeuvre, where the record’s burn was 204.1. ' +
-          'What it has to correct is the run’s own phasing by then (lead.range): the two phasing burns are flown at the record’s impulses, open, and the run leads its stage by 210 nautical miles where the record has 84. ' +
-          'The burns that follow come out close to the record’s (the coelliptic manoeuvre 180.8 ft/s for 173.8, the terminal phase 17.7 for 17.4, the braking 18.0 for 18.2). Not adjusted',
+          'The corrective combination is solved by guidance on where the run and its S-IVB are as it lights (sim/pursuit.ts): 226.5 ft/s to leave the stage 80 nautical miles ahead and 7.8 above at the coelliptic manoeuvre, where the record’s burn was 204.1. ' +
+          'What it has to correct is the run’s own phasing by then (lead.range): the two phasing burns are flown at the record’s impulses, open, and the run leads its stage by 230 nautical miles where the record has 84. ' +
+          'The burns that follow come out close to the record’s (the coelliptic manoeuvre 182.1 ft/s for 173.8, the terminal phase 17.8 for 17.4, the braking 18.0 for 18.2). Not adjusted',
         short: 'solved on the run’s own phasing',
       },
       'lead.range': {
-        by: 233_054,
-        slack: 20_000,
+        by: 271_187,
+        slack: 25_000,
         why:
-          'As the corrective combination lights the run leads its S-IVB by 210 nautical miles, where the report has about 84 (and 75 intended). The two phasing burns, flown as recorded, would by themselves put it some 365 ahead; what brought the real lead down was the stage’s orbit decaying under it ' +
-          '("more rapidly than expected", §3.2.1), which took off about 280 nautical miles and takes off 155 here. ' +
-          'Both of the run’s long drifts ask for more air than it flies in: its S-IVB falls back on the spacecraft too slowly before the rendezvous, and the spacecraft itself falls behind the tracking after the third firing lowers its perigee to 90 nautical miles. The air is the day’s (Jacchia 1971 on the day’s flux and Kp), the stage’s drag a quarter of its outside, the spacecraft’s its base end on: all three are estimates or a model, and none is adjusted',
+          'As the corrective combination lights the run leads its S-IVB by 230 nautical miles, where the report has about 84 (and 75 intended). The two phasing burns, flown as recorded, would by themselves put it some 365 ahead; what brought the real lead down was the stage’s orbit decaying under it ' +
+          '("more rapidly than expected", §3.2.1), which took off about 280 nautical miles and takes off 135 here. ' +
+          'The stage is flown on a quarter of its outside as its drag area (the mean of every attitude: it was tumbling), and the spacecraft on a quarter of its own. The spacecraft’s own drift against the tracking over eleven days asks for no more air than that; the stage’s drift from the spacecraft asks for about 1.7 times its drag. The air is the day’s (world/thermosphere.ts: Jacchia 1971 on the day’s flux and Kp) for both, so it is the stage’s area that is short: its adapter’s four panels stood open, and are not counted. Not adjusted',
         short: 'the stage’s orbit decays too slowly',
       },
       'braking.range': {
         by: 386,
         slack: 120,
         why:
-          'The braking begins at the record’s 29:43:55 with the stage 1.41 nautical miles off, where the report has 1.2. The terminal phase is solved to arrive at the report’s theoretical intercept, 29:51:46; the midcourse correction of 2 ft/s at 29:30:42 is not flown ' +
+          'The braking begins at the record’s 29:43:55 with the stage 1.4 nautical miles off, where the report has 1.2. The terminal phase is solved to arrive at the report’s theoretical intercept, 29:51:46; the midcourse correction of 2 ft/s at 29:30:42 is not flown ' +
           '(its aim is not in anything read), and the braking takes up what it would have. Not adjusted',
         short: 'no midcourse correction flown',
       },
       'sextant-1.range': {
-        by: -65_529,
+        by: -81_572,
         slack: 12_000,
         why:
-          'Fifteen hours after the separation manoeuvre the stage is 125 nautical miles off where the sextant’s tracking ended at 160, and at 53:20 it is 252 for 320. The separation is flown as the report gives it (2 ft/s, taken along the motion at 30:20: neither is stated), ' +
-          'and from there the two part by the air. Both of the run’s long drifts ask for more air than it flies in: its S-IVB falls back on the spacecraft too slowly before the rendezvous, and the spacecraft itself falls behind the tracking after the third firing lowers its perigee to 90 nautical miles. The air is the day’s (Jacchia 1971 on the day’s flux and Kp), the stage’s drag a quarter of its outside, the spacecraft’s its base end on: all three are estimates or a model, and none is adjusted',
+          'Fifteen hours after the separation manoeuvre the stage is 116 nautical miles off where the sextant’s tracking ended at 160, and at 53:20 it is 231 for 320. The separation is flown as the report gives it (2 ft/s, taken along the motion at 30:20: neither is stated), ' +
+          'and from there the two part by the air. The stage is flown on a quarter of its outside as its drag area (the mean of every attitude: it was tumbling), and the spacecraft on a quarter of its own. The spacecraft’s own drift against the tracking over eleven days asks for no more air than that; the stage’s drift from the spacecraft asks for about 1.7 times its drag. The air is the day’s (world/thermosphere.ts: Jacchia 1971 on the day’s flux and Kp) for both, so it is the stage’s area that is short: its adapter’s four panels stood open, and are not counted. Not adjusted',
         short: 'the stage’s orbit decays too slowly',
       },
       'sextant-2.range': {
-        by: -126_519,
+        by: -164_436,
         slack: 20_000,
-        why: 'As at 45:30: 252 nautical miles for 320, the same fifth short. Both of the run’s long drifts ask for more air than it flies in: its S-IVB falls back on the spacecraft too slowly before the rendezvous, and the spacecraft itself falls behind the tracking after the third firing lowers its perigee to 90 nautical miles. The air is the day’s (Jacchia 1971 on the day’s flux and Kp), the stage’s drag a quarter of its outside, the spacecraft’s its base end on: all three are estimates or a model, and none is adjusted',
+        why: 'As at 45:30: 231 nautical miles for 320. The stage is flown on a quarter of its outside as its drag area (the mean of every attitude: it was tumbling), and the spacecraft on a quarter of its own. The spacecraft’s own drift against the tracking over eleven days asks for no more air than that; the stage’s drift from the spacecraft asks for about 1.7 times its drag. The air is the day’s (world/thermosphere.ts: Jacchia 1971 on the day’s flux and Kp) for both, so it is the stage’s area that is short: its adapter’s four panels stood open, and are not counted. Not adjusted',
         short: 'the stage’s orbit decays too slowly',
       },
     },
-    descent: {
-      'cm.at': {
-        by: 3496,
-        slack: 120,
-        why:
-          'Down 58 minutes after the recorded 260:09:03 and a quarter of the way round the Earth from the recovery force’s place. The whole flight is one state flown from the pad on its own forces, with nothing joined to the tracking (until November 2026 every tracked state was joined, and it was 41 s late). ' +
-          'With the S-IVB’s vent and dump flown and the rendezvous flown by guidance, the run is within 200 km of the tracked state at 75 hours, and 20 km in height. Then the third firing lowers the perigee to 90 nautical miles and the run falls behind: 1,200 km by 120 hours, 3,700 by 165, 5,400 by the deorbit burn. ' +
-          'That burn is lit by the clock, as every firing after the rendezvous is, so it finds the orbit at another place and the entry follows from there. Both of the run’s long drifts ask for more air than it flies in: its S-IVB falls back on the spacecraft too slowly before the rendezvous, and the spacecraft itself falls behind the tracking after the third firing lowers its perigee to 90 nautical miles. The air is the day’s (Jacchia 1971 on the day’s flux and Kp), the stage’s drag a quarter of its outside, the spacecraft’s its base end on: all three are estimates or a model, and none is adjusted. With the spacecraft’s drag area two and a half times as great (its side to the air, as a ship turning every way would average) the run is as far ahead instead: the answer lies between, and is not chosen here. ' +
-          'Before the vent and the rendezvous were flown the run was 4,200 km behind at the burn and came down 92 km from the place, by where its perigee lay and not by its own doing',
-        short: 'eleven days on its own forces; the air at its low perigee',
-      },
-    },
+    descent: {},
   }),
   'usa/gemini/gt-3': inUnits({
     ascent: {},
@@ -860,23 +813,17 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   }),
   'ussr/voskhod/voskhod-1': inUnits({
     coast: {
-      crossTrack: { by: -106_456, slack: 5_000, why: `It comes down 106 km across the track. ${COAST_VK1}` },
-      alongTrack: {
-        by: -1_066_320,
-        slack: 20_000,
-        why: `It comes down 1,066 km short along the track, in the steppe north-west of the Aral Sea. ${COAST_VK1}`,
+      crossTrack: {
+        by: -76093.3,
+        slack: 5_000,
+        why:
+          'Now -76093 (the braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), lit 116 s after the record’s instant on the run from the pad; what follows was written with it lit by the clock, when it was -106456). ' +
+          `It comes down 106 km across the track. ${COAST_VK1}`,
       },
     },
     ascent: {},
-    shown: {
-      alongTrack: { by: -1_198_430, slack: 20_000, why: `${PUBLISHED}. ${COAST_VK1}` },
-    },
+    shown: {},
     descent: {
-      'module.at': {
-        by: -226.7,
-        slack: 10,
-        why: 'Down at 10:43:17, 3 min 47 s before the record’s 10:47:04: where the ship comes down is the burn’s, whose length and impulse are not known (COAST_VK1), and from 5 km it takes the ball 8 min on the parachutes as taken (the Vostok’s, the main two of them). Not adjusted',
-      },
       'module.speed': {
         by: 1.917,
         slack: 0.05,
