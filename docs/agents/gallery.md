@@ -214,7 +214,7 @@ written round it and on it). It is at the front page's level and, like it, no fl
   view has rested on wanting it, fades in, and is let go whole when it is no longer wanted. Every level is drawn joined
   by paint (`merge.ts`: the meshes in a material that is only paint in one draw, each corner carrying its paint's number;
   nothing that can be seen changes), the finest part by part so that each part is still a thing of its own, the coarser
-  two in as few pieces as can be. The whole row has a budget of 220 draw calls. Each file is fetched and joined once,
+  two in as few pieces as can be. A small one-sided marking is omitted from a camera draw only when all of its triangles face away from that eye. Picking, bounds and the shadow cast from the light use the full mesh. The whole row has a budget of 220 draw calls. Each file is fetched and joined once,
   known by its bytes, and shared by every vehicle on it (`shelf.ts`: Vostok 3 to 6 stand on one coarsest file). It is not a `Stage`: a stage
   holds one flight in full. It shares the stages' camera (`viewer/camera`: every promise in camera.md holds), their two
   looks, their levels' fade and the studio's light. A vehicle's shadow is a picture of its own, drawn once (`stand.ts`).

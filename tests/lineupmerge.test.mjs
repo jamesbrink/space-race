@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { BESIDE, CORNERS, drawn, join, PAINTS, paintMaterial, paintOf } from '../src/app/lineup/merge.ts';
+import { backFacingMarkings, BESIDE, CORNERS, drawn, join, PAINTS, paintMaterial, paintOf } from '../src/app/lineup/merge.ts';
 import { keyOf } from '../src/app/lineup/shelf.ts';
 import { floorPlates, showPlates } from '../src/app/lineup/stand.ts';
 import { Looks } from '../src/viewer/look.ts';
@@ -415,4 +415,32 @@ test('Lineup glass with an active draw range keeps it', () => {
   const [pane] = drawn(join(root, null)).children;
   assert.deepEqual(pane.geometry.drawRange, { start: 3, count: 3 });
   assert.equal(pane.geometry.index.count, 6);
+});
+
+test('a one-sided marking is culled only when every triangle faces away from the eye', () => {
+  const texture = new THREE.Texture();
+  const source = new THREE.Group();
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(), new THREE.MeshStandardMaterial({ map: texture }));
+  source.add(face);
+  const level = drawn(join(source, null));
+  const mesh = level.children[0];
+  const eye = new THREE.Vector3(0, 0, -2);
+  assert.deepEqual(backFacingMarkings(level, eye), [mesh]);
+  assert.deepEqual(backFacingMarkings(level, eye.setZ(0)), []);
+  assert.deepEqual(backFacingMarkings(level, eye.setZ(2)), []);
+  const edge = new THREE.Mesh(new THREE.PlaneGeometry(), face.material);
+  edge.rotation.y = Math.PI / 2;
+  face.add(edge);
+  const corner = drawn(join(source, null));
+  assert.deepEqual(backFacingMarkings(corner, eye.set(2, 0, -2)), []);
+  assert.equal(backFacingMarkings(corner, eye.set(-2, 0, -2)).length, 1);
+  eye.set(0, 0, 2);
+  level.rotation.y = Math.PI;
+  level.scale.x = -1;
+  assert.deepEqual(backFacingMarkings(level, eye), [mesh]);
+  mesh.material.side = THREE.DoubleSide;
+  assert.deepEqual(backFacingMarkings(level, eye), []);
+  mesh.material.side = THREE.FrontSide;
+  mesh.visible = false;
+  assert.deepEqual(backFacingMarkings(level, eye), []);
 });
