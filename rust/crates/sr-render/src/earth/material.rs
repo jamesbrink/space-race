@@ -57,7 +57,8 @@ pub struct EarthFrame {
     /// The cloud's drift over the ground, m/s east and north.
     pub wind: Vec4,
     /// The day's map of the cover far from the site (`air::DayMap`): how far across it is (m), and whether there is
-    /// one (1 or 0).
+    /// one (1 or 0); then how far the flight's clock moved in the last frame (s); and what the A/B switch has turned
+    /// off (`earth/ab.rs`): 1 the land's detail, 2 the sea's, 3 both.
     pub day: Vec4,
     /// The eye's height above the ground (m); whether the whole Earth's relief has arrived, and its shores; and
     /// whether the open sea has been told from enclosed water (`earth/coast.rs`), each 1 or 0.
@@ -113,7 +114,8 @@ pub struct EarthSurface {
     #[texture(118)]
     #[sampler(119)]
     pub noise: Handle<Image>,
-    /// Where the cumulus stand (`clouds::field::sheet`), for their shadows: read through the noise's sampler.
+    /// Where the cumulus stand (the clouds' own `clouds::CumulusSheet`), for their shadows: read through the noise's
+    /// sampler.
     #[texture(120)]
     pub cumulus: Handle<Image>,
     /// The day's map of the cover far from the site, read through the shore's sampler.

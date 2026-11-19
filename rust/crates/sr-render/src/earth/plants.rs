@@ -56,9 +56,9 @@ impl Forms {
     /// A shrub: a mound `radius` across its widest and `height` high, widest below its middle, its outline broken
     /// into lobes (a crown is several clumps of leaves, not one ball) and its sides rounded, not faceted.
     pub fn mound(&mut self, foot: Vec3, radius: f32, height: f32, leaf: Vec3, own: f32) {
-        self.begin(foot, own);
         const SIDES: u32 = 11;
         const RINGS: [(f32, f32); 5] = [(0.0, 0.78), (0.22, 0.98), (0.48, 1.0), (0.72, 0.82), (0.9, 0.48)];
+        self.begin(foot, own);
         let heart = foot + Vec3::Y * (0.3 * height);
         let first = self.positions.len() as u32;
         // (three to five lobes round it, each its own size)
@@ -99,8 +99,8 @@ impl Forms {
 
     /// A saw palmetto: five to seven fans, each a pleated half-disc on the end of its stalk, leaning out.
     pub fn fans(&mut self, foot: Vec3, radius: f32, height: f32, leaf: Vec3, own: f32) {
-        self.begin(foot, own);
         const RIM: u32 = 7;
+        self.begin(foot, own);
         let fans = 5 + (part(own, 0) * 3.0) as u32;
         for fan in 0..fans {
             let angle = TAU * (fan as f32 + part(own, fan + 1)) / fans as f32;
@@ -131,8 +131,8 @@ impl Forms {
 
     /// A cabbage palm: a straight trunk, and a head of nine fronds arching out and down from its top.
     pub fn palm(&mut self, foot: Vec3, height: f32, leaf: Vec3, own: f32) {
-        self.begin(foot, own);
         const SIDES: u32 = 5;
+        self.begin(foot, own);
         let first = self.positions.len() as u32;
         for (up, girth) in [(0.0, 0.2), (height, 0.15)] {
             for side in 0..SIDES {

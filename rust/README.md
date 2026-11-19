@@ -171,8 +171,8 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
 - **The land near the site is a designed ground** in the repo's palette (`docs/terrain.md`): what grows where
   follows the web build's rules, its roads and clearings are the place's own record, and its scrub stands as
   plants out to 400 m, taller clumps to 1.6 km. Its relief within 2 km of the site (beach, foredune, ridges and
-  swales) is estimated, not surveyed, and beyond it the ground is a sphere; plants beyond 400 m of the site, the
-  beach's among them, are only painted, and none moves in the wind. The far complexes and the lighthouse are not
+  swales) is estimated, not surveyed, and beyond it the ground is a sphere. Plants stand round the site and round
+  the stretch of open beach nearest it; elsewhere they are only painted. They nod in the wind by an estimated amount. The far complexes and the lighthouse are not
   here.
 - **The sea is a sum of wave trains, not a simulation**: their slopes add up to Cox and Munk's for the wind. The
   Sun on it is worked apart from the engine's lobe, as Cox and Munk's Gaussian with each pixel's count of flashing
@@ -191,9 +191,9 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
   The tower's jettison rocket is one nozzle, as the model has it (it had three). No heat shimmer. The
   posigrades' fire is drawn; their push is still the plan's single step of speed.
 - **The air round the pad is a fluid on a coarse grid** (`fumes/`, `fumes_solve.wesl`): 220 x 50 x 120 m, the
-  pad 60 m in from its upwind side, velocity and pressure in 1.25 m cells, dust and vapour in cells half that,
-  sixty steps to a second of the flight's clock (longer steps when the clock runs fast; past about six times it
-  falls behind). The jet's strike is fed to it from a ring no smaller than 3 m at no more than 45 m/s, where the
+  pad 60 m in from its upwind side, velocity, pressure, dust and vapour in 1.25 m cells,
+  one step a frame of the clock's time since the last (longer when the clock runs fast; past about three
+  times it falls behind). The jet's strike is fed to it from a ring no smaller than 3 m at no more than 45 m/s, where the
   real sheet is several times faster and a hand's breadth thick; eddies smaller than a cell are a repeating
   block of curl noise, and the picture cuts the fumes' edges with more noise. Nothing solid stands in the flow
   but the ground: the launcher, the vehicle and the gantry do not turn it. Once nothing feeds it the box drifts
@@ -202,13 +202,17 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
   wall is seen. How much dust the apron gives up, how much of the exhaust's water condenses, the first fire's
   billow, the oxygen tank's vent, how long each hangs and how hot the sheet is are estimates set against the
   stills named in `mercury/fires.rs`.
-- **The fumes' light**: the Sun through the fumes themselves is marched 8 m and no further, the scattering
-  orders after the first are a gain, the shaded side keeps three quarters of the sky's light, and the fire and
-  its sheet light them as a point. Their shadow is cast by chance, texel by texel, into the Sun's own shadow
-  maps (a stochastic shadow map), with the fumes on each sunbeam taken as even between the first and the last
-  of them; it falls on the ground, the models and the fumes, and is as grainy as the engine's shadow filter
-  leaves it. The fire's light casts shadows only down its jet and only while the ground is within 60 m. The
-  fumes do not shade the clouds' haze nor the fire.
+- **The fumes are marched for one pixel in four and their billows are shaped, not solved** (`fumes/pass.rs`,
+  `fumes_march.wesl`), on a grid of 1.25 m cells, one solver step a frame: the vapour's outline is the grid's eroded by repeating curl noise of three sizes into crisp
+  knobs, and its inside never thicker than 5/m; both are estimates against the stills. The Sun through the fumes
+  is marched 8 m and no further, the scattering orders after the first are a gain, the shaded side keeps three
+  quarters of the sky's light, the apron's bounce is doubled for a thick billow, and the fire and its sheet light
+  them as a point. Their shadow is cast by chance, texel by texel, into the Sun's own shadow maps (a stochastic
+  shadow map); it falls on the ground, the models and the fumes, and is as grainy as the engine's shadow filter
+  leaves it. No solid thing's shadow falls in the fumes (the march reads no shadow maps). The fire's light casts
+  no shadows (each lamp's shadow map was the whole scene drawn again: over the frame's budget). The fumes do not shade the clouds' haze
+  nor the fire. Where the temporal anti-aliasing cannot keep up with a fast-changing billow, faint diagonal
+  grain from the quarter-rate march shows.
 - **The glow coming back in and the collar near Mach 1 are estimates on worked figures** (`shock/`): the shock
   layer's thickness (Billig) and its colour (a black body at the simulator's gas temperature) are worked, how
   much light the gas gives is an upper estimate (no account of a visible glow on a suborbital Mercury entry was
@@ -217,10 +221,16 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
 - **A burst booster's cloud is forty puffs** (`smoke.rs`, `puff.wesl`), each a marched ball, thrown the same way
   every time; no fire is drawn in it. Frost shed at liftoff is the vapour only: the flecks of ice in the stills
   are not drawn.
-- **The cloud's light is part estimate**: the sky's light on it, the ground's albedo under it and the gain that
-  stands for the scattering orders not marched are constants in `clouds.wesl` and `clouds/mod.rs`, each labelled.
-  The cover, bases, depth, size and wind are the flight's record. The altocumulus is gathered into banks, which
-  is ours. Cloud shadows fall on the land and the sea, not yet on the models.
+- **The clouds are the record's numbers in an estimated shape** (`clouds/`, `clouds*.wesl`): the cover, bases,
+  depth, size and wind are the flight's record; how the cumulus are laid out (a steep law of sizes, clumps and
+  streets along the wind, a turret's height for its width), the moist air under and round them that makes their
+  shadows visible in the air, the sky's light on them, the ground's under them and the gain for the scattering
+  orders not marched are estimates, each labelled. Beyond 12 to 40 km the cumulus follow the day's map, and the
+  altocumulus beyond 40 to 150 km; the deck's banks are ours. Far off the cumulus are not marched but read as a
+  cover, so from orbit they are a soft field and do not show their turrets. They are marched for one pixel in
+  four and laid on by depth; motion vectors are written for them, but the cloud's own working on the clock is not
+  in them. Light shafts are computed but have not yet been seen strongly in a still. Cloud shadows fall on the
+  land and the sea, not yet on the models.
 - **By hand every strength is an estimate**: what the vanes, the rudders and the jets can do, how hard the air
   turns a body toward its trim and damps it, and how a parachute rights the capsule (`flight/attitude.rs`). They
   are angular accelerations, chosen so it handles as the reports describe; none is a measured moment, and the

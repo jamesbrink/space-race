@@ -24,9 +24,10 @@ use bevy::render::{Render, RenderApp, RenderStartup, RenderSystems};
 use super::grid::{CELLS, COARSER, FINER, Frame, SHADE, Volumes};
 use super::pace::Step;
 
-/// How many times over the pressure is searched for each step, in pairs. Estimated: the fewest that keep the
-/// air from visibly swelling where the blast feeds it, starting each step from the last one's answer.
-const TURNS: u32 = 8;
+/// How many times over the pressure is searched for each step, in pairs. Estimated: about the fewest that keep the
+/// air from visibly swelling where the blast feeds it, starting each step from the last one's answer; six, not
+/// eight, for the frame's budget.
+const TURNS: u32 = 6;
 
 /// The volumes, as the table names them: the velocity and its copy, the pressure and its, the dust and vapour
 /// and theirs, the light, where anything is, the Sun's view, and the box that holds it all.

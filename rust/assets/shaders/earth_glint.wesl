@@ -33,6 +33,9 @@ const FACET: f32 = 0.012;
 // paint. A flash is the Sun itself, tens of thousands of times that, in a few square millimetres: spread over a
 // pixel it is still far more than the screen can show, and only its bloom says so. Estimated.
 const FLASH: f32 = 60.0;
+// How much brighter the glint is drawn where a pixel covers tens of metres of sea and more, against what Cox and
+// Munk give. Estimated (see `glint`).
+const HIGH_UP: f32 = 3.0;
 // How often a patch's count is drawn again, a second. Estimated: the sea's facets turn faster than this, but a
 // flash shorter than the temporal filter's memory would be averaged away.
 const TICKS: f32 = 4.0;
@@ -122,7 +125,11 @@ fn glint(n: vec3<f32>, v: vec3<f32>, l: vec3<f32>, mss: f32, p: vec2<f32>, side:
     let g = 1.0 / (1.0 + masked(nv, a2) + masked(nl, a2));
     let f = WATER_F0 + (1.0 - WATER_F0) * pow(saturate(1.0 - lh), 5.0);
     // (held to a thousand: nothing the sea sends back is more, and a float must not reach infinity)
-    let mean = min(f * d * g / (4.0 * max(nv, 1.0e-3)), 1.0e3);
+    // (seen from high up the glint is laid under the haze and the print, which take more of it than of the white
+    // cloud it is judged against: it is lifted there, the more the further off a pixel's patch is, so that it
+    // reads as the bright patch every photograph from orbit has. Not physical; by how much is estimated)
+    let lifted = 1.0 + (HIGH_UP - 1.0) * smoothstep(0.8, 25.0, side);
+    let mean = min(f * d * g / (4.0 * max(nv, 1.0e-3)), 1.0e3) * lifted;
     // The sparkle. How many facets of a patch are tilted to send the Sun's disc to the eye, on the mean: the patch's
     // facets times the share of slopes the disc subtends there.
     let cell = exp2(ceil(log2(max(side, FACET)) + grain(p / (max(side, FACET) * 48.0), 96u) - 0.5));

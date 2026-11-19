@@ -1,9 +1,9 @@
 //! The fumes' time: how many steps of the solver this frame owes the flight's clock, where the box stands, and
 //! the figures the passes and the picture are handed.
 //!
-//! The solver steps a sixtieth of a second of the flight's clock at a time, or up to a twentieth when the clock
-//! runs fast, so a stopped clock stops the air and a fast one cannot blow it up; a clock run faster than about
-//! six times leaves the air behind.
+//! The solver takes one step a frame, of the flight's clock's time since the last (a sixtieth of a second at
+//! sixty frames, up to a twentieth when the clock runs fast or a frame is slow), so a stopped clock stops the air
+//! and a fast one cannot blow it up; a clock run faster than about three times leaves the air behind.
 //!
 //! While the blast feeds the air the box stands with the pad in it. Once nothing feeds it, it lets go and drifts
 //! down the wind with what it holds, at the wind's speed at the height of the cloud, so what the launch raised
@@ -17,6 +17,7 @@ use bevy::render::extract_resource::ExtractResource;
 use super::grid::{CELL, CELLS, FINER, Fed, Frame, SOURCES, UPWIND, size};
 use super::material::{Cloud, FumesMaterial};
 use super::{Fumes, Push, Source};
+use crate::ab::Ab;
 use crate::air::Air;
 use crate::origin::WorldPos;
 use crate::sky::Sky;
@@ -26,8 +27,8 @@ use crate::sky::Sky;
 pub const STEP: f32 = 1.0 / 60.0;
 const LONGEST_STEP: f32 = 1.0 / 20.0;
 /// The most steps worked in a frame: beyond this the air falls behind the clock rather than the frame behind
-/// the screen.
-const MOST: u32 = 2;
+/// the screen. One: a slow frame takes a longer step rather than a second one, which would make it slower yet.
+const MOST: u32 = 1;
 /// The air is worked this long after anything last fed it, s: by then what was raised has thinned to a trace
 /// (the dust is gone by e in less than half of it, `fumes_solve.wesl`, `DUST_LASTS`) and is a kilometre and more
 /// down the wind.
@@ -48,8 +49,10 @@ pub struct Step {
     pub frame: Frame,
     /// How many steps to work.
     pub steps: u32,
-    /// Whether there is anything to light and draw at all.
+    /// Whether there is anything to work and light at all.
     pub live: bool,
+    /// Whether it is drawn.
+    pub drawn: bool,
     /// Goes up each time the air starts again from nothing.
     pub epoch: u32,
 }
@@ -143,6 +146,7 @@ pub fn keep(
     fumes: Option<Res<Fumes>>,
     sky: Res<Sky>,
     air: Option<Res<Air>>,
+    ab: Option<Res<Ab>>,
     mut kept: Local<Kept>,
     mut step: ResMut<Step>,
     mut cloud: Query<(&Cloud, &mut WorldPos, &mut Transform, &mut Visibility)>,
@@ -165,11 +169,15 @@ pub fn keep(
     if !live {
         kept.fed = None;
     }
+    // (left out to be measured, the air is neither worked nor drawn: it waits where it was)
+    let solved = live && ab.as_ref().is_none_or(|ab| ab.solving());
+    let drawn = live && ab.as_ref().is_none_or(|ab| ab.drawing());
     kept.owed = (kept.owed + passed.clamp(0.0, JUMP)).min(LONGEST_STEP * MOST as f32);
-    step.steps = if live { ((kept.owed / STEP) as u32).min(MOST) } else { 0 };
+    step.steps = if solved { ((kept.owed / STEP) as u32).min(MOST) } else { 0 };
     let each = if step.steps > 0 { (kept.owed / step.steps as f32).min(LONGEST_STEP) } else { STEP };
     kept.owed -= step.steps as f32 * each;
-    step.live = live;
+    step.live = solved;
+    step.drawn = drawn;
     // (the box moves on by the air's time, not the clock's: a clock run faster than the air keeps them together)
     let worked = step.steps as f32 * each;
     kept.drift =
@@ -178,11 +186,11 @@ pub fn keep(
     let (floor, turned) = stands(&fumes, kept.drift.z);
     step.frame = frame(&fumes, &sky, air.clock, floor, turned, each, kept.drift);
     for (cloud, mut at, mut transform, mut visibility) in &mut cloud {
-        let shown = if live { Visibility::Inherited } else { Visibility::Hidden };
+        let shown = if drawn { Visibility::Inherited } else { Visibility::Hidden };
         if *visibility != shown {
             *visibility = shown;
         }
-        if !live {
+        if !drawn {
             continue;
         }
         at.0 = floor + DVec3::Y * f64::from(0.5 * size().y);

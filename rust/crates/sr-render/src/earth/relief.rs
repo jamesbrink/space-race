@@ -51,6 +51,28 @@ impl Lie<'_> {
         (shore, river, self.marks.made_at(p, flora::grain))
     }
 
+    /// Metres inland of the open sea's shore at `p` (negative at sea).
+    pub fn shore(&self, p: Vec2) -> f32 {
+        self.read(p).0
+    }
+
+    /// The point of the open beach nearest the site, a dune's breadth inland of the water, if there is one within
+    /// `within` metres.
+    pub fn beach(&self, within: f32) -> Option<Vec2> {
+        const STEP: f32 = 20.0;
+        const BEARINGS: u32 = 240;
+        (1..=(within / STEP) as u32).find_map(|ring| {
+            let r = ring as f32 * STEP;
+            (0..BEARINGS).find_map(|k| {
+                let (s, c) = (std::f32::consts::TAU * k as f32 / BEARINGS as f32).sin_cos();
+                let p = Vec2::new(s, c) * r;
+                // (and the sea beyond it open: a pond the map has as the sea's is passed over)
+                (self.shore(p) <= 0.0 && self.shore(p * (1.0 + 300.0 / r)) < -200.0)
+                    .then(|| p * (1.0 - 70.0 / r))
+            })
+        })
+    }
+
     /// What covers the ground at `p`.
     pub fn cover(&self, p: Vec2) -> Cover {
         let (shore, river, made) = self.read(p);
@@ -71,6 +93,9 @@ fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
     t * t * (3.0 - 2.0 * t)
 }
 
+/// (Nothing here is finer than about fifteen metres: the mesh's points are a few metres apart, and a plant is stood
+/// on this height, not on the mesh, so a finer lump would bury it or leave it floating.)
+///
 /// How high the ground stands at `p` (m east and north of the site) over the sphere, m, `shore` metres inland of
 /// the open sea's shore and `river` from enclosed water, on made ground `made`.
 #[must_use]
@@ -87,14 +112,14 @@ pub fn height(p: Vec2, shore: f32, river: f32, made: &Made) -> f32 {
     let dune = tall * (-d * d).exp();
     // hummocks on its back, where the sea grape and the palmetto hold the sand
     let hummocks = 1.2
-        * (flora::billow(p / 16.0, 73) - 0.5)
+        * (flora::grain(p / 16.0, 73) - 0.5)
         * smoothstep(45.0, 70.0, shore)
         * (1.0 - smoothstep(140.0, 320.0, shore));
     // behind it the strand, a little above the beach, falling to the plain of ridges and swales
     let strand = beach * (1.0 - smoothstep(120.0, 350.0, shore));
     let (_, ridge) = flora::ridges(p, shore);
-    let plain = (RIDGES * (0.5 - ridge) + 0.4 * (flora::billow(p / 45.0, 74) - 0.5))
-        * smoothstep(150.0, 300.0, shore);
+    let plain =
+        (RIDGES * (0.5 - ridge) + 0.4 * (flora::grain(p / 45.0, 74) - 0.5)) * smoothstep(150.0, 300.0, shore);
     let wet = smoothstep(0.0, 30.0, river) * smoothstep(0.0, 10.0, shore);
     let kept = made.cleared.max(made.graded).max(made.built).max(1.0 - smoothstep(4.0, 16.0, made.way));
     (dune + hummocks + strand + plain * wet) * wet.sqrt() * (1.0 - kept)

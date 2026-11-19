@@ -29,6 +29,7 @@ use bevy::render::view::{ViewUniform, ViewUniformOffset, ViewUniforms};
 use bevy::render::{Render, RenderApp, RenderStartup, RenderSystems};
 
 use super::frame::CloudFrame;
+use super::timing::MarchClock;
 
 /// What the targets hold: light in the engine's units, already exposed, and distances.
 pub const TARGET: TextureFormat = TextureFormat::Rgba16Float;
@@ -168,6 +169,7 @@ pub(super) fn march(
     views: Res<ViewUniforms>,
     globals: Res<GlobalsBuffer>,
     device: Res<RenderDevice>,
+    clock: Option<Res<MarchClock>>,
     mut ctx: RenderContext,
 ) {
     let (prepass, offset) = view.into_inner();
@@ -208,13 +210,17 @@ pub(super) fn march(
         label: Some("clouds_march"),
         color_attachments: &[Some(onto(cloud)), Some(onto(haze)), Some(onto(reach))],
         depth_stencil_attachment: None,
-        timestamp_writes: None,
+        timestamp_writes: clock.as_deref().and_then(MarchClock::writes),
         occlusion_query_set: None,
         multiview_mask: None,
     });
     pass.set_pipeline(pipeline);
     pass.set_bind_group(0, &group, &[offset.offset]);
     pass.draw(0..3, 0..1);
+    drop(pass);
+    if let Some(clock) = clock {
+        clock.resolve(ctx.command_encoder());
+    }
 }
 
 /// A target the march writes to, cleared first. (A function, not a closure: what it returns borrows from what it

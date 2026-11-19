@@ -31,7 +31,8 @@ struct EarthFrame {
     sun: vec4<f32>,
     // the cloud's drift, m/s east and north
     wind: vec4<f32>,
-    // the day's map of the cover far from the site: how far across it is (m), whether there is one
+    // the day's map of the cover far from the site: how far across it is (m), whether there is one; and how far
+    // the flight's clock moved in the last frame (s)
     day: vec4<f32>,
     // the eye's height (m); whether the whole Earth's relief has arrived, its shores, and the sorted coast
     eye: vec4<f32>,

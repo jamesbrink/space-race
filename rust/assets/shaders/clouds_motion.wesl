@@ -44,5 +44,8 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     let now = view.unjittered_clip_from_world * vec4(now_at, 1.0);
     let then = previous_view.unjittered_clip_from_world * vec4(now_at + moved.xyz, 1.0);
     let velocity = (now.xy / now.w - then.xy / max(then.w, 1.0e-6)) * vec2(0.5, -0.5);
-    return vec4(select(vec2(0.0), velocity, velocity == velocity), 0.0, 1.0);
+    // (a place behind the last frame's eye has no place in its picture: no NaN nor anything a half float cannot hold
+    // may reach the temporal filter, which keeps it for good)
+    let held = select(vec2(0.0), clamp(velocity, vec2(-2.0), vec2(2.0)), all(velocity == velocity) && then.w > 1.0e-3);
+    return vec4(held, 0.0, 1.0);
 }

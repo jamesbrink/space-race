@@ -118,7 +118,7 @@ pub fn fit(
     mut images: ResMut<Assets<Image>>,
     mut materials: ResMut<Assets<FumesLay>>,
 ) {
-    let shown = if step.live { Visibility::Inherited } else { Visibility::Hidden };
+    let shown = if step.drawn { Visibility::Inherited } else { Visibility::Hidden };
     for mut visibility in &mut balls {
         if *visibility != shown {
             *visibility = shown;

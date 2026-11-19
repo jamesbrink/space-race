@@ -7,6 +7,7 @@ use bevy::prelude::*;
 
 use super::Plume;
 use super::draw::lengths;
+use crate::ab::Ab;
 
 /// How bright a fire's outline is on the whole, against how bright it is through its heart. Estimated.
 const SPILL: f32 = 0.35;
@@ -16,9 +17,9 @@ const SPILL: f32 = 0.35;
 /// (some 11,000 cd/m^2).
 const SHEET_GLOW: f32 = 40_000.0;
 const SHEET_REACH: f32 = 3.4;
-/// A fire casts shadows while the ground is no further down it than this, m: beyond, there is nothing near
-/// enough to throw a shadow that could be seen, and another view of the scene is saved.
-const SHADOWS_WITHIN: f32 = 60.0;
+/// A fire casts shadows while the ground is no further down it than this, m. None: its shadow map is the whole
+/// scene drawn again from the fire, which the frame's budget for the fire and the fumes (3 ms) cannot hold.
+const SHADOWS_WITHIN: f32 = 0.0;
 /// A fire's light is not worked beyond this, m: a Redstone's adds a hundredth of the daylight five metres off,
 /// and by here next to nothing.
 const RANGE: f32 = 80.0;
@@ -75,12 +76,13 @@ pub fn candela(plume: &Plume) -> f32 {
 
 /// Each frame: every fire's light where the fire is brightest, as strong as the fire.
 pub fn shine(
+    ab: Option<Res<Ab>>,
     plumes: Query<&Plume>,
     mut glares: Query<(&Glare, &ChildOf, &mut SpotLight, &mut Transform, &mut Visibility)>,
 ) {
     for (glare, of, mut light, mut transform, mut visibility) in &mut glares {
         let Ok(plume) = plumes.get(of.parent()) else { continue };
-        let strength = candela(plume);
+        let strength = if ab.as_ref().is_none_or(|ab| ab.burning()) { candela(plume) } else { 0.0 };
         let shown = if strength > LEAST { Visibility::Inherited } else { Visibility::Hidden };
         if *visibility != shown {
             *visibility = shown;

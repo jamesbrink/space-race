@@ -49,9 +49,14 @@ const SHEET_THICKENS: f32 = 0.18;
 // first is, how many cells they last, and how narrow each is along the jet, as a power of a cosine. Estimated
 // from stills of the Redstone leaving the pad (NASA 6100884, S61-01928: a knot under the bell white on film where
 // the rest of the jet is pale peach): bright enough to burn through the print's bloom, as the Sun and a glint do.
-const KNOT: f32 = 16.0;
-const KNOTS_LAST: f32 = 2.2;
-const KNOT_SHARP: f32 = 12.0;
+const KNOT: f32 = 24.0;
+const KNOTS_LAST: f32 = 3.0;
+const KNOT_SHARP: f32 = 8.0;
+// Each cell is this share of the one before it (the jet slows and narrows as it mixes, so its cells shorten: a
+// train of three to five that close up down the jet), and the gas between knots, where it has expanded, is this
+// much dimmer than the heart. Estimated, against films of Redstone and Jupiter launches near the sea.
+const CELL_SHRINKS: f32 = 0.84;
+const GAPS: f32 = 0.75;
 
 fn hash31(p: vec3<f32>) -> f32 {
     var q = fract(p * vec3(0.1031, 0.1030, 0.0973));
@@ -114,18 +119,28 @@ fn free_jet(q: vec3<f32>, s: f32, r_in: f32) -> Gas {
     let lozenge = 1.0 - smoothstep(0.0, edge * (0.45 + 0.4 * squeezed), r);
     let dense = (exit * exit) / (edge * edge);
     var heart = inside * dense * (1.0 + 1.6 * squeezed * lozenge) * (1.0 - smoothstep(0.5 * core, 1.15 * core, s));
-    // (straight from the throat it is at its hottest for a few exit widths; and it is streaked, never even)
+    // (straight from the throat it is at its hottest for a few exit widths)
     let fine = noise3(vec3(q.x / (0.16 * wide), run(s) * 3.1 + 5.0, q.z / (0.16 * wide)));
-    heart *= (1.0 + 0.6 * exp(-s / (4.0 * exit))) * mix(0.45 + 0.7 * streak + 0.5 * fine, 0.8 + 0.4 * streak, swollen);
+    // (streaked, never even; less so in the first cells, where the gas has not yet mixed and the knots must show)
+    let mixed_in = smoothstep(0.2 * core, 0.7 * core, s);
+    let streaked = mix(0.85 + 0.3 * streak, 0.45 + 0.7 * streak + 0.5 * fine, mixed_in);
+    heart *= (1.0 + 0.6 * exp(-s / (4.0 * exit))) * mix(streaked, 0.8 + 0.4 * streak, swollen);
     // (and with no air to hold it to a width it goes on thinning, as the square of how far it has gone)
     heart *= mix(1.0, 1.0 / (1.0 + pow(s / (6.0 * settled), 2.0)), swollen);
     // The diamonds: a squeezed jet is narrowest, and its gas brought hot again, half a cell down and every cell
     // on; a swollen one a cell down. Each a knot on the axis, brightest at the first, gone in a few cells.
+    // The cells shorten down the jet: `k` counts them, the n-th starting where n cells each a share of the last
+    // have been passed, so the knots close up and narrow as they go.
     let swells = jet.bounds.x > 0.0;
-    let crossing = select(-1.0, 1.0, swells) * cos(TAU * s / cell);
-    let knot = pow(saturate(crossing), KNOT_SHARP) * exp(-s / (KNOTS_LAST * cell)) * smoothstep(0.0, 0.3 * cell, s)
-        * exp(-pow(r_in / (0.4 * edge), 2.0)) * abs(jet.bounds.x) * (1.0 - swollen);
-    heart += KNOT * knot * dense * (1.0 - smoothstep(0.5 * core, core, s));
+    let k = log(max(1.0 - s * (1.0 - CELL_SHRINKS) / cell, 1.0e-3)) / log(CELL_SHRINKS);
+    let shrunk = pow(CELL_SHRINKS, k);
+    let crossing = select(-1.0, 1.0, swells) * cos(TAU * k);
+    let train = exp(-k / KNOTS_LAST) * smoothstep(0.0, 0.3, k) * abs(jet.bounds.x) * (1.0 - swollen)
+        * (1.0 - smoothstep(0.5 * core, core, s));
+    let knot = pow(saturate(crossing), KNOT_SHARP) * exp(-pow(r_in / (0.8 * edge * shrunk), 2.0)) * train;
+    // (and between the knots, where the gas has expanded and cooled, it is dimmer: the train reads as beads)
+    heart *= 1.0 - GAPS * pow(saturate(-crossing), 2.0) * train / max(abs(jet.bounds.x), 1.0e-3);
+    heart += KNOT * knot * dense;
 
     // The shear layer burning in the air, and the turbulent body downstream of the core.
     let ring = exp(-pow((r - edge) / max(layer * 0.6, 0.03), 2.0)) * air * (0.35 + 0.9 * roll);

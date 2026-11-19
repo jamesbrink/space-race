@@ -1,6 +1,6 @@
-//! What the plants are made of (`earth/grove.rs`): the engine's own surface, with the cumulus' shadows laid on it as
-//! they are on the ground under it (`shaders/earth_plants.wesl`), so that a shrub in a cloud's shadow is not lit
-//! as if it stood in the Sun.
+//! What the plants are made of (`earth/grove.rs`): the engine's own surface, moved by the wind on the flight's clock
+//! (`shaders/earth_sway.wesl`), with the cumulus' shadows laid on it as they are on the ground under it
+//! (`shaders/earth_plants.wesl`), so that a shrub in a cloud's shadow is not lit as if it stood in the Sun.
 
 use bevy::pbr::{ExtendedMaterial, MaterialExtension};
 use bevy::prelude::*;
@@ -31,8 +31,17 @@ pub struct Shaded {
 }
 
 impl MaterialExtension for Shaded {
+    fn vertex_shader() -> ShaderRef {
+        "shaders/earth_plants.wesl".into()
+    }
+
     fn fragment_shader() -> ShaderRef {
         "shaders/earth_plants.wesl".into()
+    }
+
+    // (the depth, the motion and the shadows must move in the wind as the picture does)
+    fn prepass_vertex_shader() -> ShaderRef {
+        "shaders/earth_plants_prepass.wesl".into()
     }
 }
 

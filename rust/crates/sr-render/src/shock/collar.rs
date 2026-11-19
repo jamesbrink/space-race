@@ -1,9 +1,10 @@
 //! The collar of vapour a body near the speed of sound wears where its flow turns back past a shoulder: the air
-//! expands and cools there, and if it was humid enough its water condenses in a bell trailing aft from the
-//! shoulder until the shock behind squeezes it dry again.
+//! expands and cools there, and if it was humid enough its water condenses until the shock standing just aft of
+//! the shoulder squeezes it dry again, so the cloud ends at the shock in a sharp edge.
 //!
-//! It is drawn as a thin open bell of mist, streaked along the flow and lit as the fumes and the puffs are, as
-//! dense as the game says. Its shape is an estimate from films of other launches: no film of a Mercury-Redstone
+//! It is drawn as a thin, translucent sheet of mist swept a little aft from the shoulder out toward the shock,
+//! feathered at both edges and streaked along the flow, lit almost only by the Sun scattered forward (so it shows
+//! where the Sun is behind it), as dense as the game says. Its shape is an estimate from films of other launches: no film of a Mercury-Redstone
 //! going through the speed of sound was found.
 
 use std::f32::consts::TAU;
@@ -23,11 +24,11 @@ use super::Collar;
 use crate::air::Air;
 use crate::sky::Sky;
 
-/// The bell: how long it trails aft and how wide it is at its foot, in shoulder radii. Estimated from the
-/// collars on films of other launches near Mach 1 (Saturn I and V, the Shuttle): about as long as the body is
-/// wide, flaring by a third.
-const LONG: f32 = 1.4;
-const FLARES: f32 = 1.35;
+/// The disc: how far aft of the shoulder its outer edge (the shock) stands and how far out it reaches, in shoulder
+/// radii. Estimated from the collars on films of other launches near Mach 1 (Saturn I and V, the Shuttle): a thin
+/// disc reaching out some three quarters of the body's radius, swept aft about thirty degrees.
+const LONG: f32 = 0.45;
+const FLARES: f32 = 1.75;
 /// Segments round it and along it.
 const ROUND: u32 = 48;
 const ALONG: u32 = 6;
@@ -85,16 +86,16 @@ impl Material for CollarMaterial {
     }
 }
 
-/// The open bell, one unit in radius at its shoulder (y = 0), trailing aft down -Y; u round it, v along it.
+/// The open cone, one unit in radius at its shoulder (y = 0), swept aft down -Y; u round it, v out along it.
 fn bell() -> Mesh {
     let mut positions = Vec::new();
     let mut normals = Vec::new();
     let mut uvs = Vec::new();
     for j in 0..=ALONG {
         let v = j as f32 / ALONG as f32;
-        // (it bellies out fast at the shoulder and then runs nearly straight aft)
-        let radius = 1.0 + (FLARES - 1.0) * (1.0 - (1.0 - v).powi(2));
-        let slope = 2.0 * (FLARES - 1.0) * (1.0 - v) / LONG;
+        // (straight out and aft, a shallow cone)
+        let radius = 1.0 + (FLARES - 1.0) * v;
+        let slope = (FLARES - 1.0) / LONG;
         for i in 0..=ROUND {
             let u = i as f32 / ROUND as f32;
             let (sin, cos) = (TAU * u).sin_cos();
@@ -181,10 +182,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_bell_starts_at_the_shoulder_and_flares_aft() {
+    fn the_disc_starts_at_the_shoulder_and_sweeps_out_and_aft() {
         let mesh = bell();
         let Some(positions) = mesh.attribute(Mesh::ATTRIBUTE_POSITION).and_then(|a| a.as_float3()) else {
-            panic!("the bell has no positions");
+            panic!("the disc has no positions");
         };
         let first = Vec3::from_array(positions[0]);
         let last = Vec3::from_array(positions[positions.len() - 1]);

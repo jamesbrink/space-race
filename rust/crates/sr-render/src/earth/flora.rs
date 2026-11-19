@@ -65,6 +65,8 @@ pub struct Cover {
     pub swale: f32,
     /// How much it is a lagoon's marsh.
     pub marsh: f32,
+    /// How much it is the foredune behind the beach.
+    pub dune: f32,
 }
 
 impl Cover {
@@ -125,7 +127,7 @@ pub fn cover(p: Vec2, shore: f32, river: f32, made: &Made) -> Cover {
     woody *= 1.0 - verge;
     herb = mix(herb, 0.45, verge) * (1.0 - on_way);
     let dry = (1.0 - made.built) * smoothstep(0.0, 1.5, shore) * smoothstep(0.0, 1.5, river);
-    Cover { woody: woody.clamp(0.0, 1.0) * dry, herb: herb.clamp(0.0, 1.0) * dry, zone, swale, marsh }
+    Cover { woody: woody.clamp(0.0, 1.0) * dry, herb: herb.clamp(0.0, 1.0) * dry, zone, swale, marsh, dune }
 }
 
 #[cfg(test)]

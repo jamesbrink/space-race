@@ -64,14 +64,15 @@ const ERODE: f32 = 0.75;
 const EDGE: f32 = 0.12;
 const INSIDE: f32 = 0.6;
 // The vapour is never thicker than this, 1/m, whatever the grid holds where it is fed: inside a billow one sees
-// a metre or two, and its folds and the fire's glow through it. Estimated.
-const THICKEST: f32 = 2.5;
+// a metre or so, and its folds and the fire's glow through it. Estimated.
+const THICKEST: f32 = 5.0;
 const HOLLOWS: f32 = 0.5;
 // The eddies' sizes, m: a billow's knobs (some five metres), the knobs on those, and the knobs on those.
 const KNOBS: vec3<f32> = vec3<f32>(5.5, 2.2, 0.9);
-// Where the fumes are read is bent by eddies this big and by this much, m. Estimated.
-const BILLOWS: vec2<f32> = vec2<f32>(9.0, 3.2);
-const BENT: vec2<f32> = vec2<f32>(1.6, 0.6);
+// Where the fumes are read is bent by eddies this big and by this much, m (the knobs do the smaller sizes).
+// Estimated.
+const BILLOWS: f32 = 9.0;
+const BENT: f32 = 1.6;
 // How deeply the dust's edges are cut by what the grid is too coarse to hold, and the thickness (1/m) above which
 // they are cut no deeper. Estimated.
 const CUT: f32 = 0.6;
@@ -85,12 +86,12 @@ const WALLS: f32 = 18.0;
 const COARSE: f32 = 5.0;
 const COARSE_STEPS: i32 = 48;
 const FINE_STEPS: f32 = 20.0;
-const FINEST: f32 = 0.35;
-const COARSEST: f32 = 6.0;
+const FINEST: f32 = 0.25;
+const COARSEST: f32 = 3.0;
 const STEP_DEPTH: f32 = 0.35;
 const CLEARS: f32 = 0.02;
 // Where there are fumes the fine march strides no longer than this, m, so a knob's edge is not stepped over.
-const NEAR_EDGE: f32 = 0.9;
+const NEAR_EDGE: f32 = 0.4;
 
 struct Marched {
     // the fumes' light, exposed, and how much of what is behind them they hide
@@ -105,12 +106,10 @@ fn picked(frame_count: u32) -> vec2<i32> {
     return vec2<i32>(i32(k & 1u), i32(((k >> 1u) ^ k) & 1u));
 }
 
-// A fraction that is different at every pixel and every frame, for the temporal anti-aliasing to average: a hash,
-// not a gradient, so that where it is not averaged away it is grain and not diagonal stripes.
+// A fraction that is different at every pixel and every frame, for the temporal anti-aliasing to average.
 fn dither(at: vec2<f32>) -> f32 {
-    var q = fract(vec3(at, f32(globals.frame_count % 256u)) * vec3(0.1031, 0.1030, 0.0973));
-    q += dot(q, q.yzx + 33.33);
-    return fract((q.x + q.y) * q.z);
+    let shifted = at + 5.588238 * f32(globals.frame_count % 64u);
+    return fract(52.9829189 * fract(0.06711056 * shifted.x + 0.00583715 * shifted.y));
 }
 
 fn phase(g: f32, cosine: f32) -> f32 {
@@ -125,9 +124,7 @@ fn eddy(p: vec3<f32>, size: f32, rises: f32) -> vec3<f32> {
 
 // Where the fumes at `p` are read from: bent by eddies, so the grid's own cells are never seen.
 fn bent(p: vec3<f32>) -> vec3<f32> {
-    let large = eddy(p, BILLOWS.x, 0.4) * 2.0 - 1.0;
-    let small = eddy(p.zxy, BILLOWS.y, 0.4) * 2.0 - 1.0;
-    return p + large * BENT.x + small * BENT.y;
+    return p + (eddy(p, BILLOWS, 0.4) * 2.0 - 1.0) * BENT;
 }
 
 // The dust's edges are finer than the grid: cut back by eddies, most where there is least, so a thin haze is in
@@ -144,16 +141,24 @@ struct Billow {
 
 // The vapour as billows: eroded at its outline by the eddies of three sizes, with a crisp edge, varying inside.
 fn billow(vapour: f32, p: vec3<f32>) -> Billow {
+    let covered = saturate(vapour / SKIN);
+    // (so little that the eddies would eat all of it: nothing to read)
+    if covered < 0.05 {
+        return Billow(0.0, 0.0);
+    }
     let a = eddy(p, KNOBS.x, 0.6);
+    let inside = mix(1.0, 0.4 + 1.2 * a.y, INSIDE);
+    // (inside the outline the eddies take nothing: the smaller two need not be read)
+    if covered >= 1.0 {
+        return Billow(min(vapour, THICKEST) * inside, 0.0);
+    }
     let b = eddy(p.yzx, KNOBS.y, 0.9);
     let c = eddy(p.zxy, KNOBS.z, 1.2);
     // (the eddies' parts are about a half each, give or take a third: this spreads them over nought to one)
     let knobs = saturate((0.5 * a.x + 0.3 * b.y + 0.2 * c.z - 0.25) * 2.0);
-    let covered = saturate(vapour / SKIN);
     let eroded = ERODE * knobs;
     let shaped = saturate((covered - eroded) / max(1.0 - eroded, 0.05));
     let edge = smoothstep(0.0, EDGE, shaped);
-    let inside = mix(1.0, 0.4 + 1.2 * a.y, INSIDE);
     return Billow(edge * clamp(vapour, SKIN, THICKEST) * inside, knobs * (1.0 - shaped));
 }
 
@@ -243,7 +248,7 @@ fn march(eye: vec3<f32>, ray: vec3<f32>, span: vec2<f32>, jitter: f32) -> Seen {
     var first = FARTHEST;
     var t = span.x + base * jitter;
     var striding = true;
-    for (var i = 0; i < 96; i++) {
+    for (var i = 0; i < 72; i++) {
         if t >= span.y || through < CLEARS {
             break;
         }
@@ -263,11 +268,17 @@ fn march(eye: vec3<f32>, ray: vec3<f32>, span: vec2<f32>, jitter: f32) -> Seen {
         }
         striding = false;
         let shaped = billow(here.y, p);
-        let dust = cut_dust(here.x, eddy(p, 1.3, 0.25).x);
+        var dust = 0.0;
+        if here.x > 1.0e-3 {
+            dust = cut_dust(here.x, eddy(p, 1.3, 0.25).x);
+        }
         let amount = (shaped.amount + dust) * walls(p);
-        // (a step is shortened where the fumes are thick, so no one step swallows a billow's lit skin whole; and
-        // where the vapour is there but eroded away, it is short enough to find the knobs' edges)
-        let stride = clamp(STEP_DEPTH / max(amount, 1.0e-3), FINEST, min(base, NEAR_EDGE));
+        // (a step is shortened where the fumes are thick, so no one step swallows a billow's lit skin whole; near
+        // a billow's outline, where the vapour is there but may be eroded away, it is short enough to find the
+        // knobs' edges; through a thin haze it is long)
+        let outline = here.y > 0.05 * SKIN && here.y < 1.5 * SKIN;
+        let longest = select(base, min(base, NEAR_EDGE), outline);
+        let stride = clamp(STEP_DEPTH / max(amount, 1.0e-3), FINEST, longest);
         t += stride;
         if amount <= 1.0e-4 {
             continue;

@@ -13,13 +13,14 @@ use bevy::math::DVec3;
 use bevy::prelude::*;
 
 use super::Ground;
+use super::ab::Planted;
 use super::coast::Coast;
 use super::leaves::{self, Leaves, PlantMaterial};
 use super::maps::Maps;
 use super::material::EarthMaterial;
 use super::plants::Forms;
 use super::relief::Lie;
-use super::sow;
+use super::sow::{self, Ring};
 use crate::origin::WorldPos;
 use crate::sky::Sky;
 
@@ -32,14 +33,27 @@ const SKYLINE_TILE: f32 = 200.0;
 const TUFT_TILE: f32 = 25.0;
 const FAR_TUFT_TILE: f32 = 50.0;
 /// Over what distance from the eye each kind fades out, m (and the far tufts fade in over the near ones' fading).
-const SCRUB_SEEN: Range<f32> = 2400.0..3000.0;
-const SKYLINE_SEEN: Range<f32> = 3500.0..4500.0;
+/// Past a kilometre a shrub is under three pixels and the painted ground carries it; chosen for what it costs.
+const SCRUB_SEEN: Range<f32> = 900.0..1200.0;
+const SKYLINE_SEEN: Range<f32> = 2500.0..3200.0;
 const TUFTS_SEEN: Range<f32> = 60.0..100.0;
 const FAR_TUFTS_SEEN: Range<f32> = 200.0..280.0;
+
+/// How far from the site the open beach is looked for, m; and how far round the point of it nearest the site the
+/// scrub, the near grass and the far grass are stood up there. Chosen for what they cost.
+const BEACH_SEARCH: f32 = 4000.0;
+const BEACH_SCRUB: f32 = 300.0;
+const BEACH_NEAR: f32 = 200.0;
+const BEACH_FAR: f32 = 350.0;
 
 /// The region's coast, sorted (`earth/coast.rs`): there once the shore map has been read.
 #[derive(Resource)]
 pub struct Sorted(pub Coast);
+
+/// Whether the scrub throws the engine's shadow. Off: past the first cascade (18 m) its shadow-map texels show as
+/// stairs along every shrub's shadow on the sand. The ground's shader paints a soft shadow by each crown instead
+/// (`earth_land.wesl` `scrub`). Turn on when the cascades are finer or filtered more.
+const SCRUB_SHADOWS: bool = false;
 
 /// How a kind of plant is stood up: its material, whether it throws a shadow, and over what distances from the eye
 /// it fades in and out.
@@ -100,6 +114,7 @@ pub fn plant(
         let mut plant = commands.spawn((
             Mesh3d(meshes.add(forms.mesh(corner, east, north))),
             MeshMaterial3d(kind.material.clone()),
+            Planted,
             WorldPos((east * corner.x + north * corner.y).as_dvec3() + DVec3::Y * ground.grade),
             VisibilityRange {
                 start_margin: kind.fade_in.clone(),
@@ -111,31 +126,72 @@ pub fn plant(
             plant.insert(NotShadowCaster);
         }
     };
-    let scrub = Kind { material: leaves.clone(), shadow: true, fade_in: 0.0..0.0, fade_out: SCRUB_SEEN };
-    for corner in squares(0.0, sow::REACH, TILE) {
-        stand(sow::scrub(&lie, corner, TILE, east, north), corner, &scrub);
+    let [scrub, skyline, near, far] = kinds(leaves, blades);
+    for place in places(&lie) {
+        for corner in squares(place.scrub, TILE) {
+            stand(sow::scrub(&lie, corner, TILE, east, north, place.scrub), corner, &scrub);
+        }
+        for corner in squares(place.near, TUFT_TILE) {
+            stand(sow::tufts(&lie, corner, TUFT_TILE, east, north, place.near, false), corner, &near);
+        }
+        for corner in squares(place.far, FAR_TUFT_TILE) {
+            stand(sow::tufts(&lie, corner, FAR_TUFT_TILE, east, north, place.far, true), corner, &far);
+        }
     }
-    let skyline = Kind { material: leaves, shadow: true, fade_in: 0.0..0.0, fade_out: SKYLINE_SEEN };
-    for corner in squares(sow::REACH - 150.0, sow::SKYLINE, SKYLINE_TILE) {
+    let round = Ring { centre: Vec2::ZERO, reach: sow::SKYLINE, hole: 0.0 };
+    for corner in squares(round, SKYLINE_TILE) {
         stand(sow::skyline(&lie, corner, SKYLINE_TILE, east, north), corner, &skyline);
-    }
-    let near = Kind { material: blades.clone(), shadow: false, fade_in: 0.0..0.0, fade_out: TUFTS_SEEN };
-    for corner in squares(0.0, sow::TUFTS, TUFT_TILE) {
-        stand(sow::tufts(&lie, corner, TUFT_TILE, east, north, false), corner, &near);
-    }
-    let far = Kind { material: blades, shadow: false, fade_in: TUFTS_SEEN, fade_out: FAR_TUFTS_SEEN };
-    for corner in squares(0.0, sow::FAR_TUFTS, FAR_TUFT_TILE) {
-        stand(sow::tufts(&lie, corner, FAR_TUFT_TILE, east, north, true), corner, &far);
     }
 }
 
-/// The corners of the squares of side `side` that come between `from` and `reach` of the site.
-fn squares(from: f32, reach: f32, side: f32) -> impl Iterator<Item = Vec2> {
-    let n = (reach / side).ceil() as i32;
-    (-n..n).flat_map(move |x| (-n..n).map(move |y| Vec2::new(x as f32, y as f32) * side)).filter(
-        move |corner| {
-            let middle = (*corner + side / 2.0).length();
-            middle - side * 0.71 < reach && middle + side * 0.71 > from
-        },
-    )
+/// A place planted: its scrub, and its grass near and far.
+struct Place {
+    scrub: Ring,
+    near: Ring,
+    far: Ring,
+}
+
+/// The places planted: round the site, and round the open beach nearest it, where a person goes to stand.
+fn places(lie: &Lie) -> Vec<Place> {
+    let site = Place {
+        scrub: Ring::site(sow::REACH),
+        near: Ring::site(sow::TUFTS),
+        far: Ring::site(sow::FAR_TUFTS),
+    };
+    let mut places = vec![site];
+    let beach = lie.beach(BEACH_SEARCH);
+    if let Some(centre) = beach
+        && centre.length() > sow::REACH + 100.0
+    {
+        let hole = sow::REACH;
+        places.push(Place {
+            scrub: Ring { centre, reach: BEACH_SCRUB, hole },
+            near: Ring { centre, reach: BEACH_NEAR, hole },
+            far: Ring { centre, reach: BEACH_FAR, hole },
+        });
+    }
+    places
+}
+
+/// How each kind of plant is stood up.
+fn kinds(leaves: Handle<PlantMaterial>, blades: Handle<PlantMaterial>) -> [Kind; 4] {
+    [
+        Kind { material: leaves.clone(), shadow: SCRUB_SHADOWS, fade_in: 0.0..0.0, fade_out: SCRUB_SEEN },
+        Kind { material: leaves, shadow: SCRUB_SHADOWS, fade_in: 0.0..0.0, fade_out: SKYLINE_SEEN },
+        Kind { material: blades.clone(), shadow: false, fade_in: 0.0..0.0, fade_out: TUFTS_SEEN },
+        Kind { material: blades, shadow: false, fade_in: TUFTS_SEEN, fade_out: FAR_TUFTS_SEEN },
+    ]
+}
+
+/// The corners of the squares of side `side` that come within a ring.
+fn squares(ring: Ring, side: f32) -> impl Iterator<Item = Vec2> {
+    let low = ((ring.centre - ring.reach) / side).floor().as_ivec2();
+    let high = ((ring.centre + ring.reach) / side).ceil().as_ivec2();
+    (low.x..high.x)
+        .flat_map(move |x| (low.y..high.y).map(move |y| Vec2::new(x as f32, y as f32) * side))
+        .filter(move |corner| {
+            let middle = *corner + side / 2.0;
+            (middle - ring.centre).length() - side * 0.71 < ring.reach
+                && middle.length() + side * 0.71 > ring.hole
+        })
 }

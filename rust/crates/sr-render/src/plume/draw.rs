@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use super::jet::SEA;
 use super::material::{Jet, PlumeMaterial};
 use super::{Plume, glare};
+use crate::ab::Ab;
 use crate::air::Air;
 
 /// How fast a fire's streaks are seen to run down it, lengths a second. Estimated: the gas itself passes in a
@@ -114,6 +115,7 @@ pub fn figures(plume: &Plume, clock: f32) -> (Jet, [f32; 2]) {
 /// Each frame: every fire's box sized to it, and its figures handed to the march.
 pub fn burn(
     air: Option<Res<Air>>,
+    ab: Option<Res<Ab>>,
     plumes: Query<&Plume>,
     mut volumes: Query<(&Volume, &ChildOf, &mut Transform, &mut Visibility)>,
     mut materials: ResMut<Assets<PlumeMaterial>>,
@@ -121,11 +123,12 @@ pub fn burn(
     let clock = air.map_or(0.0, |air| air.clock);
     for (volume, of, mut transform, mut visibility) in &mut volumes {
         let Ok(plume) = plumes.get(of.parent()) else { continue };
-        let shown = if plume.burning > 0.0 { Visibility::Inherited } else { Visibility::Hidden };
+        let lit = plume.burning > 0.0 && ab.as_ref().is_none_or(|ab| ab.burning());
+        let shown = if lit { Visibility::Inherited } else { Visibility::Hidden };
         if *visibility != shown {
             *visibility = shown;
         }
-        if plume.burning <= 0.0 {
+        if !lit {
             continue;
         }
         let (jet, [radius, length]) = figures(plume, clock);

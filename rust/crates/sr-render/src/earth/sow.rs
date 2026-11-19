@@ -18,6 +18,8 @@ pub const REACH: f32 = 400.0;
 pub const SKYLINE: f32 = 1600.0;
 pub const TUFTS: f32 = 150.0;
 pub const FAR_TUFTS: f32 = 320.0;
+/// The cell the scrub's crowns are scattered by, m (`earth_land.wesl` `CROWN_CELL`).
+const CROWN_CELL: f32 = 2.2;
 /// The tufts' cell, m (`earth_land.wesl` `herbs`), and the far tufts', which stand one to four near cells.
 const TUFT_CELL: f32 = 0.55;
 const FAR_TUFT_CELL: f32 = 1.1;
@@ -29,12 +31,16 @@ const LEAF_LIT: Vec3 = Vec3::new(0.127, 0.254, 0.059);
 const LEAF_OTHER: Vec3 = Vec3::new(0.095, 0.195, 0.042);
 const HERB_DRY: Vec3 = Vec3::new(0.397, 0.376, 0.133);
 const HERB_GREEN: Vec3 = Vec3::new(0.202, 0.296, 0.080);
+/// Sea oats on the dune: how many times taller than the grass inland, and their straw colour, linear. Estimated
+/// (they stand knee to waist high, their heads above them).
+const SEA_OATS: f32 = 2.5;
+const OATS: Vec3 = Vec3::new(0.42, 0.38, 0.2);
 /// A plant's leaves against the painted scrub's own green: a crown in the Sun shades its own inside and the
 /// ground under it, which the painted scrub counts in its tone and a plant's leaves do not. Set by looking from a
 /// kilometre off until the planted ring and the painted scrub round it were one tone. Estimated.
-const FANS: f32 = 0.8;
-const MOUNDS: f32 = 0.72;
-const PALMS: f32 = 0.6;
+const FANS: f32 = 1.0;
+const MOUNDS: f32 = 0.95;
+const PALMS: f32 = 0.75;
 
 fn smoothstep(a: f32, b: f32, x: f32) -> f32 {
     let t = ((x - a) / (b - a)).clamp(0.0, 1.0);
@@ -51,6 +57,30 @@ fn points(corner: Vec2, side: f32, cell: f32, seed: u32) -> impl Iterator<Item =
         .filter(move |(p, _)| p.cmpge(corner).all() && p.cmplt(corner + side).all())
 }
 
+/// A round piece of ground planted: its middle (metres east and north of the site), how far out the plants reach,
+/// growing smaller over their last 90 m, and how far round the site is left out (planted already).
+#[derive(Debug, Clone, Copy)]
+pub struct Ring {
+    pub centre: Vec2,
+    pub reach: f32,
+    pub hole: f32,
+}
+
+impl Ring {
+    /// The ground round the site, out to `reach`.
+    #[must_use]
+    pub fn site(reach: f32) -> Self {
+        Self { centre: Vec2::ZERO, reach, hole: 0.0 }
+    }
+
+    /// How grown a plant at `p` is, 0 to 1.
+    fn grown(&self, p: Vec2) -> f32 {
+        let kept = if p.length() < self.hole { 0.0 } else { 1.0 };
+        kept * (1.0
+            - smoothstep(self.reach - 90.0_f32.min(self.reach * 0.3), self.reach, (p - self.centre).length()))
+    }
+}
+
 /// Where a plant at `p` stands in its square's frame, on the ground's relief.
 fn foot(lie: &Lie, p: Vec2, corner: Vec2, east: Vec3, north: Vec3) -> Vec3 {
     east * (p.x - corner.x) + north * (p.y - corner.y) + Vec3::Y * lie.height(p)
@@ -63,18 +93,19 @@ fn leaf(p: Vec2) -> Vec3 {
 
 /// The scrub of one square of side `side`, in the square's own frame: `east` and `north` are the compass in the
 /// site's.
-pub fn scrub(lie: &Lie, corner: Vec2, side: f32, east: Vec3, north: Vec3) -> Forms {
+pub fn scrub(lie: &Lie, corner: Vec2, side: f32, east: Vec3, north: Vec3, ring: Ring) -> Forms {
     let mut forms = Forms::default();
     let height = lie.cover(corner + side / 2.0).height();
-    // (the crowns' cell, as the shader has it)
-    let cell = 1.3 + 0.75 * height;
+    // (the crowns' cell, and how much smaller they are where the scrub is low, as the shader has them)
+    let cell = CROWN_CELL;
+    let small = 0.6 + 0.4 * smoothstep(0.9, 2.1, height);
     for (p, own) in points(corner, side, cell, 12) {
-        let grown = 1.0 - smoothstep(REACH - 90.0, REACH, p.length());
+        let grown = ring.grown(p);
         if grown <= 0.05 || own >= lie.cover(p).woody * 1.1 {
             continue;
         }
         let at = foot(lie, p, corner, east, north);
-        let radius = (0.55 + 0.4 * (own * 13.0).fract()) * cell * 0.8 * grown;
+        let radius = (0.55 + 0.4 * (own * 13.0).fract()) * small * cell * 0.8 * grown;
         let tall = height * (0.7 + 0.5 * (own * 53.0).fract()) * grown;
         let kind = (own * 29.0).fract();
         let green = leaf(p);
@@ -116,11 +147,11 @@ pub fn skyline(lie: &Lie, corner: Vec2, side: f32, east: Vec3, north: Vec3) -> F
 
 /// The grass's tufts in one square of side `side`: `far` gives the far form, one to four near cells, and fewer
 /// blades.
-pub fn tufts(lie: &Lie, corner: Vec2, side: f32, east: Vec3, north: Vec3, far: bool) -> Forms {
+pub fn tufts(lie: &Lie, corner: Vec2, side: f32, east: Vec3, north: Vec3, ring: Ring, far: bool) -> Forms {
     let mut forms = Forms::default();
-    let (cell, limit) = if far { (FAR_TUFT_CELL, FAR_TUFTS) } else { (TUFT_CELL, TUFTS) };
+    let cell = if far { FAR_TUFT_CELL } else { TUFT_CELL };
     for (p, own) in points(corner, side, cell, if far { 19 } else { 9 }) {
-        let grown = 1.0 - smoothstep(limit - 40.0, limit, p.length());
+        let grown = ring.grown(p);
         if grown <= 0.05 {
             continue;
         }
@@ -138,14 +169,10 @@ pub fn tufts(lie: &Lie, corner: Vec2, side: f32, east: Vec3, north: Vec3, far: b
             .clamp(0.0, 1.0);
         let at = foot(lie, p, corner, east, north);
         let blades = if far { 2 } else { 3 + ((own * 41.0).fract() * 4.0) as u32 };
-        forms.tuft(
-            at,
-            radius,
-            radius * (1.0 + 1.2 * (own * 23.0).fract()) * grown,
-            HERB_DRY.lerp(HERB_GREEN, lush),
-            own,
-            blades,
-        );
+        // (on the dune they are sea oats: taller, straw-pale, standing over the sand)
+        let tall = radius * (1.0 + 1.2 * (own * 23.0).fract()) * (1.0 + SEA_OATS * cover.dune) * grown;
+        let tone = HERB_DRY.lerp(HERB_GREEN, lush).lerp(OATS, cover.dune);
+        forms.tuft(at, radius, tall, tone, own, blades);
     }
     forms
 }

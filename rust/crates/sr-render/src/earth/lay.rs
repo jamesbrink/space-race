@@ -12,7 +12,7 @@ use super::material::{EarthFrame, EarthMaterial, EarthSurface};
 use super::relief::Surface;
 use super::{Ground, cube, grain, mesh};
 use crate::air::{Air, DayMap};
-use crate::clouds::field;
+use crate::clouds::{CumulusSheet, field};
 use crate::origin::{Origin, WorldPos};
 use crate::sky::Sky;
 
@@ -30,6 +30,7 @@ pub fn lay(
     ground: Res<Ground>,
     sky: Res<Sky>,
     marks: Option<Res<Marks>>,
+    sheet: Option<Res<CumulusSheet>>,
     assets: Res<AssetServer>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut images: ResMut<Assets<Image>>,
@@ -55,8 +56,8 @@ pub fn lay(
             day: blank,
             marks: marks.map(|marks| marks.uniform(ground.east, ground.north)).unwrap_or_default(),
             noise: images.add(grain::image()),
-            // (the clouds bake the same sheet for their own material, which is theirs to hold: this is a second copy)
-            cumulus: images.add(field::sheet()),
+            // (the clouds' own sheet, read where they read it; a copy only if there are no clouds)
+            cumulus: sheet.map_or_else(|| images.add(field::sheet()), |sheet| sheet.0.clone()),
         },
     });
     commands.insert_resource(Maps::fetch(&ground, &assets, material.clone(), shore));
@@ -97,6 +98,8 @@ pub fn light(
     }
     let frame = &mut material.extension.frame;
     let clock = air.as_ref().map_or(0.0, |air| air.clock);
+    // (how far the clock moved since the last frame: the plants' motion is reckoned from it)
+    frame.day.z = clock - frame.sun.w;
     frame.sun = sky.sun.extend(clock);
     frame.eye.x = ((origin.0 - sky.centre).length() - sky.radius) as f32;
     if let Some(air) = air {

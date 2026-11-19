@@ -10,6 +10,8 @@ publish.workspace = true
 [dependencies]
 sr-world.workspace = true
 bevy.workspace = true
+# (the version Bevy is built on, for timing the clouds' pass on the card: `clouds/timing.rs`)
+wgpu = { version = "30.0.2", default-features = false }
 
 [lints]
 workspace = true

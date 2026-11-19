@@ -14,6 +14,7 @@ mod mips;
 mod motion;
 mod pass;
 mod ripple;
+mod timing;
 mod volume;
 
 use bevy::asset::RenderAssetUsages;
@@ -52,6 +53,7 @@ impl Plugin for CloudsPlugin {
             MaterialPlugin::<CloudLay>::default(),
             pass::CloudPassPlugin,
             motion::CloudMotionPlugin,
+            timing::TimingPlugin,
         ))
         .add_systems(Startup, make.in_set(CloudsMade))
         .add_systems(Update, (material::hang, frame::fit))

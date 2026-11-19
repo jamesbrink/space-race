@@ -51,16 +51,32 @@ fn grain_d(p: vec2<f32>, seed: u32) -> vec3<f32> {
     return vec3(n.r, t.x * s.x + t.y * s.y, t.x * s.y - t.y * s.x);
 }
 
+// How many lumps of the noise a pixel covers at p, across: where it is many, the lumps are under the pixel and the
+// noise is its mean, which need not be read.
+fn lumps_seen(p: vec2<f32>) -> f32 {
+    let w = fwidth(p);
+    return max(w.x, w.y);
+}
+
 // The noise alone.
 fn grain(p: vec2<f32>, seed: u32) -> f32 {
+    // (the tile's mean, where a pixel covers four lumps and more: its coarsest copies are that already)
+    if lumps_seen(p) > 4.0 {
+        return 0.5;
+    }
     let t = turn(seed);
     let q = vec2(t.x * p.x - t.y * p.y, t.y * p.x + t.x * p.y) + f32(seed) * 0.713;
     return textureSample(noise_map, noise_sampler, q / LUMPS).r;
 }
 
 // Three octaves of it, each twice as fine and half as strong, about 0.5.
+// (an octave whose lumps are under two pixels is its mean, and is not read)
 fn billow(p: vec2<f32>, seed: u32) -> f32 {
-    return (grain(p, seed) * 4.0 + grain(p * 2.03, seed + 1u) * 2.0 + grain(p * 4.11, seed + 2u)) / 7.0;
+    let seen = lumps_seen(p);
+    var sum = grain(p, seed) * 4.0;
+    sum += select(1.0, grain(p * 2.03, seed + 1u) * 2.0, seen < 0.25);
+    sum += select(0.5, grain(p * 4.11, seed + 2u), seen < 0.12);
+    return sum / 7.0;
 }
 
 // Scattered points, one to a unit cell: the vector from p to the nearest (xy), and a number of that point's own

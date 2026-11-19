@@ -3,6 +3,7 @@
 //! This crate draws what it is handed and knows no flight (`sr-hygiene` holds it to that): the game says where
 //! the Sun is, what the cloud is, where a model stands, and the look is made here. One module to a thing drawn.
 
+pub mod ab;
 pub mod air;
 pub mod canopy;
 pub mod clouds;
@@ -31,6 +32,7 @@ impl Plugin for RenderPlugins {
         app.add_systems(PostUpdate, eye::adapt.after(origin::Place));
         app.add_plugins((
             origin::OriginPlugin,
+            ab::AbPlugin,
             materials::MaterialsPlugin,
             sky::SkyPlugin,
             earth::EarthPlugin,

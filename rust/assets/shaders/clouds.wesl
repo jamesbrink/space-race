@@ -17,8 +17,8 @@ import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput;
 import bevy_render::view::View;
 import bevy_render::globals::Globals;
 import super::clouds_cover::{
-    CELLS, EDGE, Column, along_wind, column, gather, mirrored, on_sheet, second_laying, sheet_texel, spread_for,
-    sun_shadow,
+    CELLS, EDGE, Column, along_wind, column, gather, mirrored, on_sheet, second_laying, shadow_from, sheet_texel,
+    spread_for,
 };
 
 struct CloudFrame {
@@ -68,6 +68,10 @@ const PI: f32 = 3.14159265;
 const EXTINCTION: f32 = 0.075;
 // A deck's cloudlets are thin: the Sun comes through them.
 const DECK_EXTINCTION: f32 = 0.009;
+// Past this many levels of the cloudlets' coarser copies under a pixel the deck is read once, not marched; and the
+// share of the way through it its lens of cloud fills, on the whole. Chosen by eye.
+const DECK_FAR: f32 = 3.0;
+const DECK_FILL: f32 = 0.2;
 // The shape noise repeats over this far, and the detail over this, m; and the side of one of its voxels.
 const SHAPE_TILE: f32 = 1200.0;
 const DETAIL_TILE: f32 = 260.0;
@@ -76,6 +80,13 @@ const VOXELS: f32 = 128.0;
 const UPDRAUGHT: f32 = 0.9;
 // A cloud's top leans down the wind by this much of its height for each m/s. Estimated.
 const LEAN: f32 = 0.035;
+// The most steps a ray takes through the cumulus, and through the deck.
+const MARCH_STEPS: i32 = 160;
+// Readings toward the Sun from each step in cloud.
+const LIGHT_STEPS: i32 = 4;
+// Beyond this, m, two readings toward the Sun do.
+const LIGHT_NEAR: f32 = 6000.0;
+const DECK_STEPS: i32 = 32;
 // No cloud is marched beyond this, m.
 const REACH: f32 = 700000.0;
 // The light of the scattering orders that are not marched, as a gain on those that are: with it the sunlit side
@@ -176,11 +187,27 @@ fn spread_at(en: vec2<f32>) -> f32 {
     return laid_spread(en) * gather(on_sheet(en, along_wind(frame.wind.xy), frame.lay.y));
 }
 
+// What changes only over kilometres along a ray, read once for many steps: the spread (gathered) and how much of
+// the sheet's second laying there is.
+struct Slow {
+    spread: f32,
+    second: f32,
+    // where along the ray it was read, m
+    at: f32,
+}
+
+// Read again only every this many metres along a ray. The gathering changes over about 20 km, the layings over 50.
+const SLOW_EVERY: f32 = 1500.0;
+
+fn slow_at(en: vec2<f32>, t: f32) -> Slow {
+    return Slow(spread_at(en), second_laying(en / frame.lay.y), t);
+}
+
 // What the field says of the column of air at a place in the cumulus' drifting frame.
-fn column_at(en: vec2<f32>, spread: f32) -> Column {
+fn column_at(en: vec2<f32>, slow: Slow) -> Column {
     let cell = frame.lay.y;
-    let texel = sheet_texel(field, repeating, en, along_wind(frame.wind.xy), cell);
-    return column(texel, spread, cell, frame.cumulus.z, frame.north.w);
+    let texel = sheet_texel(field, repeating, en, along_wind(frame.wind.xy), cell, slow.second);
+    return column(texel, slow.spread, cell, frame.cumulus.z, frame.north.w);
 }
 
 struct Cloud {
@@ -280,22 +307,24 @@ fn lean(z: f32) -> vec2<f32> {
 
 // How much cumulus lies between a place and the Sun, as an optical depth. `jitter` moves the places it is read
 // at, so that they do not print the cloud's outline on its own lit side as rings.
-fn cumulus_toward_sun(en: vec2<f32>, z: f32, spread: f32, coarse: f32, jitter: f32) -> f32 {
+fn cumulus_toward_sun(en: vec2<f32>, z: f32, slow: Slow, coarse: f32, jitter: f32, far: f32) -> f32 {
     let sun = frame.sun.xyz;
     let level = vec2(dot(sun, frame.east.xyz), dot(sun, frame.north.xyz));
     let rise = dot(sun, frame.up.xyz);
     var depth = 0.0;
     var gone = 0.0;
-    var stride = 16.0;
-    for (var i = 0; i < 5; i++) {
+    // (a cloud far off is a few pixels a knob: two readings, longer, do)
+    let few = far > LIGHT_NEAR;
+    var stride = select(16.0, 60.0, few);
+    for (var i = 0; i < select(LIGHT_STEPS, 2, few); i++) {
         let at = gone + (0.15 + 0.7 * jitter) * stride;
         let there = en + level * at;
         let up = z + rise * at;
-        // (the nearest readings with the detail in them: that is what shades one knob with the next)
-        let col = column_at(there - lean(up), spread);
-        depth += cumulus(col, there, up, coarse + select(1.0, 0.0, i < 2), i < 2).thick * stride;
+        // (the nearest reading with the detail in it: that is what shades one knob with the next)
+        let col = column_at(there - lean(up), slow);
+        depth += cumulus(col, there, up, coarse + select(1.0, 0.0, i < 1), i < 1 && !few).thick * stride;
         gone += stride;
-        stride *= 2.1;
+        stride *= 3.0;
     }
     return depth;
 }
@@ -344,19 +373,23 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end
     var t = start + jitter * max(0.004 * start, 8.0);
     var clear_at = t;
     var short_left = 0;
-    for (var i = 0; i < 256; i++) {
+    var slow = slow_at(frame.eye_over.xy + level * t, t);
+    var shaded = 0.0;
+    for (var i = 0; i < MARCH_STEPS; i++) {
         if t >= end || seen.through <= 0.0 {
             break;
         }
         let wobble = 0.7 + 0.6 * stagger(jitter, i);
         // (never so long that a cloud seen from far above is stepped over, nor longer than a tenth of a cloud
         // until a pixel is)
-        let short_stride = min(min(max(0.004 * t, 8.0), max((end - start) / 12.0, 8.0)), max(0.1 * layer.w, t * 0.0007));
+        let short_stride = min(min(max(0.006 * t, 10.0), max((end - start) / 12.0, 8.0)), max(0.1 * layer.w, t * 0.0007));
         let height = height_at(h, mu, t);
         let z = height - layer.y;
         let en = frame.eye_over.xy + level * t;
-        let spread = spread_at(en);
-        let col = column_at(en - lean(z), spread);
+        if abs(t - slow.at) > SLOW_EVERY {
+            slow = slow_at(en, t);
+        }
+        let col = column_at(en - lean(z), slow);
         var cloud = Cloud(0.0, 0.0, 0.0);
         // (far off, the noise is read from a coarser copy: as coarse as the stride, or as a pixel)
         let coarse = max(log2(max(short_stride * 0.5, t * 0.0006) / (SHAPE_TILE / VOXELS)) + 1.0, 0.0);
@@ -383,14 +416,18 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end
             continue;
         }
         short_left = 5;
-        let stride = short_stride * wobble;
+        // (deep in, little of what is seen is still to come: longer strides, and the light from toward the Sun
+        // worked again only every other step)
+        let stride = short_stride * wobble * (1.0 + 2.0 * (1.0 - seen.through));
         t += stride;
-        let shaded = cumulus_toward_sun(en, z, spread, coarse, stagger(jitter, i + 7));
+        if seen.through > 0.35 || (i & 1) == 0 {
+            shaded = cumulus_toward_sun(en, z, slow, coarse, stagger(jitter, i + 7), t);
+        }
         let embedded = mix(0.7, 1.0, smoothstep(0.0, 0.3, cloud.deep));
         let sunlit = scattered(shaded, cosine, embedded, 1.0 - smoothstep(0.0, 0.45, cloud.deep));
         // The sky from above, less the more cloud is overhead, and from round about; and from below the sunlit
         // ground, less the higher into the cloud: that is what a base is lit by.
-        let sky = frame.skylight.xyz * (0.3 + 0.7 * exp(-cloud.under / 160.0));
+        let sky = frame.skylight.xyz * (0.15 + 0.85 * exp(-cloud.under / 120.0));
         let ground = frame.sunlight.xyz * (GROUND_ALBEDO / PI) * sun_high * exp(-z / 220.0);
         let glow = frame.sunlight.xyz * sunlit * DEEPER_ORDERS + sky + ground;
         seen = add_seen(seen, glow, 1.0 - exp(-cloud.thick * stride), t);
@@ -499,6 +536,22 @@ fn bank_over(en: vec2<f32>, push: vec2<f32>, coarse: f32) -> f32 {
     return textureSampleLevel(ripple, repeating, (en + push) / (frame.lay.w * 9.0), coarse).g - frame.lay.z + torn;
 }
 
+// Within the first of these distances from the site the deck is the record's; by the second it is the day's map's,
+// m (src/viewer/weather.ts `deckCoverAt`).
+const DECK_NEAR: vec2<f32> = vec2<f32>(40000.0, 150000.0);
+
+// How much of the record's deck stands at a place in its drifting frame: all of it near the site, and further off
+// as much as the day's map has of layered cloud there, against the record's cover.
+fn deck_share(en: vec2<f32>) -> f32 {
+    if frame.day.x <= 0.0 {
+        return 1.0;
+    }
+    let ground = en + frame.wind.zw * frame.north.w;
+    let uv = vec2(0.5 + ground.x / frame.day.x, 0.5 - ground.y / frame.day.x);
+    let mapped = saturate(textureSampleLevel(day_map, clamped, uv, 0.0).b / max(frame.deck.x, 0.01));
+    return mix(1.0, mapped, smoothstep(DECK_NEAR.x, DECK_NEAR.y, length(ground)));
+}
+
 // What the deck is at a place.
 struct Sheet {
     // how much light a metre of it takes out of a ray
@@ -521,7 +574,7 @@ fn deck(en: vec2<f32>, height: f32, bank: f32, coarse: f32) -> Sheet {
     let threshold = 1.0 - 0.7 * pow(bank, 0.7) + 0.5 * patchy;
     let one = smoothstep(threshold - 0.1, threshold + 0.7, rank);
     let many = saturate(0.75 - threshold);
-    let cloudlet = mix(one, many, smoothstep(2.0, 4.0, coarse));
+    let cloudlet = mix(one, many, smoothstep(1.0, 2.5, coarse));
     // (a lens: thickest at its middle, a little flatter underneath than on top)
     let off_middle = (height - layer.y) / layer.z * 2.0 - 0.85;
     let lens = cloudlet - off_middle * off_middle * select(1.0, 2.2, off_middle < 0.0);
@@ -554,7 +607,28 @@ fn march_deck(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, pixel:
     let cosine = dot(ray, frame.sun.xyz);
     var t = start + jitter * max(0.006 * start, 14.0);
     let push = bank_push(frame.eye_over.zw + level * 0.5 * (start + end));
-    for (var i = 0; i < 56; i++) {
+    // Far off, where a pixel holds many cloudlets, the deck is read once in the middle of the way through it and
+    // taken to be that thick all the way: a thin sheet stepped through a few times gives each pixel its own answer,
+    // which from orbit is a hatching.
+    // (no bank where the ray enters the deck nor where it leaves: nothing to march)
+    let banks_far = max(log2((end - start) * 0.5 / (frame.lay.w * 9.0 / 512.0)), 0.0);
+    let entering = bank_over(frame.eye_over.zw + level * start, push, banks_far);
+    let leaving = bank_over(frame.eye_over.zw + level * end, push, banks_far);
+    if max(entering, leaving) < -0.04 {
+        return seen;
+    }
+    let far = start * pixel * 1.5 / sqrt(max(abs(mu), 0.05));
+    if log2(far / (frame.lay.w / 512.0)) + 1.0 > DECK_FAR {
+        let middle = 0.5 * (start + end);
+        let en = frame.eye_over.zw + level * middle;
+        let banks_coarse = max(DECK_FAR - log2(9.0), 0.0);
+        let bank = saturate(bank_over(en, push, banks_coarse + 1.0) / (0.2 + 0.05 * banks_coarse)) * deck_share(en);
+        let sheet = deck(en, layer.y + 0.425 * layer.z, bank, DECK_FAR + 1.0);
+        let sunlit = scattered(sheet.shade, cosine, 1.0, 0.5);
+        let glow = frame.sunlight.xyz * sunlit * DEEPER_ORDERS + frame.skylight.xyz * 0.85;
+        return add_seen(seen, glow, 1.0 - exp(-sheet.thick * DECK_FILL * (end - start)), middle);
+    }
+    for (var i = 0; i < DECK_STEPS; i++) {
         if t >= end {
             break;
         }
@@ -564,7 +638,7 @@ fn march_deck(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, pixel:
         let en = frame.eye_over.zw + level * t;
         // (as coarse as the stride, or as a pixel's footprint on the deck)
         let footprint = max(stride * 0.5, t * pixel * 1.5 / sqrt(max(abs(mu), 0.05)));
-        let coarse = max(log2(footprint / (frame.lay.w / 512.0)), 0.0);
+        let coarse = max(log2(footprint / (frame.lay.w / 512.0)) + 1.0, 0.0);
         let banks_coarse = max(coarse - log2(9.0), 0.0);
         let over = bank_over(en, push, banks_coarse);
         if over <= 0.0 {
@@ -573,7 +647,7 @@ fn march_deck(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, pixel:
             continue;
         }
         // (clouds/ripple.rs: its FRINGE, widened as the banks' texels shrink under a pixel)
-        let bank = saturate(over / (0.1 + 0.05 * banks_coarse));
+        let bank = saturate(over / (0.1 + 0.05 * banks_coarse)) * deck_share(en);
         let sheet = deck(en, height, bank, coarse);
         t += stride;
         if sheet.thick <= 0.0 {
@@ -608,40 +682,48 @@ fn air_along(h: f32, mu: f32, range: f32, scale: f32) -> f32 {
 
 // How much of the Sun a place in the air has lost to the cumulus (clouds_cover.wesl `sun_shadow`, which the
 // ground's shadows are too).
-fn in_shadow(en: vec2<f32>, height: f32) -> f32 {
+// `slow` is read near the place: it changes over kilometres, so one reading does for many steps.
+fn in_shadow(en: vec2<f32>, height: f32, slow: Slow) -> f32 {
+    let layer = frame.cumulus;
     let sun = frame.sun.xyz;
-    let toward = vec3(dot(sun, frame.east.xyz), dot(sun, frame.north.xyz), dot(sun, frame.up.xyz));
-    return sun_shadow(field, repeating, en, height, toward, frame.cumulus.yz, laid_spread(en), frame.wind.xy,
+    let rise = dot(sun, frame.up.xyz);
+    if height > layer.y + layer.z {
+        return 0.0;
+    }
+    let up = max(layer.z * 0.3, height - layer.y);
+    let there = en + vec2(dot(sun, frame.east.xyz), dot(sun, frame.north.xyz)) * (max(layer.y + up - height, 0.0) / rise);
+    return shadow_from(field, repeating, there, up, slow.spread, slow.second, along_wind(frame.wind.xy), layer.z,
         frame.lay.y, frame.north.w);
 }
 
 // The moist air under the cumulus and round them, which the record does not give: how much light a metre of it
 // takes out of a ray at the ground. Estimated. With the day's haze it puts how far one can see at the ground near
-// 40 km, which is past the 16 km the station could report; it is what makes the light under and round the clouds
+// 28 km, which is past the 16 km the station could report; it is what makes the light under and round the clouds
 // a thing that can be seen, as it is on a humid morning by the sea.
-const HUMID: f32 = 5.0e-5;
-// And a little more within a fifth of a turret's breadth of a cloud's edge, inside the layer: the air a cumulus grows from
-// and evaporates into. Estimated.
-const ROUND_CLOUD: f32 = 3.0e-5;
+const HUMID: f32 = 9.0e-5;
+// That at the ground and just under the bases, as a share of HUMID: wetted aerosol swells with the humidity, which
+// is highest under the bases. Estimated.
+const HUMID_SWELL: vec2<f32> = vec2<f32>(0.6, 2.2);
 // The haze throws its light forward: two lobes, a narrow one that makes the glare round the Sun and a broad one
 // that makes the sky round it pale. Estimated, as aerosol phase functions near the sea are measured (asymmetry
 // about 0.7 overall).
 const HAZE_LOBES: vec3<f32> = vec3<f32>(0.85, 0.45, 0.55);
-// Beyond this, m, the haze is not asked whether it is in a cloud's shadow, nor whether it is round a cloud: a shaft
-// so far off is narrower than a pixel. Chosen for what it costs.
-const SHAFT_REACH: f32 = 30000.0;
+// Beyond this, m, the haze is not asked whether it is in a cloud's shadow: a shaft so far off is a few pixels
+// across and lost in the haze before it. Chosen for what it costs.
+const SHAFT_REACH: f32 = 12000.0;
+// Steps through the air below the cumulus' tops, where the shafts are; and before and after it.
+const SHAFT_STEPS: i32 = 16;
+const HAZE_STEPS: i32 = 5;
 
 // How much light a metre of the air takes out of a ray at a height, and where it scatters it.
-fn haze_density(en: vec2<f32>, height: f32, near: bool) -> f32 {
+fn haze_density(height: f32) -> f32 {
     let layer = frame.cumulus;
     // (Koschmieder: one can see as far as the air leaves a fiftieth of the contrast)
     var density = 3.912 / frame.sun.w * exp(-height / frame.sunlight.w);
     if layer.x > 0.0 || frame.day.x > 0.0 {
-        density += HUMID * (1.0 - smoothstep(layer.y, layer.y + 0.5 * layer.z, height));
-        if near && height > layer.y && height < layer.y + layer.z {
-            let col = column_at(en - lean(height - layer.y), spread_at(en));
-            density += ROUND_CLOUD * smoothstep(-0.2, 0.0, col.within);
-        }
+        // (the more toward the bases, where the rising air is near saturation and the haze swells)
+        let swelling = mix(HUMID_SWELL.x, HUMID_SWELL.y, smoothstep(0.0, layer.y, height));
+        density += HUMID * swelling * (1.0 - smoothstep(layer.y, layer.y + 0.5 * layer.z, height));
     }
     return density;
 }
@@ -668,6 +750,7 @@ fn haze_walk(walked: Hazed, ray: vec3<f32>, h: f32, mu: f32, t0: f32, t1: f32, s
     // (the sky's light and the Sun's that the haze has passed about within itself, from all round)
     let about = frame.skylight.xyz * 1.5 + frame.sunlight.xyz * 0.045;
     var before = t0;
+    var slow = Slow(0.0, 0.0, -1.0e9);
     for (var i = 0; i < steps; i++) {
         // (steps that lengthen with distance: the near air is where a shaft is seen)
         let f = (f32(i) + jitter) / f32(steps);
@@ -676,14 +759,17 @@ fn haze_walk(walked: Hazed, ray: vec3<f32>, h: f32, mu: f32, t0: f32, t1: f32, s
         let next = t0 + (t1 - t0) * g * g;
         let height = max(height_at(h, mu, t), 0.0);
         let en = frame.eye_over.xy + level * t;
-        let stopped = 1.0 - exp(-haze_density(en, height, t < SHAFT_REACH) * (next - before));
+        let stopped = 1.0 - exp(-haze_density(height) * (next - before));
         before = next;
         if stopped < 1.0e-6 {
             continue;
         }
         var shadow = 0.0;
-        if shadowed && t < SHAFT_REACH {
-            shadow = in_shadow(en, height);
+        if shadowed {
+            if abs(t - slow.at) > SLOW_EVERY {
+                slow = slow_at(en, t);
+            }
+            shadow = in_shadow(en, height, slow);
         }
         let glow = direct * (1.0 - shadow) + about * (1.0 - 0.35 * shadow);
         let hidden = select(through, 1.0, t < range);
@@ -710,12 +796,23 @@ fn haze(ray: vec3<f32>, h: f32, mu: f32, limit: f32, range: f32, through: f32, j
     }
     let low = inside(h, mu, -50.0, frame.cumulus.y + frame.cumulus.z);
     let low_start = clamp(low.start, start, end);
-    let low_end = clamp(select(low.end, start, low.end <= 0.0), low_start, end);
-    out = haze_walk(out, ray, h, mu, start, low_start, 6, false, range, through, jitter);
-    out = haze_walk(out, ray, h, mu, low_start, low_end, 24, true, range, through, jitter);
-    out = haze_walk(out, ray, h, mu, low_end, end, 8, false, range, through, jitter);
+    let low_end = clamp(select(low.end, start, low.end <= 0.0), low_start, min(end, low_start + SHAFT_REACH));
+    let shadowed = (frame.cumulus.x > 0.0 || frame.day.x > 0.0) && dot(frame.sun.xyz, frame.up.xyz) > 0.05;
+    // (a shaft is seen in the light the haze throws forward: looking away from the Sun a few steps do)
+    let toward = smoothstep(-0.2, 0.7, dot(ray, frame.sun.xyz));
+    let steps = select(HAZE_STEPS, i32(mix(f32(SHAFT_STEPS) * 0.35, f32(SHAFT_STEPS), toward)), shadowed);
+    out = haze_walk(out, ray, h, mu, start, low_start, HAZE_STEPS, false, range, through, jitter);
+    out = haze_walk(out, ray, h, mu, low_start, low_end, steps, shadowed, range, through, jitter);
+    out = haze_walk(out, ray, h, mu, low_end, end, HAZE_STEPS, false, range, through, jitter);
     return out;
 }
+
+// Off, nothing is marched and the clouds and haze are gone: for measuring what they cost. Leave it on.
+const MARCH: bool = true;
+// How many times the march is done over, for measuring what one costs. Leave it at 1.
+const MEASURE_REPEAT: i32 = 1;
+// Which parts are done over: 1 the cumulus, 2 the deck, 4 the haze.
+const MEASURE_PARTS: i32 = 7;
 
 // A different fraction at every pixel and every frame, for the temporal anti-aliasing to average.
 fn dither(at: vec2<f32>) -> f32 {
@@ -748,6 +845,9 @@ fn finite(v: vec4<f32>) -> vec4<f32> {
 
 @fragment
 fn fragment(in: FullscreenVertexOutput) -> Marched {
+    if !MARCH {
+        return Marched(vec4(0.0), vec4(0.0, 0.0, 0.0, 1.0), vec4(REACH / 1000.0, REACH / 1000.0, 1.0, 0.0));
+    }
     let size = vec2<i32>(textureDimensions(depth_drawn));
     let pixel = clamp(vec2<i32>(floor(in.position.xy)) * 2 + picked(globals.frame_count), vec2(0), size - 1);
     let uv = (vec2<f32>(pixel) + 0.5) / vec2<f32>(size);
@@ -794,5 +894,20 @@ fn fragment(in: FullscreenVertexOutput) -> Marched {
     out.cloud = finite(vec4(light * view.exposure, 1.0 - seen.through));
     out.haze = finite(vec4(hazed.light * view.exposure, hazed.cloud));
     out.reach = finite(vec4(range / 1000.0, limit / 1000.0, hazed.behind, 0.0));
+    // (the whole march again, for measuring: its cost is then the frame's change over the repeats)
+    for (var again = 1; again < MEASURE_REPEAT; again++) {
+        let other = fract(jitter + 0.37 * f32(again));
+        var twice = Seen(vec3(0.0), 1.0, 0.0, 0.0);
+        if (MEASURE_PARTS & 1) != 0 {
+            twice = see_cumulus(twice, ray, h, mu, limit, across, other);
+        }
+        if (MEASURE_PARTS & 2) != 0 {
+            twice = march_deck(twice, ray, h, mu, limit, across, other);
+        }
+        if (MEASURE_PARTS & 4) != 0 {
+            twice.light += haze(ray, h, mu, limit, range, twice.through, other).light;
+        }
+        out.cloud.x += 1.0e-20 * twice.light.x;
+    }
     return out;
 }

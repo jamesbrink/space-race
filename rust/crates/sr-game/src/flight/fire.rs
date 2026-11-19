@@ -38,12 +38,14 @@ const FADES: f32 = 1.3;
 const GLOW_EMISSIVITY: f64 = 2.0e-3;
 const GLOW_FLUX: f64 = 100_000.0;
 /// The collar: how dense it is at its densest, at what Mach number and over what spread of it, and the height
-/// over which it fades as the air dries and thins, m. Estimated from films of other launches (Saturn I and V,
-/// the Shuttle wore theirs from about Mach 0.9 to 1.05, densest just under 1, in the lowest ten kilometres or so);
-/// no film of a Mercury-Redstone going through the speed of sound was found, nor the humidity aloft that morning.
+/// over which it fades as the air dries and thins, m. Estimated from films of other launches (the Saturns and
+/// the Shuttle flashed theirs for a second or two just under Mach 1, in the lowest ten kilometres or so); no film
+/// of a Mercury-Redstone going through the speed of sound was found, nor the humidity aloft that morning. The
+/// Redstone gained about 0.02 of Mach a second there (Mach 0.94 at T+64 s, 1.02 at T+68 s in the simulator), so a
+/// spread of 0.012 is a collar seen for under two seconds.
 const COLLAR: f32 = 0.8;
 const COLLAR_MACH: f64 = 0.98;
-const COLLAR_SPREAD: f64 = 0.05;
+const COLLAR_SPREAD: f64 = 0.012;
 const COLLAR_DRIES: [f64; 2] = [8_000.0, 14_000.0];
 
 /// The booster's engine's fire.
@@ -277,6 +279,8 @@ mod tests {
     fn the_collar_is_worn_near_mach_one_low_down_and_nowhere_else() {
         assert!(vapour(0.98, 7_000.0) > 0.7 * COLLAR);
         assert!(vapour(0.8, 7_000.0) < 0.01 && vapour(1.2, 7_000.0) < 0.01);
+        // (at a fiftieth of Mach a second, it is worn for under two seconds: a tenth of its density a second off)
+        assert!(vapour(0.96, 7_000.0) < 0.1 * COLLAR && vapour(1.0, 7_000.0) < 0.1 * COLLAR);
         assert_eq!(vapour(0.98, 20_000.0), 0.0);
         assert_eq!(facing(Vec3::Y, Vec3::NEG_Y * 300.0), 0.0);
         assert_eq!(facing(Vec3::Y, Vec3::Y * 300.0), 1.0);

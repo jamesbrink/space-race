@@ -153,7 +153,7 @@ fn march(
 ) {
     let (prepass, offset) = view.into_inner();
     let (Some(step), Some(volumes), Some(targets)) = (step, volumes, targets) else { return };
-    if !step.live {
+    if !step.drawn {
         return;
     }
     let (Some(pipeline), Some(depth)) = (cache.get_render_pipeline(pipe.pipeline), prepass.depth_only_view())

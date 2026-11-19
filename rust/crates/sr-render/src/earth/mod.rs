@@ -5,6 +5,7 @@
 //! What is simplified is in `rust/README.md` and `rust/docs/terrain.md`: a sphere, not the ellipsoid; the land near
 //! the site is a designed ground in the repo's palette, its relief raised within two kilometres of the site.
 
+mod ab;
 mod chart;
 mod coast;
 mod cube;
@@ -67,7 +68,9 @@ impl Plugin for EarthPlugin {
         ))
         .init_asset::<json::JsonFile>()
         .init_asset_loader::<json::JsonLoader>()
-        .add_systems(Startup, lay::lay)
+        .init_resource::<ab::EarthAb>()
+        .add_systems(Startup, lay::lay.after(crate::clouds::CloudsMade))
+        .add_systems(First, ab::turn)
         .add_systems(
             Update,
             (

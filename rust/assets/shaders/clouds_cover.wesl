@@ -20,7 +20,7 @@ const WIDEST: f32 = 0.0715;
 const TAU: f32 = 6.2831853;
 // A small turret stands this many times its radius high; a big one no higher than the layer's depth. Estimated:
 // fair-weather cumulus are about as tall as they are wide until the layer's top holds them down.
-const ASPECT: f32 = 3.0;
+const ASPECT: f32 = 1.6;
 // The patches each laying of the sheet takes, a fraction of a patch to a cell (about 60 km across).
 const PATCHES: f32 = 0.03;
 
@@ -65,9 +65,10 @@ fn mirrored(on: vec2<f32>) -> vec2<f32> {
 // The sheet read at a place: red the scaled distance to the nearest turret, green its radius in cells, blue its
 // cloud's age, alpha how far every turret's edge is, unspread, in cells (field.rs `texture`). Both layings, where
 // a place has some of each: whichever turret is nearer once each is shrunk by how little of its laying is there.
-fn sheet_texel(sheet: texture_2d<f32>, smp: sampler, en: vec2<f32>, along: vec2<f32>, cell: f32) -> vec4<f32> {
+// `second` is `second_laying` there: it changes over tens of kilometres, so a march may read it once for many steps.
+fn sheet_texel(sheet: texture_2d<f32>, smp: sampler, en: vec2<f32>, along: vec2<f32>, cell: f32, second: f32)
+    -> vec4<f32> {
     let on = on_sheet(en, along, cell);
-    let second = second_laying(en / cell);
     if second <= 0.0 {
         return textureSampleLevel(sheet, smp, on / CELLS, 0.0);
     }
@@ -91,10 +92,10 @@ fn sheet_texel(sheet: texture_2d<f32>, smp: sampler, en: vec2<f32>, along: vec2<
 // high up. Its scale is chosen so the cover is still the record's on the whole. Estimated: the sizes and the mix by
 // eye from photographs of such fields from aircraft and from orbit.
 fn gather(on: vec2<f32>) -> f32 {
-    let streets = noise2(vec2(on.x * 0.05, on.y * 0.32) + 1.7);
+    let streets = noise2(vec2(on.x * 0.07, on.y * 0.21) + 1.7);
     let clumps = noise2(on * 0.11 + 7.3);
     let broad = noise2(on * 0.022 + 3.9);
-    let v = 0.45 * streets + 0.33 * clumps + 0.22 * broad;
+    let v = 0.35 * streets + 0.4 * clumps + 0.25 * broad;
     return (0.12 + 1.8 * smoothstep(0.28, 0.72, v)) / 1.12;
 }
 
@@ -133,11 +134,11 @@ fn column(texel: vec4<f32>, spread: f32, cell: f32, depth: f32, clock: f32) -> C
 
 // How much of the Sun the cloud over a column takes: 0 in the open, 0.9 under the thick of a cloud.
 fn shade(col: Column) -> f32 {
-    return 0.9 * smoothstep(0.12, 0.4, col.within) * smoothstep(0.0, 120.0, col.top);
+    return 0.92 * smoothstep(0.1, 0.22, col.within) * smoothstep(0.0, 120.0, col.top);
 }
 
 // How much of the Sun a place `height` m up has lost to the cumulus: what the field says of the columns its
-// sunbeam came down through, low in the layer and high, each counting only if its turret stands that high. The
+// sunbeam came down through a third of the way up the layer, if its turret stands that high. The
 // shadows on the ground (height 0) and the shafts in the air are both this. `en` is the place in the cumulus'
 // drifting frame; `sun` the way to the Sun as (east, north, up); `layer` the cumulus' base and depth, m; `laid`
 // the spread before it is gathered (`spread_for` of the cover there); `wind` their drift, m/s; `cell` the metres
@@ -148,17 +149,18 @@ fn sun_shadow(sheet: texture_2d<f32>, smp: sampler, en: vec2<f32>, height: f32, 
         return 0.0;
     }
     let along = along_wind(wind);
-    var lit = 1.0;
-    for (var k = 0; k < 2; k++) {
-        let up = layer.y * (0.2 + 0.45 * f32(k));
-        let crossed = layer.x + up;
-        if crossed < height {
-            continue;
-        }
-        let there = en + sun.xy * ((crossed - height) / sun.z);
-        let spread = laid * gather(on_sheet(there, along, cell));
-        let col = column(sheet_texel(sheet, smp, there, along, cell), spread, cell, layer.y, clock);
-        lit *= 1.0 - shade(col) * smoothstep(0.0, 60.0, col.top - up);
-    }
-    return 1.0 - lit;
+    // (where the sunbeam crosses a third of the way up the layer, or the place itself if it is higher)
+    let up = max(layer.y * 0.3, height - layer.x);
+    let there = en + sun.xy * (max(layer.x + up - height, 0.0) / sun.z);
+    let spread = laid * gather(on_sheet(there, along, cell));
+    let second = second_laying(there / cell);
+    return shadow_from(sheet, smp, there, up, spread, second, along, layer.y, cell, clock);
+}
+
+// The same, from the place `there` where the sunbeam crosses the layer `up` m above its base, with the spread there
+// (gathered) and its `second_laying` already known: for a march that reads those once for many steps.
+fn shadow_from(sheet: texture_2d<f32>, smp: sampler, there: vec2<f32>, up: f32, spread: f32, second: f32,
+    along: vec2<f32>, depth: f32, cell: f32, clock: f32) -> f32 {
+    let col = column(sheet_texel(sheet, smp, there, along, cell, second), spread, cell, depth, clock);
+    return shade(col) * smoothstep(0.0, 60.0, col.top - up);
 }

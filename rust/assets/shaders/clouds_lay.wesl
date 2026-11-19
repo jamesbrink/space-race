@@ -101,5 +101,7 @@ fn fragment(
     }
     let light = laid.cloud.xyz * laid.haze.w + laid.haze.xyz;
     let hidden = 1.0 - (1.0 - laid.cloud.w) * laid.behind;
-    return vec4(max(light, vec3(0.0)), saturate(hidden));
+    // (nothing but finite numbers into the frame: the temporal filter keeps a NaN for good, and the frame goes black)
+    let out = vec4(clamp(light, vec3(0.0), vec3(6.0e4)), saturate(hidden));
+    return select(vec4(0.0), out, out == out);
 }

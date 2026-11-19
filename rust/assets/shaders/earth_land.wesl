@@ -21,6 +21,8 @@ const BEACH: vec3<f32> = vec3(0.62, 0.56, 0.45);
 const WRACK: vec3<f32> = vec3(0.12, 0.1, 0.07);
 const SHELL: vec3<f32> = vec3(0.42, 0.40, 0.35);
 const BALLAST: vec3<f32> = vec3(0.30, 0.29, 0.27);
+// The cell the scrub's crowns are scattered by, m (earth/sow.rs has the same). Estimated.
+const CROWN_CELL: f32 = 2.2;
 // Marsh grass, the mud at a lagoon's edge and mangrove (estimated: no source of ours gives their colours).
 const MARSH: vec3<f32> = vec3(0.21, 0.23, 0.075);
 const MUD: vec3<f32> = vec3(0.085, 0.072, 0.052);
@@ -51,6 +53,8 @@ struct Site {
     sunward: vec2<f32>,
     // how squarely the ground is seen: 1 from straight above, 0 edge-on
     steep: f32,
+    // the way the wind blows over it (unit, east and north)
+    wind: vec2<f32>,
 }
 
 // What the ground there is.
@@ -93,7 +97,7 @@ fn cover(s: Site) -> Cover {
     let ridge = sin(phase) * 0.5 + 0.5;
     let which = lattice3(vec2<i32>(i32(floor(phase / TAU + 0.25)), 7), 50u);
     let pieces = smoothstep(0.48, 0.62, grain(p * 0.0026 + which.yz * 40.0, 49u));
-    c.swale = smoothstep(0.78 + 0.16 * which.x, 0.995, ridge) * pieces * which.z * which.z;
+    c.swale = smoothstep(0.74 + 0.16 * which.x, 0.99, ridge) * pieces * (0.25 + 0.75 * which.z);
     // The openings: sandy, grassy, of every size from a room to a field, and in drifts: a tract full of them and the
     // next with few, so that from the air the scrub is mottled at every scale and not one even scatter.
     let big = billow(p / 330.0, 31u);
@@ -163,14 +167,33 @@ fn sand(s: Site, c: Cover) -> Soil {
     colour = mix(colour, colour * BEACH / SAND, 0.75 * c.beach);
     // its lumps: trodden and churned at a foot's size, hummocks, and the lie of it over some metres
     let churn = 0.6 + 0.8 * max(s.graded, c.beach);
-    let foot = grain_d(p / 0.35, 5u);
-    let hummock = grain_d(p / 1.6, 6u);
+    // (the finer two only where they can be seen: past that they are their mean)
+    var foot = vec3(0.5, 0.0, 0.0);
+    var hummock = vec3(0.5, 0.0, 0.0);
+    if s.seen < 1.0 {
+        foot = grain_d(p / 0.35, 5u);
+        hummock = grain_d(p / 1.6, 6u);
+    }
     let lie = grain_d(p / 7.0, 7u);
     o.slope = foot.yz * (0.085 * churn) + hummock.yz * 0.05 + lie.yz * 0.03;
     // (a hollow is darker: less of the sky reaches it, and what is damp gathers there)
     let hollow = (0.5 - foot.x) * churn * 0.5 + (0.5 - hummock.x) + (0.5 - lie.x) * 0.6;
     colour *= 1.0 - 0.3 * hollow;
     o.sky = saturate(1.0 - 0.5 * hollow);
+    // loose dry sand (the beach above the swash, the dune): rippled by the wind, a crest every ten centimetres
+    // square to it, the troughs darker with the heavy minerals that gather there; blown paler and darker in
+    // patches of every size; and darker where it is damp in the lows behind the dune. Estimated.
+    let loose = saturate(c.beach + c.dune + 0.6 * c.strand);
+    if loose > 0.0 && s.seen < 3.0 {
+        let ripple = shown(0.1, s.seen) * loose;
+        let phase = dot(p, s.wind) * (TAU / 0.1) + 6.0 * grain(p / 0.8, 64u) + 3.0 * grain(p / 3.0, 65u);
+        o.slope += s.wind * (0.12 * cos(phase) * ripple);
+        colour *= 1.0 - 0.08 * ripple * (0.5 - 0.5 * sin(phase));
+        let blown = billow(p / 3.5, 66u) * 0.6 + billow(p / 22.0, 67u) * 0.4;
+        colour *= 1.0 + 0.22 * (blown - 0.5) * loose;
+        let low = smoothstep(0.55, 0.75, billow(p / 30.0, 68u)) * (c.dune + c.strand);
+        colour = mix(colour, colour * vec3(0.72, 0.7, 0.68), 0.6 * low);
+    }
     // shell hash: broken shell a few centimetres across, pale, and darker bits among it; coarser pieces rarer
     let see_hash = shown(0.12, s.seen);
     if see_hash > 0.0 {
@@ -275,7 +298,10 @@ fn scrub(s: Site, soil: Soil, c: Cover) -> Soil {
     }
     // (salt-pruned low by the sea, two metres in the scrub, a hammock's trees by the lagoon: ground.ts CANOPY)
     let height = mix(mix(0.9, 2.1, smoothstep(0.12, 0.42, c.zone)), 6.0, smoothstep(0.82, 0.98, c.zone));
-    let cell = 1.3 + 0.75 * height;
+    // (the crowns are scattered on one lattice everywhere: a lattice whose size followed the zone would be
+    // stretched across it, and its cells would run in stairs along the shore)
+    let cell = CROWN_CELL;
+    let small = mix(0.6, 1.0, smoothstep(0.9, 2.1, height));
     // (not one green: stands of different ages and kinds, tens to hundreds of metres across)
     let stand = billow(s.p * 0.0025, 64u);
     let leafy = mix(mix(LEAF_LIT, LEAF_OTHER, grain(s.p * 0.03, 60u)), MANGROVE, c.marsh) * (0.75 + 0.5 * stand);
@@ -289,26 +315,36 @@ fn scrub(s: Site, soil: Soil, c: Cover) -> Soil {
     let whole = mix(LEAF * 0.8, young, 0.1 + 0.6 * smoothstep(0.3, 0.7, clumps) + 0.3 * (stand - 0.5))
         * (1.0 - 0.45 * shadowed);
     // (seen edge-on a painted crown is a stain, not a dome: the scrub is then its one tone)
-    let see = shown(cell, s.seen) * smoothstep(0.1, 0.3, s.steep);
+    // (a crown is drawn as one once it is three pixels across; below that the scrub's tone carries it, and the
+    // search for the nearest crown, the costliest part of the ground, is not made)
+    let see = shown(0.5 * cell, s.seen) * smoothstep(0.1, 0.3, s.steep);
     var canopy = c.woody;
     var colour = whole;
     if see > 0.0 {
         let crown = nearest(s.p / cell, 12u);
         let has = step(crown.z, c.woody * 1.1);
-        let r = 0.55 + 0.4 * fract(crown.z * 13.0);
+        let r = (0.55 + 0.4 * fract(crown.z * 13.0)) * small;
         let d = length(crown.xy) / r;
-        let body = (1.0 - smoothstep(0.85, 1.0, d)) * has;
+        // (a crown painted no wider than the plant stood on it: earth/sow.rs makes it eight tenths of its cell's share)
+        let body = (1.0 - smoothstep(0.68, 0.8, d)) * has;
         let rise = sqrt(max(1.0 - d * d, 0.0));
         // its own green, darker low on its sides, and its leaves: fans, or a mottle of small ones
         let kind = fract(crown.z * 29.0);
-        let fans = 0.9 + 0.16 * sin(atan2(crown.y, crown.x) * 11.0 + crown.z * 50.0 + 3.0 * grain(s.p / 0.3, 62u)) * (1.0 - rise) * shown(0.15, s.seen);
+        // (a palmetto seen from above is a clump of fans overlapping every which way, not a star)
+        let fans = 0.82 + 0.36 * grain(s.p / 0.3 + crown.z * 50.0, 62u) * (1.0 - 0.5 * rise) * shown(0.15, s.seen);
         let leaves = 0.8 + 0.4 * grain(s.p / 0.22, 63u) * shown(0.4, s.seen);
         let own = mix(LEAF, mix(leafy, LEAF_OTHER, step(0.6, kind)), 0.25 + 0.75 * rise) * mix(fans, leaves, step(0.45, kind));
+        // (near the eye a plant stands on its crown and is seen, so what is painted there is the ground under it:
+        // litter in the plant's shade. A painted crown seen beside the plant would be a decal lying on the sand)
+        let stood = 1.0 - smoothstep(0.03, 0.09, s.seen);
         // the shadow it throws, and the litter and shade under the scrub
         let thrown = crown.xy * cell - s.sunward * (0.6 * height);
         let shade = (1.0 - smoothstep(0.6 * r * cell, 1.05 * r * cell, length(thrown))) * has * (1.0 - body);
-        let under = mix(o.colour, LITTER, saturate(c.woody * 1.3) * 0.8) * (1.0 - 0.55 * shade);
-        colour = mix(whole, mix(under, own, body), see);
+        let under = mix(o.colour, LITTER, saturate(c.woody * 1.3) * 0.8 * (1.0 - 0.6 * stood)) * (1.0 - 0.55 * shade * (1.0 - stood));
+        // (only a little darker than the sand round it: the plants are stood by the coarser coast the processor
+        // has, and where one is not quite where its crown is painted, a dark disc would show)
+        let ground = mix(own, mix(o.colour, LITTER, 0.2) * (0.85 + 0.15 * d), stood);
+        colour = mix(whole, mix(under, ground, body), see);
         canopy = mix(c.woody, max(body, saturate(c.woody * 1.3) * 0.8), see);
         // (a dome's slope, steeper toward its edge)
         o.slope = mix(o.slope, -crown.xy / max(length(crown.xy), 0.05) * min(d / max(rise, 0.35), 2.2) * (height / (r * cell)) * 0.5, body * see);

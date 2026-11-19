@@ -15,8 +15,9 @@ pub const CELL: f32 = 1.25;
 /// enough down the wind that what the blast raised in its first quarter minute is still in it when the box lets
 /// go of the pad and drifts with it (`pace.rs`), and tall enough for the warm cloud to rise in.
 pub const CELLS: UVec3 = UVec3::new(176, 40, 96);
-/// Fine cells to a coarse one, each way.
-pub const FINER: u32 = 2;
+/// Fine cells to a coarse one, each way: one, for the frame's budget (the billows' knobs are the picture's,
+/// `fumes_march.wesl`, not the grid's; a grid twice as fine each way cost eight times as much to carry and light).
+pub const FINER: u32 = 1;
 /// Coarse cells to a cell of the volume that says where there is anything at all.
 pub const COARSER: u32 = 4;
 /// The Sun's view of the box is this many cells a side.

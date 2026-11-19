@@ -43,6 +43,7 @@ struct EarthMarks {
 
 // Switches for measuring what each part costs (rust/docs/terrain.md, "Measuring"): the near land's material and
 // the sea's waves, foam and depth colour. With one off, that part is a flat tone. Leave them on.
+// (and `earth.day.w` turns the land's (1) and the sea's (2) off: the A/B switch, sr-render/src/earth/ab.rs)
 const LAND_DETAIL: bool = true;
 const SEA_DETAIL: bool = true;
 // And the Sun's glint on the water (earth_glint.wesl): off, the water has the Sun's light through it and none off it.
@@ -109,7 +110,8 @@ fn made_at(p: vec2<f32>) -> Made {
             m.surface = marks.way_kinds[i].y;
         }
     }
-    let patches = i32(marks.counts.y);
+    // (past the furthest patch's reach none need be looked at)
+    let patches = select(0, i32(marks.counts.y), length(p) < marks.counts.z);
     for (var i = 0; i < patches; i++) {
         let box = marks.patches[i];
         let kind = marks.patch_kinds[i];
@@ -128,7 +130,7 @@ fn made_at(p: vec2<f32>) -> Made {
         }
     }
     // Handed no marks, the ground round the site's own models is taken as cleared, as a complex's is. Estimated.
-    if ways + patches == 0 {
+    if ways + i32(marks.counts.y) == 0 {
         m.cleared = 1.0 - smoothstep(230.0, 290.0, length(p) + 40.0 * (grain(p * 0.02, 39u) - 0.5));
     }
     return m;
@@ -255,7 +257,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
             // (east and north there, in the site's frame, near enough: the frame's own compass turned to it)
             slope = vec2(de, dn) * (1.0 - own);
         }
-        if own > 0.0 && LAND_DETAIL {
+        if own > 0.0 && LAND_DETAIL && (u32(earth.day.w) & 1u) == 0u {
             var site: Site;
             site.p = en;
             site.shore = shore;
@@ -273,6 +275,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
             let sun_en = vec2(dot(earth.sun.xyz, earth.east.xyz), dot(earth.sun.xyz, earth.north.xyz));
             site.sunward = sun_en / max(earth.sun.y, 0.15);
             site.steep = saturate(dot(up, pbr.V));
+            site.wind = select(vec2(-1.0, 0.0), normalize(earth.wind.xy), dot(earth.wind.xy, earth.wind.xy) > 1.0e-4);
             let soil = ground(site);
             colour = mix(colour, soil.colour, own);
             slope = mix(slope, soil.slope, own);
@@ -289,10 +292,11 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     var sea_lean = vec3(0.0);
     var sea_mss = 0.03;
     var sea_foam = 0.0;
-    if wet > 0.0 && !SEA_DETAIL {
+    let sea_detail = SEA_DETAIL && (u32(earth.day.w) & 2u) == 0u;
+    if wet > 0.0 && !sea_detail {
         sea_colour = SEA;
     }
-    if wet > 0.0 && SEA_DETAIL {
+    if wet > 0.0 && sea_detail {
         let blown = earth.wind.xy;
         let speed = length(blown);
         let toward = select(vec2(-1.0, 0.0), blown / max(speed, 0.001), speed > 0.01);
@@ -372,7 +376,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
         // the water's own colour, lit by the Sun through its surface, and the foam on it
         let body = pbr.material.base_color.rgb * saturate(dot(n, l)) / 3.14159265
             * (1.0 - 0.06 * (1.0 - sea_foam));
-        let reflected = select(0.0, glint(n, pbr.V, l, sea_mss, en, seen_square, clock), GLINT) * (1.0 - sea_foam);
+        let reflected = select(0.0, glint(n, pbr.V, l, sea_mss, en, seen_square, clock), GLINT && sea_detail) * (1.0 - sea_foam);
         out.color = vec4(out.color.rgb + wet * (lit * body + sun_on_water(lit, reflected)), out.color.a);
     }
     out.color = main_pass_post_lighting_processing(pbr, out.color);

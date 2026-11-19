@@ -9,7 +9,7 @@ code says the same beside each constant; this note is where they are read togeth
 | Piece | Code | What drives it |
 |---|---|---|
 | A motor's fire | `sr-render/src/plume/` (`jet.rs`, `draw.rs`, `glare.rs`), `shaders/plume.wesl` | the motor's `Flame` (`sr-missions`), how hard it burns (`sr-game/src/flight/fire.rs`, from the hand and the plan), the air's pressure, how far down the jet the ground is |
-| Its light | `plume/glare.rs` | two spot lamps back to back at the fire, as strong as the fire's outline and the burning sheet under it; the one down the jet casts shadows while the ground is within 60 m |
+| Its light | `plume/glare.rs` | two spot lamps back to back at the fire, as strong as the fire's outline and the burning sheet under it; neither casts shadows (the frame's budget) |
 | The air round the pad | `sr-render/src/fumes/`, `shaders/fumes_solve.wesl`, `fumes.wesl`, `fumes_shadow.wesl` | a fluid solved on the GPU each step of the flight's clock, fed by the blast, the vents and the first fire (`flight/dust.rs`), with the day's wind (`PadAir`) |
 | A burst booster's smoke | `sr-render/src/smoke.rs`, `shaders/puff.wesl` | puffs let go by the break-up (`flight/breakup.rs`) |
 | The glow coming back in | `sr-render/src/shock/glow.rs`, `shock/light.rs`, `shaders/glow.wesl` | the stagnation heat flux and the gas temperature behind the shock (`Telemetry.heat`, `sr-sim/src/heat.rs`), the Mach number, how squarely the shield meets the air |
@@ -34,9 +34,13 @@ collar 291 mm up the bell. `FLAME.exit_height` is `derived` and says this.
 **Look (estimated, each against a still).**
 - Luminance 8,000 cd/m^2 through the heart (`FLAME.luminance`): paler than sunlit concrete and a little
   brighter than the hazy sky in NASA 6100884, S61-01928 and S63-22731 (MR-2).
-- The knot: the shock cells show at no less than half strength even in a matched jet (`draw.rs`,
-  `DIAMONDS_LEAST`), and where they cross on the axis the gas is a knot `KNOT` (16) times the heart about it,
-  sharpest at the first and gone in `KNOTS_LAST` (2.2) cells (`plume.wesl`). Set so the first knot, as in
+- The diamonds: the shock cells show at no less than half strength even in a matched jet (`draw.rs`,
+  `DIAMONDS_LEAST`), and where they cross on the axis the gas is a knot `KNOT` (24) times the heart about it,
+  as wide as most of the jet, sharpest at the first and gone in `KNOTS_LAST` (3) cells (`plume.wesl`). Each cell is 0.84 of the one before
+  (`CELL_SHRINKS`: the jet slows and narrows as it mixes), so the knots close up and narrow down the jet, a train
+  of three to five; between them the expanded gas is up to 75 per cent dimmer (`GAPS`), so the train reads as
+  beads; the first cells are less streaked than the mixed body below. As the air thins the jet swells and the
+  train fades out with it. Set so the first knot, as in
   6100884, is white on the print and blooms (over the grade's bloom threshold, some 33,000 cd/m^2) while the
   body does not.
 - Colours (`FLAME.colours`): a white knot, a pale peach body, orange where the jet burns in the air and in the
@@ -72,8 +76,9 @@ of water; the mixing line with humid air can cross saturation. That reasoning is
 is set against the stills.
 
 **The fluid (`fumes_solve.wesl`).** Stam's stable fluids with vorticity confinement on a 220 x 50 x 120 m box of
-1.25 m cells (dust and vapour on cells half that), the pad 60 m in from its upwind side, 60 steps to a second of
-the clock (steps up to a twentieth of a second when the clock runs fast). Hot air rises; the wind is the day's (090 at 5.1 m/s at 10 m, ISD;
+1.25 m cells (dust and vapour on the same cells: the billows' finer shape is the picture's), the pad 60 m in from
+its upwind side, one step a frame of the clock's time since the last (a sixtieth of a second at 60 frames, up to
+a twentieth when the clock runs fast or a frame is slow), the pressure searched six times over in pairs. Hot air rises; the wind is the day's (090 at 5.1 m/s at 10 m, ISD;
 a seventh-power profile); the ground drags. The vapour evaporates in about 25 s (`VAPOUR_LASTS`; still dense with the vehicle well up in
 S61-01908), the fine
 dust lasts about two minutes beyond what mixing takes (`DUST_LASTS`) and falls at 4 cm/s (`DUST_FALLS`: Stokes
@@ -86,21 +91,44 @@ and the box's speeding up is a push up the wind. It is kept for 5 minutes after 
 (`LINGERS`). The picture thins the fumes over 18 m toward the box's open sides and over 7 m under its ceiling
 (`fumes.wesl`, `WALLS`), so no wall of the grid is seen.
 
-**Its light (`fumes.wesl`).** The Sun through the fumes (an opacity volume marched 8 m toward it), the
-scattering orders after the first as a gain and a softer shade (`DEEPER_ORDERS`, `DEEPER_SHADE`), the sky
-from above with three quarters of it kept even deep in the shade (`SKY_FLOOR`: the shaded side of the billows
-in S61-02409 and S61-03121 is a light grey), the sunlit ground from below, and the fire and its sheet as a point lamp inside. The shadow of the
-fumes falls on the ground, the vehicle and themselves through the Sun's own shadow maps (a stochastic shadow
-map). A solid's shadow (the gantry's) takes all of the first scattering and only two fifths of
-the rest (`SHADOW_FILLS`), so it falls grey on a billow, not black. Where the fumes are read is bent by the
-repeating block of eddies at 9 m and 3.2 m by 1.6 m and 0.6 m (`BILLOWS`, `BENT`), so their outline is
-knobbed at the sizes S61-02409 shows and not at the grid's. The phase function's forward weight, the gains,
-the dust's and vapour's colours and that bending are estimated.
+**The picture (`fumes/pass.rs`, `fumes_march.wesl`, `fumes/lay.rs`, `fumes_lay.wesl`).** The fumes are marched in
+their own pass, as the clouds are: one ray for every four pixels (a different one of the four each frame), into
+two half-size targets, after the depth prepass; a ball round the eye lays them over the frame at full size,
+taking for each pixel the rays that went about as far as what is solid there, so a gantry's edge stays sharp.
+The box's mesh (`fumes.wesl`) now only casts the fumes' shadow into the Sun's shadow maps (a stochastic shadow
+map: `fumes_shadow.wesl`); its own picture draws nothing. The march finds where along the ray there is anything
+(5 m strides over a coarse volume), strides across empty air, steps back on meeting fumes so the outline is
+found where it is, then steps by optical depth (0.35 of a step's worth, between 0.25 and 0.4 m where there are
+fumes) and stops once less than 2 per cent of what is behind comes through.
 
-**What it costs.** On the shared M4 Max the frame with the cloud filling the view at eye height ran some 5 to
-20 ms slower at 2560 x 1440 with the fumes on than off (`fumes::ON`, an A/B switch; the GPU was shared with
-other work and the figure is not better than that). The march is most of it: per pixel some 20 steps, each
-two reads of the eddies, the fumes, the light and every eighth a read of the Sun's shadow maps.
+**The billows.** The vapour is eroded at its outline by eddies of three sizes (5.5, 2.2 and 0.9 m, `KNOBS`, read
+from the repeating block of curl noise): where the grid's vapour is under 1.2/m (`SKIN`) the eddies eat up to
+three quarters of it (`ERODE`) and what is left comes to full thickness over a short edge (`EDGE`), so the
+outline is a crisp knobbed one, as S61-02409's; the hollows between knobs see up to half less of the Sun and the
+sky (`HOLLOWS`); inside, the vapour varies by 60 per cent on the largest eddies and is never thicker than 5/m
+(`INSIDE`, `THICKEST`), so the inside of a billow is seen into a metre or so. Where the fumes are read is bent
+by eddies of 9 and 3.2 m by 1.6 and 0.6 m (`BILLOWS`, `BENT`). The dust is cut at its edges finer than the grid
+(`CUT`), as wisps. All estimated.
+
+**Its light.** The Sun through the fumes (an opacity volume marched 8 m toward it), thrown by two lobes, a sharp
+forward one (g 0.8, a third of the light) that silvers a billow seen toward the Sun and a broad one (g 0.2); the
+scattering orders after the first as a gain and a softer shade (`DEEPER_ORDERS`, `DEEPER_SHADE`); the sky from
+above with three quarters of it kept even deep in the shade (`SKY_FLOOR`: the shaded side of the billows in
+S61-02409 and S61-03121 is a light grey); the sunlit apron from below (albedo 0.35, doubled for the light a thick
+billow scatters about inside itself: `GROUND_ALBEDO`, `BOUNCE`); and the fire and its sheet as a point lamp
+inside, its light thrown forward through the fumes toward an eye looking at it (g 0.6, `FIRE_G`), so a fire
+seen through smoke glows. All estimated. The solid things' shadows in the fumes (the gantry's on a billow) are
+not drawn: the march has no shadow maps to read.
+
+**What it costs.** The budget is 3 ms for the fumes, the fire and the glow together at liftoff with the cloud
+filling the view at eye height, 2560 x 1440, and 1 ms in flight. To hold it: the march is for a pixel in four;
+the grid's dust and vapour are on its 1.25 m cells, not half that (eight times less to carry and light); one
+solver step a frame; six pressure turns, not eight; the fire's lamps cast no shadows (each was the whole scene
+drawn again). To measure it within one run, set `SR_AB` to a number of seconds: the fumes and the fires are on
+and off by turns and each turn is logged, so `--bench` seconds can be split (`SR_AB_PARTS` picks `s` the solver,
+`d` the fumes' picture, `f` the fires). On the shared machine (six to eight other renders and builds running)
+the seconds without them were 2 to 7 ms faster at the quietest quarter of the run, in four runs; the medians
+were too noisy to say more. `fumes::ON`, `plume::ON` and `shock::ON` take each out of the build.
 
 ## Coming back in
 
@@ -128,9 +156,13 @@ wake's flicker stands for it.
 
 At about T+67 s Freedom 7 passed Mach 1 near 8.3 km. Where the flow turns back past the shoulder at the
 capsule's rim it expands and cools, and in humid air its water condenses in a collar until the shock behind
-squeezes it dry. `shock/collar.rs` draws an open bell of mist from the rim, 1.4 rim radii long and flaring by
-a third, streaked along the flow and lit by the Sun (mostly forward) and the sky. Its density (`fire.rs`,
-`vapour`): 0.8 at its densest, at Mach 0.98, falling off over 0.05 of Mach either side, fading from 8 to 14
+squeezes it dry. `shock/collar.rs` draws a thin, translucent sheet of mist from the rim, reaching out to 1.75
+rim radii and swept 0.45 rim radii aft, soft at the shoulder and feathered to nothing toward the shock (whose
+place wavers round the body), streaked along the flow and flickering, lit almost only by the Sun scattered
+forward (g 0.8), so it shows where the Sun is behind it and hardly at all elsewhere; it hides a third of what it
+would for the light it scatters. Its density (`fire.rs`,
+`vapour`): 0.8 at its densest, at Mach 0.98, falling off over 0.012 of Mach either side (the Redstone gained
+about 0.02 of Mach a second there, so it is seen for under two seconds), fading from 8 to 14
 km as the air dries and thins, and only while the nose meets the air. Every one of those is estimated from
 films of other launches (Saturn I and V, the Shuttle); no film of a Mercury-Redstone through Mach 1 was found,
 nor the humidity aloft that morning. The Prandtl-Glauert cone of pictures (a disc at the shock) is the same
@@ -147,6 +179,8 @@ thing; only the collar at the one shoulder is drawn.
 - The fumes do not shade the clouds' haze or the fire; the fire lights them as a point.
 - No shimmer behind the fire or the capsule; no shock layer radiation worked from the gas's chemistry.
 - One vapour collar, at the shield's rim; none at the tower or the tail.
+- No shadow of a solid thing (the gantry, the vehicle) falls in the fumes: the quarter-rate march reads no
+  shadow maps.
 
 ## Sources
 

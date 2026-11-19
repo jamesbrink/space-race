@@ -116,8 +116,15 @@ impl Marks {
             };
             marks.patch_kinds[i] = Vec4::new(axis.x, axis.y, patch.corner, ground);
         }
+        // (and how far from the site the furthest patch reaches, with its frayed edge: past it the shader need not
+        // look at any)
+        let reach = self
+            .patches
+            .iter()
+            .map(|p| p.centre.length() + p.half.length() + p.corner + 30.0)
+            .fold(0.0_f32, f32::max);
         marks.counts =
-            Vec4::new(self.ways.len().min(WAYS) as f32, self.patches.len().min(PATCHES) as f32, 0.0, 0.0);
+            Vec4::new(self.ways.len().min(WAYS) as f32, self.patches.len().min(PATCHES) as f32, reach, 0.0);
         marks
     }
 }
@@ -191,6 +198,6 @@ mod tests {
         assert_eq!(marks.way_kinds[0], Vec4::new(3.5, 1.0, 0.0, 0.0));
         assert_eq!(marks.patches[0], Vec4::new(50.0, 0.0, 0.0, 0.0));
         assert_eq!(marks.patch_kinds[0], Vec4::new(0.0, 1.0, 20.0, 1.0));
-        assert_eq!(marks.counts, Vec4::new(1.0, 1.0, 0.0, 0.0));
+        assert_eq!(marks.counts, Vec4::new(1.0, 1.0, 100.0, 0.0));
     }
 }
