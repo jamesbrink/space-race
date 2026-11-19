@@ -1086,7 +1086,13 @@ read gives enough of to fly (issue #10).
   departure grows no faster), the plan unchanged, and a path that comes round still reaching most of the way round,
   that curve is its future and nothing is worked out again (path.ts `holds`); under thrust the flight leaves it within
   a frame or two and it is worked again (on the launch vehicle of a flight into orbit the path is "if cut now" unless the
-  guided future is chosen: the deck says which beside its figures); nothing is predicted while the path is off. Whichever deck predicts (the ballistic deck's path.ts itself, the orbital deck's `predict`), path.ts
+  guided future is chosen: the deck says which beside its figures); nothing is predicted while the path is off, nor on the
+  pad with guidance off and nothing lit, nor once down. What is drawn then needs no prediction: the line flown, and **the
+  record's own run as a line of reference** (`viewer/pathref.ts`; rendering.md, "The predicted path"), which is there from the
+  pad for a flight flown by hand. It is the record's run and no second simulation: `PathSource.intended` if the deck gives
+  one (the run's samples in the form `track` gives the line flown in), else sim/run.ts `recordOf`, made once a flight;
+  its events are the run's (`Run.events`) read against what the plan says each does, and nothing of it is fitted or
+  moved by the live flight. Where the run misses the record (`MISSES`) the line is the run's. Whichever deck predicts (the ballistic deck's path.ts itself, the orbital deck's `predict`), path.ts
   is given one `Predictor` and one `Prediction` and knows nothing of which it was. A path that comes down is drawn over
   the ground (each point where it will be over the ground at its own instant); one that goes round is drawn in the
   navball's frame (O), in Orbit as it lies in the frame that does not turn. It is an instrument's line, and lunar-lift's
