@@ -14,6 +14,8 @@ struct Print {
     // what the shade and the light are toned toward (rgb) and how strongly (a)
     shade: vec4<f32>,
     light: vec4<f32>,
+    // the black lifted toward a colour (rgb) by so much at black (a), nothing at white
+    lift: vec4<f32>,
     colour: f32,
     contrast: f32,
     pivot: f32,
@@ -68,6 +70,7 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     // the grey mapped from the shade's colour to the light's and laid over the frame as a soft light
     let tone = mix(print.shade.rgb, print.light.rgb, dot(coded, LUMA));
     coded = mix(coded, soft_light(coded, tone), print.shade.a);
+    coded = coded + print.lift.rgb * print.lift.a * (vec3(1.0) - coded);
 
     // the corners let go: a gradient from the middle to the corners, taken to a power, its floor raised
     let across = (in.uv - 0.5) * vec2(16.0, 9.0);

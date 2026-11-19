@@ -72,16 +72,17 @@ pub(super) struct Before {
 }
 
 /// The Sun's light as it reaches a cloud through the air in its way, lux in red, green and blue, with the Sun
-/// this high (the sine of its elevation).
+/// this high (the sine of its elevation); none once its disc is under the horizon (`crate::night::sun_left`).
 #[must_use]
 pub fn sunlight(high: f32) -> Vec3 {
-    lux::RAW_SUNLIGHT * (-AIR_MASS / high.max(0.03)).exp()
+    lux::RAW_SUNLIGHT * (-AIR_MASS / high.max(0.03)).exp() * crate::night::sun_left(high)
 }
 
-/// The clear sky's light on a cloud, cd/m^2: less as the Sun goes down.
+/// The clear sky's light on a cloud, cd/m^2: less as the Sun goes down, and through twilight to the night sky's
+/// (`crate::night::sky_left`).
 #[must_use]
 pub fn skylight(high: f32) -> Vec3 {
-    SKYLIGHT * high.max(0.03).sqrt()
+    SKYLIGHT * high.max(0.03).sqrt() * crate::night::sky_left(high)
 }
 
 fn layer(l: Layer) -> Vec4 {

@@ -14,6 +14,7 @@ use bevy::post_process::bloom::{Bloom, BloomCompositeMode, BloomPrefilter};
 use bevy::prelude::*;
 use bevy::render::view::{ColorGrading, ColorGradingGlobal};
 
+use crate::night::Dusk;
 use crate::origin::Eye;
 use crate::print::Print;
 
@@ -63,6 +64,7 @@ struct Recipe {
 const FILM: Print = Print {
     shade: Vec4::new(0.02, 0.165, 0.2, 0.85),
     light: Vec4::new(1.0, 0.894, 0.69, 0.0),
+    lift: Vec4::ZERO,
     colour: 0.45,
     contrast: 5.0,
     pivot: 0.44,
@@ -72,6 +74,10 @@ const FILM: Print = Print {
     grain: 0.05,
     frame: 0.0,
 };
+
+/// How far the film's bloom spreads (Bevy's low-frequency boost): wide, so a bright sky spills round what stands
+/// against it. By night it is drawn in (`hours::bloom_boost`).
+const FILM_BOOST: f32 = 0.85;
 
 fn recipe(look: Look) -> Recipe {
     match look {
@@ -89,7 +95,7 @@ fn recipe(look: Look) -> Recipe {
             // stands against it and the Sun, the flame and a glint on the sea burn.
             bloom: Bloom {
                 intensity: 0.38,
-                low_frequency_boost: 0.85,
+                low_frequency_boost: FILM_BOOST,
                 low_frequency_boost_curvature: 0.9,
                 prefilter: BloomPrefilter { threshold: 0.85, threshold_softness: 0.7 },
                 composite_mode: BloomCompositeMode::Additive,
@@ -105,7 +111,7 @@ pub struct LookPlugin;
 
 impl Plugin for LookPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Look>().add_systems(Update, develop);
+        app.init_resource::<Look>().add_systems(Update, (develop, hour).chain());
     }
 }
 
@@ -121,5 +127,23 @@ fn develop(
     let made = recipe(*look);
     for eye in &eyes {
         commands.entity(eye).insert((made.curve, made.grading.clone(), made.bloom.clone(), made.print));
+    }
+}
+
+/// The film's print follows the hour: dawn, day, dusk and night, blended as the Sun moves (`hours`).
+fn hour(look: Res<Look>, dusk: Res<Dusk>, mut eyes: Query<(&mut Print, &mut Bloom), With<Eye>>) {
+    if *look != Look::Film {
+        return;
+    }
+    let made = crate::hours::print(&FILM, &dusk);
+    let boost = crate::hours::bloom_boost(FILM_BOOST, &dusk);
+    for (mut print, mut bloom) in &mut eyes {
+        let now = Print { frame: print.frame, ..made };
+        if *print != now {
+            *print = now;
+        }
+        if (bloom.low_frequency_boost - boost).abs() > 1e-4 {
+            bloom.low_frequency_boost = boost;
+        }
     }
 }

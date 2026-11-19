@@ -11,6 +11,7 @@ use sr_render::earth::marks::{self, Marks};
 use sr_render::earth::{Ground, Shore};
 use sr_render::materials::Frost;
 use sr_render::models::model;
+use sr_render::night::Heavens;
 use sr_render::sky::Sky;
 use sr_world::{V3, sun};
 
@@ -37,6 +38,23 @@ pub fn sky(flight: &Flight, seconds: f64) -> Sky {
         sun: dvec(sun::direction(&site, flight.liftoff().plus(seconds))).as_vec3(),
         centre: DVec3::new(0.0, -radius, 0.0),
         radius,
+    }
+}
+
+/// The heavens over a flight's site, this many seconds from its liftoff: the stars' frame and the Moon.
+#[must_use]
+pub fn heavens(flight: &Flight, seconds: f64) -> Heavens {
+    let site = flight.site.site();
+    let at = flight.liftoff().plus(seconds);
+    let turn = sr_world::precession::j2000_to_site(&site, at);
+    let column = |i: usize| Vec3::new(turn[0][i] as f32, turn[1][i] as f32, turn[2][i] as f32);
+    let moon = sr_world::moon::seen(&site, at);
+    Heavens {
+        stars: Mat3::from_cols(column(0), column(1), column(2)),
+        years: sr_world::stars::years_from_2000(at) as f32,
+        moon: dvec(moon.direction).as_vec3(),
+        moon_radius: moon.angular_radius() as f32,
+        moon_phase: moon.phase_angle as f32,
     }
 }
 
@@ -149,15 +167,29 @@ fn set(mut commands: Commands, showing: Res<Showing>, assets: Res<AssetServer>) 
     }
     // The day's map of the weather, for the cloud far from the site.
     commands.insert_resource(sr_render::clouds::day_map(&assets, showing.0.weather.map));
+    commands.insert_resource(heavens(showing.0, 0.0));
 }
 
-/// The sky follows the clock: the Sun moves, and the cloud drifts.
-fn day(showing: Res<Showing>, clock: Res<Clock>, mut sky_now: ResMut<Sky>, mut air_now: ResMut<Air>) {
+/// The sky follows the clock: the Sun moves, the stars and the Moon turn, and the cloud drifts.
+fn day(
+    showing: Res<Showing>,
+    clock: Res<Clock>,
+    mut sky_now: ResMut<Sky>,
+    mut air_now: ResMut<Air>,
+    heavens_now: Option<ResMut<Heavens>>,
+) {
     air_now.clock = clock.t as f32;
     let sun = sky(showing.0, clock.t).sun;
     // (a twentieth of a degree: the Sun takes twelve seconds over it)
     if sun.angle_between(sky_now.sun) > 1.0e-3 {
         sky_now.sun = sun;
+    }
+    // (the stars turn a hundredth of a degree in 2.4 s: each frame, as the clock has it)
+    if let Some(mut heavens_now) = heavens_now {
+        let next = heavens(showing.0, clock.t);
+        if next != *heavens_now {
+            *heavens_now = next;
+        }
     }
 }
 

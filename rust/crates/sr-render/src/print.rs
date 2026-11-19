@@ -23,6 +23,9 @@ pub struct Print {
     pub shade: Vec4,
     /// As `shade`; its alpha is unused.
     pub light: Vec4,
+    /// The black lifted toward a colour (rgb), by how much at black (a): the darks opened so a night still reads,
+    /// falling to nothing at white.
+    pub lift: Vec4,
     /// How much of its colour the frame keeps: 1 all of it, 0 none.
     pub colour: f32,
     /// How hard the middle is pulled apart, about `pivot`: 0 leaves the frame as it was; 6 is a hard print.
@@ -47,6 +50,7 @@ impl Print {
     pub const STRAIGHT: Self = Self {
         shade: Vec4::ZERO,
         light: Vec4::ZERO,
+        lift: Vec4::ZERO,
         colour: 1.0,
         contrast: 0.0,
         pivot: 0.5,
@@ -56,6 +60,28 @@ impl Print {
         grain: 0.0,
         frame: 0.0,
     };
+}
+
+impl Print {
+    /// Between this print and another, `t` of the way (0 this, 1 the other): every figure but the grain's seed.
+    #[must_use]
+    pub fn toward(&self, other: &Self, t: f32) -> Self {
+        let t = t.clamp(0.0, 1.0);
+        let mix = |a: f32, b: f32| a + (b - a) * t;
+        Self {
+            shade: self.shade.lerp(other.shade, t),
+            light: self.light.lerp(other.light, t),
+            lift: self.lift.lerp(other.lift, t),
+            colour: mix(self.colour, other.colour),
+            contrast: mix(self.contrast, other.contrast),
+            pivot: mix(self.pivot, other.pivot),
+            gain: mix(self.gain, other.gain),
+            corners: mix(self.corners, other.corners),
+            falloff: mix(self.falloff, other.falloff),
+            grain: mix(self.grain, other.grain),
+            frame: self.frame,
+        }
+    }
 }
 
 impl Default for Print {

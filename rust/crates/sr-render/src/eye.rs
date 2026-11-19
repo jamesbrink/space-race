@@ -14,6 +14,7 @@ use bevy::pbr::{
 use bevy::post_process::bloom::Bloom;
 use bevy::prelude::*;
 
+use crate::night::Dusk;
 use crate::origin::{Eye, Origin};
 use crate::sky::{DAYLIGHT, Sky};
 
@@ -101,12 +102,13 @@ const OPENS: f32 = 0.35;
 /// The heights between which the sky goes from blue to black, m.
 const DARKENS: [f32; 2] = [18_000.0, 90_000.0];
 
-/// The exposure follows the height: set for daylight on the ground, opened a little as the sky darkens. It moves
-/// with the height itself, so it never steps.
-pub fn adapt(origin: Res<Origin>, sky: Res<Sky>, mut eyes: Query<&mut Exposure, With<Eye>>) {
+/// The exposure follows the height: set for daylight on the ground, opened a little as the sky darkens; and the
+/// hour: opened as the light goes at dusk ([`Dusk`]). It moves with the height and the Sun themselves, so it never
+/// steps.
+pub fn adapt(origin: Res<Origin>, sky: Res<Sky>, dusk: Res<Dusk>, mut eyes: Query<&mut Exposure, With<Eye>>) {
     let height = ((origin.0 - sky.centre).length() - sky.radius) as f32;
     let dark = ((height - DARKENS[0]) / (DARKENS[1] - DARKENS[0])).clamp(0.0, 1.0);
-    let ev100 = DAYLIGHT.ev100 - OPENS * dark * dark * (3.0 - 2.0 * dark);
+    let ev100 = DAYLIGHT.ev100 - OPENS * dark * dark * (3.0 - 2.0 * dark) - dusk.opens;
     for mut exposure in &mut eyes {
         if (exposure.ev100 - ev100).abs() > 1.0e-3 {
             exposure.ev100 = ev100;

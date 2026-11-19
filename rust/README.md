@@ -139,7 +139,7 @@ A Cargo workspace of small crates. Dependencies go one way, and `sr-hygiene` fai
 ```
 crates/
   sr-measure/    a number with its confidence and source                       no engine
-  sr-world/      the Earth, a site's frame, time, the Sun, in doubles           no engine
+  sr-world/      the Earth, a site's frame, time, Sun, Moon, stars, in doubles  no engine
   sr-sim/        thrust, air, drag, guidance, the flight integrated             no engine
   sr-missions/   flights and places as data (the port of missions/**/*.ts)      no engine
   sr-render/     the picture, a module to a thing drawn; knows no flight        Bevy
@@ -187,9 +187,8 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
   `tools/unpack-models.mjs` uses the page's decoder, drops the web cabin-shade channel and shares native finish tiles.
 - **The pad's morning stands level as built.** Its motions are the web build's (`lc-5.parts.ts`, the flight's
   `MORNING`) played on the clock, but what runs on something (the structure's trucks on their rails, the trucks
-  on the road) moves level, as built: the web build stands each wheel on the surface under it. The pad's
-  floodlights are not lit at dawn, and the haze does not change with the morning: when the lamps went off and how
-  the haze lifted are not recorded.
+  on the road) moves level, as built: the web build stands each wheel on the surface under it. The haze does not
+  change with the morning: how it lifted is not recorded.
 - **The Earth is a sphere** through the site (the engine's atmosphere is one); the web build's is the WGS 84 ellipsoid.
 - **The air is the day's**: ERA5's column over the pad at the hour of liftoff (pressure, temperature and wind at
   38 levels to 49 km, a reanalysis and not a sounding), joined as the web build joins it and eased into the 1976
@@ -197,6 +196,26 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
   only the one hour is read: the surface's hours round it are not.
 - **Gravity has no J2.** The frame turns with the Earth, so Coriolis and centrifugal accelerations are in.
 - **The Sun is the Almanac's low-precision formula** (0.01 degrees), not DE440; UTC is taken for UT1.
+- **The sky by night** (`sr_world::{precession, stars, moon, daylight}`, `sr_render::night`): the Yale Bright Star
+  Catalogue's 9,096 stars at their places for the date (proper motion, the IAU 2006 precession, the IAU 2000B
+  nutation's twenty largest terms, the sidereal time: held to ERFA's places at liftoff within 0.012 degrees), the
+  Moon by Meeus's chapter 47 (held to JPL Horizons within 0.02 degrees), and the light by USNO Circular 171 and
+  Krisciunas and Schaefer. Left out: aberration and parallax of the stars, the planets (the web build has them),
+  the Moon's physical librations and its pole's true tilt (its north is taken as the ecliptic's: up to 7 degrees
+  out in position angle), lunar eclipses, and the airglow's patchiness. The Moon's light on the cloud is not drawn
+  (a moonlit cloud is as dark as a moonless one); the Moon's own light lights the ground and the air through the
+  engine's atmosphere. Stars are drawn 25 times their light (and up to 2^11 more above the air by day) so the eye's
+  sensitivity to points shows them: estimated. How far the eye opens by twilight and night is a table set by eye
+  against frames (`night/dusk.rs`, `OPENING`), not an adaptation model.
+- **The pad's lamps** (`sr_render::lamps`) are found in the models (every `lamp` and `lamp-flood-search` lens) and
+  lit on the Sun's height, not on a recorded duty: on at sunset, off when the Sun is 7 degrees up. Their strength,
+  beam and colour are estimated (incandescent floods; the web build's warm-up time takes them as mercury-vapour).
+  Only the pad's six poles cast shadows. The beam in the air is single scattering in a haze 12 times the day's
+  visibility's (estimated: the night's air is not recorded) and passes through the lattice it lights. The glare
+  star and the lens's glow are for the look.
+- **A print for each hour** (`sr_render::hours`): dawn, dusk and night prints blended from the day's by the Sun's
+  height; every figure is chosen by eye against Dragon Rising's stills. A dusk at the pad cannot be seen yet: the
+  clock stops when the flight is down (T+15:30).
 - **The pilot's standing figure is not shown**: at liftoff he is aboard.
 - **The land near the site is a designed ground** in the repo's palette (`docs/terrain.md`): what grows where
   follows the web build's rules, its roads and clearings are the place's own record, and its scrub stands as

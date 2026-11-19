@@ -50,6 +50,26 @@ clouds are Simul's trueSKY volumes; its statements above are Bohemia's own.
 | `look.rs` | ACES, restrained grading, thresholded additive bloom, vignette | The print |
 | `grain.rs`, `grain.wesl` | Grain after the tone curve, strongest in mid-greys | The print's surface |
 
+## The hours
+
+The day's print (`look.rs`, `FILM`) is the owner's; dawn, dusk and night have prints of their own
+(`sr_render::hours`), blended from it by the Sun's height at the eye (`night::Dusk`: the low Sun's from 8 degrees
+under the horizon to 14 up, the night's from -3 to -12), so a clock run fast never steps. What was taken from Dragon
+Rising's stills of its hours (the Steam set and the owner's references in the scratchpad's `refs/`):
+
+- **Low Sun**: a sepia print, amber in the light and umber in the shade (the burning helicopter over ruins, the
+  armoured cars in the long grass), harder in the middle than the day, with more of the sky's colour kept. Its
+  mornings are cooler and paler than its evenings (the convoy stills): dawn's shade is blue, dusk's is warm.
+- **Night**: one cold blue-teal over everything (the soldier in the doorway), the shade lifted toward deep blue
+  so the place still reads, the light toned warm so a lamp's pool is the one warm thing, heavier grain, and the
+  bloom drawn in so a lamp is a hot head rather than a ball.
+
+The eye opens as the light goes (`night/dusk.rs`, `OPENING`): by about half of the meter's fall through twilight
+and nearly all of it by night, set against frames of this build. The pad's floodlights, their beams in the haze and
+the glare of their heads are `sr_render::lamps`; the stars, the Milky Way and the Moon `sr_render::night`. Every
+figure is estimated and says so. No published stills of Dragon Rising's dawn, dusk or night with a description
+were found (a search of reviews and the Steam store); the notes above are read off the stills alone.
+
 ## Sources
 
 - A. Schneider, "The Real-time Volumetric Cloudscapes of Horizon Zero Dawn", SIGGRAPH 2015:
