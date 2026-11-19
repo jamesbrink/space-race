@@ -6,7 +6,7 @@
 use sr_world::{Site, V3};
 
 use crate::loads::{Moment, loads};
-use crate::{Body, Field, Plan, Sequence, guidance};
+use crate::{Body, Drive, Field, Plan, Sequence, guidance, stress};
 
 /// Step of the integration, s (the web build's).
 pub const STEP: f64 = 0.05;
@@ -41,6 +41,8 @@ pub struct Flown {
     pub max_q: f64,
     /// The greatest load coming down, in g.
     pub entry_g: f64,
+    /// The nearest it came to what its structure stands: the part of the limit, 1 being failure.
+    pub stress: f64,
     /// What the sequencer did and when.
     pub sequence: Sequence,
 }
@@ -74,7 +76,8 @@ impl Flight<'_> {
 
     /// Acceleration, m/s^2. On the pad the launcher holds what the engine does not yet lift.
     fn acceleration(&self, t: f64, s: State, sequence: &Sequence) -> V3 {
-        let l = loads(self.plan, self.body(t), &self.field, sequence, &self.moment(t, s, sequence));
+        let drive = Drive::flown(self.plan, self.body(t), t);
+        let l = loads(self.plan, self.body(t), &self.field, sequence, &self.moment(t, s, sequence), &drive);
         let a = l.felt() + self.field.acceleration(s.position, s.velocity);
         if s.position.y <= 0.0 && a.y < 0.0 && self.body(t) == Body::Stack { V3::ZERO } else { a }
     }
@@ -108,13 +111,15 @@ pub fn fly(plan: &Plan, site: &Site, above_sea: f64) -> Flown {
         separation_speed: 0.0,
         max_q: 0.0,
         entry_g: 0.0,
+        stress: 0.0,
         sequence: Sequence::default(),
     };
     let mut step = 0_u32;
     while out.sequence.landed.is_none() && f64::from(step) * STEP < GIVE_UP {
         let t = f64::from(step) * STEP;
         let height = flight.field.height(s.position);
-        out.sequence.step(plan, t, height, s.velocity.dot(flight.field.up(s.position)));
+        let free = t >= plan.separation.value;
+        out.sequence.step(plan, t, height, s.velocity.dot(flight.field.up(s.position)), free);
         record(&flight, &mut out, t, s, height);
         if step.is_multiple_of(20) {
             out.path.push(Sample { t, position: s.position, velocity: s.velocity, height });
@@ -135,8 +140,11 @@ pub fn fly(plan: &Plan, site: &Site, above_sea: f64) -> Flown {
 
 fn record(flight: &Flight, out: &mut Flown, t: f64, s: State, height: f64) {
     let plan = flight.plan;
-    let l = loads(plan, flight.body(t), &flight.field, &out.sequence, &flight.moment(t, s, &out.sequence));
+    let drive = Drive::flown(plan, flight.body(t), t);
+    let m = flight.moment(t, s, &out.sequence);
+    let l = loads(plan, flight.body(t), &flight.field, &out.sequence, &m, &drive);
     out.apogee = out.apogee.max(height);
+    out.stress = out.stress.max(stress::stress(&plan.limits, flight.body(t), &m, &l).part);
     if t < plan.separation.value {
         out.separation_speed = s.velocity.length();
         out.max_q = out.max_q.max(l.q);

@@ -7,8 +7,7 @@ use bevy::prelude::*;
 use sr_render::origin::WorldPos;
 use sr_render::smoke::Puff;
 
-use super::Crewed;
-use super::fire::burning;
+use super::{Crewed, Hand};
 use crate::Showing;
 use crate::clock::Clock;
 
@@ -28,6 +27,7 @@ pub fn raise(
     mut commands: Commands,
     showing: Res<Showing>,
     clock: Res<Clock>,
+    hand: Res<Hand>,
     crewed: Query<(&Position, &Rotation), With<Crewed>>,
     mut owed: Local<f64>,
     mut last: Local<f64>,
@@ -39,7 +39,7 @@ pub fn raise(
     let flight = showing.0;
     let nozzle = at.0 + (turned.0 * Vec3::Y).as_dvec3() * flight.flame.exit_height.value;
     let near = (1.0 - nozzle.y / REACH).clamp(0.0, 1.0);
-    *owed += RATE * passed * near * f64::from(burning(clock.t, flight.plan.cutoff.value));
+    *owed += RATE * passed * near * f64::from(hand.fire(&flight.plan, clock.t));
     while *owed >= 1.0 {
         *owed -= 1.0;
         let bearing = dice(&mut seed) * std::f32::consts::TAU;

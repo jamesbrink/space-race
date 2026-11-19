@@ -6,12 +6,12 @@ use bevy::prelude::*;
 use crate::Options;
 use crate::clock::Clock;
 
-/// Measures frames; says nothing unless `--bench` asked.
+/// Says what `diag` measures; nothing unless `--bench` asked.
 pub struct BenchPlugin;
 
 impl Plugin for BenchPlugin {
     fn build(&self, app: &mut App) {
-        app.add_plugins(FrameTimeDiagnosticsPlugin::default()).add_systems(Update, say);
+        app.add_systems(Update, say);
     }
 }
 

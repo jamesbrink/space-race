@@ -25,20 +25,42 @@ cargo run -p space-race -- --shot out.png --pose 200,6,60,14 [--at <seconds>] [-
 
 ## Fly it
 
-It opens on the pad at T-12 s and flies the flight as it was flown, hands off: liftoff, the tilt programme, cutoff,
-the tower and the booster leaving, apogee, retrofire, the retropack, the drogue, the main parachute, the sea.
+It opens on the pad at T-12 s and the flight is yours: the count runs to zero and holds there until you light the
+engine. Nothing is steered for you. The stick works what the vehicle had (the Redstone's jet vanes while its engine
+burns and its air rudders while there is air; the capsule's jets anywhere), the air turns whatever is not held
+against it, and Space does the next thing the flight needs, when you say: light the engine, let the tower go,
+separate, fire the retrorockets, let the retropack go. The parachutes come out by themselves on the way down.
 
 | | |
 |---|---|
-| Space | stop the clock, and start it |
-| `,` `.` | slower, faster: 1, 2, 5, 10, 25, 50, 100 times |
+| W S, A D, Q E | pitch, yaw, roll |
+| T | hold the attitude (the stick asks for a rate, and letting go stops the turn) or leave it free |
+| Space | the next step of the flight |
+| Z, X | the engine on, and off |
+| G | on the pad: fly it as it was flown, hands off (and back) |
+| P | stop the clock, and start it |
+| `[` `]` | slower, faster: 1, 2, 4, 8, 16, 32, 64 times (`,` and `.` too) |
 | C, or 1 2 3 4 | the camera: pad, tracking (a long lens on the ground), chase, onboard |
 | drag, wheel | turn the pad and chase cameras; zoom all of them |
-| G | the grade: Film (the game's own) or Reference (straight) |
+| L | the grade: Film (the game's own) or Reference (straight) |
+| I | the diagnostics: frames a second, the frame's time, what is in the scene |
 | H | put the panels away |
 
-`--at <seconds>` opens anywhere in the flight (`--at 150 --rig chase` is the separation, `--at 620` the main
-parachute); `--bench` prints what a frame costs once a second.
+It is a rigid body in a physics engine. It stands on its launcher by its own weight, as a Redstone did; cut the
+engine low and it falls back and breaks. The readout's Structure is how near it is to what it stands: turn its
+nose far off the wind where the air is thick and the booster breaks up and throws the capsule clear, which can
+still be ridden down; come back into the air too steeply and the load takes the capsule. Hit anything at more
+than 12 m/s and the flight is over.
+
+`--at <seconds>` opens anywhere in the flight, flown as it was up to there (`--at 150 --rig chase` is the
+separation, `--at 620` the main parachute); `--rate 8` opens with the clock running fast; `--bench` prints what a
+frame costs once a second. A hand-flown flight can be scripted, to fly it again exactly or to take a frame of it:
+`--keys 0:Space,18:W:9,140:X` presses Space as the count ends, holds W for nine seconds from T+18 and presses X at
+T+140, and `--shot out.png --until 60` takes the frame when the clock reaches T+60.
+
+The flight is tried without a window too (`flight/trial.rs`, in `cargo test`): it stands on its launcher under
+its own weight, climbs as its thrust and mass say when it is lit, breaks up when it falls back, and flown as the
+record has it the rigid bodies come down within one per cent of where the simulator's own integrator has them.
 
 Rust 1.99.1 (`rust-toolchain.toml`; rustup fetches it). Run cargo from `rust/`: the toolchain and the linker
 setting are found from there.
@@ -106,15 +128,27 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
   stands for the scattering orders not marched are constants in `clouds.wesl` and `clouds/mod.rs`, each labelled.
   The cover, bases, depth, size and wind are the flight's record. The altocumulus is gathered into banks, which
   is ours. Cloud shadows fall on the land and the sea, not yet on the models.
-- **The vehicle is steered, not torqued**: its bodies turn to where the plan has them point. Nothing collides
-  yet: the bodies have mass and no shape, and the sea stops what reaches it.
+- **By hand every strength is an estimate**: what the vanes, the rudders and the jets can do, how hard the air
+  turns a body toward its trim and damps it, and how a parachute rights the capsule (`flight/attitude.rs`). They
+  are angular accelerations, chosen so it handles as the reports describe; none is a measured moment, and the
+  jets burn no peroxide. Flown as it was flown (G), the bodies are turned to where the record has them point.
+- **The structure's limits are estimates** (`redstone::LIMITS`): bending as dynamic pressure times the angle off
+  the wind, and load in g. No published limit for the Redstone has been found. Heating is not modelled: a capsule
+  that comes in small end first is not burned for it. Where the booster parts, and how its pieces are thrown,
+  are ours.
+- **What is solid**: each piece of the vehicle is a cylinder or a cone measured off its model, the land is level
+  with the hardstand for 12 km each way round the pad, and the launcher is a drum under the tail. The gantry and
+  the rest of the pad are not solid, the pieces of the vehicle do not strike each other, and beyond the land
+  everything comes down at sea level. A body resists turning as one solid cylinder of its length would.
+- **The propellant by hand** is what the engine passes in its nominal burning time (143.5 s); the web build runs
+  the two tanks separately.
 - **Parachutes are drawn from their documented diameters**; their lines' length and inflated shape are estimates.
 - **Exposure follows height** (a stop less out of the air) rather than what is in view.
 
 ## Not here yet
 
 Walking and driving, the gallery, the Lineup and the front page, sound, the map and the predicted path, the pad's
-morning played on the clock, taking the flight over by hand, every other flight, the cel look, the web and mobile
+morning played on the clock, an abort on the escape tower, every other flight, the cel look, the web and mobile
 builds (the engine supports them; none was built).
 
 ## What it showed

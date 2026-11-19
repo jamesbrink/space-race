@@ -54,6 +54,25 @@ impl Field {
     }
 }
 
+impl Field {
+    /// How high a body would rise if nothing but the Earth's attraction acted on it from here: the top of its
+    /// path above the sea, m. `None` if it would not come back.
+    #[must_use]
+    pub fn apogee(&self, position: V3, velocity: V3) -> Option<f64> {
+        let r = position - self.centre;
+        // (the path is a conic in the frame that does not turn: the ground's own speed is added back)
+        let v = velocity + self.spin.cross(r);
+        let energy = 0.5 * v.dot(v) - earth::GM / r.length();
+        if energy >= 0.0 {
+            return None;
+        }
+        let momentum = r.cross(v).length();
+        let eccentricity =
+            (1.0 + 2.0 * energy * momentum * momentum / (earth::GM * earth::GM)).max(0.0).sqrt();
+        Some(-earth::GM / (2.0 * energy) * (1.0 + eccentricity) - self.sea_radius)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -67,6 +86,14 @@ mod tests {
         let g = Field::at(&LC5, 2.0).acceleration(V3::ZERO, V3::ZERO);
         assert!((g.length() - 9.7915).abs() < 0.02, "{}", g.length());
         assert!(g.normalized().dot(-V3::Y) > 0.999_99);
+    }
+
+    #[test]
+    fn a_body_thrown_up_rises_as_far_as_its_speed_takes_it() {
+        // 100 m/s straight up from the pad: v^2 / 2g is 510 m (g 9.80 m/s^2 there, less the pad's 2 m).
+        let field = Field::at(&LC5, 2.0);
+        let top = field.apogee(V3::ZERO, V3::new(0.0, 100.0, 0.0)).unwrap();
+        assert!((top - 512.0).abs() < 5.0, "{top}");
     }
 
     #[test]

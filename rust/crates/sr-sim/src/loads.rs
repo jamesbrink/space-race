@@ -56,33 +56,68 @@ impl Loads {
     }
 }
 
-/// The loads on a body.
+/// What a body's engines are doing at an instant and what it weighs: from the record's clock when the flight is
+/// flown as it was ([`Drive::flown`]), from the hand's own switches when it is flown by hand.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Drive {
+    /// Mass, kg.
+    pub mass: f64,
+    /// Whether the booster's engine is burning.
+    pub burning: bool,
+    /// The retrorockets' thrust together, N.
+    pub retro: f64,
+    /// The tower's motors' thrust together, N.
+    pub tower: f64,
+}
+
+impl Drive {
+    /// As the flight was flown: everything at the record's times.
+    #[must_use]
+    pub fn flown(plan: &Plan, body: Body, t: f64) -> Self {
+        let quiet = Self { mass: 0.0, burning: false, retro: 0.0, tower: 0.0 };
+        match body {
+            Body::Stack => {
+                Self { mass: plan.stack_mass(t), burning: (0.0..plan.cutoff.value).contains(&t), ..quiet }
+            }
+            Body::Capsule => Self { mass: plan.capsule_mass_at(t), retro: plan.retro_thrust(t), ..quiet },
+            Body::Booster => Self { mass: plan.booster_mass.value, ..quiet },
+            Body::Tower => {
+                let since = t - plan.tower_off.value;
+                let tower = plan.tower_motors.iter().map(|motor| motor.thrust_after(since)).sum();
+                Self { mass: plan.tower_mass.value, tower, ..quiet }
+            }
+        }
+    }
+}
+
+/// The loads on a body. Every engine pushes along the body's own axis: the booster's and the tower's toward the
+/// nose, the retrorockets through the heat shield toward the small end.
 #[must_use]
-pub fn loads(plan: &Plan, body: Body, field: &Field, sequence: &Sequence, m: &Moment) -> Loads {
+pub fn loads(
+    plan: &Plan,
+    body: Body,
+    field: &Field,
+    sequence: &Sequence,
+    m: &Moment,
+    drive: &Drive,
+) -> Loads {
     let air = air::at(field.height(m.position));
     let speed = m.velocity.length();
     let mach = speed / air.sound;
     let q = 0.5 * air.density * speed * speed;
-    let (mass, thrust, drag_area) = match body {
+    let (thrust, drag_area) = match body {
         Body::Stack => {
-            let burning = (0.0..plan.cutoff.value).contains(&m.t);
-            let thrust = if burning { plan.engine.thrust_at(air.pressure) } else { 0.0 };
-            (plan.stack_mass(m.t), m.axis * thrust, plan.ascent_drag.at(mach) * plan.area.value)
+            let thrust = if drive.burning { plan.engine.thrust_at(air.pressure) } else { 0.0 };
+            (thrust, plan.ascent_drag.at(mach) * plan.area.value)
         }
         Body::Capsule => {
-            let own = plan.entry_drag.at(mach) * plan.area.value;
-            let thrust = retro_direction(plan, field, m) * plan.retro_thrust(m.t);
-            (plan.capsule_mass_at(m.t), thrust, own + sequence.chute_area(plan, m.t))
+            (drive.retro, plan.entry_drag.at(mach) * plan.area.value + sequence.chute_area(plan, m.t))
         }
-        Body::Booster => (plan.booster_mass.value, V3::ZERO, plan.booster_drag_area.value),
-        Body::Tower => {
-            let since = m.t - plan.tower_off.value;
-            let thrust: f64 = plan.tower_motors.iter().map(|motor| motor.thrust_after(since)).sum();
-            (plan.tower_mass.value, m.axis * thrust, plan.ascent_drag.at(mach) * plan.area.value * 0.3)
-        }
+        Body::Booster => (0.0, plan.booster_drag_area.value),
+        Body::Tower => (drive.tower, plan.ascent_drag.at(mach) * plan.area.value * 0.3),
     };
     let drag = if speed > 0.0 { m.velocity * (-q * drag_area / speed) } else { V3::ZERO };
-    Loads { mass, thrust, drag, mach, q, pressure: air.pressure }
+    Loads { mass: drive.mass, thrust: m.axis * thrust, drag, mach, q, pressure: air.pressure }
 }
 
 /// Which way the retrorockets push the capsule: rearward, and below the level by the retro attitude's pitch.

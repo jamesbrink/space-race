@@ -4,11 +4,11 @@
 use std::f64::consts::PI;
 
 use sr_measure::{Confidence, Measure};
-use sr_sim::Curve;
 use sr_sim::plan::{Chute, Motor};
+use sr_sim::{Curve, Limits};
 use sr_world::earth::G0;
 
-use crate::types::{Flame, Parts};
+use crate::types::{Flame, Fragment, Parts, Solid, Solids};
 
 /// An inch, a foot, a pound-force and a pound, in SI.
 pub const IN: f64 = 0.0254;
@@ -36,6 +36,13 @@ pub const EXIT_AREA: Measure = Measure::derived(
     (6.3 * G0 * cutoff_mass(66_098.0 * LB, 78_860.0 * LBF, 214.8, 141.8) - 78_860.0 * LBF) / 101_325.0,
     "MR-3 Postlaunch Report, 4.2: the load at cutoff was 6.3 g, so the thrust there, in near vacuum, was 6.3 times \
      the weight left: 88,450 lbf, 9,590 lbf more than at sea level, which over one atmosphere is 652 sq in",
+);
+
+/// How long the A-7 can burn before a propellant runs out.
+pub const BURN_LIMIT: Measure = Measure::estimated(
+    143.5,
+    "NASA TM X-53107, section 4: a nominal burning time of 143.5 s, taken as when a propellant would have run out, \
+     which the report does not say: documented as a burning time, an estimate as this input",
 );
 
 /// The tilt programme as TM X-53107 draws it (Figure 4-9), stretched to begin at 15.0 s as MR-3's did.
@@ -189,6 +196,106 @@ pub const PARTS: Parts = Parts {
     canister: "AntennaCanister",
     chute_height: 2.08,
 };
+
+/// What the stack stands. None of it is a published limit: each is set where the flights that were flown stayed
+/// well inside it and a careless one does not.
+pub const LIMITS: Limits = Limits {
+    bending: Measure::estimated(
+        4000.0,
+        "five degrees off the wind at the greatest dynamic pressure: launch vehicles are flown to limits of this \
+         order (the Shuttle's was about 3,000 psf degrees, 2,500 Pa rad); the Redstone's own has not been found",
+    ),
+    stack_load: Measure::estimated(
+        12.0,
+        "twice the 6.3 g of cutoff (the Postlaunch Report, 4.2): the booster's own limit has not been found",
+    ),
+    capsule_load: Measure::estimated(
+        25.0,
+        "past the 20 g the couch and the man were tried to on the centrifuge, and twice Freedom 7's 11 g",
+    ),
+};
+
+/// The stack as the physics takes it: sizes off vehicle.glb, the centres of mass estimated.
+pub const SOLIDS: Solids = Solids {
+    tower: Solid {
+        span: [2.036, 7.228],
+        radius: 0.43,
+        pointed: false,
+        balance: Measure::estimated(
+            4.3,
+            "a little below the middle of the truss: the rocket is at its top, the ring at its foot",
+        ),
+    },
+    // The capsule is a 20 degree cone from the heat shield to where the canister ends.
+    capsule: Solid {
+        span: [-0.297, 2.687],
+        radius: 0.947,
+        pointed: true,
+        balance: Measure::estimated(
+            0.55,
+            "low in the cabin, above the heat shield: the couch, the batteries and the shield",
+        ),
+    },
+    booster: Solid {
+        span: [-18.186, -0.203],
+        radius: 0.889,
+        pointed: false,
+        balance: Measure::estimated(-11.5, "empty, the engine and the tail unit carry it aft of the middle"),
+    },
+    retropack: Solid {
+        span: [-0.686, -0.297],
+        radius: 0.5,
+        pointed: false,
+        balance: Measure::estimated(-0.49, "its middle"),
+    },
+    canister: Solid {
+        span: [2.062, 2.687],
+        radius: 0.305,
+        pointed: false,
+        balance: Measure::estimated(2.37, "its middle"),
+    },
+    balance: Measure::estimated(
+        -9.3,
+        "loaded, the tanks' middle: the propellant is four fifths of the weight",
+    ),
+    foot: 1.371,
+    breaks: &BREAKS,
+};
+
+/// Where the booster parts if it breaks up: at the joints of its three units. That it would part there, and each
+/// piece's share of the weight, are estimates: no Mercury-Redstone broke up in the air.
+const BREAKS: [Fragment; 3] = [
+    Fragment {
+        nodes: &["RedstoneAdapter", "RedstoneAftUnit"],
+        solid: Solid {
+            span: [-3.931, 0.039],
+            radius: 0.932,
+            pointed: false,
+            balance: Measure::estimated(-2.0, "its middle"),
+        },
+        share: Measure::estimated(0.2, "the instrument compartment and the adapter: light for their length"),
+    },
+    Fragment {
+        nodes: &["RedstoneCenterUnit"],
+        solid: Solid {
+            span: [-15.742, -3.55],
+            radius: 0.895,
+            pointed: false,
+            balance: Measure::estimated(-9.6, "its middle"),
+        },
+        share: Measure::estimated(0.35, "the two tanks, empty"),
+    },
+    Fragment {
+        nodes: &["RedstoneTailUnit", "RedstoneEngine"],
+        solid: Solid {
+            span: [-18.186, -15.361],
+            radius: 0.889,
+            pointed: false,
+            balance: Measure::estimated(-17.0, "the engine, low in it"),
+        },
+        share: Measure::estimated(0.45, "the engine, its frame and the fins"),
+    },
+];
 
 /// The A-7's fire: alcohol and liquid oxygen (`src/viewer/flames.ts`, `plume.ts`).
 pub const FLAME: Flame = Flame {

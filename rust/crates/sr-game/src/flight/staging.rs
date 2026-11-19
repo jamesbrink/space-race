@@ -1,13 +1,16 @@
 //! Things come apart: the tower, the booster, the retropack and the antenna canister each leave as a body of
-//! their own when the plan (or the sequencer) says, taking their part of the model with them.
+//! their own when the pilot (or the record, or the sequencer) says, taking their part of the model with them.
 
 use avian3d::prelude::*;
 use bevy::math::DVec3;
 use bevy::prelude::*;
-use sr_missions::types::Parts as Names;
-use sr_sim::{Body, Plan, Sequence};
+use sr_missions::Flight;
+use sr_missions::types::Solid;
+use sr_sim::{Body, Sequence};
 
-use super::bodies::{State, body};
+use super::bodies::{Outline, State, body, hand_over};
+use super::breakup::shatter;
+use super::hand::Hand;
 use super::{Crewed, Flier, Loose, Parts, Sequencer};
 use crate::Showing;
 use crate::clock::Clock;
@@ -35,8 +38,9 @@ enum Becomes {
 struct Departure<'a> {
     /// When, s from liftoff; `None` while what it waits on has not happened.
     at: Option<f64>,
-    /// Which of the model's nodes go with it.
+    /// Which of the model's nodes go with it, and what it is to whatever it strikes.
     nodes: &'a [&'a str],
+    solid: &'a Solid,
     becomes: Becomes,
     mass: f64,
     /// Its velocity against the crewed body's, m/s, and its spin, rad/s, in the body's own frame.
@@ -46,50 +50,65 @@ struct Departure<'a> {
     leaves: Option<(Body, f64)>,
 }
 
-/// The flight's departures, in the order they happen.
-fn departures<'a>(plan: &Plan, names: &'a Names, sequence: &Sequence) -> [Departure<'a>; 4] {
+/// The flight's departures, in the order they happen: the tower, the booster and the retropack at the times
+/// given, the canister when the sequencer lets the main parachute out.
+fn departures<'a>(
+    flight: &'a Flight,
+    sequence: &Sequence,
+    [tower, booster, pack]: [Option<f64>; 3],
+) -> [Departure<'a>; 4] {
+    let (plan, names, solids) = (&flight.plan, &flight.parts, &flight.solids);
     // The posigrades push capsule and booster apart: each gets its share of the parting speed by the other's mass.
     let whole = plan.booster_mass.value + plan.capsule_mass.value;
-    let retropack = plan.capsule_mass.value - plan.entry_mass.value;
+    let small = |at, nodes, solid, mass, parts_at, spins| Departure {
+        at,
+        nodes,
+        solid,
+        becomes: Becomes::Loose(SMALL_DRAG_AREA),
+        mass,
+        parts_at,
+        spins,
+        leaves: None,
+    };
     [
         // Its motors carry it up and ahead; a little sideways and a slow tumble take it clear of the path.
         Departure {
-            at: Some(plan.tower_off.value),
+            at: tower,
             nodes: names.tower,
+            solid: &solids.tower,
             becomes: Becomes::Flier(Body::Tower),
             mass: plan.tower_mass.value,
             parts_at: DVec3::new(2.5, 1.0, 0.0),
             spins: DVec3::new(0.0, 0.0, -0.5),
-            leaves: None,
+            leaves: Some((Body::Stack, 0.0)),
         },
         Departure {
-            at: Some(plan.separation.value),
+            at: booster,
             nodes: names.booster,
+            solid: &solids.booster,
             becomes: Becomes::Flier(Body::Booster),
             mass: plan.booster_mass.value,
             parts_at: DVec3::Y * (-plan.push.value * plan.capsule_mass.value / whole),
             spins: DVec3::new(0.05, 0.0, 0.03),
             leaves: Some((Body::Capsule, plan.push.value * plan.booster_mass.value / whole)),
         },
-        Departure {
-            at: Some(plan.retropack_off.value),
-            nodes: std::slice::from_ref(&names.retropack),
-            becomes: Becomes::Loose(SMALL_DRAG_AREA),
-            mass: retropack,
-            parts_at: DVec3::Y * -1.5,
-            spins: DVec3::new(0.3, 0.0, 0.1),
-            leaves: None,
-        },
+        small(
+            pack,
+            std::slice::from_ref(&names.retropack),
+            &solids.retropack,
+            plan.capsule_mass.value - plan.entry_mass.value,
+            DVec3::Y * -1.5,
+            DVec3::new(0.3, 0.0, 0.1),
+        ),
         // The canister goes with the drogue when the main parachute comes out.
-        Departure {
-            at: sequence.main,
-            nodes: std::slice::from_ref(&names.canister),
-            becomes: Becomes::Loose(SMALL_DRAG_AREA),
-            mass: CANISTER_MASS,
-            parts_at: DVec3::Y * 6.0,
-            spins: DVec3::new(0.4, 0.0, 0.0),
-            leaves: None,
-        },
+        small(
+            sequence.main,
+            std::slice::from_ref(&names.canister),
+            &solids.canister,
+            CANISTER_MASS,
+            DVec3::Y * 6.0,
+            DVec3::new(0.4, 0.0, 0.0),
+        ),
     ]
 }
 
@@ -102,42 +121,40 @@ fn release(commands: &mut Commands, parts: &Parts, from: &State, seen: bool, lea
         }
         return;
     }
-    let state = State {
-        velocity: from.velocity + from.turned * leaving.parts_at,
-        spin: from.turned * leaving.spins,
-        ..*from
-    };
-    let mut piece = commands.spawn(body(&state, leaving.mass));
+    let outline = Outline::of(leaving.solid);
+    let state = from.leaving(outline.origin, leaving.parts_at, leaving.spins);
+    let mut piece = commands.spawn(body(&state, leaving.mass, &outline));
     match leaving.becomes {
         Becomes::Flier(kind) => piece.insert(Flier(kind)),
         Becomes::Loose(drag_area) => piece.insert(Loose { mass: leaving.mass, drag_area }),
     };
     let piece = piece.id();
-    for node in nodes {
-        commands.entity(node).insert(ChildOf(piece));
-    }
+    hand_over(commands, piece, nodes, outline.origin);
 }
 
-/// Each step: whatever is due to leave, leaves.
+/// Each step: whatever is due to leave, leaves, and the crewed body is what is left.
 pub fn stage(
     mut commands: Commands,
     clock: Res<Clock>,
     showing: Res<Showing>,
     sequencer: Res<Sequencer>,
+    hand: Res<Hand>,
     parts: Option<Res<Parts>>,
     mut staged: ResMut<Staged>,
     mut crewed: Query<
-        (&Position, &Rotation, &mut LinearVelocity, &AngularVelocity, &mut Flier),
+        (Entity, &Position, &Rotation, &mut LinearVelocity, &AngularVelocity, &mut Flier),
         With<Crewed>,
     >,
 ) {
-    let (Some(parts), Ok((at, turned, mut velocity, spin, mut flier))) = (parts, crewed.single_mut()) else {
+    let (Some(parts), Ok((entity, at, turned, mut velocity, spin, mut flier))) = (parts, crewed.single_mut())
+    else {
         return;
     };
     if !clock.ready {
         return;
     }
-    let all = departures(&showing.0.plan, &showing.0.parts, &sequencer.0);
+    let (flight, plan) = (showing.0, &showing.0.plan);
+    let all = departures(flight, &sequencer.0, hand.leaves(plan));
     while let Some(leaving) = all.get(staged.0)
         && let Some(due) = leaving.at.filter(|&due| clock.t >= due)
     {
@@ -148,9 +165,17 @@ pub fn stage(
             spin: spin.0.as_dvec3(),
         };
         let seen = clock.t - due < SEEN;
-        release(&mut commands, &parts, &from, seen, leaving);
+        // A booster that has broken up leaves in its pieces.
+        if seen && hand.broke.is_some() && matches!(leaving.becomes, Becomes::Flier(Body::Booster)) {
+            shatter(&mut commands, &parts, &from, flight, clock.t);
+        } else {
+            release(&mut commands, &parts, &from, seen, leaving);
+        }
         if let Some((kind, gain)) = leaving.leaves {
+            // (the tower is the first thing to go, so what is left never has it)
+            let outline = Outline::body(&flight.solids, kind, false);
             flier.0 = kind;
+            commands.entity(entity).insert(outline.solid(hand.drive(plan, kind, clock.t).mass));
             if seen {
                 velocity.0 += (from.axis() * gain).as_vec3();
             }

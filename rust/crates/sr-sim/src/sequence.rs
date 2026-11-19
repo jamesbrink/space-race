@@ -16,9 +16,10 @@ pub struct Sequence {
 }
 
 impl Sequence {
-    /// Bring the sequencer up to an instant: the height above the sea (m) and the rate of climb (m/s) then.
-    pub fn step(&mut self, plan: &Plan, t: f64, height: f64, climb: f64) {
-        if t < plan.separation.value {
+    /// Bring the sequencer up to an instant: the height above the sea (m) and the rate of climb (m/s) then, and
+    /// whether the capsule is free of its booster (until it is, the sequencer does nothing).
+    pub fn step(&mut self, plan: &Plan, t: f64, height: f64, climb: f64, free: bool) {
+        if !free {
             return;
         }
         if self.apogee.is_none() && climb <= 0.0 {

@@ -126,8 +126,9 @@ fn drift(
     let passed = (air.clock - *last).clamp(0.0, 1.0);
     *last = air.clock;
     for (entity, puff, mut at, mut transform, tag) in &mut puffs {
-        let age = (air.clock - puff.born) / puff.lasts;
-        if !(0.0..1.0).contains(&age) {
+        // (one let go this instant may be a step ahead of the air's clock: it is new, not gone)
+        let age = ((air.clock - puff.born) / puff.lasts).max(0.0);
+        if age >= 1.0 {
             commands.entity(entity).despawn();
             continue;
         }

@@ -1,5 +1,6 @@
 //! What the command line asked for.
 
+use crate::script::Press;
 use std::path::PathBuf;
 
 use bevy::prelude::Resource;
@@ -21,6 +22,12 @@ pub struct Options {
     pub bench: bool,
     /// Open in the straight grade instead of the film's.
     pub reference: bool,
+    /// Keys to press by themselves, at instants of the flight's clock.
+    pub keys: Vec<Press>,
+    /// The frame `shot` writes is taken when the flight's clock reaches this, s.
+    pub until: Option<f64>,
+    /// How many seconds of the flight pass in one of ours, to open at.
+    pub rate: f32,
 }
 
 impl Default for Options {
@@ -33,19 +40,27 @@ impl Default for Options {
             rig: None,
             bench: false,
             reference: false,
+            keys: Vec::new(),
+            until: None,
+            rate: 1.0,
         }
     }
 }
 
 /// How to use it.
 pub const USAGE: &str = "\
-space-race [--at <seconds>] [--size <w>x<h>] [--rig <name>] [--bench] [--reference]
-           [--shot <file.png> [--pose <bearing>,<elevation>,<distance>,<height>]]
+space-race [--at <seconds>] [--size <w>x<h>] [--rig <name>] [--rate <n>] [--bench] [--reference]
+           [--shot <file.png> [--pose <bearing>,<elevation>,<distance>,<height>] [--until <seconds>]]
+           [--keys <time>:<key>[:<held>],...]
 
   --at     seconds from liftoff to open at (default -12)
   --rig    pad | tracking | chase | onboard
   --shot   write one frame to a PNG and leave
   --pose   the camera for that frame, about the vehicle: degrees, degrees, metres, metres
+  --until  take that frame when the flight's clock reaches this
+  --rate   seconds of the flight in one of ours, to open at (1, 2, 4 ... 64)
+  --keys   keys pressed by themselves at instants of the clock: 0:Space,18:W:9 is Space at liftoff's hold and
+           W held nine seconds from T+18 (Space W S A D Q E T Z X G P C L I H 1 2 3 4 [ ])
   --bench  print what a frame costs once a second
   --reference  the straight grade, for judging colours, instead of the film's";
 
@@ -71,6 +86,9 @@ impl Options {
             match flag.as_str() {
                 "--at" => options.at = value.parse().map_err(|_| bad())?,
                 "--rig" => options.rig = Some(value),
+                "--until" => options.until = Some(value.parse().map_err(|_| bad())?),
+                "--rate" => options.rate = value.parse().map_err(|_| bad())?,
+                "--keys" => options.keys = crate::script::parse(&value)?,
                 "--shot" => options.shot = Some(PathBuf::from(value)),
                 "--size" => {
                     let (w, h) = value.split_once('x').ok_or_else(bad)?;
@@ -102,6 +120,8 @@ mod tests {
         assert_eq!((o.at, o.size, o.bench), (30.0, (1280, 720), true));
         assert_eq!(o.pose, Some([215.0, 9.0, 150.0, 14.0]));
         assert_eq!(parse("").unwrap(), Options::default());
+        let o = parse("--keys 0:Space,18:W:9 --until 40 --rate 8").unwrap();
+        assert_eq!((o.keys.len(), o.until, o.rate), (2, Some(40.0), 8.0));
     }
 
     #[test]

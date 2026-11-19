@@ -4,7 +4,7 @@
 use sr_measure::Measure;
 use sr_world::earth::G0;
 
-use crate::{Curve, air};
+use crate::{Curve, Limits, air};
 
 /// A liquid engine as its test stand measured it.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -80,6 +80,8 @@ pub struct Plan {
     pub liftoff_mass: Measure,
     /// Engine cutoff, s from liftoff.
     pub cutoff: Measure,
+    /// How long the engine can burn before a propellant runs out, s.
+    pub burn_limit: Measure,
     /// The tilt programme: degrees from the launch vertical against seconds, in the azimuth's plane.
     pub tilt: Curve,
     /// The area the drag coefficients are referred to, m^2.
@@ -118,9 +120,17 @@ pub struct Plan {
     pub drogue: Chute,
     /// The main parachute.
     pub main: Chute,
+    /// What the structure stands.
+    pub limits: Limits,
 }
 
 impl Plan {
+    /// The propellant the engine can pass before one of them runs out, kg.
+    #[must_use]
+    pub fn usable_propellant(&self) -> f64 {
+        self.engine.flow() * self.burn_limit.value
+    }
+
     /// The stack's mass before separation, kg.
     #[must_use]
     pub fn stack_mass(&self, t: f64) -> f64 {
@@ -162,6 +172,9 @@ impl Plan {
             self.entry_mass,
             self.drogue.drag_area,
             self.main.drag_area,
+            self.limits.bending,
+            self.limits.stack_load,
+            self.limits.capsule_load,
         ];
         let curves = [self.tilt, self.ascent_drag, self.entry_drag];
         let estimated = |c: sr_measure::Confidence| matches!(c, sr_measure::Confidence::Estimated);

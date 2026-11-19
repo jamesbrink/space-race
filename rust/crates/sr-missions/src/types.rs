@@ -133,6 +133,52 @@ pub struct Parts {
     pub chute_height: f64,
 }
 
+/// A part as the physics takes it: a round solid about the vehicle's axis. Its size is measured off the model
+/// (each node's extent in the unpacked GLB), so it is as sure as the model is.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Solid {
+    /// Where it runs from and to along the axis, in the model's frame, m.
+    pub span: [f64; 2],
+    /// Its radius, m.
+    pub radius: f64,
+    /// Whether it comes to a point at its top (a cone) or does not (a cylinder).
+    pub pointed: bool,
+    /// Where its centre of mass lies along the axis, m.
+    pub balance: Measure,
+}
+
+/// One of the pieces the booster comes to if it breaks up.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Fragment {
+    /// Which of the model's nodes go with it.
+    pub nodes: &'static [&'static str],
+    /// What it is to whatever it strikes.
+    pub solid: Solid,
+    /// Its share of the booster's mass.
+    pub share: Measure,
+}
+
+/// The vehicle as the physics takes it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Solids {
+    /// The escape tower.
+    pub tower: Solid,
+    /// The capsule.
+    pub capsule: Solid,
+    /// The booster.
+    pub booster: Solid,
+    /// The retropack and the antenna canister, which leave the capsule later.
+    pub retropack: Solid,
+    /// As `retropack`.
+    pub canister: Solid,
+    /// Where the whole stack's centre of mass lies along the axis at liftoff, m.
+    pub balance: Measure,
+    /// The radius of what it stands on at its foot, m.
+    pub foot: f64,
+    /// What the booster comes to if it breaks up.
+    pub breaks: &'static [Fragment],
+}
+
 /// An engine's fire, as it is drawn (`src/viewer/flames.ts`, `plume.ts`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Flame {
@@ -191,6 +237,8 @@ pub struct Flight {
     pub models: &'static [Model],
     /// How the vehicle comes apart.
     pub parts: Parts,
+    /// The vehicle as the physics takes it.
+    pub solids: Solids,
     /// Its engine's fire.
     pub flame: Flame,
     /// Its parachutes' two colours, linear.

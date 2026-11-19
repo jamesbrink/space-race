@@ -13,9 +13,11 @@ pub mod guidance;
 pub mod loads;
 pub mod plan;
 pub mod sequence;
+pub mod stress;
 
 pub use curve::Curve;
 pub use field::Field;
-pub use loads::{Body, Loads};
+pub use loads::{Body, Drive, Loads};
 pub use plan::Plan;
 pub use sequence::Sequence;
+pub use stress::{Limits, Strain, Stress};

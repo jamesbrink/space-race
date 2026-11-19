@@ -1,11 +1,11 @@
-//! The engine's fire: hung at the nozzle the flight's data names, burning while the plan has the engine burn,
-//! and spreading as the air the vehicle is in thins.
+//! The engine's fire: hung at the nozzle the flight's data names, burning while the engine does (by the hand's
+//! switch, or the record's clock), and spreading as the air the vehicle is in thins.
 
 use bevy::prelude::*;
 use sr_render::plume::Plume;
 use sr_sim::air;
 
-use super::{Parts, Telemetry};
+use super::{Hand, Parts, Telemetry};
 use crate::Showing;
 use crate::clock::Clock;
 
@@ -15,6 +15,8 @@ const LIT_BEFORE: f64 = 2.2;
 const BUILDS: f64 = 1.4;
 /// How long the fire takes to die at cutoff, s. Estimated.
 const DIES: f64 = 0.35;
+/// How fast the fire drawn follows the engine when a hand lights it or cuts it, 1/s. Estimated.
+const CATCHES: f32 = 6.0;
 
 /// Hang the fire on the engine once the vehicle's parts are known.
 pub fn kindle(mut commands: Commands, showing: Res<Showing>, parts: Res<Parts>) {
@@ -42,17 +44,21 @@ pub fn burning(t: f64, cutoff: f64) -> f32 {
     (lit * (1.0 - out)) as f32
 }
 
-/// Each frame: the fire as the clock and the air have it.
+/// Each frame: the fire as the engine and the air have it.
 pub fn stoke(
     showing: Res<Showing>,
     clock: Res<Clock>,
+    time: Res<Time>,
+    hand: Res<Hand>,
     telemetry: Res<Telemetry>,
     mut plumes: Query<&mut Plume>,
 ) {
     let flight = showing.0;
     let ambient = if clock.t > 0.0 { telemetry.pressure } else { air::P0 };
+    let wanted = if clock.ready { hand.fire(&flight.plan, clock.t) } else { 0.0 };
+    let follows = if hand.guided { 1.0 } else { 1.0 - (-CATCHES * time.delta_secs()).exp() };
     for mut plume in &mut plumes {
-        plume.burning = if clock.ready { burning(clock.t, flight.plan.cutoff.value) } else { 0.0 };
+        plume.burning += (wanted - plume.burning) * follows;
         plume.spread = (flight.flame.exit_pressure.value / ambient.max(1.0)).clamp(1.0, 60.0) as f32;
     }
 }

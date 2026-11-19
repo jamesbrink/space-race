@@ -40,6 +40,7 @@ pub const PLAN: Plan = Plan {
         "NASA TM X-53107, Table 8-1: weight at liftoff 66,098 lb",
     ),
     cutoff: Measure::documented(CUTOFF, "the Postlaunch Report, 4.1: booster cut-off at 02:21.8"),
+    burn_limit: redstone::BURN_LIMIT,
     tilt: redstone::TILT,
     area: redstone::AREA,
     ascent_drag: redstone::ASCENT_DRAG,
@@ -82,6 +83,7 @@ pub const PLAN: Plan = Plan {
     ),
     drogue: redstone::DROGUE,
     main: redstone::MAIN,
+    limits: redstone::LIMITS,
 };
 
 /// The sky at liftoff: the flight's own report and the Skid Strip at 09:00 EST.
@@ -220,6 +222,7 @@ pub static FLIGHT: Flight = Flight {
     weather: WEATHER,
     models: &MODELS,
     parts: redstone::PARTS,
+    solids: redstone::SOLIDS,
     flame: redstone::FLAME,
     canopy: redstone::CANOPY,
     plan: PLAN,
