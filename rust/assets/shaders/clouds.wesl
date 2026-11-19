@@ -81,12 +81,14 @@ const UPDRAUGHT: f32 = 0.9;
 // A cloud's top leans down the wind by this much of its height for each m/s. Estimated.
 const LEAN: f32 = 0.035;
 // The most steps a ray takes through the cumulus, and through the deck.
-const MARCH_STEPS: i32 = 160;
+const MARCH_STEPS: i32 = 128;
 // Readings toward the Sun from each step in cloud.
-const LIGHT_STEPS: i32 = 4;
+const LIGHT_STEPS: i32 = 3;
 // Beyond this, m, two readings toward the Sun do.
 const LIGHT_NEAR: f32 = 6000.0;
-const DECK_STEPS: i32 = 32;
+// Beyond this, m, the fraying of a cloud's edge is too fine to see, and is left out.
+const FINE_NEAR: f32 = 10000.0;
+const DECK_STEPS: i32 = 24;
 // No cloud is marched beyond this, m.
 const REACH: f32 = 700000.0;
 // The light of the scattering orders that are not marched, as a gain on those that are: with it the sunlit side
@@ -352,7 +354,7 @@ fn add_seen(seen_in: Seen, glow: vec3<f32>, stopped: f32, t: f32) -> Seen {
     seen.range += t * shows;
     seen.weight += shows;
     seen.through *= 1.0 - stopped;
-    if seen.through < 0.01 {
+    if seen.through < 0.03 {
         seen.through = 0.0;
     }
     return seen;
@@ -394,7 +396,7 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end
         // (far off, the noise is read from a coarser copy: as coarse as the stride, or as a pixel)
         let coarse = max(log2(max(short_stride * 0.5, t * 0.0006) / (SHAPE_TILE / VOXELS)) + 1.0, 0.0);
         if col.within > 0.0 {
-            cloud = cumulus(col, en, z, coarse, true);
+            cloud = cumulus(col, en, z, coarse, t < FINE_NEAR);
         }
         if cloud.thick <= 0.0 {
             if short_left > 0 {
@@ -411,16 +413,16 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end
             continue;
         }
         if short_left == 0 {
-            short_left = 8;
+            short_left = 6;
             t = clear_at + short_stride * stagger(jitter, i + 3);
             continue;
         }
-        short_left = 5;
+        short_left = 3;
         // (deep in, little of what is seen is still to come: longer strides, and the light from toward the Sun
         // worked again only every other step)
         let stride = short_stride * wobble * (1.0 + 2.0 * (1.0 - seen.through));
         t += stride;
-        if seen.through > 0.35 || (i & 1) == 0 {
+        if (seen.through > 0.35 && t < LIGHT_NEAR) || (i & 1) == 0 {
             shaded = cumulus_toward_sun(en, z, slow, coarse, stagger(jitter, i + 7), t);
         }
         let embedded = mix(0.7, 1.0, smoothstep(0.0, 0.3, cloud.deep));
@@ -442,7 +444,7 @@ const SHEET_TEXELS: f32 = 1024.0;
 // Where the march gives way to the cover: where a pixel is this much of a cell of the field (about the spacing of
 // the clouds). Chosen by eye: a cloud is then a few pixels across and has no more shape to
 // show than its outline.
-const FAR_AT: f32 = 0.025;
+const FAR_AT: f32 = 0.03;
 // The far cover is read this many levels coarser than the pixel: a field of small cumulus seen from high up is a
 // soft white veil with the clumps and streets in it, as photographs from orbit show it, not a scatter of specks.
 // Chosen by eye.
@@ -712,7 +714,7 @@ const HAZE_LOBES: vec3<f32> = vec3<f32>(0.85, 0.45, 0.55);
 // across and lost in the haze before it. Chosen for what it costs.
 const SHAFT_REACH: f32 = 12000.0;
 // Steps through the air below the cumulus' tops, where the shafts are; and before and after it.
-const SHAFT_STEPS: i32 = 16;
+const SHAFT_STEPS: i32 = 12;
 const HAZE_STEPS: i32 = 5;
 
 // How much light a metre of the air takes out of a ray at a height, and where it scatters it.
@@ -813,6 +815,8 @@ const MARCH: bool = true;
 const MEASURE_REPEAT: i32 = 1;
 // Which parts are done over: 1 the cumulus, 2 the deck, 4 the haze.
 const MEASURE_PARTS: i32 = 7;
+// Which parts are left out: 1 the cumulus, 2 the deck, 4 the haze. Leave it at 0.
+const MEASURE_SKIP: i32 = 0;
 
 // A different fraction at every pixel and every frame, for the temporal anti-aliasing to average.
 fn dither(at: vec2<f32>) -> f32 {
@@ -871,11 +875,11 @@ fn fragment(in: FullscreenVertexOutput) -> Marched {
     var seen = Seen(vec3(0.0), 1.0, 0.0, 0.0);
     // Nearest layer first: the cumulus from under the deck, the deck from over it.
     if h < frame.deck.y {
-        seen = see_cumulus(seen, ray, h, mu, limit, across, jitter);
-        seen = march_deck(seen, ray, h, mu, limit, across, jitter);
+        if (MEASURE_SKIP & 1) == 0 { seen = see_cumulus(seen, ray, h, mu, limit, across, jitter); }
+        if (MEASURE_SKIP & 2) == 0 { seen = march_deck(seen, ray, h, mu, limit, across, jitter); }
     } else {
-        seen = march_deck(seen, ray, h, mu, limit, across, jitter);
-        seen = see_cumulus(seen, ray, h, mu, limit, across, jitter);
+        if (MEASURE_SKIP & 2) == 0 { seen = march_deck(seen, ray, h, mu, limit, across, jitter); }
+        if (MEASURE_SKIP & 1) == 0 { seen = see_cumulus(seen, ray, h, mu, limit, across, jitter); }
     }
 
     // The clean air between the eye and the cloud: it takes the cloud's blue first and gives back the sky's, so
@@ -889,7 +893,8 @@ fn fragment(in: FullscreenVertexOutput) -> Marched {
         light = seen.light * kept + veil * (1.0 - kept) * (1.0 - seen.through);
     }
     // And the day's haze, in front of the cloud and behind it.
-    let hazed = haze(ray, h, mu, limit, range, seen.through, jitter);
+    var hazed = Hazed(vec3(0.0), 1.0, 1.0);
+    if (MEASURE_SKIP & 4) == 0 { hazed = haze(ray, h, mu, limit, range, seen.through, jitter); }
     var out: Marched;
     out.cloud = finite(vec4(light * view.exposure, 1.0 - seen.through));
     out.haze = finite(vec4(hazed.light * view.exposure, hazed.cloud));

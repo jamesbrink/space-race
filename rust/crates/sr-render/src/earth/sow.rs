@@ -108,17 +108,36 @@ pub fn scrub(lie: &Lie, corner: Vec2, side: f32, east: Vec3, north: Vec3, ring: 
         let radius = (0.55 + 0.4 * (own * 13.0).fract()) * small * cell * 0.8 * grown;
         let tall = height * (0.7 + 0.5 * (own * 53.0).fract()) * grown;
         let kind = (own * 29.0).fract();
-        let green = leaf(p);
+        // (each plant a green of its own: a stand is never one colour)
+        let green = leaf(p) * (0.8 + 0.4 * (own * 37.0).fract());
+        // (on the dune and the strand the scrub is low and salt-pruned, and mostly saw palmetto, its sea grape and oak
+        // in loose clumps with the sand between, not domes)
+        let open = 1.0 - smoothstep(0.9, 1.5, height);
         if (own * 97.0).fract() < 0.005 {
             // (a cabbage palm stands over the scrub here and there)
             forms.palm(at, (3.5 + 3.5 * (own * 71.0).fract()) * grown, green * PALMS, own);
-        } else if kind < 0.45 {
+        } else if kind < 0.45 + 0.4 * open {
             forms.fans(at, radius, tall * 0.75, green * FANS, own);
+        } else if open > 0.5 {
+            clump(&mut forms, at, radius, tall, green, own);
         } else {
             forms.mound(at, radius, tall * 0.85, if kind < 0.6 { green } else { LEAF_OTHER } * MOUNDS, own);
         }
     }
     forms
+}
+
+/// A low clump of two to four small crowns of different heights and greens, the sand showing between them.
+fn clump(forms: &mut Forms, at: Vec3, radius: f32, tall: f32, green: Vec3, own: f32) {
+    let crowns = 2 + ((own * 43.0).fract() * 3.0) as u32;
+    for k in 0..crowns {
+        let part = |n: u32| (own * 71.3 + (k * 7 + n) as f32 * 0.618_034).fract();
+        let angle = std::f32::consts::TAU * part(1);
+        let off = Vec3::new(angle.cos(), 0.0, angle.sin()) * (radius * 0.7 * part(2));
+        let size = radius * (0.35 + 0.35 * part(3));
+        let shade = if part(4) < 0.5 { green } else { LEAF_OTHER * (0.8 + 0.4 * part(5)) };
+        forms.mound(at + off, size, tall * (0.4 + 0.6 * part(6)), shade * MOUNDS, part(7));
+    }
 }
 
 /// The taller clumps of one square past the scrub's reach: an oak's dome over the scrub, a cabbage palm, so that

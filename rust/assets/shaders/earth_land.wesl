@@ -151,7 +151,8 @@ fn cover(s: Site) -> Cover {
 fn flecks(p: vec2<f32>, cell: f32, seed: u32, seen: f32) -> vec2<f32> {
     let at = vec2<i32>(floor(p / cell));
     let own = lattice3(at, seed);
-    let r = 0.18 + 0.22 * own.z * 0.5;
+    // (sizes from a crumb to nearly the cell, most small)
+    let r = 0.08 + 0.3 * own.z * own.z;
     let d = length(fract(p / cell) - 0.3 - 0.4 * own.xy) - r;
     return vec2(fract(own.x * 7.31 + own.y * 3.7), 1.0 - smoothstep(-0.5, 0.5, d * cell / max(seen, 0.002)));
 }
@@ -195,16 +196,21 @@ fn sand(s: Site, c: Cover) -> Soil {
         colour = mix(colour, colour * vec3(0.72, 0.7, 0.68), 0.6 * low);
     }
     // shell hash: broken shell a few centimetres across, pale, and darker bits among it; coarser pieces rarer
-    let see_hash = shown(0.12, s.seen);
+    // (shell lies where the sea leaves it: thick along the wrack line, in drifts and scatters on the upper beach,
+    // little inland; and each piece is its own size. Far off it is part of the sand's tone, not a dot)
+    let see_hash = shown(0.12, s.seen) * (1.0 - smoothstep(0.02, 0.05, s.seen));
     if see_hash > 0.0 {
         // (each bit a rounded fleck of its own size somewhere in its cell, its edge as soft as a pixel: squares
         // would show as the texels of a picture)
         let fine = flecks(p, 0.03, 8u, s.seen);
         let coarse = flecks(p, 0.11, 9u, s.seen);
-        let shelly = 0.04 + 0.1 * c.beach + 0.05 * tone;
+        let wrack = 1.0 - smoothstep(0.0, 5.0, abs(s.shore - 17.0 - 3.0 * grain(vec2(p.y * 0.05, 0.0), 25u)));
+        let drift = smoothstep(0.55, 0.8, grain(p / 2.5, 29u)) * smoothstep(0.3, 0.6, grain(p / 9.0, 30u));
+        let shelly = 0.01 + (0.18 * wrack + 0.1 * drift) * c.beach + 0.02 * drift;
         colour = mix(colour, vec3(0.80, 0.76, 0.66), see_hash * fine.y * step(1.0 - shelly, fine.x));
-        colour = mix(colour, colour * 0.55, see_hash * fine.y * step(fine.x, 0.035));
-        colour = mix(colour, vec3(0.74, 0.70, 0.62), shown(0.4, s.seen) * coarse.y * step(0.985, coarse.x));
+        colour = mix(colour, colour * 0.55, see_hash * fine.y * step(fine.x, 0.6 * shelly));
+        let big = step(1.0 - 0.25 * shelly, coarse.x);
+        colour = mix(colour, vec3(0.74, 0.70, 0.62), shown(0.4, s.seen) * see_hash * coarse.y * big);
     }
     o.colour = colour;
     o.rough = 0.95;
