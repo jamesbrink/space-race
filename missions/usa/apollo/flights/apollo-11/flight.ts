@@ -1,10 +1,12 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
-import { LC39A } from '../../../places/cape-canaveral/lc-39.ts';
+import { LC39A_EDT, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
+import { lc39Crew } from '../../crew/lc39.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { APOLLO11_THRUST } from '../../vehicles/propulsion.ts';
 import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
 import { eagleModel, eaglePort, eagleStackParts, eagleViews } from './eagle.ts';
+import { WEATHER } from './weather.ts';
 
 const inch = 0.0254;
 const kit = 'NASA Apollo 11 Press Kit, spacecraft and launch vehicle descriptions';
@@ -339,7 +341,9 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-506',
   launch: '1969-07-16T13:32:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
-  site: LC39A,
+  opens: { at: boarding[0], model: 'pad', view: 'launcher' },
+  site: LC39A_EDT,
+  weather: WEATHER,
   crew: ['Neil A. Armstrong', 'Michael Collins', 'Edwin E. Aldrin Jr.'],
   summary:
     'Armstrong and Aldrin landed Eagle in the Sea of Tranquility while Collins orbited in Columbia. The descent stage stayed on the Moon as the two men lifted off to rejoin him.',
@@ -349,6 +353,10 @@ export const flight: Flight = {
     { label: 'Recovery', value: 'Pacific Ocean · 24 July 1969' },
   ],
   timeline: [
+    { t: boarding[0], event: 'Armstrong enters Columbia' },
+    { t: -elapsed(2, 32, 0), event: 'Collins enters Columbia' },
+    { t: -elapsed(2, 25, 0), event: 'Aldrin enters Columbia' },
+    { t: boarding[1], event: 'Closeout crew shuts the spacecraft hatch' },
     { t: 0.6, event: 'Liftoff from Pad 39A' },
     { t: elapsed(2, 44, 16.2), event: 'S-IVB restarts for translunar injection' },
     { t: elapsed(3, 24, 3.1), event: 'Columbia docks with Eagle in the adapter' },
@@ -391,14 +399,14 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Apollo 11 · Saturn V',
       url: 'models/usa/apollo/apollo-11/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       dockingPorts: [columbiaPort, eaglePort],
       ...blockIICabin(3871),
       seats: [
-        { node: 'Seat_Commander', label: 'Armstrong’s left couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_CommandModulePilot', label: 'Aldrin’s centre couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_LunarModulePilot', label: 'Collins’s right couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Armstrong’s left couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_CommandModulePilot', figure: 'lmp', label: 'Aldrin’s centre couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_LunarModulePilot', figure: 'pilot', label: 'Collins’s right couch', from: 'SideHatch', open: boarding },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -441,5 +449,18 @@ export const flight: Flight = {
       parts: boardingHatches([...command, ...service, ...eagleStackParts, ...escapeParts, ...launcher], boarding),
     },
     eagleModel,
+    mobileLauncher(1, {
+      ingress: boarding[0],
+      parkCommand: -3000,
+      parkedBy: -2994,
+      retractedBy: -288,
+      pao: 'Apollo 11 Flight Journal, launch-day countdown, spacecraft test conductor and Kennedy Launch Control.',
+      intertankClear: -20.1,
+      forwardRetract: -16.2,
+      firstMotion: 0.3,
+      terminalConfidence: 'documented',
+      terminalSource: 'AS-506 Flight Evaluation Report §3.6.2(a) and table 4-1. Apollo 11 Press Kit, Mobile Launcher.',
+    }),
+    ...lc39Crew(['Armstrong', 'Collins', 'Aldrin'], true),
   ],
 };

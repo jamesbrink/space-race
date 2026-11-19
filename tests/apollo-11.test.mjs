@@ -13,7 +13,7 @@ const file = (model, level = '') => new URL('../public/' + model.url.replace('.g
 
 test('Apollo 11 opens the two Gallery exhibits and uses the launch couch assignments', () => {
   assert.equal(lacks(flight, 'gallery'), null);
-  assert.ok(lacks(flight, 'site'));
+  assert.equal(lacks(flight, 'site'), null);
   assert.ok(lacks(flight, 'fly'));
   assert.deepEqual(
     stack.seats.map((s) => s.label),
@@ -27,6 +27,22 @@ test('Apollo 11 opens the two Gallery exhibits and uses the launch couch assignm
     eagle.parts.filter((p) => ['LMPlumeDeflectors', 'LMSurfaceEquipment', 'LMScienceBay'].includes(p.node)).map((p) => p.group),
     Array(3).fill('Descent stage'),
   );
+});
+
+test('Columbia boards from ML-1 in July daylight time with the assigned launch suits and couches', () => {
+  const { site, opens, models } = flight;
+  assert.equal(site.zone.utcOffset, -4);
+  assert.equal(site.zone.name, 'EDT');
+  assert.deepEqual(opens, { at: -9480, model: 'pad', view: 'launcher' });
+  const boarding = stack.seats.map(({ figure, open }) => {
+    const astronaut = models.find((model) => model.id === figure);
+    return [astronaut.name, astronaut.url.split('/').at(-1), open];
+  });
+  assert.deepEqual(boarding, [
+    ['Armstrong', 'a7l-ev.glb', [-9480, -7620]],
+    ['Aldrin', 'a7l-ev.glb', [-9480, -7620]],
+    ['Collins', 'a7l-iv.glb', [-9480, -7620]],
+  ]);
 });
 
 test('choosing either science bay from Parts opens its own inspection view on both exhibits', () => {

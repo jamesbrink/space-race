@@ -1039,6 +1039,8 @@ export class Stage {
    */
   private sharePictures(object: THREE.Object3D): void {
     const seen = new Set<THREE.Material>();
+    const unused = new Set<THREE.Texture>();
+    const stillUsed = new Set<unknown>();
     object.traverse((o) => {
       const worn = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
       for (const m of worn ? (Array.isArray(worn) ? worn : [worn]) : []) {
@@ -1049,17 +1051,25 @@ export class Stage {
           const t = value as THREE.Texture | null;
           if (!t?.isTexture) continue;
           const key = pictureKey(t);
-          if (!key) continue;
+          if (!key) {
+            stillUsed.add(t.image);
+            continue;
+          }
           const kept = this.pictures.get(key);
           if (!kept) this.pictures.set(key, t);
           else if (kept !== t) {
             slots[slot] = kept;
-            if (t.image !== kept.image) (t.image as { close?: () => void } | null)?.close?.();
-            t.dispose();
+            unused.add(t);
           }
         }
       }
     });
+    // Multiple materials can reference one texture, and different samplers can share an image.
+    // Closing it during traversal changes its width to zero and prevents later slots finding their key.
+    for (const t of this.pictures.values()) stillUsed.add(t.image);
+    const images = new Set([...unused].map((t) => t.image as { close?: () => void } | null));
+    for (const t of unused) t.dispose();
+    for (const image of images) if (!stillUsed.has(image)) image?.close?.();
   }
 
   private dress(object: THREE.Object3D, url: string): void {
