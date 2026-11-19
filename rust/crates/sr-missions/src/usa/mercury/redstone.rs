@@ -201,9 +201,11 @@ pub const PARTS: Parts = Parts {
 /// well inside it and a careless one does not.
 pub const LIMITS: Limits = Limits {
     bending: Measure::estimated(
-        4000.0,
-        "five degrees off the wind at the greatest dynamic pressure: launch vehicles are flown to limits of this \
-         order (the Shuttle's was about 3,000 psf degrees, 2,500 Pa rad); the Redstone's own has not been found",
+        4000.0 * 47.880_259 * (PI / 180.0),
+        "not in anything read: no bending strength or design angle of attack of the Mercury-Redstone is in the \
+         reports here. 4,000 lb/sq ft degrees (3,340 Pa rad) is of the order launch vehicles of the time are \
+         credited with, and at Freedom 7's greatest dynamic pressure (586 lb/sq ft: Postlaunch Report 4.2) it is \
+         6.8 degrees off the wind. The web build's figure",
     ),
     stack_load: Measure::estimated(
         12.0,

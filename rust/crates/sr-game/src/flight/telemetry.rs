@@ -8,6 +8,7 @@ use sr_sim::{Loads, Stress};
 use sr_world::earth::G0;
 
 use super::bodies::v3;
+use super::heat::Warmth;
 use super::{Course, Crewed};
 use crate::stage::dvec;
 
@@ -49,6 +50,8 @@ pub struct Telemetry {
     pub propellant: f64,
     /// How near its structure is to what it stands.
     pub stress: Stress,
+    /// The air's heat on it.
+    pub heat: Warmth,
     /// Where the record has its nose just now, as `pitch` and `heading`: what the flight intended, for a hand to
     /// fly to or not.
     pub cue: Option<[f64; 2]>,
@@ -90,6 +93,7 @@ impl Telemetry {
             track,
             propellant: self.propellant,
             stress: self.stress,
+            heat: self.heat,
             cue: self.cue,
         }
     }

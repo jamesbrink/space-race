@@ -4,6 +4,7 @@
 use sr_measure::Measure;
 use sr_world::earth::G0;
 
+use crate::heat::Heating;
 use crate::{Curve, Limits, air};
 
 /// A liquid engine as its test stand measured it.
@@ -122,6 +123,8 @@ pub struct Plan {
     pub main: Chute,
     /// What the structure stands.
     pub limits: Limits,
+    /// What the air's heat is worked on.
+    pub heating: Heating,
 }
 
 impl Plan {

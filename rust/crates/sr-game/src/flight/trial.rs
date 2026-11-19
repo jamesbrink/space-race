@@ -167,13 +167,16 @@ fn pilot(app: &mut App, vehicle: Entity) {
 #[test]
 fn a_pilot_who_flies_to_the_record_by_hand_flies_the_flight() {
     let (mut app, vehicle) = flight();
-    let (mut top, mut load, mut strain): (f64, f64, f64) = (0.0, 0.0, 0.0);
+    let (mut top, mut load, mut strain, mut flux, mut hot): (f64, f64, f64, f64, f64) =
+        (0.0, 0.0, 0.0, 0.0, 0.0);
     for _ in 0..100_000 {
         pilot(&mut app, vehicle);
         app.update();
         let telemetry = app.world().resource::<Telemetry>();
         top = top.max(telemetry.height);
         strain = strain.max(telemetry.stress.part);
+        flux = flux.max(telemetry.heat.flux);
+        hot = hot.max(telemetry.heat.part);
         if telemetry.height < 80_000.0 && telemetry.climb < 0.0 {
             load = load.max(telemetry.g);
         }
@@ -188,10 +191,44 @@ fn a_pilot_who_flies_to_the_record_by_hand_flies_the_flight() {
         "by hand: top {top:.0} m, range {range:.0} m, {load:.1} g, strain {strain:.2}, down at {landed:?}"
     );
     assert!(hand.broke.is_none() && hand.lost.is_none(), "{:?} {:?}", hand.broke, hand.lost);
+    eprintln!("heat: {:.0} kW/m2 at most, the hottest surface to {hot:.2} of what it stands", flux / 1000.0);
+    // A ballistic entry at 2.3 km/s is a warm one, not a hot one: tens of kilowatts, and nothing near its limit.
+    assert!(flux > 20_000.0 && flux < 200_000.0, "{flux}");
+    assert!(hot < 0.7, "{hot}");
     // Nothing turns it but its vanes, its jets and the air, so it lags the programme a little: within five per
     // cent of the flight flown as the record has it.
     assert!((top / flown.apogee - 1.0).abs() < 0.05, "{top} against {}", flown.apogee);
     assert!((range / flown.range - 1.0).abs() < 0.05, "{range} against {}", flown.range);
     assert!(load < 1.15 * flown.entry_g, "it came down blunt end first: {load} g against {}", flown.entry_g);
     assert!(landed.is_some());
+}
+
+#[test]
+fn an_abort_pulls_the_capsule_clear_and_it_comes_down_whole_under_its_parachute() {
+    let (mut app, vehicle) = flight();
+    run(&mut app, 1.5);
+    let lit = app.world().resource::<Clock>().t;
+    app.world_mut().resource_mut::<Hand>().act(lit);
+    run(&mut app, 30.0);
+    let before = app.world().get::<LinearVelocity>(vehicle).expect("a body").0.length();
+    let now = app.world().resource::<Clock>().t;
+    assert!(app.world_mut().resource_mut::<Hand>().abort(now));
+    run(&mut app, 1.0);
+    // The escape rocket's 56,500 lb-s on a capsule and tower of some 2,300 kg is 110 m/s, less what a second of
+    // its own weight and of the thick air at a kilometre up take back.
+    let after = app.world().get::<LinearVelocity>(vehicle).expect("a body").0.length();
+    assert!(after - before > 60.0 && after - before < 110.0, "{before} to {after} m/s");
+    assert_eq!(app.world().get::<Flier>(vehicle), Some(&Flier(Body::Capsule)));
+    run(&mut app, 6.0);
+    let now = app.world().resource::<Clock>().t;
+    app.world_mut().resource_mut::<Hand>().act(now);
+    for _ in 0..600 {
+        run(&mut app, 1.0);
+        if app.world().resource::<Sequencer>().0.landed.is_some() {
+            break;
+        }
+    }
+    let (hand, sequence) = (app.world().resource::<Hand>(), app.world().resource::<Sequencer>().0);
+    assert!(hand.lost.is_none(), "{:?}", hand.lost);
+    assert!(sequence.main.is_some() && sequence.landed.is_some(), "{sequence:?}");
 }

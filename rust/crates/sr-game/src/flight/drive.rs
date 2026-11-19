@@ -12,6 +12,7 @@ use sr_world::V3;
 use super::attitude::Turning;
 use super::bodies::v3;
 use super::hand::{Hand, Loss, Why};
+use super::heat::Heat;
 use super::{Course, Crewed, Flier, Loose, Pitches, Sequencer, Telemetry};
 use crate::Showing;
 use crate::clock::Clock;
@@ -78,6 +79,7 @@ pub fn fly(
     showing: Res<Showing>,
     course: Res<Course>,
     hand: Res<Hand>,
+    heat: Res<Heat>,
     mut sequencer: ResMut<Sequencer>,
     mut telemetry: ResMut<Telemetry>,
     mut fliers: Query<(&Flier, Option<&Pitches>, &mut Mass, Forces)>,
@@ -92,8 +94,7 @@ pub fn fly(
         let m = moment(clock.t, forces.position(), velocity, (turned * Vec3::Y).as_dvec3());
         let climb = m.velocity.dot(course.field.up(m.position));
         if crewed.is_some() {
-            // (a capsule that has been lost has no sequencer left to let its parachutes out)
-            let free = hand.free(plan, clock.t) && hand.lost.is_none();
+            let free = hand.clear(plan, clock.t);
             sequencer.0.step(plan, clock.t, course.field.height(m.position), climb, free);
         }
         let l = loads(plan, body, &course.field, &sequencer.0, &m, &hand.drive(plan, body, clock.t));
@@ -114,6 +115,7 @@ pub fn fly(
             *telemetry = Telemetry {
                 propellant: hand.remaining(plan, clock.t),
                 stress: stress::stress(&plan.limits, body, &m, &l),
+                heat: heat.warmth(showing.0, body),
                 cue: programmed.map(|toward| course.points(m.position, toward)),
                 ..telemetry.read(&course, &m, &l, climb)
             };
@@ -156,6 +158,9 @@ pub fn strain(
     } else if telemetry.stress.part >= 1.0 && (body == Body::Capsule || hand.broke.is_none()) {
         let why = if telemetry.stress.strain == Strain::Bending { Why::Bending } else { Why::Load };
         hand.fail(plan, body, Loss { why, by: telemetry.stress.part, t: clock.t });
+    } else if let (true, Some(on)) = (telemetry.heat.part >= 1.0, telemetry.heat.on) {
+        // The booster's skin takes the booster; anything of the capsule's takes the capsule.
+        hand.fail(plan, on, Loss { why: Why::Heat, by: telemetry.heat.temperature, t: clock.t });
     }
 }
 

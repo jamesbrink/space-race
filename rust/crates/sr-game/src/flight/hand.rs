@@ -1,4 +1,4 @@
-//! The hand on the controls: what the pilot has switched, and the keys that switch it.
+//! The hand on the controls: what the pilot has switched (`controls` has the keys that switch it).
 //!
 //! By hand is how the flight starts (the web build's rule too: the record is an aid, not the game): the engine is
 //! lit, the vehicle steered and each piece let go by the player, in any order, and each act has the consequence the
@@ -8,8 +8,6 @@ use bevy::prelude::*;
 use sr_sim::{Body, Drive, Plan};
 
 use super::fire;
-use crate::clock::Clock;
-use crate::{Options, Showing};
 
 /// What the next press of the action key does.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -52,6 +50,8 @@ pub enum Why {
     Load,
     /// It struck something.
     Blow,
+    /// The air's heat took it.
+    Heat,
 }
 
 /// A piece of the vehicle lost.
@@ -59,7 +59,8 @@ pub enum Why {
 pub struct Loss {
     /// Why.
     pub why: Why,
-    /// By how much: the part of its limit the bending or the load came to, or the speed lost in the blow, m/s.
+    /// By how much: the part of its limit the bending or the load came to, the speed lost in the blow, m/s, or
+    /// the temperature it reached, K.
     pub by: f64,
     /// When, s on the clock.
     pub t: f64,
@@ -73,6 +74,7 @@ impl Loss {
             Why::Bending => "the air bent it past what it stands".to_owned(),
             Why::Load => "it was loaded past what it stands".to_owned(),
             Why::Blow => format!("struck at {:.0} m/s", self.by),
+            Why::Heat => format!("the air's heat took it, at {:.0} C", self.by - 273.15),
         }
     }
 }
@@ -101,6 +103,8 @@ pub struct Hand {
     pub retro: Option<f64>,
     /// As `lit`.
     pub retropack: Option<f64>,
+    /// When the escape rocket pulled the capsule off its booster, if it did.
+    pub aborted: Option<f64>,
     /// The booster broke up.
     pub broke: Option<Loss>,
     /// The capsule, and the man in it, were lost: nothing more can be done.
@@ -122,6 +126,7 @@ impl Hand {
             separated: None,
             retro: None,
             retropack: None,
+            aborted: None,
             broke: None,
             lost: None,
         }
@@ -142,17 +147,45 @@ impl Hand {
             self.retropack = done(plan.retropack_off.value);
         }
         if body == Body::Stack && self.broke.is_none() {
-            // What was on the booster comes off it as it goes.
+            // The capsule comes off it as it goes: pulled clear by the escape rocket if the tower is still on,
+            // as the abort system was there to do.
             self.broke = Some(loss);
-            self.burning = false;
             self.lit.get_or_insert(t);
-            self.tower.get_or_insert(t);
-            self.separated.get_or_insert(t);
+            if !self.abort(t) {
+                self.burning = false;
+                self.separated.get_or_insert(t);
+            }
         }
         if (body == Body::Capsule || loss.why == Why::Blow) && self.lost.is_none() {
             self.lost = Some(loss);
             self.burning = false;
         }
+    }
+
+    /// Abort: the engine is cut and the escape rocket pulls the capsule off the booster. It can only be done
+    /// while the capsule is on the booster with its tower on; whether it was.
+    pub fn abort(&mut self, t: f64) -> bool {
+        let can =
+            self.lost.is_none() && self.lit.is_some() && self.tower.is_none() && self.separated.is_none();
+        if can {
+            self.aborted = Some(t);
+            self.separated = Some(t);
+            self.burning = false;
+        }
+        can
+    }
+
+    /// Whether an abort can be made now.
+    #[must_use]
+    pub fn can_abort(&self) -> bool {
+        !self.guided && self.clone().abort(0.0)
+    }
+
+    /// Whether the sequencer may let the parachutes out: the capsule is whole, free of its booster and rid of
+    /// its tower (the tower sits where they come out).
+    #[must_use]
+    pub fn clear(&self, plan: &Plan, t: f64) -> bool {
+        self.lost.is_none() && self.free(plan, t) && (self.guided || self.tower.is_some())
     }
 
     /// What the action key does next.
@@ -248,79 +281,25 @@ impl Hand {
                         .map(|fired| plan.retro.thrust_after(t - lit - (fired.value - first)))
                         .sum()
                 });
-                Drive { mass: plan.capsule_mass.value - pack, retro, ..quiet }
+                // With the tower still on it, it carries it, and is pulled by its escape rocket if that fired.
+                let (carried, tower) = match (self.tower, self.aborted) {
+                    (Some(_), _) => (0.0, 0.0),
+                    (None, fired) => (
+                        plan.tower_mass.value,
+                        fired.map_or(0.0, |fired| plan.tower_motors[0].thrust_after(t - fired)),
+                    ),
+                };
+                Drive { mass: plan.capsule_mass.value - pack + carried, retro, tower, ..quiet }
             }
             Body::Booster => Drive { mass: plan.booster_mass.value, ..quiet },
             Body::Tower => {
+                // Both its motors carry it away, unless the escape rocket was spent pulling the capsule clear.
                 let since = self.tower.map_or(f64::MAX, |off| t - off);
-                let tower = plan.tower_motors.iter().map(|motor| motor.thrust_after(since)).sum();
+                let spent = usize::from(self.aborted.is_some());
+                let tower = plan.tower_motors[spent..].iter().map(|motor| motor.thrust_after(since)).sum();
                 Drive { mass: plan.tower_mass.value, tower, ..quiet }
             }
         }
-    }
-}
-
-/// The hand's start.
-pub fn take(mut commands: Commands, showing: Res<Showing>, options: Res<Options>) {
-    commands.insert_resource(Hand::new(&showing.0.plan, options.at));
-}
-
-/// The keys: the stick, the engine, the action key, the hold and the record.
-pub fn keys(keys: Res<ButtonInput<KeyCode>>, mut hand: ResMut<Hand>, mut clock: ResMut<Clock>) {
-    let axis = |plus: KeyCode, minus: KeyCode| f32::from(keys.pressed(plus)) - f32::from(keys.pressed(minus));
-    let stick = Vec3::new(
-        axis(KeyCode::KeyW, KeyCode::KeyS),
-        axis(KeyCode::KeyD, KeyCode::KeyA),
-        axis(KeyCode::KeyE, KeyCode::KeyQ),
-    );
-    let stick = if hand.lost.is_some() { Vec3::ZERO } else { stick };
-    if hand.stick != stick {
-        hand.stick = stick;
-    }
-    if keys.just_pressed(KeyCode::KeyT) {
-        hand.hold = !hand.hold;
-    }
-    // The record can only be given the flight while it is still on the pad, and takes its own count.
-    if keys.just_pressed(KeyCode::KeyG) && hand.lit.is_none() {
-        hand.guided = !hand.guided;
-        clock.t = clock.t.min(-5.0);
-    }
-    if hand.guided || !clock.ready || hand.lost.is_some() {
-        return;
-    }
-    if keys.just_pressed(KeyCode::Space) || (keys.just_pressed(KeyCode::KeyZ) && hand.lit.is_none()) {
-        // Lit during the count, the count is over: liftoff is when the pilot says.
-        clock.t = clock.t.max(0.0);
-        hand.act(clock.t);
-    }
-    if keys.just_pressed(KeyCode::KeyZ)
-        && hand.lit.is_some()
-        && hand.separated.is_none()
-        && hand.propellant > 0.0
-    {
-        hand.burning = true;
-    }
-    if keys.just_pressed(KeyCode::KeyX) {
-        hand.burning = false;
-    }
-}
-
-/// The engine drinks its propellant, and stops when one of them is gone.
-pub fn burn(showing: Res<Showing>, clock: Res<Clock>, time: Res<Time>, mut hand: ResMut<Hand>) {
-    if !clock.ready || hand.guided || !hand.burning {
-        return;
-    }
-    hand.propellant -= showing.0.plan.engine.flow() * time.delta_secs_f64();
-    if hand.propellant <= 0.0 {
-        hand.propellant = 0.0;
-        hand.burning = false;
-    }
-}
-
-/// By hand the count holds at zero until the engine is lit: liftoff is when the pilot says.
-pub fn hold_count(hand: Res<Hand>, mut clock: ResMut<Clock>) {
-    if !hand.guided && hand.lit.is_none() && clock.t > 0.0 {
-        clock.t = 0.0;
     }
 }
 
@@ -355,11 +334,29 @@ mod tests {
         assert!(hand.guided);
         hand.fail(&PLAN, Body::Stack, Loss { why: Why::Bending, by: 1.2, t: 60.0 });
         assert!(!hand.guided && !hand.burning);
-        assert_eq!((hand.tower, hand.separated), (Some(60.0), Some(60.0)));
+        assert_eq!((hand.tower, hand.separated, hand.aborted), (None, Some(60.0), Some(60.0)));
         assert!(hand.lost.is_none(), "the capsule is whole");
-        assert_eq!(hand.next(), Action::Retro);
+        assert_eq!(hand.next(), Action::Tower);
         hand.fail(&PLAN, Body::Capsule, Loss { why: Why::Blow, by: 80.0, t: 200.0 });
         assert_eq!(hand.next(), Action::Nothing);
+    }
+
+    #[test]
+    fn an_abort_pulls_the_capsule_off_with_its_tower_and_the_tower_goes_later_on_its_small_motor() {
+        let mut hand = Hand::new(&PLAN, -12.0);
+        assert!(!hand.can_abort(), "nothing is lit");
+        hand.act(0.0);
+        assert!(hand.can_abort() && hand.abort(30.0));
+        assert!(!hand.burning && hand.separated == Some(30.0) && hand.tower.is_none());
+        let pulled = hand.drive(&PLAN, Body::Capsule, 30.4);
+        assert!((pulled.tower - PLAN.tower_motors[0].thrust.value).abs() < 1.0, "{}", pulled.tower);
+        assert!((pulled.mass - PLAN.capsule_mass.value - PLAN.tower_mass.value).abs() < 1e-6);
+        assert!(!hand.clear(&PLAN, 40.0), "the parachutes cannot come out through the tower");
+        assert_eq!(hand.next(), Action::Tower);
+        hand.act(60.0);
+        assert!(hand.clear(&PLAN, 61.0));
+        let leaving = hand.drive(&PLAN, Body::Tower, 60.5);
+        assert!((leaving.tower - PLAN.tower_motors[1].thrust.value).abs() < 1.0, "{}", leaving.tower);
     }
 
     #[test]

@@ -196,10 +196,27 @@ pub struct Flame {
     pub colours: [[f32; 3]; 5],
 }
 
-/// One thing the record says happened, for the simulator to be held against.
+/// Which of a flight's figures a check is of.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Figure {
+    /// The greatest height, m above the sea.
+    Top,
+    /// Distance over the sea from the pad to where it came down, m.
+    Range,
+    /// Speed over the turning Earth as the capsule left its booster, m/s.
+    SeparationSpeed,
+    /// The greatest load coming down, g.
+    EntryLoad,
+    /// Liftoff to landing, s.
+    Landing,
+}
+
+/// One thing the record says happened, for the simulator (and a pilot) to be held against.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Check {
-    /// What it is.
+    /// Which figure it is, and what it is called.
+    pub figure: Figure,
+    /// As `figure`.
     pub label: &'static str,
     /// What the record has, SI.
     pub recorded: Measure,

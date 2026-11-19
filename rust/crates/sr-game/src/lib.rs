@@ -5,6 +5,7 @@
 
 pub mod bench;
 pub mod clock;
+pub mod debrief;
 pub mod diag;
 pub mod flight;
 pub mod hud;

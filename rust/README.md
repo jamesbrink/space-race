@@ -37,6 +37,7 @@ separate, fire the retrorockets, let the retropack go. The parachutes come out b
 | T | hold the attitude (the stick asks for a rate, and letting go stops the turn) or leave it free |
 | Space | the next step of the flight |
 | Z, X | the engine on, and off |
+| B | abort: the engine is cut and the escape rocket pulls the capsule off the booster |
 | G | on the pad: fly it as it was flown, hands off (and back) |
 | P | stop the clock, and start it |
 | `[` `]` | slower, faster: 1, 2, 4, 8, 16, 32, 64 times (`,` and `.` too) |
@@ -50,7 +51,12 @@ It is a rigid body in a physics engine. It stands on its launcher by its own wei
 engine low and it falls back and breaks. The readout's Structure is how near it is to what it stands: turn its
 nose far off the wind where the air is thick and the booster breaks up and throws the capsule clear, which can
 still be ridden down; come back into the air too steeply and the load takes the capsule. Hit anything at more
-than 12 m/s and the flight is over.
+than 12 m/s and the flight is over. A booster that breaks up with the tower still on fires the escape rocket for
+you, as the abort system did; the tower then has to be let go (Space) before the parachutes can come out.
+
+Where the record had the nose, and when it did each step, is on the pilot's panel: flying to it is the game.
+When the flight is over the panel is the debrief: your greatest height, range, speed at separation, load and
+time, each beside Freedom 7's, and how hard you were on the structure.
 
 `--at <seconds>` opens anywhere in the flight, flown as it was up to there (`--at 150 --rig chase` is the
 separation, `--at 620` the main parachute); `--rate 8` opens with the clock running fast; `--bench` prints what a
@@ -133,9 +139,12 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
   are angular accelerations, chosen so it handles as the reports describe; none is a measured moment, and the
   jets burn no peroxide. Flown as it was flown (G), the bodies are turned to where the record has them point.
 - **The structure's limits are estimates** (`redstone::LIMITS`): bending as dynamic pressure times the angle off
-  the wind, and load in g. No published limit for the Redstone has been found. Heating is not modelled: a capsule
-  that comes in small end first is not burned for it. Where the booster parts, and how its pieces are thrown,
-  are ours.
+  the wind (the web build's figure), and load in g (ours). No published limit for the Redstone has been found.
+  Where the booster parts, and how its pieces are thrown, are ours. The parachutes do not tear.
+- **The air's heat is the web build's model** (`sr-sim/src/heat.rs`): Sutton and Graves's flux at the stagnation
+  point, and each surface one lump that takes its share and radiates. The shares, the emissivities and the
+  limits are judgements and say so; nothing measured on the flight is there to hold them against. A surface past
+  its limit takes its body with it.
 - **What is solid**: each piece of the vehicle is a cylinder or a cone measured off its model, the land is level
   with the hardstand for 12 km each way round the pad, and the launcher is a drum under the tail. The gantry and
   the rest of the pad are not solid, the pieces of the vehicle do not strike each other, and beyond the land
@@ -148,7 +157,7 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
 ## Not here yet
 
 Walking and driving, the gallery, the Lineup and the front page, sound, the map and the predicted path, the pad's
-morning played on the clock, an abort on the escape tower, every other flight, the cel look, the web and mobile
+morning played on the clock, every other flight, the cel look, the web and mobile
 builds (the engine supports them; none was built).
 
 ## What it showed

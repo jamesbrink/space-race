@@ -21,9 +21,13 @@ const SEEN: f64 = 2.0;
 const SMALL_DRAG_AREA: f64 = 0.6;
 const CANISTER_MASS: f64 = 30.0;
 
-/// How many of the flight's departures have happened: they come in order.
+/// Which of the flight's departures have happened: the tower, the booster, the retropack, the canister. They come
+/// in the order the pilot (or the record) has them come.
 #[derive(Resource, Debug, Default)]
-pub struct Staged(usize);
+pub struct Staged([bool; 4]);
+
+const TOWER: usize = 0;
+const BOOSTER: usize = 1;
 
 /// What a piece becomes once it has left.
 #[derive(Clone, Copy)]
@@ -46,8 +50,8 @@ struct Departure<'a> {
     /// Its velocity against the crewed body's, m/s, and its spin, rad/s, in the body's own frame.
     parts_at: DVec3,
     spins: DVec3,
-    /// What it leaves the crewed body as, and the speed that gains along its axis, m/s.
-    leaves: Option<(Body, f64)>,
+    /// The speed its going gives the crewed body along its axis, m/s, if it changes what that body is.
+    gain: Option<f64>,
 }
 
 /// The flight's departures, in the order they happen: the tower, the booster and the retropack at the times
@@ -68,7 +72,7 @@ fn departures<'a>(
         mass,
         parts_at,
         spins,
-        leaves: None,
+        gain: None,
     };
     [
         // Its motors carry it up and ahead; a little sideways and a slow tumble take it clear of the path.
@@ -80,7 +84,7 @@ fn departures<'a>(
             mass: plan.tower_mass.value,
             parts_at: DVec3::new(2.5, 1.0, 0.0),
             spins: DVec3::new(0.0, 0.0, -0.5),
-            leaves: Some((Body::Stack, 0.0)),
+            gain: Some(0.0),
         },
         Departure {
             at: booster,
@@ -90,7 +94,7 @@ fn departures<'a>(
             mass: plan.booster_mass.value,
             parts_at: DVec3::Y * (-plan.push.value * plan.capsule_mass.value / whole),
             spins: DVec3::new(0.05, 0.0, 0.03),
-            leaves: Some((Body::Capsule, plan.push.value * plan.booster_mass.value / whole)),
+            gain: Some(plan.push.value * plan.booster_mass.value / whole),
         },
         small(
             pack,
@@ -155,9 +159,11 @@ pub fn stage(
     }
     let (flight, plan) = (showing.0, &showing.0.plan);
     let all = departures(flight, &sequencer.0, hand.leaves(plan));
-    while let Some(leaving) = all.get(staged.0)
-        && let Some(due) = leaving.at.filter(|&due| clock.t >= due)
-    {
+    for (i, leaving) in all.iter().enumerate() {
+        let Some(due) = leaving.at.filter(|&due| clock.t >= due) else { continue };
+        if std::mem::replace(&mut staged.0[i], true) {
+            continue;
+        }
         let from = State {
             at: at.0,
             turned: turned.0.as_dquat(),
@@ -166,20 +172,20 @@ pub fn stage(
         };
         let seen = clock.t - due < SEEN;
         // A booster that has broken up leaves in its pieces.
-        if seen && hand.broke.is_some() && matches!(leaving.becomes, Becomes::Flier(Body::Booster)) {
+        if seen && hand.broke.is_some() && i == BOOSTER {
             shatter(&mut commands, &parts, &from, flight, clock.t);
         } else {
             release(&mut commands, &parts, &from, seen, leaving);
         }
-        if let Some((kind, gain)) = leaving.leaves {
-            // (the tower is the first thing to go, so what is left never has it)
-            let outline = Outline::body(&flight.solids, kind, false);
+        if let Some(gain) = leaving.gain {
+            // What is left: the capsule once the booster has gone, with the tower on it until that has.
+            let kind = if staged.0[BOOSTER] { Body::Capsule } else { Body::Stack };
+            let outline = Outline::body(&flight.solids, kind, !staged.0[TOWER]);
             flier.0 = kind;
             commands.entity(entity).insert(outline.solid(hand.drive(plan, kind, clock.t).mass));
             if seen {
                 velocity.0 += (from.axis() * gain).as_vec3();
             }
         }
-        staged.0 += 1;
     }
 }

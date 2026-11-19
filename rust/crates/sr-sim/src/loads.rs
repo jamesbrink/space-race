@@ -110,9 +110,12 @@ pub fn loads(
             let thrust = if drive.burning { plan.engine.thrust_at(air.pressure) } else { 0.0 };
             (thrust, plan.ascent_drag.at(mach) * plan.area.value)
         }
-        Body::Capsule => {
-            (drive.retro, plan.entry_drag.at(mach) * plan.area.value + sequence.chute_area(plan, m.t))
-        }
+        // (the retrorockets push it toward its small end, and so does the escape rocket if the tower is still
+        // on it and has been fired)
+        Body::Capsule => (
+            drive.retro + drive.tower,
+            plan.entry_drag.at(mach) * plan.area.value + sequence.chute_area(plan, m.t),
+        ),
         Body::Booster => (0.0, plan.booster_drag_area.value),
         Body::Tower => (drive.tower, plan.ascent_drag.at(mach) * plan.area.value * 0.3),
     };

@@ -10,6 +10,7 @@ pub mod curve;
 pub mod field;
 pub mod fly;
 pub mod guidance;
+pub mod heat;
 pub mod loads;
 pub mod plan;
 pub mod sequence;

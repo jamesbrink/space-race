@@ -7,7 +7,9 @@ use sr_sim::{Plan, Sequence, Strain};
 
 use crate::Showing;
 use crate::clock::Clock;
+use crate::debrief::debrief;
 use crate::flight::hand::Action;
+use crate::flight::log::Log;
 use crate::flight::{Hand, Sequencer, Telemetry};
 use crate::rig::Rig;
 
@@ -19,7 +21,7 @@ const ALARM: Color = Color::srgb(1.0, 0.72, 0.3);
 const NEAR: f64 = 0.75;
 
 const KEYS: &str = "W S  pitch    A D  yaw    Q E  roll    T  hold the attitude\n\
-Space  the next step    Z X  engine on, off    G  as flown (on the pad)\n\
+Space  the next step    Z X  engine on, off    B  abort    G  as flown (on the pad)\n\
 P  stop the clock    [ ]  slower, faster\n\
 C  camera (1 2 3 4)    L  the grade    I  diagnostics    H  hide these\n\
 drag  turn    wheel  zoom";
@@ -158,12 +160,21 @@ fn pointing(up: f64, bearing: f64) -> String {
     }
 }
 
+/// The air's heat: nothing to speak of, or how hard it is heated and how hot its hottest surface has become.
+fn heat(f: &Telemetry) -> String {
+    if f.heat.flux < 1000.0 && f.heat.part < 0.3 {
+        return "none".to_owned();
+    }
+    let (surface, hot) = (f.heat.surface.to_lowercase(), f.heat.temperature - 273.15);
+    format!("{:.0} kW/m2, {surface} {hot:.0} C", f.heat.flux / 1000.0)
+}
+
 fn figures(f: &Telemetry) -> String {
     let apogee = f.apogee.map_or_else(|| "none".to_owned(), length_reading);
     format!(
         "Height     {}\nTop        {apogee}\nSpeed      {:.0} m/s\nClimb      {:+.0} m/s\nRange      {}\n\
          Mach       {:.2}\nPressure   {:.1} kPa\nLoad       {:.1} g\nThrust     {:.0} kN\nPropellant {:.0} %\n\
-         Nose       {}\nPath       {}\nStructure  {:.0} %",
+         Nose       {}\nPath       {}\nHeat       {}\nStructure  {:.0} %",
         length_reading(f.height),
         f.speed,
         f.climb + 0.0,
@@ -175,6 +186,7 @@ fn figures(f: &Telemetry) -> String {
         f.propellant * 100.0,
         pointing(f.pitch, f.heading),
         if f.speed > 0.5 { pointing(f.path, f.track) } else { "at rest".to_owned() },
+        heat(f),
         f.stress.part * 100.0,
     )
 }
@@ -206,6 +218,9 @@ fn pilot(hand: &Hand, plan: &Plan, sequence: &Sequence, f: &Telemetry) -> String
     if hand.burning {
         says.push(format!("X  cut the engine off  (as flown {})", clock_reading(plan.cutoff.value)));
     }
+    if hand.can_abort() {
+        says.push("B  abort: the escape rocket pulls the capsule clear".to_owned());
+    }
     if let Some([up, bearing]) = f.cue {
         let (flown, yours) = (pointing(up, bearing), pointing(f.pitch, f.heading));
         says.push(format!("Nose as flown  {flown}\nNose now       {yours}"));
@@ -218,8 +233,14 @@ fn alarm(hand: &Hand, f: &Telemetry) -> String {
     if let Some(loss) = hand.broke {
         said.push(format!("The booster broke up: {}", loss.reading()));
     }
+    if hand.aborted.is_some() && hand.lost.is_none() {
+        let then = if hand.tower.is_none() { ": let the tower go for the parachutes" } else { "" };
+        said.push(format!("Aborted on the escape rocket{then}"));
+    }
     if let Some(loss) = hand.lost {
         said.push(format!("The capsule was lost: {}", loss.reading()));
+    } else if f.heat.part >= NEAR {
+        said.push(format!("{} at {:.0} % of what it stands", f.heat.surface, f.heat.part * 100.0));
     } else if f.stress.part >= NEAR {
         let what = if f.stress.strain == Strain::Bending { "the air is bending it" } else { "the load" };
         said.push(format!("Structure at {:.0} % of its limit: {what}", f.stress.part * 100.0));
@@ -233,6 +254,7 @@ fn read(
     telemetry: Res<Telemetry>,
     hand: Res<Hand>,
     sequencer: Res<Sequencer>,
+    log: Res<Log>,
     rig: Res<Rig>,
     look: Res<Look>,
     mut lines: Query<(&Line, &mut Text)>,
@@ -252,8 +274,11 @@ fn read(
     } else {
         doing(&hand, &sequencer.0, clock.t)
     };
+    // When it is over the pilot's panel is the debrief.
+    let over = hand.lost.is_some() || sequencer.0.landed.is_some();
     for (line, mut text) in &mut lines {
         let says = match line {
+            Line::Pilot if over => debrief(showing.0, &log, &hand),
             Line::Clock => clock_reading(clock.t),
             Line::Event => event.to_owned(),
             Line::Figures => figures(&telemetry),

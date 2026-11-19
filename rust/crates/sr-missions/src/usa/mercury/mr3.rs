@@ -5,8 +5,9 @@ use sr_measure::Measure;
 use sr_sim::Plan;
 use sr_sim::plan::Engine;
 
+use super::heat;
 use super::redstone::{self, FT, LB, LBF};
-use crate::types::{Check, Cloud, Event, Flight, Model, Role, Weather};
+use crate::types::{Check, Cloud, Event, Figure, Flight, Model, Role, Weather};
 use crate::usa::places::cape_canaveral::{LC5, LC5_SURROUNDINGS_1961_05};
 
 // "The Postlaunch Report" below is the Postlaunch Report for Mercury-Redstone No. 3 (NASA STG, 16 June 1961).
@@ -84,6 +85,10 @@ pub const PLAN: Plan = Plan {
     drogue: redstone::DROGUE,
     main: redstone::MAIN,
     limits: redstone::LIMITS,
+    heating: heat::heated(Measure::estimated(
+        300.0,
+        "a May morning at the Cape, about 27 C: what the shield and skin stood at on the pad is not in anything read",
+    )),
 };
 
 /// The sky at liftoff: the flight's own report and the Skid Strip at 09:00 EST.
@@ -169,6 +174,7 @@ const EVENTS: [Event; 12] = [
 /// the same inputs and the day's own air, misses the same way: its README, "What the simulator makes of it").
 pub const MISSES: [Check; 5] = [
     Check {
+        figure: Figure::Top,
         label: "Greatest height",
         recorded: Measure::documented(
             101.2 * NMI,
@@ -178,12 +184,14 @@ pub const MISSES: [Check; 5] = [
         why: "it leaves the booster fast: see the speed at separation",
     },
     Check {
+        figure: Figure::Range,
         label: "Range",
         recorded: Measure::documented(263.1 * NMI, "the Postlaunch Report, 4.2: range 263.1 n. mi."),
         simulated: 540_385.1,
         why: "as the height",
     },
     Check {
+        figure: Figure::SeparationSpeed,
         label: "Earth-fixed speed at separation",
         recorded: Measure::documented(
             6414.0 * FT,
@@ -193,6 +201,7 @@ pub const MISSES: [Check; 5] = [
         why: "the tilt curve is Figure 4-9 stretched, not MR-3's own, and the ascent's drag is the capsule's alone",
     },
     Check {
+        figure: Figure::EntryLoad,
         label: "Greatest load, coming down",
         recorded: Measure::documented(
             11.0,
@@ -202,6 +211,7 @@ pub const MISSES: [Check; 5] = [
         why: "it comes down from higher and so steeper and faster",
     },
     Check {
+        figure: Figure::Landing,
         label: "Liftoff to landing",
         recorded: Measure::documented(
             922.0,
