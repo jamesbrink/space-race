@@ -4,6 +4,20 @@ use sr_measure::Measure;
 use sr_sim::Plan;
 use sr_world::{Instant, Site};
 
+/// A place's region as the web build maps it (`public/globe/<region>.json`, `tools/globe-region.mjs`): the shore
+/// round it, drawn from OpenStreetMap as a field of distances.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Region {
+    /// The near map's file under `public/globe/`: 160 km square about the site.
+    pub shore: &'static str,
+    /// Half its width, as a fraction of the sphere's radius (its `box`).
+    pub half_width: f64,
+    /// Texels across.
+    pub texels: u32,
+    /// How many texels from a shore it keeps a distance (its `spread`).
+    pub spread: u32,
+}
+
 /// A site with how each figure of it is known (`SiteDef` in `src/types/site.ts`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SiteDef {
@@ -21,6 +35,8 @@ pub struct SiteDef {
     pub bearing_x: Measure,
     /// Where the land lies against the frame's origin, m (negative: below the hardstand).
     pub grade: Measure,
+    /// The region round it, if it has been mapped.
+    pub region: Option<Region>,
 }
 
 impl SiteDef {

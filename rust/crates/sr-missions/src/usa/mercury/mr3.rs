@@ -214,7 +214,7 @@ pub const MISSES: [Check; 5] = [
 pub static FLIGHT: Flight = Flight {
     id: "usa/mercury/mr-3-freedom-7",
     name: "Freedom 7",
-    line: "Mercury-Redstone 3 · Alan B. Shepard Jr. · 5 May 1961",
+    line: "Mercury-Redstone 3, Alan B. Shepard Jr., 5 May 1961",
     launch: (1961, 5, 5, 14, 34, 13.0),
     site: LC5,
     weather: WEATHER,

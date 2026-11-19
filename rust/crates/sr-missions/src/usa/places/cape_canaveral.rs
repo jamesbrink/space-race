@@ -3,6 +3,16 @@
 use sr_measure::Measure;
 
 use crate::SiteDef;
+use crate::types::Region;
+
+/// The Cape's region (`public/globe/cape-canaveral.json`, level `near`: the coastline as of 1961-05-05, from
+/// OpenStreetMap, 39 m to a texel).
+pub const REGION: Region = Region {
+    shore: "cape-canaveral.near.png",
+    half_width: 0.012_566_597_031_386_075,
+    texels: 4096,
+    spread: 8,
+};
 
 /// Launch Complex 5: the origin of the pad model's frame is the launcher's centre on the hardstand
 /// (`missions/usa/places/cape-canaveral/lc-5.ts`, and `lc-5.md`, "The site's frame").
@@ -33,6 +43,7 @@ pub const LC5: SiteDef = SiteDef {
         "the hardstand and the roads were laid at grade (photographs of July 1961), so the sand is a hand's breadth \
          under the concrete: 12 cm is chosen",
     ),
+    region: Some(REGION),
 };
 
 /// What stood round Complex 5 in May 1961, in the pad's frame: the blockhouse, Pad 6 and its gantry, the roads.

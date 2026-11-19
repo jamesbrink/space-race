@@ -3,6 +3,9 @@
 //! One module to a thing; this file only wires them. What is drawn is `sr-render`'s, what is flown is `sr-sim`'s
 //! and what flight it is comes from `sr-missions`: nothing here names a flight.
 
+pub mod clock;
+pub mod flight;
+pub mod hud;
 pub mod options;
 pub mod rig;
 pub mod shot;
@@ -59,8 +62,11 @@ pub fn run(options: Options) -> AppExit {
         )
         .insert_resource(Showing(flight))
         .insert_resource(stage::sky(flight, 0.0))
+        .insert_resource(stage::ground(flight))
+        .insert_resource(stage::air(flight, 0.0))
         .insert_resource(if options.reference { Look::Reference } else { Look::Film })
         .insert_resource(options)
-        .add_plugins((RenderPlugins, stage::StagePlugin, rig::RigPlugin, shot::ShotPlugin))
+        .add_plugins((RenderPlugins, clock::ClockPlugin, stage::StagePlugin, flight::FlightPlugin))
+        .add_plugins((rig::RigPlugin, hud::HudPlugin, shot::ShotPlugin))
         .run()
 }

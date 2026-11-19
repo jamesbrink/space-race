@@ -17,7 +17,7 @@ sr-missions = { path = "crates/sr-missions" }
 sr-render = { path = "crates/sr-render" }
 sr-game = { path = "crates/sr-game" }
 
-bevy = "0.20.1"
+bevy = { version = "0.20.1", features = ["jpeg"] }
 avian3d = { version = "0.8", default-features = false, features = ["3d", "f64", "parry-f64", "parallel"] }
 
 # The rules every crate inherits (`[lints] workspace = true`). A lint is switched off only with its reason beside it.
