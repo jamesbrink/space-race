@@ -834,7 +834,8 @@ read gives enough of to fly (issue #10).
   staging, the retrorockets or the braking burn, the entry), flies them again from what was written and on beside the run
   never left, to the last bit, on the same machine; tools/deck-test.mjs does it through the decks in a browser. A run that
   has ended is not kept (its result is read as before); `end` drops it, `shelve` (the page letting the flight go) keeps it.
-- **The flight can be flown by hand.** Fly it (the button by the clock, or L) takes the flight
+- **The flight can be flown by hand.** Launch (the site's way on a wide page, gallery.ts `nextStep`; on a narrow one the
+  button by the clock, which a wide page folds into it), or L, takes the flight
   deck (`src/deck/cockpit.ts`): the vehicle on its pad, the clock stopped at liftoff, the view the chase
   camera's, the page out of the way. Space lights the engine and after that sets off the next
   event; the clock runs the flight (stopped, so is the flight; faster, so is the flight, up to
