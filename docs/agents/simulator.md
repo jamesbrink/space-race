@@ -121,14 +121,60 @@ its GLB and its flight's data, not the tool: change what the bake makes and bake
 site after the tick's own contacts with what the vehicle has shed (deck/cockpit.ts `atSite`, deck/orbitdeck.ts): the
 hull's spheres still aboard are swept from where the tick began to where it ended, as the page draws the vehicle (on
 its launcher's support for the first seconds, viewer/ascent.ts `stood`), and the first meeting is answered by an
-impulse on the tick's outcome: along the surface's normal, perfectly inelastic, without friction, at the sphere that
-struck, about the centre of mass, so a blow off the axis turns the vehicle (contact.ts `strike`). Then whichever
-sphere is left deepest is answered, until none is in what it met. Nothing is written into the state from data: the
-tick is the integrator's, changed by an impulse. A contact at 1 m/s or more is said on the deck as any impact is
+impulse on the tick's outcome: along the surface's normal, perfectly inelastic, at the sphere that struck, about the
+centre of mass, so a blow off the axis turns the vehicle (contact.ts `strike`). Then whichever sphere is left deepest
+is answered, until none is in what it met. Each answer is to the state as the answers before it left it (the sphere's
+own velocity as the body goes and turns, less the ground's), so a body lying on several spheres is stopped once and
+not once a sphere. Nothing is written into the state from data: the tick is the integrator's, changed by an impulse. A contact at 1 m/s or more is said on the deck as any impact is
 (closing speed, energy), and the game's breakup rule is the same one (breakup.ts); slower, it is answered and not
 said (`REPORTED`, estimated: a vehicle lying on a deck touches it every tick). The page fetches a flight's solids
 with its models (app/session.ts) and a kept flight is stamped with them (deck/tape.ts `stampOf`, vite.config.ts
 `SOLID_STAMPS`), so it is not flown again on other shapes.
+
+**A surface drags on what slides over it** (contact.ts `strike`, `rub`): Coulomb's law at the sphere's point of
+contact, the drag at most `FRICTION` of the push between them and no more than stops the point, so a body sliding
+over a deck slows at that share of its weight and something round rolls. One coefficient, 0.5, for every pair of
+surfaces: estimated (dry steel or aluminium on steel or concrete is given from 0.4 to 0.8; nothing here knows what a
+surface is made of). A body's turning is resisted where it touches too (`ROLLING`: the push taken as lying a tenth of
+the body's radius from the point of contact, against the turning, about each of the body's axes by that axis's
+moment): estimated, and ours, so that a tank does not roll for ever nor a capsule rock on one sphere of its hull.
+
+**The land is a surface too** (`SiteSurfaces`, `Ground`): where the page has the place's land (viewer: the setting's
+`groundAt`, with its relief, out to the furthest thing placed there; `Stage.land`), a sphere meets it where its foot
+goes under it, along the land's own slope. Land under the sea's level is the sea's bed and is not met: what comes
+down there comes down in the sea, by the simulator's own floor. The live simulators' floor follows the land
+(`floorOver`: the ballistic vehicle's, the staged vehicle's and each shed body's): the simulator's own level (the
+pad's within a kilometre, the sea beyond) lowered to the land where the land lies lower, so nothing lands in the air
+beside Complex 14's stand or over Site 1's pit; within the vehicle's own width of where it stood it is left alone,
+that level being what the vehicle stood on. For what is shed the floor is put a metre under the land: the land
+itself is met by contact, and the floor is only what is under it. With no land given (a test, a flight flown with no
+page) only what stands at the site is met and the floor is the simulator's own, as before.
+
+**What a vehicle has shed strikes the site as the vehicle does** (shed.ts `ShedRun`, `ShedOptions.site`): each tick of
+a spent stage, a tower or a fairing's half is put to the same surfaces by the spheres its contacts with the vehicle
+and its siblings use (`Hull`), however the tick was asked for (the deck's, or the scene looking ahead), so its flight
+is the same however it is asked for. A falling stage lands on what is under it, is turned and slowed by it, and lies
+there. What it struck is said on the deck as an impact between the two by name, and a blow by the game's rule breaks
+it (`brokenAt`, as a blow from the vehicle does).
+
+**Lying still, a body is down where it lies** (`Lying`): touching something, with no point of it gone further than
+`STILL` (0.1 m) from where it was for `RESTS` (1 s). Stillness is read from where it is and not from its speed: a
+body answered sphere by sphere is never without a tremor. A shed body's landing is then where it lies; the
+vehicle's flight ends there (`VehicleState.landing` with `lies`, `StagedState.landed`), and it came down as fast as
+the hardest it struck on the way to lying there, which is what its verdict is given on. A flight that ends lying at
+its site is not put afloat. Both figures are estimated.
+
+**A hard strike on the site breaks parts free**, by the path a blow from something shed takes: the first blow that
+meets the game's rule sets `Sheds.activeBrokenAt` (`Sheds.broke`), the scene frees its visual fragments from that
+instant, and a Mercury-Redstone capsule alone loses its retropack through the joint a commanded jettison uses
+(`vehicle.impactRelease`). **Nothing at a site moves or is damaged**: a tower, a deck, the land take any impulse and
+stand. That is a simplification and it is all of what the site does: no structure bends, falls or burns.
+
+`tests/siterest.test.mjs` holds these on sites made for it: the drag is against the sliding and within friction's
+share; a capsule that comes down on a deck going sideways stops within metres and is down there after a second; the
+land is met where the land is and along its slope, and the sea's bed is not; a spent stage let fall on a deck lands
+on it, lies on its side and stays, where with no site it falls to the floor; one that comes down fast is broken and
+the deck is where it was; one let fall over open land lies on the land; the floor follows the land.
 
 `tests/sitecontact.test.mjs` flies **every flight as flown, by the live simulator, through its own site** for its
 first 30 s and holds that it touches nothing: a flight that strikes its site has a shape's fault or the model's, and
@@ -150,9 +196,13 @@ the test names the piece and the hull. Four were found and settled so:
   estimated, nothing read says how it went).
 
 It also holds, on sites made for it: a drift into a tower at liftoff strikes it and ends with no sphere in it; a
-blow takes the motion into the surface and keeps the motion along it; ten kilometres in one tick does not pass a
-deck; a blow off the axis turns the vehicle; a capsule alone comes down on a deck and, on a slope, is turned along
-it; a structure that has swung away is not struck.
+blow takes the motion into the surface and, of the motion along it, no more than friction's share; ten kilometres in
+one tick does not pass a deck; a blow off the axis turns the vehicle; a capsule alone comes down on a deck and, on a
+slope, is turned along it; a structure that has swung away is not struck. And on a real one, **the vehicle as it is
+drawn**: Friendship 7 pushed into its egress tower strikes it at 8 m/s, and through the blow and the second after no
+vertex of its model (every triangle of the GLB, placed as the page places it) is more than a hand's breadth inside
+the tower's boxes (`SiteWorld.depth`; 1.6 cm when it was written). The hull's spheres leave out what lies beyond 95%
+of a slice's radius and a box is squared to its cell, which is what that hand's breadth is for.
 
 `pnpm test:impact` does it in the page: Freedom 7, a second and a half up, is pushed at 40 m/s toward whatever of
 its pad stands nearest, the page's own deck flies it on the solids the page fetched, and the deck says what was
@@ -160,13 +210,14 @@ struck; in both looks.
 
 Not yet, and a vehicle flown by hand shows it:
 
-- **A hard strike on the site is said to break parts free, and frees none**: the deck's line is the one every hard
-  impact has, but only a contact with something shed lets the retropack go (sim/shed.ts `ballistic`).
-
-- **What a vehicle has shed does not strike the site**: a spent stage falls through a tower to the simulator's floor
-  (sim/shed.ts flies those, and knows no site).
-- **A vehicle at rest on a structure is not landed**: the flight ends where it meets the simulator's floor, as before.
-  Lying on a deck it is held up and slides without friction.
+- **A vehicle that touches the open ground base first ends its flight at once**, as it always has (vehicle.ts: the
+  stack's base under the floor while it is falling; stagedlive.ts a metre under it): it does not go on to fall over.
+  Tipped over, it meets the land by its hull and lies down. What it sheds always lies down.
+- **What a hand-flown flight frees by a hard strike is the retropack and the scene's fragments** (above): the
+  fragments carry no mass and strike nothing, at a site as anywhere.
+- **The land is not stamped into a kept flight**: its solids are (`SOLID_STAMPS`), the place's land is code and data
+  of the viewer, and a kept flight flown again after the land has been changed comes down on the new land.
+- The Apollo escape's own pad sweep (`launchescape.ts`, viewer-backed) is not on this world.
 - The recorded flights (the batch simulators, `pnpm figures`) know no site and are unchanged.
 - A flight replayed from its tape before its solids have arrived would not be struck: the page waits for them before
   the curtain lifts.
