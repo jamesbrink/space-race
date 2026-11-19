@@ -58,7 +58,7 @@ def build(parts, metal, panel, dark, white, *, spacecraft=3):
     if spacecraft >= 10:
         # LM-10 handbook §1.3: the five batteries stand on the aft (-Z) bulkhead.
         locations = [(-85, y, z) for y, z in ((-19, 78), (0, 78), (19, 78), (-10, 94), (10, 94))]
-    if spacecraft in (8, 10, 11):
+    if spacecraft in (8, 10, 11, 12):
         # NASA TN D-6976 table I. The narrow ascent batteries sit side by side.
         for owner, centres, size, opposite in (
             (parts["LMDescentPower"], locations, (9.04, 16.94, 9.96), False),

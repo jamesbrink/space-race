@@ -385,7 +385,7 @@ def lunar_impact_radio(iu, white, black, alloy, steel, serial):
     fittings.build(prefix + "BatteryAndRadioFittings", alloy, mount, smooth=False)
 
 
-def build(*, lunar_module=None, adapter_number=None, impact_radio=None, detailed_aps=False):
+def build(*, lunar_module=None, adapter_number=None, impact_radio=None, aps_serial=None):
     white = material("saturn-white", (0.86, 0.87, 0.83), roughness=0.64)
     black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
     steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
@@ -433,10 +433,10 @@ def build(*, lunar_module=None, adapter_number=None, impact_radio=None, detailed
     third_engine = group("ThirdStageEngine")
     third_engine.location.z = (THIRD_TOP - saturn_ib.SIVB_TOP) * IN
     structure.j2_engine(third_engine, steel, alloy, saturn_ib.J2_EXIT_INNER_RADIUS, BELL_RIM)
-    if detailed_aps:
+    if aps_serial:
         from sivb_aps import propulsion_pods
 
-        propulsion_pods(third, u, TAPER_TOP, white, steel, alloy)
+        propulsion_pods(third, u, TAPER_TOP, white, steel, alloy, aps_serial)
     else:
         for i in range(2):
             a = i * math.pi + math.pi / 2

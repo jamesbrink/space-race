@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { flight as apollo15 } from '../missions/usa/apollo/flights/apollo-15/flight.ts';
 import { flight as apollo16 } from '../missions/usa/apollo/flights/apollo-16/flight.ts';
+import { flight as apollo17 } from '../missions/usa/apollo/flights/apollo-17/flight.ts';
 import { atSite } from '../src/app/address.ts';
 import { LunarTerrain, TERRAIN_INTERVALS, TERRAIN_SPACING } from '../src/world/lunar-terrain.ts';
 import { framesOf } from './glb.mjs';
@@ -10,6 +11,7 @@ import { framesOf } from './glb.mjs';
 for (const [flight, site] of [
   [apollo15, 'hadley'],
   [apollo16, 'descartes'],
+  [apollo17, 'taurus-littrow'],
 ]) {
   test(`${site} terrain meets at every mesh edge and supports the four landing pads`, () => {
     const file = readFileSync(`public/lunar/${site}.terrain.bin`);
@@ -46,6 +48,9 @@ for (const [flight, site] of [
       assert.ok(Math.abs(fl[0] - rl[0] - 90 * 0.0254) < 0.001);
       assert.ok(Math.abs(fr[2] - fl[2] - 72 * 0.0254) < 0.001);
       assert.equal(Boolean(frame.point('RoverScience')), site === 'descartes');
+      for (const node of ['RoverGravimeter', 'RoverSEP', 'RoverLRVSampler', 'RoverSeismicCarrier', 'LRV_MapFenderRepair']) {
+        assert.equal(Boolean(frame.point(node)), site === 'taurus-littrow', node);
+      }
       for (const seat of rover.seats) assert.ok(frame.point(seat.node));
     }
   });

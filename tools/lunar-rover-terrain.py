@@ -46,6 +46,7 @@ def read_stereo(area):
         stereo = tif.asarray()
     sx, sy, _ = geo["ModelPixelScale"]
     _, _, _, left, top, _ = geo["ModelTiepoint"]
+
     def sample(latitude, longitude, fallback):
         easting = RADIUS * (longitude - np.radians(geo["ProjCenterLongGeoKey"])) * np.cos(np.radians(geo["ProjStdParallel1GeoKey"]))
         return interpolate(stereo, (easting - left) / sx - 0.5, (top - RADIUS * latitude) / sy - 0.5, fallback)

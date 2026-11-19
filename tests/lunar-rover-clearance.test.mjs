@@ -6,7 +6,7 @@ import { LunarRover } from '../src/viewer/lunar-rover.ts';
 import { readGlb } from '../tools/glb-geometry.mjs';
 import { hierarchy } from './glb.mjs';
 
-for (const mission of [15, 16]) {
+for (const mission of [15, 16, 17]) {
   for (const level of ['', '.lod1', '.lod2']) {
     test(`Apollo ${mission} rover ${level || 'full'} wheel assemblies clear the chassis and payload from lock to lock`, async () => {
       const { gltf, triangles } = await readGlb(
