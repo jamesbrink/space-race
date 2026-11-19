@@ -166,6 +166,11 @@ that place, for the figure that is not yet built.
 Blender axes and feet first; the viewer (metres, +Y up) maps Blender (x, y, z) to (x, z, −y). An axis
 in the viewer is the Blender axis mapped the same way. Angles are right-handed about the axis given.
 
+What a day clears off the pad (a flight's `cleared`) is worked as things done, each with its ends for the readout
+(lc-5.parts.ts `CLEARED`, ours): the emergency shower (where it stood, moved clear), the packing case (wheeled off),
+the spare parts trailer with its steps and tractor and the transfer van with its (towed away), and each hut with its
+pickup (dragged off). A day has those whose every node it moves.
+
 | Node | Parent | Origin (Blender ft) | Moves | Travel | When | Source / confidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | `ServiceStructure_Platform{1..4}_Left` | `ServiceStructure` | (0, 0, floor) | slides along −X | 4.5 ft (1.372 m) | before the structure moves: L1 T−200, L2 T−85, L4 T−65, L3 T−60 | parting documented (Hammack; TM X-53107 count); distance estimated |
