@@ -527,7 +527,7 @@ export interface GuidedNow {
   plan: FlightPlan;
   /**
    * The engines stopped at the start and none lit again (the path "if cut now", and a stack with nothing lit): of the
-   * sequence only what lights nothing is flown, each at the instant its triggers give (`instantOf`), and what has been let
+   * sequence only what lights nothing is flown, each at the instant its triggers give (`firings`), and what has been let
    * go but is still on parts at once, nothing pressing it on (stagedlive.ts `settle`). The parting pushes along `axis`, the
    * one the stack has, which nothing turns once no engine burns (null: the law's at the start).
    */
@@ -539,18 +539,40 @@ export interface GuidedNow {
 }
 
 /**
- * The instant a plan event is set off on the clock alone (craft.ts `holds`): the latest of its `time` triggers and of its
- * `after`s counted from what has fired (`fired`); Infinity where one has not fired or where it waits on anything but the
- * clock (a height, a speed, a command), or where it waits to be armed.
+ * When each of `ids` (a sequencer's events) is set off on a vehicle with nothing lit, from `t0` on (craft.ts `holds`, as
+ * stagedlive.ts's sequencer reads it): one already fired keeps its instant (`fired`); a `time` trigger holds at its time,
+ * an `after` from the instant the event it follows is set off (itself found so, in a chain), an `orbit` trigger at once
+ * where `onOrbit` (a stage the guidance cuts on the orbit has stopped: the cutoff it was to make is made). One that waits
+ * on anything else (a speed, a height, a command), on one that lights an engine (`lights`: none is lit again), or to be
+ * armed is not set off: it is left out.
  */
-export function instantOf(plan: FlightPlan, id: string, fired: Readonly<Record<string, number>> = {}): number {
-  const e = plan.events.find((x) => x.id === id);
-  if (!e || e.armed === false) return Number.POSITIVE_INFINITY;
-  let at = Number.NEGATIVE_INFINITY;
-  for (const w of e.when) {
-    if ('time' in w) at = Math.max(at, w.time);
-    else if ('after' in w && fired[w.after] !== undefined) at = Math.max(at, fired[w.after]! + (w.wait ?? 0));
-    else return Number.POSITIVE_INFINITY;
+export function firings(
+  plan: FlightPlan,
+  ids: readonly string[],
+  t0: number,
+  fired: Readonly<Record<string, number>>,
+  onOrbit: boolean,
+  lights: (id: string) => boolean,
+): Record<string, number> {
+  const at: Record<string, number> = {};
+  for (const id of ids) if (fired[id] !== undefined) at[id] = fired[id]!;
+  for (let changed = true; changed; ) {
+    changed = false;
+    for (const id of ids) {
+      if (at[id] !== undefined || lights(id)) continue;
+      const e = plan.events.find((x) => x.id === id);
+      if (!e || e.armed === false) continue;
+      let when = t0;
+      for (const w of e.when) {
+        if ('time' in w) when = Math.max(when, w.time);
+        else if ('after' in w && at[w.after] !== undefined) when = Math.max(when, at[w.after]! + (w.wait ?? 0));
+        else if ('orbit' in w && onOrbit) continue;
+        else when = Number.NaN;
+      }
+      if (Number.isNaN(when)) continue;
+      at[id] = when;
+      changed = true;
+    }
   }
   return at;
 }
@@ -676,12 +698,23 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
     cur.stages.forEach((x, i) => {
       if (Number.isFinite(x.loose) && !Number.isFinite(x.gone)) plan.push({ at: start.t, step: { kind: 'separate', stage: i } });
     });
-    if (now.sequence)
+    if (now.sequence) {
+      // (each event of the sequence as it would be set off: a cut is moot, but what follows it follows from its instant)
+      const onOrbit = seq.stages.some((k, i) => k.orbit && Number.isFinite(cur.stages[i]!.from) && !v.burning(cur, i, start.t));
+      const ignites = new Set(v.sequence.filter((k) => k.step.kind === 'ignite').map((k) => k.event));
+      const at = firings(
+        fp,
+        v.sequence.map((k) => k.event),
+        start.t,
+        now.fired ?? {},
+        onOrbit,
+        (id) => ignites.has(id),
+      );
       for (const k of v.sequence) {
-        if ((k.step.kind !== 'separate' && k.step.kind !== 'drop') || doneIn(k.step, cur)) continue;
-        const at = instantOf(fp, k.event, now.fired);
-        if (Number.isFinite(at)) plan.push({ at: Math.max(at, start.t), step: k.step });
+        if ((k.step.kind !== 'separate' && k.step.kind !== 'drop') || doneIn(k.step, cur) || at[k.event] === undefined) continue;
+        plan.push({ at: Math.max(at[k.event]!, start.t), step: k.step });
       }
+    }
   } else if (now.sequence) {
     const setting = (i: number): number | null => {
       const speed = seq.stages[i]!.speed;

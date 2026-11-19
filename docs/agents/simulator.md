@@ -1003,7 +1003,7 @@ read gives enough of to fly (issue #10).
   the figures: fliers.ts `guided`, `stopped`: every engine cut at the instant on show and none lit again, what it still
   carries on the drag of the shape it has, and what the vehicle then does by itself, as the live one does: what has been
   let go but is still pressed on parts at once, and while the sequencer is on each of its steps that lights nothing lets
-  its stage or drop go at the instant its triggers give (`instantOf`, from what has fired); from the parting, pushed
+  its stage or drop go at the instant its triggers give (`firings`, from what has fired: a cut its guidance was to make on the orbit is made by the stop, and what follows a cut follows from it); from the parting, pushed
   along the axis the stack has, which nothing turns once no engine burns, the spacecraft as the deck then flies it, the
   timer's burn given up for the hands, down or once round; tests/cutnow.test.mjs holds it to the live vehicle cut by
   hand at generated instants, the sequencer and guidance on and off), or, under guidance with the last cutoff to come, where guidance would take it, chosen by the same control
