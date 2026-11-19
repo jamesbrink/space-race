@@ -99,9 +99,11 @@ the Earth is 88.7 % lit seen from the Moon and 1.985 degrees across; the point o
 52.5 E and under the Sun 8.6 N 88.5 E; the point of the Moon under the Earth is 1.50 E 0.95 N and under the Sun
 139.17 W 1.16 S. Its clock is its own, a minute of the world a second (`PACE`), running on from the instant for as
 long as the page is open, and stopped at the instant for anyone who has asked for less motion. The camera's path is
-a design and says so (`PATH`, every figure estimated): where the camera is follows from two numbers only, its height
+a design and says so (`PATH`, every figure estimated): from far, where the camera is follows from two numbers only, its height
 over the Moon and how far the Earth's centre stands over the Moon's limb (`cameraFor`), so nothing in it is placed
-by hand against a sky that moves.
+by hand against a sky that moves; near the ground it stands over the place it starts from (`SITE`, found in the
+altimeter's heights: 85.87 W 56.11 S, where the Earth's centre is 0.41 degrees up and the Sun 20.5), and the Earth
+is where the sky has it (`cameraAt`).
 
 The simulation clock (`world/clock.ts`, `sr.clock`, the time bar under the section switcher)
 counts seconds from the flight's launch and is stopped at launch until run. A setting follows it

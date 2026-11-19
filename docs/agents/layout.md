@@ -98,7 +98,8 @@ public/globe/                         the globe's land and ice maps, six cube fa
 public/front/                         the front page's picture (committed): the Earth as the Moon sees it, six cube faces side by side
                                       (earth.surface.png, earth.colour.jpg from public/globe/; earth.day.jpg, the hour's cloud, sea ice and
                                       snow from ERA5; earth.json: tools/front-earth.mjs), and the Moon (moon.colour.jpg, moon.whole.jpg,
-                                      moon.wide.jpg, moon.near.jpg, .height.png, .colour.jpg, moon.json: tools/front-moon.mjs)
+                                      moon.wide.jpg, moon.near.jpg, .height.png, .colour.jpg, moon.site.bin (the ground round where the
+                                      camera starts, whole), moon.json: tools/front-moon.mjs)
 public/ephemeris/de440.bin            JPL's DE440 for 1957 to 2035 as Chebyshev segments (committed; `pnpm ephemeris`, world.md "Baking again"): fetched only when
                                       something asks for it (world/ephemeris.ts `loadEphemeris`)
 docs/ideas.md                         what the simulator lacks to play as a game: not a plan, kept so it is not forgotten
@@ -122,7 +123,7 @@ src/
   app/main.ts                         a flight's page: the stages it keeps, a session for the flight on show, the next opened on them with no reload
   app/session.ts                      the session of a flight with a site: the panels, the clock, the sound, the deck, the gallery, wired to the stage; `dispose`
   app/front.ts  app/home.ts           the front page: the list over its own picture, going into a flight under it, the words making way; and the way back out to it
-  app/front/view.ts                   the front page's view as numbers: the instant, the lens, the camera's path, the sky from the Moon (pure, tested)
+  app/front/view.ts                   the front page's view as numbers: the instant, the lens, the place the camera starts from, its path, the sky from the Moon (pure, tested)
   app/front/scene.ts                  its scene: a renderer of its own, drawn from the eye, only when the picture changes, let go whole when a flight arrives
   app/front/earth.ts                  the Earth from the Moon (the globe's maps small, the day's cloud, the air)
   app/front/front.css                 the front page's looks
@@ -233,7 +234,10 @@ src/
   viewer/onfoot/hose.ts               a hose or tether of fixed length hanging between two moving anchors
   viewer/onfoot/going.ts              people walking off a site or onto it (types.ts Going): where each figure is at an instant of the clock, pure
   viewer/onfoot/crowd.ts              a part's people walked on the clock (Part going): each man posed by the gait for the distance he has gone
-  viewer/moon.ts                      the Moon as a body (`MoonBody`): its relief at three sizes and colour from its bake, its own light; the front page's, under its camera
+  viewer/moon.ts                      the Moon as a body (`MoonBody`): its relief at three sizes and colour from its bake, the apron round the site, its own light; the front page's, under its camera
+  viewer/moonground.ts                the Moon's ground below what was measured, made by rule (estimated): the craters under 2 km and the soil's grain, in GLSL and the same sums here; the Moon's light law
+  viewer/moonrocks.ts                 the blocks lying round the front page's site: instanced, four levels of detail, each with its shadow laid on the ground
+  viewer/moonsite.ts                  the altimeter's ground round the site, read whole in doubles (`SiteGround`): heights, places, how near the ground comes to the path
   viewer/space.ts                     the sky from above the air (Sun, Moon, stars) and its reflections, the Earth in them at the flight's height; the wear texture
   viewer/explode.ts                   exploded-view motion
   viewer/runs.ts                      what slides or drives stands on what it runs on: wheels on rails or ground, body pitched between them
@@ -381,7 +385,7 @@ tools/
   sound-test.mjs                      browser check of what is heard on the ground, read off `sr.sound.voices`: a car driven and got out of, a machine worked by hand, a vehicle on the clock
   drive-test.mjs                      browser check that every vehicle at every site goes forward a car's length from where it stands, or says what holds it
   front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5
-  front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows
+  front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows, the site's ground whole (`--find-site` lists the places the camera could start from)
   shot.mjs                            one screenshot of the viewer, for looking at a change
   browser.mjs                         the one browser every browser tool launches (Chrome, ANGLE's back end, headless or not, from SR_* in the environment: macOS and Linux), and the page opener, options and checks they share
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
