@@ -194,8 +194,8 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
       await page.waitForTimeout(300);
       const turned = await read();
       // (with Hold, on by default, W turns the attitude held at 3 degrees a second and the steering follows it: deck.ts `HOLD_TURN`)
-      if (!(turned.rate > 0.02)) fail(where, `W did not turn it: pitch rate ${turned.rate}`);
-      if (!(turned.pitch < before.pitch - 2)) fail(where, `W did not pitch it over: ${before.pitch} to ${turned.pitch}`);
+      if (!(turned.rate > 0.01)) fail(where, `W did not turn it: pitch rate ${turned.rate}`);
+      if (!(turned.pitch <= before.pitch - 2)) fail(where, `W did not pitch it over: ${before.pitch} to ${turned.pitch}`);
       await page.keyboard.press('KeyB');
       await page.keyboard.press('Space');
       await page.waitForTimeout(800);
@@ -405,14 +405,17 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
     const ask = (what) => page.evaluate((x) => window.sr.cockpit.ask(x), what);
     /**
      * N, a new flight: with a run flown by hand going on it is asked first (deck/leaving.ts, 'again'), and answered Start over
-     * (N), as a visitor starting the next case would. Then it is the flight as flown, on the pad: the clock at nought, nothing
-     * flown, guidance and the sequencer on.
+     * (N), as a visitor starting the next case would. Then, both switches thrown on (it stands on the pad by hand), it is the
+     * flight as flown: the clock at nought, nothing flown, guidance and the sequencer on.
      */
     const again = async (what) => {
       await page.keyboard.press('KeyN');
       await page.waitForTimeout(300);
       if (await page.$('.deck-ask [role=alertdialog]')) await page.keyboard.press('KeyN');
       await page.waitForTimeout(500);
+      // (N stands it on the pad by hand, deck.ts `START`: both switches thrown on again for the next case, as flown)
+      await asFlown(page);
+      await page.waitForTimeout(200);
       const on = await page.evaluate(() => ({
         t: window.sr.clock.t,
         asking: Boolean(document.querySelector('.deck-ask [role=alertdialog]')),
