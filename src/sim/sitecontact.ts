@@ -28,7 +28,7 @@
  * Estimated, and ours: `REPORTED`, the closing speed under which a contact is not said on the deck (a vehicle lying on
  * a deck touches it every step); `SKIN`, how far off a surface a resolved sphere is left; `FRICTION`, one coefficient
  * for every pair of surfaces; `ROLLING`, what resists a sphere's turning where it touches; `STILL` and `RESTS`, what
- * lying still is.
+ * lying still is; `SETTLING`, under which a body already touching is not said to strike again.
  */
 import type { Flight } from '../types.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
@@ -83,6 +83,17 @@ export const RESTS = 1;
 const APART = 2;
 /** Seconds over which the page lowers the drawn vehicle from its launcher's support to the point flown (viewer/ascent.ts `SETTLES`). */
 const SETTLES = 5;
+/**
+ * m: a sphere that comes no nearer a surface than this in a step is not asked again in that step, unless the answers
+ * given since have moved the body further than this (estimated: a cell of the baked boxes; for the cost of a body
+ * lying on a site, most of whose spheres touch nothing).
+ */
+const NEARBY = 0.25;
+/**
+ * m/s: a body already touching what it strikes, struck again more gently than this, is settling on it and is not said
+ * again (estimated: the far end of a long body rocks at a metre a second while it lies down).
+ */
+export const SETTLING = 3;
 /** m: the step over which the land's slope is read for its normal (estimated: finer than any hull's sphere). */
 const SLOPE = 0.25;
 /** What the land is called on the deck when it is struck, and by what key. */
@@ -138,6 +149,12 @@ export class Lying {
   private touched = Number.NEGATIVE_INFINITY;
   private last = Number.NEGATIVE_INFINITY;
   private hardest = { vertical: 0, horizontal: 0 };
+  private was = false;
+
+  /** Whether the body was already touching something as the step last noted began: what it strikes gently then, it is settling on (`SETTLING`). */
+  get touching(): boolean {
+    return this.was;
+  }
 
   /**
    * `points`: where points of the body are over the ground (its centre of mass, and far ends of it along and across,
@@ -151,6 +168,7 @@ export class Lying {
       this.hardest = { vertical: 0, horizontal: 0 };
     }
     this.last = t;
+    this.was = t - this.touched <= 0.1;
     if (!touched) {
       // (answered sphere by sphere a body lying on something is off it for a tick or two between touches)
       if (t - this.touched > 0.1) this.since = null;
@@ -261,11 +279,19 @@ export class SiteSurfaces {
     if (!(dt > 0) || !beads.length) return { r, v, q, w, hits, touched };
     const { centre, inertia, wide } = mass;
     const said = new Set<string>();
+    // where each sphere began the step, and how far the furthest is from the centre of mass
+    const froms = beads.map((bead) => this.drawn(point(before, bead.at), before.t));
+    const reach = beads.reduce((far, b) => Math.max(far, Math.hypot(b.at[0] - centre, b.at[1], b.at[2]) + b.radius), 0);
+    // the spheres to ask: all of them, then those that came near anything, until the answers have moved the body far
+    let near: number[] | null = null;
+    let moved = 0;
+    const all = beads.map((_, i) => i);
     // (several spheres may meet something in one step: each answer is taken before the next is looked for)
     // (the earliest first, for when it happened; then whichever is left deepest, so that none is left in what it met:
     // a sphere left inside a piece is no longer met by it)
     for (let round = 0; round < 12; round++) {
       const now: ContactPose = { ...after, r, v, q, w };
+      const found: number[] = [];
       let first: {
         bead: HullBead;
         fraction: number;
@@ -275,9 +301,17 @@ export class SiteSurfaces {
         node: string;
         into: number;
       } | null = null;
-      for (const bead of beads) {
-        const from = this.drawn(point(before, bead.at), before.t);
+      for (const i of near ?? all) {
+        const bead = beads[i]!;
+        const from = froms[i]!;
         const to = this.drawn(point(now, bead.at), now.t);
+        if (!near) {
+          const over = this.land(to[0], to[2]);
+          const close =
+            (over !== null && to[1] - bead.radius - NEARBY < over) || !this.world.clear(from, to, bead.radius + NEARBY, before.t, now.t);
+          if (!close) continue;
+          found.push(i);
+        }
         const motion = sub(to, from);
         const hit = this.world.sweep(from, to, bead.radius, before.t, now.t);
         if (hit) {
@@ -298,6 +332,7 @@ export class SiteSurfaces {
         if (first && (round === 0 ? fraction >= first.fraction : into <= first.into)) continue;
         first = { bead, fraction, normal, motion, key: LAND.key, node: LAND.key, into };
       }
+      near ??= found;
       if (!first) break;
       touched = true;
       const t = before.t + dt * first.fraction;
@@ -345,6 +380,12 @@ export class SiteSurfaces {
         w = [eased(0), eased(1), eased(2)];
       }
       q = rotateFor(q, answer.w, dt * (1 - first.fraction));
+      // (an answer that has moved the body far may have brought a sphere to something it was nowhere near: ask them all again)
+      moved += length(answer.r) + length(answer.w) * dt * (1 - first.fraction) * reach;
+      if (moved > NEARBY) {
+        near = null;
+        moved = 0;
+      }
       if (answer.speed >= REPORTED && !said.has(first.key)) {
         said.add(first.key);
         const impact = {
@@ -515,7 +556,9 @@ export class SiteContact {
     const met = s.resolve(before, after, aboard, { ...this.massOf(after, aboard), wide }, (key) => this.names.get(key));
     const coming = s.coming(before, before.t);
     const rest = this.lying.note(after.t, met.touched, s.placed({ ...met, t: after.t }, round), coming.down, coming.along);
-    return { r: met.r, v: met.v, q: met.q, w: met.w, hits: met.hits, rest };
+    // (lying down on what it struck, it knocks on it again and again: those are not said)
+    const hits = this.lying.touching ? met.hits.filter((h) => h.speed >= SETTLING) : met.hits;
+    return { r: met.r, v: met.v, q: met.q, w: met.w, hits, rest };
   }
 
   /** Where the vehicle lies and how it leans, for the landing a rest is (`SiteSurfaces.lies`). */
