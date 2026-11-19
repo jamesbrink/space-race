@@ -1,8 +1,8 @@
 // The native build's models: the repo's own GLBs with their Draco compression taken off, because Bevy's glTF
-// loader does not read KHR_draco_mesh_compression. Nothing else is changed: the same nodes, names, materials and
-// textures, written under rust/assets/models/ at their original path. Sources come from rust/models/ when present,
-// otherwise from public/models/. The unpacked folder is not
-// committed; this makes it again. The decoder is the page's own (public/draco), as tools/glb-geometry.mjs uses it.
+// loader does not read KHR_draco_mesh_compression. Outputs keep their original paths under rust/assets/models/.
+// Identical native finish tiles share one PNG on disk and one GPU image. Sources come from rust/models/ when
+// present, otherwise from public/models/. The unpacked folder is generated. The decoder is the page's own
+// (public/draco), as tools/glb-geometry.mjs uses it.
 //
 //   node rust/tools/unpack-models.mjs            the first flight and what stands round it
 //   node rust/tools/unpack-models.mjs <a.glb>... those files, given by their path under public/models/
@@ -11,9 +11,10 @@
 //
 // COLOR_0 is dropped: on these models it is the cabin's baked lamp shade (src/viewer/shade.ts), not a colour, and
 // an engine that met it would multiply the paint by it.
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
-import { dirname, join } from 'node:path';
+import { dirname, join, relative, sep } from 'node:path';
 import { standAtLiftoff } from './pose.mjs';
 
 const root = join(import.meta.dirname, '../..');
@@ -97,6 +98,35 @@ function writer() {
   };
 }
 
+// Bevy keys an embedded image by its GLB. A single shared URI lets the neighbouring pads use the
+// same grain at full resolution. The committed GLBs remain self-contained. Colour space and sampler
+// are part of the identity because they are properties of an Image in Bevy.
+const written = new Set();
+function shareFinish(gltf, index, bytes, file) {
+  const image = gltf.images[index];
+  if (!/-(colour|response|normal)$/.test(image.name ?? '') || image.mimeType !== 'image/png') return false;
+  const uses = gltf.textures.filter((texture) => texture.source === index);
+  const samplers = new Set(uses.map((t) => JSON.stringify(gltf.samplers?.[t.sampler] ?? {})));
+  if (samplers.size !== 1) return false;
+  const space = image.name.endsWith('-colour') ? 'srgb' : 'linear';
+  const hash = createHash('sha256')
+    .update(space)
+    .update([...samplers][0])
+    .update(bytes)
+    .digest('hex');
+  const dest = join(to, 'surfaces', `${hash}.png`);
+  if (!written.has(hash)) {
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, bytes);
+    written.add(hash);
+  }
+  delete image.bufferView;
+  image.uri = relative(dirname(join(to, file)), dest)
+    .split(sep)
+    .join('/');
+  return true;
+}
+
 function unpack(d, file) {
   const native = join(root, 'rust/models', file);
   const nativeTier = existsSync(native);
@@ -114,7 +144,11 @@ function unpack(d, file) {
     if (!kept.has(i)) kept.set(i, out.add(slice(i), old[i].byteStride ? { byteStride: old[i].byteStride } : {}));
     return kept.get(i);
   };
-  for (const image of gltf.images ?? []) if (image.bufferView !== undefined) image.bufferView = keep(image.bufferView);
+  for (const [i, image] of (gltf.images ?? []).entries()) {
+    if (image.bufferView === undefined) continue;
+    if (nativeTier && shareFinish(gltf, i, slice(image.bufferView), file)) continue;
+    image.bufferView = keep(image.bufferView);
+  }
   for (const accessor of gltf.accessors) if (accessor.bufferView !== undefined) accessor.bufferView = keep(accessor.bufferView);
 
   let triangles = 0;

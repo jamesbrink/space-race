@@ -17,6 +17,7 @@ for (const [target, name] of models) {
     {
       cwd,
       stdio: 'inherit',
+      env: { ...process.env, SR_NATIVE_SURFACES: '1' },
     },
   );
   if (result.error) throw result.error;

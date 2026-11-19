@@ -86,6 +86,20 @@ The division into panels, the flushness of the heads and the exact MR-7 service-
 this record. The mesh called `Engine_A7` includes the hoops. Its lowest vertex is −17.855 m in both tiers. The
 separate chamber-wall mesh reaches −18.146 m. These are two distinct surfaces in the exported vehicle.
 
+In the Freedom 7 native GLB the roll pattern has panel-scale changes in tone and brushed enamel highlights.
+The national legend is baked from its existing curved letter outlines into the tank skin. A fill fitting leaves a
+narrow darker run below it. The lower fins carry a light deposit near the base, the engine jacket and lip show
+heat tint, and the tips of the graphite vanes are ashy. The brightness order comes from S61-02407 at ignition.
+The broad sheen of the enamel is **assumed** from the museum Redstone A19800166000 (DSH01). Individual runs,
+thermal colours, oil, spray passes and panel tones are **estimated**. The photograph cannot identify a fluid.
+
+The oxygen section has its own opaque skin. Its colour map holds the dry paint and lettering, with a separate
+coverage value at every texel. The native renderer lays pale, rough rime over that paint and exposes it in
+patches as coverage falls. The cylindrical extent follows the model's tank walls. The broken margins, clear
+bands at the modelled ring frames and relative adhesion are **estimated**. S61-02407 and the 00:35–00:45 launch
+footage in NASA JSC's *The Day Alan Shepard Made American History* establish how faint the lower roll-out
+lettering looks alongside the upper lettering. Neither gives an ice thickness or shedding time series.
+
 ## What the model gets wrong or leaves out
 
 - **The adapter's height is a remainder**, not a measurement, and one primary figure disagrees with it (see above).
@@ -142,7 +156,7 @@ separate chamber-wall mesh reaches −18.146 m. These are two distinct surfaces 
   such a fin, not read off a drawing or a photograph; so is each rudder's pivot, a shaft across
   the gap from the fin 24 in up, with a bearing boss on either face. That the rudders turned
   (±11°) is documented; about what axis is not.
-- **The frost on the oxygen tank is representative**: its extent is the tank's cylindrical wall, its
+- **The web frost on the oxygen tank is representative**: its extent is the tank's cylindrical wall, its
   edge is a clean line, and no photograph of MR-3 was used to place it.
 - **The engine is representative.** Chamber, jacket and the main lines are there; their routing
   and the turbopump's form are not from a drawing.

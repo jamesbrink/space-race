@@ -151,6 +151,12 @@ detail above the inventory level.
 The shield and retro outlet covers at liftoff, retropack grommets, wire terminations, weld sizes and the face of the
 central fastener lack a measured No. 7 detail drawing here. The native mesh still shows the retro outlets open.
 
+On the native Freedom 7 stack the beryllium dish catches the sky along its rolled rim. Faint turning marks run
+around the dish. The tower's red enamel shows earth-red primer by the tube ends. The clear port surfaces are
+two modelled panes with a slight tint. The metal and glazing arrangement follows the No. 7 record and SEDR 104.
+The highlight widths, turning finish, primer exposure and optical coefficients are **estimated** from the
+conserved capsule and the April pad photographs. The glass treatment omits internal refraction.
+
 ## What the model gets wrong or leaves out
 
 Each item in full, with its source, is in [Freedom 7's spacecraft.md](../flights/mr-3-freedom-7/spacecraft.md),

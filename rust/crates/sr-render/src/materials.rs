@@ -1,6 +1,10 @@
-//! The models' surfaces. The GLBs carry flat colours named in Blender (`shingle-rene41`, `paint-booster-white`);
-//! the finish is given here by name, as the web build's viewer does (`WORN` in `src/viewer/stage.ts`), and taken
-//! further: paint gets its lacquer, metal its streaks, glass is glass.
+//! The models' named finishes. Native GLBs carry colour, roughness/metalness and tangent normals.
+//! Inventory materials without a bake keep their shared streaked roughness.
+
+mod frost;
+mod mips;
+
+pub use frost::Frost;
 
 use bevy::asset::RenderAssetUsages;
 use bevy::gltf::GltfMaterialName;
@@ -45,6 +49,7 @@ pub struct MaterialsPlugin;
 
 impl Plugin for MaterialsPlugin {
     fn build(&self, app: &mut App) {
+        frost::register(app);
         app.add_systems(PreStartup, make_wear).add_observer(finish_model);
     }
 }
@@ -84,6 +89,7 @@ fn finish_model(
     named: Query<(&MeshMaterial3d<StandardMaterial>, &GltfMaterialName)>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     wear: Res<Wear>,
+    mut images: ResMut<Assets<Image>>,
     mut done: Local<HashSet<AssetId<StandardMaterial>>>,
 ) {
     for part in children.iter_descendants(ready.entity) {
@@ -92,6 +98,9 @@ fn finish_model(
             continue;
         }
         if let Some(mut material) = materials.get_mut(handle.id()) {
+            if material.normal_map_texture.is_some() && material.metallic_roughness_texture.is_some() {
+                mips::filter(&mut images, &material);
+            }
             finish(&mut material, &name.0, &wear.0);
         }
     }
@@ -101,6 +110,21 @@ fn finish_model(
 fn finish(material: &mut StandardMaterial, name: &str, wear: &Handle<Image>) {
     if name.starts_with("glass") {
         return glaze(material, name);
+    }
+    if material.normal_map_texture.is_some() && material.metallic_roughness_texture.is_some() {
+        // Structural enamel has chalked in the salt air. Fresh booster enamel retains a tighter highlight.
+        let coat = if name.starts_with("paint-booster") {
+            (0.32, 0.28)
+        } else if name == "paint-launcher-black" {
+            (0.35, 0.38)
+        } else if name.starts_with("paint-structure") || name == "tower-red" {
+            (0.11, 0.51)
+        } else {
+            (0.0, 0.5)
+        };
+        material.clearcoat = coat.0;
+        material.clearcoat_perceptual_roughness = coat.1;
+        return;
     }
     if WORN.iter().any(|worn| name.starts_with(worn)) && material.base_color_texture.is_none() {
         material.metallic_roughness_texture = Some(wear.clone());
@@ -122,12 +146,14 @@ fn glaze(material: &mut StandardMaterial, name: &str) {
     let opacity = match name {
         "glass-visor" => 0.5,
         "glass-lens" => 0.34,
-        _ => 0.16,
+        _ => 0.13,
     };
     material.base_color = Color::srgba(0.047, 0.078, 0.094, opacity);
     material.perceptual_roughness = 0.03;
     material.metallic = 0.0;
-    material.reflectance = 0.6;
+    // Each physical pane reflects at its own surface. The clear port has an inner and outer pane.
+    material.ior = 1.50;
+    material.reflectance = 0.5;
     material.alpha_mode = AlphaMode::Blend;
     material.double_sided = true;
     material.cull_mode = None;

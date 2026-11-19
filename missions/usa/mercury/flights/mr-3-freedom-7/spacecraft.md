@@ -312,6 +312,13 @@ from the adjacent shingles. The May paint, release socket, original window posit
 sources given above. The paint follows the finer sheet surface. No. 7's shared shield, pack, antenna and tower are
 described under “Native exterior” in [the capsule record](../../vehicles/mercury-capsule.md).
 
+At native detail the Rene 41 sheets have a cool charcoal body and a small blue-to-warm change in oxidation from
+sheet to sheet. The formed beads and washers catch the moving highlight in geometry. The painted UNITED STATES follows
+the crests and troughs of the corrugations. The smaller name is drawn as brush strokes over two lines at the
+position in the paint table. NASM2021-00161 shows the metal after flight. The April pad and May carrier
+photographs establish the lettering layout. Hue, roughness, stroke edges and sheet temper at launch are **estimated**.
+NASA dates the first painted external US flag to Friendship 7. [NASA flag history](https://www.nasa.gov/history/flag-day-flying-high-the-stars-and-stripes-in-space/)
+
 ## What the model gets wrong or leaves out
 
 - **The antenna canister's diameter disagrees with the one document that states it.** See above.
@@ -342,7 +349,7 @@ described under “Native exterior” in [the capsule record](../../vehicles/mer
 - **After the turnaround the simulator rolls the capsule periscope side down** (`Craft.rigid.capsule.earthward`,
   estimated: 125 degrees, from the model's own periscope and hatch bearings). The record has the yaw through 180 degrees
   and the 34 degrees; that the periscope faced the Earth is why it was there; the roll's own figure is not in anything read.
-- **Open: the paint is not worn in colour.** A paler ring round each screw head is all there is; edges are not
+- **In the web build the paint is not worn in colour.** A paler ring round each screw head is all there is; edges are not
   worn to the metal and recesses are dark only through the build's baked shade, not in the paint.
 - **Open: the porthole and screen lights have no direction.** Each lights the wall behind its pane as well as what
   is before it.
@@ -384,7 +391,7 @@ described under “Native exterior” in [the capsule record](../../vehicles/mer
 - **The web retropack's straps** stop at its sides. The native straps join under its centre, as in SEDR 104 (1959), 8-4. The motors are not canted toward the centre of mass as the real ones are.
 - **The jettison motor** has three outlets at native detail. Their lip diameters and clocking are estimates. The web model has one.
 - **The tower's bracing** (one diagonal per bay) is a simplification.
-- **Lettering is Arial Bold**, not the stencil McDonnell used; "FREEDOM 7" was hand-painted.
+- **The national legend uses an approximation of the stencil.** The native FREEDOM 7 approximates the brushwork. The web name uses a bold sans.
 - **The tower leaves on both its rockets, simply.** Hammack and Heberlig (p. 15): at booster cutoff "the
   tower clamp ring was released and both the escape and pylon jettison rockets fired to remove the tower".
   The simulator fires both on the tower as it leaves, along the axis through its centre of mass (so it is not

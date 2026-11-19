@@ -1048,6 +1048,14 @@ and of Complex 26's; OpenStreetMap. Details in [docs/sources.md](../../../../doc
 | Hardstand and vehicles | The slab joints, rail channels and covered cable trench remain visible. Off the slab the rail joints have washers, heads and nuts. The cherry picker's wheels, slew bearing, pins and rams, and the trailers' wheels, vessels and bands have finer sections. | Slab, rails and truck outlines in the May launch views, rail hardware and joint pitch **estimated** as in the track table above. The photo coverage does not locate individual drains. |
 | Surroundings | The blockhouse viewing ports have retaining beads and screws, the roof follows the existing vault more closely, and the parked passenger cars' whitewall tyres have recessed tread grooves. Pad 6 also takes the finer launcher and walking hardware. | Port framing **estimated** from F16_016 and the dated exterior references in “The rest of the complex”. The roof reuses the existing dimensions. Tyre tread section **estimated** for the depicted period cars. |
 
+The native May surface bake preserves the open holes in the platform grating. Zinc flecks change how the
+bearing bars catch the sun. Faded enamel and local brown runs follow the steelwork. The track has a brighter
+running face above an oxidised web. The slab has fine cracks and aggregate inside the existing expansion joints,
+with irregular, partly transparent scorch and oil deposits under the launcher. Rubber and canvas have distinct
+roughness and weave. S61-02407 establishes the broad May apron tones. The lift and launch-table prints F19_051
+and F12_026_01 are July views of the installation, **assumed** for May. Individual cracks, stains, corrosion,
+rail contact widths, oxide colours, zinc crystal size and cloth weave are **estimated**.
+
 The photographs do not resolve the gantry's steel schedule, individual welds, floor pattern, lamp fittings or the
 routing of each cable. The trench on the hardstand is identified as a cable trench. No separate drain layout has been
 established for launch day.

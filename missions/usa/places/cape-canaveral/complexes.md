@@ -199,6 +199,12 @@ Confidence follows the entries for each complex. The Noble stand and the connect
 with the two-light layout **assumed** from HAER FL-8-5 p. 46 for the comparable blockhouses. Their dark ports are
 exterior representations. The separate generator buildings and sheds retain their inventory geometry.
 
+The May native surroundings reuse the launch-site finishes on their tagged surfaces. The open work floors at
+LC-26 have galvanised bars, its rails have a polished running face, and the blockhouses have a finer painted
+wall grain than the apron. Finish families are **assumed** from the LC-5 photographs. Local weathering, rail polish
+and paving cracks are **estimated**. The period views establish the structures at these distances and do not
+resolve an individual stain.
+
 ## Sources known and not read
 
 HAER's drawings for Complex 17 (FL-8-5-A to -G); a legible copy of Complex 26's "Missile Service Stand"

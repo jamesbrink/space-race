@@ -106,6 +106,17 @@ assets/          shaders; models/ is made by `pnpm rust:models`
 `sr-measure <- sr-world <- sr-sim <- sr-missions` mirror `src/measure.ts`, `src/world/`, `src/sim/` and
 `missions/`, so a figure and its source port one to one; change both builds together.
 
+### Hardware surfaces
+
+The native model build bakes colour, packed metallic/roughness and tangent normals in Blender's Python. Its UVs
+follow the hull, sheets and rail faces in the construction frame. The pad and neighbouring complexes share
+identical finish tiles by URI when unpacked. The packed sources keep every image inside its GLB.
+The hardware records in the flight and site directories describe what was read from the photographs and what was estimated.
+
+The oxygen skin carries its dry paint and national lettering in RGB and rime coverage in alpha. Set
+`sr_render::materials::Frost::amount` from the flight clock (1 on a fully fuelled pad, 0 after shedding).
+The renderer starts at 1 and thins the coating on the still-opaque skin. The shedding schedule belongs to the game.
+
 ## Rules
 
 The repo's rules hold here (`AGENTS.md`): every number carries a confidence and a source; nothing is fitted, and
@@ -124,7 +135,7 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
 ## What is simplified
 
 - **Models are unpacked, not read in place.** Bevy's glTF loader does not read Draco, and every GLB requires it.
-  `tools/unpack-models.mjs` decodes them with the page's own decoder; nothing else is changed.
+  `tools/unpack-models.mjs` uses the page's decoder, drops the web cabin-shade channel and shares native finish tiles.
 - **The pad is stood as at liftoff by the unpacker**, by running the web build's own motions
   (`src/viewer/explode.ts`) at liftoff's place on the pad's slider. The native build does not play the morning.
 - **The Earth is a sphere** through the site (the engine's atmosphere is one); the web build's is the WGS 84 ellipsoid.

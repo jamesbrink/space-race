@@ -1094,7 +1094,14 @@ def run(name: str, build: Callable[[], str], previews: Sequence[tuple] = ()) -> 
         print(f"{name}: meshes not joined: no --named list (tools/build-model.mjs gives one)")
     out = os.path.abspath(args.out)
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    export_glb(out)
+    if native() and os.environ.get("SR_NATIVE_SURFACES") == "1":
+        # Only the native build opts into the hardware bakes. Joining and clearance still see the source scene.
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../rust/tools"))
+        from surfaces import export_finished
+
+        export_finished(out, export_glb)
+    else:
+        export_glb(out)
     n, tris = stats()
     print(f"{name}: {n} meshes (built as {built}), {tris:,} triangles, {summary}, {os.path.getsize(out) / 1e6:.2f} MB -> {out}")
     if args.preview:
