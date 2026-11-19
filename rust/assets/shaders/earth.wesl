@@ -11,7 +11,7 @@ import bevy_pbr::render::{
 };
 import super::earth_noise::{TAU, noise_sampler, lattice3, grain, billow, shown};
 import super::earth_land::{Site, Soil, ground};
-import super::sea::{Waves, waves, Surf, surf, water, SEA, DEEP, LAGOON, LAGOON_EDGE, FOAM, SURF_ZONE, TURBID};
+import super::sea::{Waves, waves, Surf, surf, surf_far, water, SEA, DEEP, LAGOON, LAGOON_EDGE, FOAM, SURF_ZONE, TURBID};
 import super::earth_glint::{sunlight, to_sun, glint, sun_on_water};
 import super::earth_frame::{Plane, EarthFrame, through_cloud};
 import super::earth_baked::fields_at;
@@ -52,6 +52,10 @@ const LAND_DETAIL: bool = true;
 // looking: past it nothing the near ground draws is more than a pixel across.
 const FAR: vec2<f32> = vec2(0.4, 0.7);
 const SEA_DETAIL: bool = true;
+// The ground a pixel covers (m, as a square) over which the surf's breakers, drawn one by one, give way to the share
+// of the pixel their band whitens (sea.wesl `surf_far`). Chosen so that nothing within a few kilometres of the eye
+// at the pad or on the chase changes: there a pixel covers a few metres.
+const SURF_FAR: vec2<f32> = vec2(40.0, 160.0);
 // And the Sun's glint on the water (earth_glint.wesl): off, the water has the Sun's light through it and none off it.
 const GLINT: bool = true;
 // The sphere's radius, m, near enough for turning a map's texels into distances over the ground.
@@ -326,11 +330,18 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
         // (water over ground the relief has above the sea is a lagoon or a lake, whose bed is not in the relief:
         // taken as shallow, one tone: src/viewer/globe.ts)
         let mapped = select(max(bed, 2.0), 1.5, bed < 0.5);
-        let depth = mix(mapped, shelving, on_near * faces_sea * (1.0 - smoothstep(150.0, 900.0, -shore)));
         var bank = 0.0;
         for (var i = 0; i < 6; i++) {
             bank = max(bank, smoothstep(earth.banks[i].w - 0.0001, earth.banks[i].w + 0.00005, dot(fixed, earth.banks[i].xyz)));
         }
+        // How much this is the open sea off a beach, to be drawn as the Cape's own is: the near map tells the open
+        // sea from enclosed water; beyond it, water the relief puts over the sea's floor is the open sea's, and a bank
+        // of pale sand keeps its own colour. One rule for the inshore water, the surf and the bed inside the near map
+        // and beyond it, so its edge cannot be seen.
+        let open_side = mix(smoothstep(0.5, 2.0, bed) * (1.0 - bank), faces_sea, on_near);
+        // (beyond the near map the bed shelves from the wider map's shore, without the bar)
+        let shelves = mix(max(-0.022 * shore, 0.0), shelving, on_near);
+        let depth = mix(mapped, shelves, open_side * (1.0 - smoothstep(150.0, 900.0, -shore)));
         // (the water's own colour: off a continental shore it is green with what is in it, and off the shelf the
         // open ocean's dark blue, which sends back a fiftieth of the light. Where one gives way to the other, by
         // depth, is estimated.)
@@ -345,7 +356,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
         let silt = billow(en / 900.0, 92u) + 0.35 * (billow(en / 260.0, 93u) - 0.5);
         let cape = mix(SURF_ZONE, mix(TURBID, deep, smoothstep(3.0 + 5.0 * silt, 7.0 + 14.0 * silt, depth)),
             smoothstep(0.3, 4.0, depth));
-        body = mix(body, cape, on_near * faces_sea * (1.0 - smoothstep(25.0, 40.0, depth)));
+        body = mix(body, cape, open_side * (1.0 - smoothstep(25.0, 40.0, depth)));
         // (and the open sea is not one tone: water of a little more or less plankton and silt lies in masses
         // kilometres across, and the light that comes up out of it with them. Estimated.)
         body *= 0.82 + 0.36 * billow(en / 5200.0 + 3.1, 94u) * (1.0 - lagoon);
@@ -354,7 +365,9 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
         // (under a gust the sea is darker, in a lull paler: its roughness changes what of the sky it sends back,
         // and by a little what comes up from within. Estimated.)
         body *= (0.72 + 0.56 * (1.0 - w.gust)) * (1.0 - 0.08 * w.slick);
-        let foam = max(w.foam, beach.foam * open_shore);
+        // (the surf: where its band is under a pixel, the share of the pixel it whitens, along every open beach)
+        let surf_mean = surf_far(mix(-shore, out_, on_near), seen_square) * open_side;
+        let foam = max(w.foam, mix(beach.foam * open_shore, surf_mean, smoothstep(SURF_FAR.x, SURF_FAR.y, seen_square)));
         sea_colour = mix(body, FOAM, foam);
         sea_slope = (w.slope + beach.slope * open_shore) * (1.0 - foam);
         // (the slopes too fine to see are the surface's roughness: for the sky it sends back, a sea whose mean

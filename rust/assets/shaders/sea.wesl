@@ -209,6 +209,22 @@ fn surf(p: vec2<f32>, out_: f32, ashore: vec2<f32>, depth: f32, clock: f32, seen
     return s;
 }
 
+// The band the surf breaks in, m offshore of the still shore: from the swash's foot out over the bar, where `surf`
+// has the bed under about 1.2 m (the bed falls 2.2 m in every 100 with a bar 75 m out: earth.wesl). Derived from
+// those, which are estimated. And how white it is, all told: `surf`'s own mean, from where one breaker cannot be
+// told from the next.
+const SURF_BAND: vec2<f32> = vec2(-4.0, 62.0);
+const SURF_WHITE: f32 = 0.75;
+
+// The surf seen from where its band is under a pixel: the share of a pixel `wide` metres across, whose middle is
+// `out_` metres offshore, that the band whitens. A pointwise reading of the band from high up is a white line or
+// nothing, by where the pixel falls; this is what the pixel would have.
+fn surf_far(out_: f32, wide: f32) -> f32 {
+    let w = max(wide, 1.0);
+    let covered = max(min(out_ + 0.5 * w, SURF_BAND.y) - max(out_ - 0.5 * w, SURF_BAND.x), 0.0);
+    return SURF_WHITE * covered / w;
+}
+
 // What the sea sends back up from within, by its depth in metres (src/viewer/earth-surface.ts WATER_GLSL, which
 // this follows): the deep water's own colour, and over a shallow bed the light that reaches the bed and comes
 // back, which loses its red in a few metres and its green in tens, so pale sand under 3 m of water is turquoise
