@@ -35,7 +35,7 @@ const DEEP = 6;
 const DEEP_BOXES = 16000;
 const FAR_BOXES = 4000;
 /** What the bake itself is, for the digest: raise it when the shapes it makes change. */
-const BAKE = 1;
+const BAKE = 2;
 /** How closely a track must follow the viewer's own motion once thinned: metres, and radians of turn. */
 const TRACK_SLACK = 0.002;
 const TURN_SLACK = 0.0005;
@@ -485,19 +485,59 @@ async function hullsOf(def, shed, stats) {
           (bx - ax) * (cy - ay) - (by - ay) * (cx - ax),
         ) / 2;
       if (!(area > 0)) continue;
-      const slice = slices[Math.min(count - 1, Math.floor(((ay + by + cy) / 3 - low) / step))];
-      const x = (ax + bx + cx) / 3;
-      const z = (az + bz + cz) / 3;
-      slice.area += area;
-      slice.x += area * x;
-      slice.z += area * z;
-      slice.bits.push([x, z, area]);
+      // Its surface is put to the slices it spans, as points spread over it: a tank's wall drawn as quads the height of
+      // the tank is in every slice it passes, and all the way round, not in the one that holds its middle.
+      const longest = Math.max(
+        Math.hypot(bx - ax, by - ay, bz - az),
+        Math.hypot(cx - ax, cy - ay, cz - az),
+        Math.hypot(cx - bx, cy - by, cz - bz),
+      );
+      const n = Math.min(32, Math.max(1, Math.ceil(longest / Math.min(step, 0.15))));
+      const share = area / ((n * (n + 1)) / 2);
+      for (let u = 0; u < n; u++)
+        for (let w = 0; w < n - u; w++) {
+          // (the middle of each small triangle of a fan of n rows: evenly over the whole)
+          const p = (u + 1 / 3) / n;
+          const q = (w + 1 / 3) / n;
+          const x = ax + (bx - ax) * p + (cx - ax) * q;
+          const y = ay + (by - ay) * p + (cy - ay) * q;
+          const z = az + (bz - az) * p + (cz - az) * q;
+          const slice = slices[Math.min(count - 1, Math.max(0, Math.floor((y - low) / step)))];
+          slice.area += share;
+          slice.x += share * x;
+          slice.z += share * z;
+          slice.bits.push([x, z, share]);
+        }
     }
     const profile = slices.map((s) => {
       if (!s.area) return null;
-      const x = s.x / s.area;
-      const z = s.z / s.area;
-      const far = s.bits.map(([bx, bz, area]) => [Math.hypot(bx - x, bz - z), area]).sort((a, b) => a[0] - b[0]);
+      // Its middle is the middle of where its surface spans (all but the outermost fortieth of it each way), not the
+      // surface's own middle: a slice that is mostly a conduit down one side has that well off the axis, and a radius
+      // measured from there reached the far wall, a sphere wider than the stage.
+      const span = (k) => {
+        const along = s.bits.map((bit) => [bit[k], bit[2]]).sort((p, q) => p[0] - q[0]);
+        let sum = 0;
+        let lo = along[0][0];
+        let hi = along[along.length - 1][0];
+        let low = false;
+        for (const [v, area] of along) {
+          sum += area;
+          if (!low && sum >= 0.025 * s.area) {
+            lo = v;
+            low = true;
+          }
+          if (sum >= 0.975 * s.area) {
+            hi = v;
+            break;
+          }
+        }
+        return [lo, hi];
+      };
+      const [x0, x1] = span(0);
+      const [z0, z1] = span(1);
+      const x = (x0 + x1) / 2;
+      const z = (z0 + z1) / 2;
+      const far = s.bits.map(([bx, bz, area]) => [Math.hypot(bx - x, bz - z), area]).sort((p, q) => p[0] - q[0]);
       let sum = 0;
       let radius = far[far.length - 1][0];
       for (const [d, area] of far) {
@@ -507,12 +547,26 @@ async function hullsOf(def, shed, stats) {
           break;
         }
       }
-      return { x, z, radius };
+      // (and no wider than that span: a sphere is not hull where the node is not)
+      const wide = Math.max(x1 - x0, z1 - z0) / 2;
+      const narrow = Math.min(x1 - x0, z1 - z0) / 2;
+      // A slice much longer one way than the other (two chambers side by side) is not round: it is a row of spheres as
+      // wide as its short side, along its long one, `row` each way from its middle.
+      if (narrow > 0.02 && wide > 1.25 * narrow)
+        return { x, z, radius: Math.min(radius, narrow), row: wide - narrow, along: x1 - x0 > z1 - z0 ? [1, 0] : [0, 1] };
+      return { x, z, radius: Math.min(radius, wide) };
     });
-    // (an empty slice between two takes the one below it)
+    // A slice with a fraction of the surface its neighbours have is a sliver (the lip under a tank, a rib): its own
+    // shape says nothing of the node's, and it takes its neighbour's, as an empty slice does (the one below it).
+    const areas = slices
+      .map((sl) => sl.area)
+      .filter((a) => a > 0)
+      .sort((p, q) => p - q);
+    const usual = areas[areas.length >> 1] ?? 0;
+    for (let i = 0; i < count; i++) if (slices[i].area < 0.2 * usual) profile[i] = null;
     for (let i = 0; i < count; i++) profile[i] ??= profile[i - 1] ?? profile.find(Boolean);
     const at = (y) => profile[Math.min(count - 1, Math.max(0, Math.floor((y - low) / step)))];
-    const widest = Math.max(...profile.map((p) => p.radius));
+    const widest = Math.max(...profile.map((p) => p.radius + (p.row ?? 0)));
     const beads = [];
     if (widest < 0.02) continue;
     // the node's own footprint (x, z)
@@ -539,7 +593,8 @@ async function hullsOf(def, shed, stats) {
           const bx = x + arm * Math.cos((2 * Math.PI * j) / n);
           const bz = z + arm * Math.sin((2 * Math.PI * j) / n);
           // (only over the node itself: one whose surface is to one side has no hull beyond its other)
-          if (bx >= least[0] && bx <= most[0] && bz >= least[1] && bz <= most[1]) beads.push(bx, y, bz, r);
+          if (bx - r >= least[0] - 0.05 && bx + r <= most[0] + 0.05 && bz - r >= least[1] - 0.05 && bz + r <= most[1] + 0.05)
+            beads.push(bx, y, bz, r);
         }
       }
     } else {
@@ -548,8 +603,17 @@ async function hullsOf(def, shed, stats) {
         let r = Math.min(at(y).radius, height / 2);
         r = Math.max(0.03, Math.min(at(y + r).radius, height / 2));
         const centre = Math.min(y + r, high - r);
-        const { x, z } = at(centre);
-        beads.push(x, centre, z, r);
+        const { x, z, row = 0, along = [0, 0] } = at(centre);
+        // (one sphere on the middle, or a row of them across a slice that is not round, no further apart than their radius)
+        const each = Math.max(1, Math.ceil((2 * row) / r));
+        for (let k = 0; k <= (row > 0 ? each : 0); k++) {
+          const off = row > 0 ? -row + (2 * row * k) / each : 0;
+          const bx = x + along[0] * off;
+          const bz = z + along[1] * off;
+          // (no sphere reaches beyond the node's own sides)
+          const fits = Math.min(r, bx - least[0], most[0] - bx, bz - least[1], most[1] - bz);
+          if (fits > 0.02) beads.push(bx, centre, bz, fits);
+        }
         if (centre >= high - r - 1e-9) break;
         y = centre;
       }
