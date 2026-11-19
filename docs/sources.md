@@ -1836,3 +1836,9 @@ Figure 7.1-2 shows the height and arrangement of the access platforms beside Soy
 - [NASA launch photograph S72-35347](https://images.nasa.gov/details-S72-35347). The caption gives the complete stack height of 363 feet.
 - [NASA NESC-IB-22-05, appendix D](https://ntrs.nasa.gov/citations/20220013375). Auxiliary propulsion module layout and engine ratings, applied to the two modules whose flights are recorded in the AS-511 evaluation.
 - [Apollo 16 ascent propulsion evaluation, MSC-07230 supplement 3](https://ntrs.nasa.gov/citations/19740024141) and [descent propulsion evaluation, supplement 4](https://ntrs.nasa.gov/citations/19740024177). Section 2 of each report provides the thrust for its published operating condition.
+
+### Apollo 16 at Pad 39A
+
+- [AS-511 Flight Evaluation Report, MPR-SAT-FE-72-1](https://ntrs.nasa.gov/citations/19730025090). Section 3.4.3 locates the liquid-hydrogen purge console and terminal strip on level 200. Section 3.5.1 records the nitrogen changeover, hold-down release spread, No. 4 hood damage and the three mast transit times. Appendix A, table A-1 supplies launch weather and the measurement locations. Figures A-3 and A-4 provide the vertical wind profiles.
+- [Apollo 16 public-affairs commentary](https://www.nasa.gov/wp-content/uploads/2026/01/as16-pao.pdf). Tapes 6/1 and 16/1 report arm 9 in the 12° standby position and later in motion at T−4:32. The observations bound the reconstruction; neither gives a measured transit time.
+- [Apollo 16 mission details](https://www.nasa.gov/missions/apollo/apollo-16-mission-details/) identifies Mobile Launcher 3 and Firing Room 1. [Launch-day photo sequence](https://www.nasa.gov/history/apollo-16-launches-to-the-moon/) shows the crew’s launch suits, white room and boarding order. The [press kit](https://www.nasa.gov/wp-content/uploads/static/apollo50th/pdf/A16_PressKit.pdf) supplies the scheduled ingress, suits and crew statures.

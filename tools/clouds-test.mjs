@@ -46,6 +46,7 @@ const FLIGHTS = [
   'usa/apollo/apollo-13',
   'usa/apollo/apollo-14',
   'usa/apollo/apollo-15',
+  'usa/apollo/apollo-16',
 ].filter((f) => !only || f === only);
 const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */
@@ -318,10 +319,13 @@ for (const id of FLIGHTS) {
       }
 
     if (day.cumulus && doing('climb')) {
-      // a cloud to climb through: looked for from over the layer, straight down, nearest the middle of the view
+      // An edge pixel can be opaque from above with clear air under the camera looking forward and up.
+      // Use the top-down ray to locate a cloud, then sight its underside from the starting height of the climb.
       const spot = await page.evaluate(
-        async ([top]) => {
+        async ([base, top]) => {
           const T = window.cloudsTest;
+          const el = 35;
+          const below = base - 300;
           for (const [x, z] of [
             [0, 0],
             [3000, 2000],
@@ -338,14 +342,22 @@ for (const id of FLIGHTS) {
                 const r2 = (i - S.w / 2) ** 2 + (j - S.h / 2) ** 2;
                 if (!best || r2 < best.r2) best = { r2, i, j, front: S.front[k] };
               }
-            if (best) {
-              const r = T.ray(S, best.i, best.j);
-              return [S.eye[0] + r[0] * (best.front + 40), S.eye[2] + r[2] * (best.front + 40)];
+            if (!best) continue;
+            const r = T.ray(S, best.i, best.j);
+            const cx = S.eye[0] + r[0] * best.front;
+            const cz = S.eye[2] + r[2] * best.front;
+            // Sight along +X. The centre ray should meet the cloud between its base and its visible top.
+            const height = S.eye[1] + r[1] * best.front - T.y(below);
+            const offset = (0.5 * (base - below + height)) / Math.tan((el * Math.PI) / 180);
+            for (const startX of [cx, cx - offset]) {
+              await T.at(startX, T.y(below), cz, el);
+              const under = T.snap();
+              if (under.alpha.some((a) => a > 0.95)) return [startX, cz];
             }
           }
           return null;
         },
-        [day.cumulus.top],
+        [day.cumulus.base, day.cumulus.top],
       );
       check(spot !== null, `${where}: a cumulus to climb through`);
       if (spot)

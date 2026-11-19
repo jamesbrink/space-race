@@ -2,17 +2,18 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { orionStackParts } from '../missions/usa/apollo/flights/apollo-16/orion.ts';
 import { flight } from '../missions/usa/apollo/flights/apollo-16/flight.ts';
-import { lacks } from '../src/app/address.ts';
+import { lacks, openingFor } from '../src/app/address.ts';
 import { assertAdapterClearance, assertEnclosureClearance } from './apollo-adapter-clearance.mjs';
-import { framesOf } from './glb.mjs';
+import { framesOf, materialsUnder } from './glb.mjs';
 
 const [stack, orion] = flight.models;
 test('Apollo 16 opens Casper and Orion with the five flown crew stations', () => {
   assert.equal(lacks(flight, 'gallery'), null);
-  assert.ok(lacks(flight, 'site') && lacks(flight, 'fly'));
+  assert.equal(lacks(flight, 'site'), null);
+  assert.ok(lacks(flight, 'fly'));
   assert.deepEqual(
     flight.models.map((model) => model.id),
-    ['vehicle', 'orion'],
+    ['vehicle', 'orion', 'pad', 'crew', 'pilot', 'lmp'],
   );
   assert.deepEqual(
     stack.seats.map((seat) => seat.label),
@@ -24,6 +25,33 @@ test('Apollo 16 opens Casper and Orion with the five flown crew stations', () =>
   );
   const retros = flight.motors.find((motor) => motor.name.includes('retrorocket'));
   assert.equal(retros.count, 8);
+});
+
+test('the crew can board Casper on ML-3 before arm 9 parks and retracts', () => {
+  const [, , pad, ...crew] = flight.models;
+  assert.equal(pad.name, 'Mobile launcher 3');
+  assert.match(pad.url, /pad-a-1972-04\.glb$/);
+  assert.deepEqual(flight.site.zone, { name: 'EST', utcOffset: -5 });
+  assert.equal(openingFor(flight, { fly: false, named: '', clockAt: 0, running: false }).model, 'pad');
+  assert.deepEqual(
+    stack.seats.map((seat) => [seat.figure, ...seat.open]),
+    crew.map((model) => [model.id, -9600, -6300]),
+  );
+  const event = (words) => pad.sequence.find((key) => key.event.includes(words));
+  assert.ok(event('12° standby').at <= -2995);
+  assert.ok(event('retracts from standby').at < -272);
+  assert.ok(event('fully retracted').at > -272);
+  assert.equal(event('First vehicle motion').at, 0.3);
+  for (const suffix of ['.glb', '.lod1.glb', '.lod2.glb']) {
+    const url = (model) => new URL(`../public/${model.url.replace('.glb', suffix)}`, import.meta.url);
+    const launcher = framesOf(url(pad));
+    for (const node of ['LH2_Purge_Console', 'ECS_Room', 'ECS_Air_Plenum', 'Intertank_LOX_Carrier']) assert.ok(launcher.point(node), node);
+    for (const suit of crew) {
+      const file = url(suit);
+      assert.ok(framesOf(file).point(suit.id === 'pilot' ? 'Torso_RearEntry' : 'Torso_SideEntry'));
+      for (const limb of ['Arms', 'Legs']) assert.equal(materialsUnder(file, limb).includes('a7l-commander-red'), suit.id === 'crew');
+    }
+  }
 });
 
 for (const level of ['', '.lod1', '.lod2']) {
