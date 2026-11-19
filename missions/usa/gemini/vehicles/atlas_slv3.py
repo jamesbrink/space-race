@@ -101,6 +101,9 @@ def build(unit: agena.Unit | None) -> str:
         ax = tda.Axis((0, 0), base + AGENA_DATUM - agena.S_EXIT, 0)
         agena.build_forward(ax, mats, flag, False, unit.revised_forward_rack, unit.eva_station)
         agena.build_tank(ax, mats, flag, srlib.DETAIL >= 0.5, unit.revised_forward_rack, unit.eva_station)
+        # The aft rack and the engine ride inside the adapter until the Agena leaves it, and fly with it on the flight deck.
+        agena.build_aft(ax, mats, srlib.DETAIL >= 0.5, False)
+        agena.build_engine(ax, mats, srlib.DETAIL >= 0.5, False)
         split = base + AGENA_DATUM - agena.S_AFT
         top = base + AGENA_DATUM - 90.33
         lower = base + AGENA_DATUM - agena.S_TDA
