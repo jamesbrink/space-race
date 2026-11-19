@@ -206,6 +206,21 @@ const GT4_ACROSS =
 const GT4_SHOWN =
   'Begun from where the ascent flown left the spacecraft, 7 km low at perigee and 6 km high at apogee at cutoff (the ascent’s figures hold)';
 
+const GT7_ORBIT =
+  'The ascent leaves the apogee 5 km above the report’s (holding), and the station keeping on the second stage and the radial burn of 0:21:17 that ended it (8.8 ft/s, pitched −41.5° and yawed 49°) are not flown: the report has them taking 2.8 nautical miles (5.2 km) off the apogee. Each burn is flown at its tracked impulse along the motion. Nothing adjusted';
+
+const GT7_CIRCLE =
+  'The two burns are flown at the report’s instants and tracked impulses, along and against the motion: timed by the clock for where the real ship’s apsides were, on an orbit 7 km higher at its apogee (the ascent’s and the station keeping’s), they do not come at this run’s apsides, and leave it less round. The ground worked them from the ship’s own tracked orbit. Nothing adjusted';
+
+const GT7_ENTRY =
+  'The retrofire is timed by guidance for the landing place along the track (sim/plan.ts `LandingAim`), 36 s before the record’s instant. The lift is the programme’s 0.19 on the Mercury capsule’s drag curve, banked 48.8° (the report’s reconstruction) to the left from the retrograde section’s going, where the crew flew about 35° and reversed it four or five times (4.3.1.3): the reversals are not flown. The drogue’s height is read off the report’s figure';
+
+const GT6A_RETRO =
+  'Before retrofire the perigee is 275.0 km where SP-4002 has 153.0 nautical miles (283.4 km); its apogee holds. The burns to the coelliptic orbit hold (the apogee after the first within 25 m, the coelliptic orbit within 1.5 km); after it the terminal phase is flown by the forward parts of the computer’s displays along the motion, and the braking, the station keeping and the separation from Gemini VII, whose impulse is not read, are not flown: what of the orbit at retrofire is theirs is not established. Nothing adjusted';
+
+const GT6A_ENTRY =
+  'The retrofire is timed by guidance for the landing place along the track (sim/plan.ts `LandingAim`), 277 s before the record’s instant, the run being that far from the real ship along its orbit after a day (the terminal phase, braking, station keeping and separation are not flown as made). The ground track at that instant passes west of the place, and the bank is held 55° to the left throughout, as Schirra held it until the computer took over, whose commands, left and right against an overshoot, are not read. Nothing adjusted';
+
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -967,6 +982,89 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         why: `Down 675 s after the record’s 97:56:12: the drogue out 618 s late (the coast’s miss), and the rest the main at the type’s 10,600 ft on the Technical Summary’s mean rate. ${GT4_LATE}`,
       },
     },
+  }),
+  'usa/gemini/gt-7': inUnits({
+    ascent: {},
+    coast: {
+      'after-433800.perigee': {
+        by: -11_790,
+        slack: 1_500,
+        why: `From the published orbit the two circularising burns leave a perigee of 285.5 km where the report has 160.5 nautical miles (297.2 km). ${GT7_CIRCLE}`,
+      },
+      'after-433800.apogee': {
+        by: 15_110,
+        slack: 1_500,
+        why: `And an apogee of 316.6 km where the report has 162.8 nautical miles (301.5 km). ${GT7_CIRCLE}`,
+      },
+      'after-1184400.perigee': {
+        by: -8_381,
+        slack: 1_500,
+        why: `In the last revolution 281.5 km where the report has 156.5 nautical miles (289.8 km). ${GT7_CIRCLE}`,
+      },
+      'after-1184400.apogee': {
+        by: 8_043,
+        slack: 1_500,
+        why: `And 311.0 km where the report has 163.6 nautical miles (303.0 km). ${GT7_CIRCLE}`,
+      },
+      ejectionAt: { by: 153.7, slack: 15, why: `The drogue comes out 154 s after the record's 330:29:30. ${GT7_ENTRY}` },
+      crossTrack: { by: -45_150, slack: 6_000, why: `It comes down 45 km to the left of where the ship landed. ${GT7_ENTRY}` },
+    },
+    shown: {
+      'after-16200.apogee': {
+        by: 7_465,
+        slack: 1_000,
+        why: `The apogee after the perigee adjust is 330.3 km where the report has 174.3 nautical miles (322.8 km). ${GT7_ORBIT}`,
+      },
+      'after-253800.apogee': {
+        by: 7_724,
+        slack: 1_000,
+        why: `The apogee after the phase adjust is 324.2 km where the report has 170.9 nautical miles (316.5 km). ${GT7_ORBIT}`,
+      },
+      'after-433800.perigee': {
+        by: -10_154,
+        slack: 1_500,
+        why: `The two circularising burns leave a perigee of 287.1 km where the report has 160.5 nautical miles (297.2 km). ${GT7_CIRCLE}`,
+      },
+      'after-433800.apogee': {
+        by: 12_873,
+        slack: 1_500,
+        why: `And an apogee of 314.4 km where the report has 162.8 nautical miles (301.5 km). ${GT7_CIRCLE}`,
+      },
+      'after-1184400.perigee': {
+        by: -6_832,
+        slack: 1_500,
+        why: `In the last revolution the perigee is 283.0 km where the report has 156.5 nautical miles (289.8 km). ${GT7_CIRCLE}`,
+      },
+      ejectionAt: { by: 63.57, slack: 10, why: `The drogue comes out at 330:30:34, 64 s after the record's 330:29:30. ${GT7_ENTRY}` },
+      crossTrack: {
+        by: -80_944,
+        slack: 8_000,
+        why: `It comes down 81 km to the left of where the ship landed: the bank is held to the left all the way, where the crew reversed it four or five times to null the cross-range. ${GT7_ENTRY}`,
+      },
+    },
+    descent: {
+      'reentry-module.at': {
+        by: 124.4,
+        slack: 15,
+        why: `Down at 330:37:05, 124 s after the record: the drogue out 64 s late, and the rest the parachutes, the main at the type's height. ${GT7_ENTRY}`,
+      },
+    },
+  }),
+  'usa/gemini/gt-6a': inUnits({
+    ascent: {},
+    coast: {
+      'after-90600.perigee': { by: -8_339, slack: 1_500, why: GT6A_RETRO },
+      crossTrack: {
+        by: -186_559,
+        slack: 15_000,
+        why: `From the published orbit it comes down 187 km to the left of where the ship landed. ${GT6A_ENTRY}`,
+      },
+    },
+    shown: {
+      'after-90600.perigee': { by: -8_339, slack: 1_500, why: GT6A_RETRO },
+      crossTrack: { by: -170_672, slack: 15_000, why: `It comes down 171 km to the left of where the ship landed. ${GT6A_ENTRY}` },
+    },
+    descent: {},
   }),
   'ussr/voskhod/voskhod-1': inUnits({
     coast: {

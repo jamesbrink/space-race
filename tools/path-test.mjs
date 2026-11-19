@@ -194,6 +194,27 @@ const FLIGHTS = {
     orbit: [3000, 183_200],
     coast: 3000,
   },
+  // (fourteen days: the climb, the perigee raised, the second day, the phase adjusted, the two burns of the fifth day, Gemini VI-A's
+  // day, the retrofire timed for the landing place, the entry banked, the drogue, the main)
+  gt7: {
+    id: 'usa/gemini/gt-7',
+    instants: [
+      5, 60, 150, 200, 340, 600, 3000, 13_800, 86_400, 251_100, 429_200, 431_720, 950_000, 1_187_700, 1_187_860, 1_188_900, 1_189_500,
+      1_189_850, 1_190_000,
+    ],
+    orbit: [3000, 431_800],
+    coast: 3000,
+  },
+  // (a day: the climb, the height and phase adjustments, the plane change, the coelliptic burn, the terminal phase, the night,
+  // the retrofire timed for the landing place, the entry banked, the drogue, the main)
+  gt6a: {
+    id: 'usa/gemini/gt-6a',
+    instants: [
+      5, 60, 150, 200, 345, 600, 3000, 5_660, 8_300, 9_920, 13_640, 19_160, 21_000, 60_000, 90_500, 90_700, 91_300, 92_300, 92_700, 92_900,
+    ],
+    orbit: [3000, 14_000],
+    coast: 3000,
+  },
   // (a day: the airlock out, the walk at 11:34, the airlock shot off, the burn by hand at 11:36 on the 19th and the descent)
   vk2: {
     id: 'ussr/voskhod/voskhod-2',

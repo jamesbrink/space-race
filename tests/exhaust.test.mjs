@@ -30,6 +30,8 @@ const FALLBACK = {
   'usa/gemini/gt-3': ['forward-thrusters', 'aft-thrusters'],
   'usa/gemini/gt-4': ['forward-thrusters', 'aft-thrusters'],
   'usa/gemini/gt-5': ['aft-thrusters'],
+  'usa/gemini/gt-6a': ['forward-thrusters', 'aft-thrusters'],
+  'usa/gemini/gt-7': ['forward-thrusters', 'aft-thrusters'],
   // (the Agena's Bell 8247: its 45:1 expansion is documented, LMSC-A604166-2 14.2.1, but no chamber pressure was read)
   ...Object.fromEntries(
     ['gatv-5001', 'gatv-5002', 'gatv-5003', 'gatv-5005', 'gatv-5006'].map((id) => [`usa/gemini/${id}`, ['agena-engine']]),
@@ -51,7 +53,7 @@ test('every ascent fire of the Mercury-Atlas and Gemini-Titan flights is drawn f
       if (!nozzle) assert.ok(neutral, `${f.id} ${fire.node} (${fire.on}) is drawn neutral: list it in FALLBACK`);
     }
   }
-  assert.equal(seen, 4 * 3 + 3 * 3, 'four Mercury-Atlas flights of three ascent fires, and Gemini-Titan 3, 4 and 5 of three each');
+  assert.equal(seen, 4 * 3 + 5 * 3, 'four Mercury-Atlas flights of three ascent fires, and Gemini-Titans 3, 4, 5, 6A and 7 of three each');
 });
 
 test('the fire is as long as its supersonic core, scaled once to the A-7: Freedom 7 is left as it was', () => {

@@ -340,6 +340,92 @@ INPUTS['usa/gemini/gt-5'] = [
   ['entry', 'banks', '3', 'at'],
 ];
 
+// Gemini-Titan 7's (its heights over the oblate earth, assumed as Gemini 3's): where on the orbit it began, its mass and
+// free-molecule figure (a tumbling ship's mean area), the thrusters (the type's), when the crew turned for each burn, the
+// adapter's sections, the retrofire's attitude and the type's rockets, the re-entry module's area, drag, lift and bank
+INPUTS['usa/gemini/gt-7'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['mass'],
+  ['rarefied', 'drag'],
+  ['rarefied', 'area'],
+  ['oams', 'aft', 'thrust'],
+  ['oams', 'aft', 'isp'],
+  ['oams', 'forward', 'thrust'],
+  ['oams', 'forward', 'isp'],
+  ['moves', '0', 'turned'],
+  ['moves', '1', 'turned'],
+  ['moves', '2', 'turned'],
+  ['moves', '3', 'turned'],
+  ['adapter', 'equipment', 'mass'],
+  ['adapter', 'equipment', 'gone'],
+  ['adapter', 'retro', 'mass'],
+  ['retro', 'sequence'],
+  ['retro', 'below'],
+  ['retro', 'spacing'],
+  ['retro', 'thrust'],
+  ['retro', 'burn'],
+  ['retro', 'gone'],
+  ['entry', 'area'],
+  ['entry', 'drag'],
+  ['entry', 'lift'],
+  ['entry', 'predicted'],
+  ['entry', 'trim'],
+  ['entry', 'bank'],
+  ['entry', 'banked'],
+  ['landing', 'aimed', 'from'],
+];
+
+// Gemini-Titan 6A's: as Gemini-Titan 7's, with the burns' lengths worked from their impulses, the plane change's and second
+// height adjustment's instants, and spacecraft 6's weights and retrofire impulse taken from spacecraft 7
+INPUTS['usa/gemini/gt-6a'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['mass'],
+  ['rarefied', 'drag'],
+  ['rarefied', 'area'],
+  ['oams', 'aft', 'thrust'],
+  ['oams', 'aft', 'isp'],
+  ['oams', 'forward', 'thrust'],
+  ['oams', 'forward', 'isp'],
+  ['moves', '0', 'turned'],
+  ['moves', '0', 'off'],
+  ['moves', '1', 'turned'],
+  ['moves', '1', 'off'],
+  ['moves', '2', 'turned'],
+  ['moves', '2', 'on'],
+  ['moves', '2', 'off'],
+  ['moves', '3', 'turned'],
+  ['moves', '3', 'on'],
+  ['moves', '3', 'off'],
+  ['moves', '4', 'turned'],
+  ['moves', '5', 'turned'],
+  ['moves', '5', 'off'],
+  ['moves', '6', 'turned'],
+  ['moves', '6', 'off'],
+  ['moves', '7', 'turned'],
+  ['moves', '7', 'off'],
+  ['adapter', 'equipment', 'mass'],
+  ['adapter', 'equipment', 'gone'],
+  ['adapter', 'retro', 'mass'],
+  ['retro', 'sequence'],
+  ['retro', 'below'],
+  ['retro', 'spacing'],
+  ['retro', 'thrust'],
+  ['retro', 'burn'],
+  ['retro', 'deltaV'],
+  ['retro', 'gone'],
+  ['entry', 'mass'],
+  ['entry', 'area'],
+  ['entry', 'drag'],
+  ['entry', 'lift'],
+  ['entry', 'predicted'],
+  ['entry', 'trim'],
+  ['entry', 'bank'],
+  ['entry', 'banked'],
+  ['landing', 'aimed', 'from'],
+];
+
 /**
  * A Gemini-Titan's coast inputs that are not documented (its record, gemini-titan-plan.ts): listed, and what each is worth,
  * flown on the plan `geminiTitanPlan` writes from a changed copy.
@@ -844,8 +930,13 @@ test('a lifting entry flies its lift while a bank is held: lift up goes further,
 
 test('a braking burn timed for the landing place moves the chain the record ties to it: the burns, turns and readings from its start', () => {
   // (a landing whose chain begins before the burn's command: `LandingAim.from`)
-  const f = all.find((x) => x.plan?.record?.landing?.aimed?.from);
-  assert.ok(f, 'a flight whose chain begins before its braking burn');
+  // (one with burns both in the chain and before it: a chain that begins at the retrosequence has none in it)
+  const f = all.find((x) => {
+    const from = x.plan?.record?.landing?.aimed?.from?.value;
+    const moves = from === undefined ? [] : movesOf(x.plan);
+    return moves.some((m) => m.on >= from) && moves.some((m) => m.on < from);
+  });
+  assert.ok(f, 'a flight whose chain begins before its braking burn, with a burn in it');
   const plan = f.plan;
   const from = plan.record.landing.aimed.from.value;
   const by = 600;

@@ -25,8 +25,8 @@ the last ship had a radar, the fuel cells and their tanks in the adapter, the th
 the reserve fuel tank, the two lights at its foot, the four on its Titan. At Complex 19 it stands
 on the thrust mount on the afternoon of the flight: the erector raised while the crew go up and
 laid down at T−35, Borman and Lovell on the approach to the ramp in their G5C suits with the soft hoods
-zipped on, each a figure to walk the site as, under that afternoon's sky. The flight itself is not
-built: see "What is not built" below.
+zipped on, each a figure to walk the site as, under that afternoon's sky. Fly takes the flight deck, as
+flown from the record or taken over (see "The flight as flown" below, and [mission.md](mission.md)).
 
 ## The name
 
@@ -242,8 +242,28 @@ ERA5's (`aloft.ts`).
   estimated.
 - **The crew in their seats.** Borman and Lovell stand on the approach to the ramp in the G5C, the soft
   hood zipped on ([g5c-suit.md](../../crew/g5c-suit.md)); the seats are empty.
-- **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
-  built and the lamps are dark. Gemini VI-A does not come.
+- **Of the flight** ([mission.md](mission.md), section 6): the station keeping on the second stage and the radial burn
+  that ended it; Gemini VI-A, which is not a craft in the run (its liftoff and the rendezvous are marks on the clock); the
+  bank reversals of the entry, which is banked one way; the thrusters that failed, the fuel cells and the reserve tank,
+  which nothing flown reads. The cabin's instruments and lamps stand as built.
+
+## The flight as flown
+
+[mission.md](mission.md) has it all, with its sources; the misses are in `src/sim/misses.ts`, each with its cause.
+
+- **The ascent** on GLV-7's own weights and engines (the mission report, 3.3 and Tables 5.2-I and II) reaches the orbit:
+  cut by the guidance at 337.6 s at 7,862.6 m/s (25,793 ft/s recorded at the separation), 154 by 333 km (87.2 by 177.1
+  nautical miles). The second stage's thrust is taken from its chamber's rise, not the staging signal, and it holds the
+  usable propellant the vehicle's margin says was left (both from the record's own figures).
+- **The four burns of the fourteen days** are flown at the report's instants and tracked impulses. The station keeping on
+  the second stage and the radial burn that ended it are not, so the apogee runs 7 km high until the fifth day; the two
+  circularising burns, by the clock, leave 287 by 314 km where the report has 297 by 302, and the last revolution is 283
+  by 309 against 290 by 303.
+- **The retrofire is timed for the landing place**, as the ground timed it, 36 s before the record's instant; the entry
+  is banked 48.8° to the left all the way (the report's reconstruction; the crew reversed it four or five times): the
+  drogue comes out 64 s late, 1.5 km short along the track and 81 km to the left, and the ship is down at 330:37:05
+  (330:35:01).
+- **Gemini VI-A is not in this run**: its liftoff and the rendezvous are marks on the clock.
 
 ## Where sources disagree
 
@@ -280,8 +300,6 @@ ERA5's (`aloft.ts`).
   the spectrometer and the magnetometer's boom were.
 - **A photograph of the launch vehicle** read for its paint and lettering. (The spacecraft's is
   read off the photographs Gemini VI-A's crew took: [spacecraft.md](spacecraft.md), "Paint".)
-- **The period of the circular orbit** to the hundredth: the table's last digits are not legible
-  (90.51 or 90.61 min).
 
 ## Where the spacecraft is now
 

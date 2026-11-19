@@ -141,7 +141,8 @@ export interface GeminiTitanRecord {
     perigee: Measure;
     apogee: Measure;
     inclination: Measure;
-    period: Measure;
+    /** Where the record has one that its heights agree with: without it the mean orbit is the heights' (plan.ts `PlanRecord.orbit`). */
+    period?: Measure;
     kind?: NonNullable<NonNullable<FlightPlan['record']>['orbit']>['kind'];
   };
   injection: { at: Measure; heading: 'north' | 'south'; arc: Measure; anomaly: Measure };

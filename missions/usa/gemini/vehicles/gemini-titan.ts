@@ -285,8 +285,9 @@ export const seats = (open: [number, number], occupied = false): NonNullable<Mod
 
 /** The floodlights' red bulbs (SEDR 300, p. 3-20: each fixture had one): the colour is estimated, a red that keeps the eyes dark-adapted. */
 export const RED_LIGHT = 0xff3018;
-export const NOT_FLOWN = 'Not simulated: this flight is not flown here yet, so it stands as built.';
-export const DARK = 'Not simulated: this flight is not flown here yet, so it stays dark.';
+// (no reading or signal is given these, flown or not: nothing drives them, and they say so)
+export const NOT_FLOWN = 'Not simulated: it stands as built.';
+export const DARK = 'Not simulated: it stays dark.';
 export const instrument = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${NOT_FLOWN}` });
 export const lamp = (node: string, name: string, about: string) => ({ node, name, about: `${about} ${DARK}` });
 
