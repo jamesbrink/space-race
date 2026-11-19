@@ -120,7 +120,7 @@ export function nextStep(
       ? esc(reason(why))
       : short === name
         ? esc(name)
-        : `<b class="way-long">${esc(name)}</b><b class="way-short">${esc(short)}</b>`;
+        : `<span class="way-long">${esc(name)}</span><span class="way-short">${esc(short)}</span>`;
     return `<button class="way-on" data-way="${to}"${why ? ' aria-disabled="true"' : ''} title="${esc(why ?? PLACE_SAYS[to])}">${icon(to)}<span>${says}</span>${why ? '' : '<i aria-hidden="true">›</i>'}</button>`;
   };
   // (from the gallery the way is to the site; a flight kept by hand can be taken up from here too, and only then is that way there)
@@ -149,8 +149,8 @@ export function nextStep(
 
 /**
  * On a phone's top line the ways stand beside the flight's name. Where they do not fit whole, the programme's line under
- * the name goes first (`tight`), then the way back keeps only its chevron (`tighter`): the way on keeps its words, and the
- * name its letters as long as it can (fold.css). On a wide page, where the ways are in the title card, neither is set.
+ * the name and the ways' icons go first (`tight`), then the way back keeps only its chevron (`tighter`): the way on keeps
+ * its words, and the name its letters as long as it can (fold.css). On a wide page, where the ways are in the title card, neither is set.
  */
 function fitWays(nav: HTMLElement, scope: Scope): void {
   const fit = (): void => {

@@ -29,7 +29,6 @@ body.gallery-settled #stage { visibility: hidden; }
 .ways .icon { margin: 0; font-size: 15px; }
 .ways i[aria-hidden] { font-style: normal; font-size: 16px; }
 .ways i:not([aria-hidden]) { font-style: normal; }
-.ways b { font-weight: inherit; }
 /* (a way named at length on a wide page, and as its place is on a phone's top line) */
 .ways .way-short { display: none; }
 .ways .way-back .icon { margin-right: 8px; }
