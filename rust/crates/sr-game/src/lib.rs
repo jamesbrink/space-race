@@ -13,6 +13,7 @@ pub mod navball;
 pub mod options;
 pub mod rig;
 pub mod script;
+pub mod shake;
 pub mod shot;
 pub mod stage;
 
@@ -72,7 +73,7 @@ pub fn run(options: Options) -> AppExit {
         .insert_resource(if options.reference { Look::Reference } else { Look::Film })
         .insert_resource(options)
         .add_plugins((RenderPlugins, clock::ClockPlugin, stage::StagePlugin, flight::FlightPlugin))
-        .add_plugins(navball::NavballPlugin)
+        .add_plugins((navball::NavballPlugin, shake::ShakePlugin))
         .add_plugins((
             rig::RigPlugin,
             hud::HudPlugin,

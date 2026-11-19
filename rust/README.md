@@ -44,6 +44,7 @@ separate, fire the retrorockets, let the retropack go. The parachutes come out b
 | C, or 1 2 3 4 | the camera: pad, tracking (a long lens on the ground), chase, onboard |
 | drag, wheel | turn the pad and chase cameras; zoom all of them |
 | L | the grade: Film (the game's own) or Reference (straight) |
+| K | the camera's shake (the engine's noise near it, the air's buffet aboard), on and off |
 | I | the diagnostics: frames a second, the frame's time, what is in the scene |
 | H | put the panels away |
 
@@ -54,7 +55,9 @@ still be ridden down; come back into the air too steeply and the load takes the 
 than 12 m/s and the flight is over. A booster that breaks up with the tower still on fires the escape rocket for
 you, as the abort system did; the tower then has to be let go (Space) before the parachutes can come out.
 
-Where the record had the nose, and when it did each step, is on the pilot's panel: flying to it is the game.
+The ball at the foot of the window is the attitude: the sky and the ground as the nose sees them, north marked
+red, a yellow ring where the vehicle is going and a green diamond where the record had the nose just then.
+Where the record had the nose, and when it did each step, is on the pilot's panel too: flying to it is the game.
 When the flight is over the panel is the debrief: your greatest height, range, speed at separation, load and
 time, each beside Freedom 7's, and how hard you were on the structure.
 

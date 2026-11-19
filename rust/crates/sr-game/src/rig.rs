@@ -3,13 +3,15 @@
 
 use avian3d::prelude::{Position, Rotation};
 use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
-use bevy::math::DVec3;
+use bevy::math::{DQuat, DVec3};
 use bevy::prelude::*;
 use sr_missions::Role;
 use sr_render::eye::{FIELD, eye};
 use sr_render::origin::{Eye, Place, WorldPos};
 
-use crate::flight::Crewed;
+use crate::flight::bodies::v3;
+use crate::flight::{Course, Crewed};
+use crate::stage::dvec;
 use crate::{Options, Showing};
 
 /// Degrees turned for a point of mouse travel.
@@ -146,7 +148,7 @@ struct View {
     field: f32,
 }
 
-fn view(rig: &Rig, crew: Option<(DVec3, Quat)>) -> View {
+fn view(rig: &Rig, crew: Option<(DVec3, Quat)>, up: DVec3) -> View {
     let (vehicle, turned) = crew.unwrap_or((rig.pad, Quat::IDENTITY));
     let axis = (turned * Vec3::Y).as_dvec3();
     match rig.kind {
@@ -156,8 +158,9 @@ fn view(rig: &Rig, crew: Option<(DVec3, Quat)>) -> View {
             View { at, toward: rig.pad - at, up: DVec3::Y, field: FIELD }
         }
         Kind::Chase => {
-            let at = vehicle + rig.arm();
-            View { at, toward: vehicle - at, up: DVec3::Y, field: FIELD }
+            // (the arm is set against the vehicle's own level, so the horizon stays level 500 km down range)
+            let at = vehicle + DQuat::from_rotation_arc(DVec3::Y, up) * rig.arm();
+            View { at, toward: vehicle - at, up, field: FIELD }
         }
         Kind::Tracking => {
             let toward = vehicle - STATION;
@@ -173,13 +176,17 @@ fn view(rig: &Rig, crew: Option<(DVec3, Quat)>) -> View {
     }
 }
 
-fn aim(
+/// Each frame: the eye where the rig has it.
+pub fn aim(
     rig: Res<Rig>,
+    course: Res<Course>,
     crew: Query<(&Position, &Rotation), With<Crewed>>,
     mut eye: Query<(&mut WorldPos, &mut Transform, &mut Projection), With<Eye>>,
 ) {
     let Ok((mut at, mut transform, mut projection)) = eye.single_mut() else { return };
-    let seen = view(&rig, crew.single().ok().map(|(at, turned)| (at.0, turned.0)));
+    let crew = crew.single().ok().map(|(at, turned)| (at.0, turned.0));
+    let up = crew.map_or(DVec3::Y, |(at, _)| dvec(course.field.up(v3(at))));
+    let seen = view(&rig, crew, up);
     at.0 = seen.at;
     if seen.toward.length_squared() > 0.0 {
         transform.look_to(seen.toward.as_vec3(), seen.up.as_vec3());

@@ -84,9 +84,11 @@ pub fn fly(
     mut telemetry: ResMut<Telemetry>,
     mut fliers: Query<(&Flier, Option<&Pitches>, &mut Mass, Forces)>,
 ) {
-    if !clock.ready || clock.t < 0.0 {
+    if !clock.ready {
         return;
     }
+    // (through the count nothing is pushed: it stands as it was stood, and the readout reads it)
+    let counting = clock.t < 0.0;
     let plan = &showing.0.plan;
     for (&Flier(body), crewed, mut mass, mut forces) in &mut fliers {
         let turned = forces.rotation();
@@ -101,7 +103,7 @@ pub fn fly(
         let programmed = programme(plan, &course, &sequencer.0, body, &m);
         mass.0 = l.mass as f32;
         // Once it is in the sea the sea has it.
-        if crewed.is_none() || sequencer.0.landed.is_none() {
+        if !counting && (crewed.is_none() || sequencer.0.landed.is_none()) {
             let acceleration = l.felt() + course.field.acceleration(m.position, m.velocity);
             forces.apply_linear_acceleration(dvec(acceleration).as_vec3());
             let pitch = crewed.map_or(DVec3::X, |pitches| (turned * pitches.0).as_dvec3());
