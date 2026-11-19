@@ -940,9 +940,14 @@ read gives enough of to fly (issue #10).
   ascent left it (`flyOrbit` from `parted`), short of an orbit or not, as the record's own run does from its own. Its hand controls are the user's without the lock. The turning in orbit is a hand's on the attitude, not a
   rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight by the one
   propagator (below, "The flight deck has a navball and a predicted path"; orbitdeck.ts `predict`, given to path.ts as the
-  source's `predict`): on the launch vehicle, under guidance or by hand, where it goes if the engines stopped now (fliers.ts
-  `stack`: what it still carries on the drag of the shape it has, to the ground or once round; "if cut now" beside
-  the figures), or, under guidance with the last cutoff to come, where guidance would take it, chosen by the same control
+  source's `predict`): on the launch vehicle, under guidance or by hand, where it goes if the engines stopped now ("if cut now" beside
+  the figures: fliers.ts `guided`, `stopped`: every engine cut at the instant on show and none lit again, what it still
+  carries on the drag of the shape it has, and what the vehicle then does by itself, as the live one does: what has been
+  let go but is still pressed on parts at once, and while the sequencer is on each of its steps that lights nothing lets
+  its stage or drop go at the instant its triggers give (`instantOf`, from what has fired); from the parting, pushed
+  along the axis the stack has, which nothing turns once no engine burns, the spacecraft as the deck then flies it, the
+  timer's burn given up for the hands, down or once round; tests/cutnow.test.mjs holds it to the live vehicle cut by
+  hand at generated instants, the sequencer and guidance on and off), or, under guidance with the last cutoff to come, where guidance would take it, chosen by the same control
   as a ballistic flight's (To cutoff / Cut now, K: path.ts asks the deck's `guidable`): fliers.ts `guided`, the stated law's
   axis leaned by the trim, the record's steps at their times while the sequencer is on (Block E cut where its integrator's
   sum reaches its setting, found ahead in one sweep, `apparentBy` giving the record's run the sum the live vehicle keeps),
@@ -1059,7 +1064,7 @@ read gives enough of to fly (issue #10).
   coming down once nothing burns and no burn is to come (placed between the steps either side of it), and the greatest
   load from there before a parachute (at the vertex through the steps round the most). The
   vehicles: `ballistic` (a ballistic plan's: Freedom 7), `spacecraft` (an orbital spacecraft alone: flyOrbit's
-  `shipPush` and `aimOf`), `stack` (a staged launch vehicle with its engines stopped). The differences between them are
+  `shipPush` and `aimOf`), `stack` (a staged launch vehicle with its engines stopped, nothing more done: its forces, which tests/forces.test.mjs holds to the ascent's; the deck flies `guided`'s `stopped` on the same forces, with the sequencer's own steps). The differences between them are
   the vehicles': drag curves and areas, what is scheduled, the retrorockets' line (against the motion over the ground)
   against the braking engine's (fixed as it lights), parachutes. Each is a point mass with the attitude its forces need
   prescribed: the Redstone's rigid body (vehicle.ts: its moments, its autopilot's lag behind its programme, under a
