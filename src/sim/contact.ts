@@ -93,3 +93,24 @@ export function contact(a: ContactElement, b: ContactElement, dt: number) {
     after: dt * fraction,
   };
 }
+
+/**
+ * The same contact against something that does not move (a structure at a site, the ground): `a` met a surface whose
+ * outward normal is `normal` at `fraction` of the step, closing on it at `closing` m/s as the surface sees it. The
+ * impulse is along the normal, at the bead, perfectly inelastic and without friction, as between two bodies; all of it
+ * changes `a`. `depth`: how far past the surface the step would have carried the bead, which is undone along the normal.
+ */
+export function strike(a: ContactElement, normal: Vec3, fraction: number, closing: number, depth: number, dt: number) {
+  const ar = rotation(a, normal, fraction);
+  const speed = Math.max(0, closing);
+  const impulse = speed / (1 / a.mass + ar.inverse);
+  return {
+    r: scale(normal, Math.max(0, depth)),
+    v: scale(normal, impulse / a.mass),
+    w: scale(ar.kick, impulse),
+    impulse,
+    energy: (impulse * speed) / 2,
+    speed,
+    after: dt * fraction,
+  };
+}
