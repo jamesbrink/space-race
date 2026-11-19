@@ -1,4 +1,4 @@
-import type { ModelDef, Part } from '../../../../src/types.ts';
+import type { ModelDef, Move, Part } from '../../../../src/types.ts';
 import { LAUNCHER_TOP } from '../../places/cape-canaveral/lc-14.parts.ts';
 import type { targetLaunches } from './target-launches.ts';
 
@@ -12,6 +12,26 @@ const exterior = (node: string, name: string, summary: string, detail: string): 
   explode: [0, 0, 0],
 });
 
+/**
+ * The umbilical boom drawn back from the vehicle at liftoff, about its foot on the tower: 12 degrees in a second, which
+ * takes its tip from 3 ft off the axis to 16 ft before the Atlas, 5 ft in radius, comes up through where it stood.
+ * Estimated throughout: nothing read says how the boom cleared the vehicle, only that it stood beside the Agena
+ * (NASA 66-H-989) and that the Atlas passed (lc-14.md). The axis is level and square to the boom's reach.
+ */
+const BOOM_BACK: Move = {
+  kind: 'swing',
+  node: 'AgenaUmbilicalTower_Boom',
+  axis: [0.881, 0, -0.472],
+  angle: (12 * Math.PI) / 180,
+  from: 0,
+  to: 1,
+  machine: {
+    kind: 'release',
+    confidence: 'estimated',
+    source: 'the boom stands beside the Agena in NASA 66-H-989: how it was drawn clear at liftoff is not in anything read',
+  },
+};
+
 const pad: ModelDef = {
   id: 'pad',
   name: 'Launch Complex 14',
@@ -19,12 +39,15 @@ const pad: ModelDef = {
   backdrop: 'ground',
   scale: '101 ft from the stand deck to the top of the target umbilical tower',
   parts: [
-    exterior(
-      'AgenaUmbilicalTower',
-      'Target umbilical tower',
-      'A narrow 101-foot tower served the Gemini targets.',
-      'Complex 14 lost its Mercury escape gangway when it was rebuilt. The replacement has upper galleries and a long jointed boom, both visible in NASA’s photographs of the Gemini VIII launch and the Gemini X pad tests. The platform widths and access ladder are estimates.',
-    ),
+    {
+      ...exterior(
+        'AgenaUmbilicalTower',
+        'Target umbilical tower',
+        'A narrow 101-foot tower served the Gemini targets.',
+        'Complex 14 lost its Mercury escape gangway when it was rebuilt. The replacement has upper galleries and a long jointed boom, both visible in NASA’s photographs of the Gemini VIII launch and the Gemini X pad tests. The platform widths and access ladder are estimates. The boom reaches to the Agena, inside the width of the Atlas below it, so it is drawn back as the vehicle lifts: that it went so, how far and how fast are estimated.',
+      ),
+      clocked: [BOOM_BACK],
+    },
     exterior(
       'ServiceStructure',
       'Mobile service structure',

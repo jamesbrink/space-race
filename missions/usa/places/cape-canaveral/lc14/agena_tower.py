@@ -11,6 +11,7 @@ from .site import Parts, beam, box, handrail, lattice
 
 TOP = 101.0
 NAME = "AgenaUmbilicalTower"
+BOOM = NAME + "_Boom"
 CENTRE = (14.0, -26.0)
 GALLERIES = (29.0, 75.0, 87.0, TOP - 3.5)
 
@@ -38,8 +39,11 @@ def build(parts: Parts) -> None:
             NAME, f"gallery_{i + 1}", (west - 0.5, y, GALLERIES[i - 1] if i else 0), (west - 0.5, y, z), face=(1, 0, 0), mat="grey", width=1.65
         )
 
-    # The main arm rises from about one third of the shaft and bends back toward the vehicle (66-H-989).
-    arm = parts(NAME, "grey/boom")
+    # The main arm rises from about one third of the shaft and bends back toward the vehicle (66-H-989). Its own node,
+    # origin on its foot: its tip stands 3 ft from the axis beside the Agena, inside the Atlas's 5 ft radius, so it has
+    # to go back before the Atlas comes up through where it stood (lc-14.md).
+    parts.node(BOOM, NAME, (x - 2, y + 4, 32))
+    arm = parts(BOOM, "grey/boom")
     # A pair of side plates and diagonal ties at the elbow. Their junction is inside the pin housing.
     for side in (-1, 1):
         foot = (x - 2 + side * 0.7, y + 4, 32)
