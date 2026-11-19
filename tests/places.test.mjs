@@ -85,23 +85,30 @@ test('Tyuratam: what stands round Site 1 stands on the same land round another p
   assert.deepEqual([own.x, own.z], [0, 0]);
   const at = round.frame(SITE1);
   assert.deepEqual([there.x, there.z], [at.x, at.z]);
-  // Site 2's assembly building, 2.04 km off on 252 degrees in Site 1's frame: its foot over the land's top under it is the
+  // Site 2's assembly building, 1.99 km off on 253 degrees in Site 1's frame: its foot over the land's top under it is the
   // same round either pad (each model is built at Site 1's grade, so round the made-up pad it is lifted by the difference)
-  const [x, z, half] = [-1940, 630, 60];
+  const [x, z, half] = [-1905, 574, 60];
   const top = (l, ox, oz) =>
     Math.max(...[-1, 0, 1].flatMap((i) => [-1, 0, 1].map((j) => l.heightAt(x + 0.7 * half * i + ox, z + 0.7 * half * j + oz))));
   const footOver1 = own.lift(x, z, half) - (SITE1.grade.value + top(land1, 0, 0));
   const footOver = there.lift(x, z, half) - (ELSEWHERE.grade.value + top(land, at.x, at.z));
   assert.ok(Math.abs(footOver - footOver1) < 1e-6, `the building stands ${footOver - footOver1} m otherwise on the land`);
-  // and the scenery puts the model's frame there (no page: the model is not fetched, its group is placed)
+  // and the scenery puts each model's frame there: Site 2's and the measuring point's as of that April (no page: a model is not
+  // fetched, its group is placed)
   const built = TYURATAM_GROUND.scenery({
     compass: round,
     day: APRIL,
     land,
     groundAt: (x, z) => ELSEWHERE.grade.value + land.heightAt(x, z),
   });
-  assert.equal(built.objects.length, 1);
-  assert.deepEqual(built.objects[0].position.toArray(), [at.x, 0, at.z]);
+  assert.equal(built.objects.length, 2);
+  for (const model of built.objects) assert.deepEqual(model.position.toArray(), [at.x, 0, at.z]);
+  // on the day the Voskhods' photograph was taken the later state of each takes the earlier's place: two still, never four
+  const later = TYURATAM_GROUND.scenery({ compass: round, day: { ...APRIL, date: '1964-10-12' }, land, groundAt: () => 0 });
+  assert.deepEqual(
+    later.objects.map((o) => o.name.replace(/^.*tyuratam\//, '')),
+    ['site2/1964-09.glb', 'ip1/1964-09.glb'],
+  );
 });
 
 test('the bearings: Complex 14’s frame on its documented pitch line; Complex 19’s frame along its stand', () => {
