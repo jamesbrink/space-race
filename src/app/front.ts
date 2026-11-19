@@ -7,6 +7,8 @@ import {
   moved,
   namesFront,
   onMoved,
+  opensIn,
+  type Place,
   parseBrowse,
   settle,
   undo,
@@ -20,6 +22,7 @@ import { IDLE_TITLE } from './demo.ts';
 import { FrontScene } from './front/scene.ts';
 import { instantAt, PATH } from './front/view.ts';
 import { Title } from '../ui/title.ts';
+import { is } from '../util/keys.ts';
 import { markRuns } from '../ui/runmark.ts';
 import { isoDate } from '../world/time.ts';
 import { scripted } from '../util/env.ts';
@@ -56,7 +59,7 @@ let entering = false;
 const title = new Title(
   document.body,
   flights,
-  (id) => void enter(id),
+  (id, place) => void enter(id, place),
   () => void go(formatLineup(), () => import('./lineup.ts')),
   // the list narrowed to a nation or a programme: the address says so (the entry rewritten, not a step), so a link or
   // Back out of a flight comes to the list as it was left
@@ -85,9 +88,9 @@ compose();
 addEventListener('resize', compose);
 
 /** Go into a flight: its page is brought up under the picture, which is let go when the flight is there to be seen. */
-async function enter(id: string): Promise<void> {
+async function enter(id: string, place: Place = 'gallery'): Promise<void> {
   const flight = flights.find((f) => f.id === id);
-  if (flight) await go(formatAddress(id, 'gallery'), () => import('./main.ts').then((page) => page.opened));
+  if (flight) await go(formatAddress(id, opensIn(flight, place)), () => import('./main.ts').then((page) => page.opened));
 }
 
 /**
@@ -121,6 +124,12 @@ async function go(address: string, page: () => Promise<unknown>): Promise<void> 
     location.reload(); // (its page did not arrive: the address names the flight now, and says so there)
   }
 }
+
+// Escape while a flight is on its way in and its curtain is not yet up (its page still arriving) gives it up, as the
+// curtain's own Escape does once it is up (curtain.ts): back to this page
+addEventListener('keydown', (e) => {
+  if (entering && document.body.classList.contains('fronted') && is(e, 'menu.close') && !e.repeat) history.back();
+});
 
 // an address typed or gone back or forward to that names a flight is that flight's page; and Back while a flight is
 // on its way in is this page again, as it was before the flight was chosen

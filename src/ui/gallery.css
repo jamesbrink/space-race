@@ -24,6 +24,25 @@ body.gallery-settled #stage { visibility: hidden; }
 .places button + button { border-left: 1px solid var(--line); }
 .places i { font-style: normal; }
 .places-home { display: none; }
+/* the steps from here (gallery on to the launch site; the site back to the gallery and on to the launch): plain buttons, which on a wide page stand where the switch was */
+.ways { pointer-events: auto; display: flex; gap: 8px; margin-top: 14px; }
+.ways[hidden], .ways [hidden] { display: none; }
+.ways { flex-wrap: wrap; }
+/* (a flight kept by hand: the way to it has its lamp, and the mark beside it throws the flight away) */
+.ways button.kept::before { content: ''; display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #14110a; }
+.ways .kept-mark { display: inline-flex; align-items: center; gap: 7px; color: var(--amber); border: 1px solid rgba(255, 196, 107, 0.55); font-variant-numeric: tabular-nums; }
+.ways button { display: flex; align-items: center; gap: 10px; padding: 12px 14px; font: 600 12px/1 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; border-radius: 2px; white-space: nowrap; }
+.ways .icon { margin: 0; font-size: 15px; }
+.ways i { font-style: normal; font-size: 16px; }
+:is(#gallery, #ui) .ways .way-on { flex: 1; color: #14110a; background: var(--amber); }
+.ways .way-on i { margin-left: auto; }
+.ways .way-on:is(:hover, :focus-visible) { background: #ffd38f; }
+:is(#gallery, #ui) .ways .way-on[aria-disabled='true'] { color: var(--faint); background: none; border: 1px dashed var(--line); cursor: help; white-space: normal; text-align: left; line-height: 1.4; font-weight: 400; }
+.ways .way-back { color: var(--dim); border: 1px solid var(--line); }
+.ways .way-back:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--faint); }
+/* a wide page has the steps and no switch; a narrow one keeps its one folded control (fold.css) and has no room for the steps */
+@media (min-width: 960px) and (min-height: 520px) { .places { display: none; } }
+@media (max-width: 959px), (max-height: 519px) { .ways { display: none; } }
 .places button:hover:not(:disabled) { color: var(--ink); }
 /* where you are: as the open tab of the panel is, amber and underlined */
 .places button[aria-pressed='true'] { color: var(--amber); border-bottom-color: var(--amber); background: rgba(255, 196, 107, 0.08); }

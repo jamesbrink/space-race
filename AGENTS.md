@@ -262,7 +262,7 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
 - C is the camera everywhere: off foot it goes to the next rig there is as things stand ("The camera"), on foot
   between first and third person. Each has its own block in the legend. T is the look.
 - The front page (`front.ts`; its words `title.ts`, the mark in `logo.ts`) is what an address that names
-  nothing shows, and is no flight's: the list of flights over a picture of its own, the Earth seen from out by
+  nothing shows, and is no flight's: a main menu and the missions to choose from, over a picture of its own, the Earth seen from out by
   the Moon at the instant a person first left it, the camera going slowly out (`front/`; gallery.md, "The front
   page"). Left alone, that is the show and nothing else starts; after half a minute its words make way for the
   picture, and come back at a touch. Going in names the flight (`#<flight id>/gallery`; its launch site is
@@ -276,9 +276,11 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   (`callout.ts`). Any touch ends it; a reload comes back to it. It reads only the flight's data, so a new flight is
   shown without being told how. Before any of a site is seen the scene is warmed (`Stage.warm`): every
   level of detail and both day and lamp-lit shaders are built unseen, then the canvas fades up.
-- No key acts under the curtain. While something is loading and its curtain can be seen, `curtain.ts` takes every
-  key at the window before any listener hears it (keys with Command, Control or Alt, and releases, pass): a new
-  shortcut needs no guard of its own, and must not be given a way round this one.
+- No key acts under the curtain but its own two. While something is loading and its curtain can be seen, `curtain.ts`
+  takes every key at the window before any listener hears it (keys with Command, Control or Alt, and releases, pass),
+  except Escape, which gives the load up and goes back to where the visitor was (its Cancel button does the same), and
+  the sound's key, so sound can be put off before there is any (its switch on the curtain shows which). A new shortcut
+  needs no guard of its own, and must not be given a way round this one.
 - Shortcuts use only keys every keyboard has: letters, digits, arrows. No Home, End, Page Up or
   function keys (a Mac laptop has none).
 - Every key is one table, `src/util/keys.ts` (`KEYS`: what it is pressed as, what it does, where): a listener asks it

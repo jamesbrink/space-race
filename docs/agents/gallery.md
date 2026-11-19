@@ -18,12 +18,12 @@ Every flight has the same three places, in the same order, and opens in the firs
   flights over a picture of its own, the Earth seen from out by the Moon ("The front page", below). It has one
   entrance per flight, by date, and a line for each flight to come. An entrance always opens that flight's gallery. Before
   them stands the way into the Lineup ("The Lineup", below), which is no flight's either.
-- **Inside a flight** one switch, in the title card, shows the three places, the same control in
-  the same spot in every place (`placesNav` in `gallery.ts`; on the flight deck, where the card
-  makes way, the switch alone stays in its corner). A place the flight does not have yet is
-  **shown, dimmed, and says why** when pointed at or pressed (`lacks` in `address.ts`: "Launch
-  site: not built yet", "Fly: no trajectory yet"). It is never hidden: the visitor is told what
-  is coming, and the control is the same for every flight.
+- **Inside a flight** the places are a path: the gallery is the flight's page, from it the launch site, from the site the
+  launch. On a wide page the title card has plain buttons for the ways from where it is (`nextStep` in `gallery.ts`:
+  "Go to the launch site" in the gallery; "Gallery" and "Launch" at the site; back to either from the flight deck). A
+  narrow page has no room for them and keeps the one folded switch of the three places (`placesNav`; fold.css). A place
+  the flight does not have yet is **shown, dimmed, and says why** (`lacks` in `address.ts`: "Launch site: not built
+  yet", "Fly: no trajectory yet"). It is never hidden: the visitor is told what is coming.
 - **The way back is always the same**: front page > nation > programme > flight > place, and the title card's crumbs
   say it (`crumbs`): "Space Race" is the front page, the nation and the programme the front page with its list narrowed
   to them (`#flights/<nation>[/<programme>]`, address.ts `parseBrowse`: still the front page's address, and no
@@ -121,7 +121,9 @@ text it stands in (`icons.css`).
 
 ## The front page
 
-`front.ts` is the page; `title.ts` its words (the mark, the list); `app/front/scene.ts` its picture, on a canvas and a
+`front.ts` is the page; `title.ts` its words, laid out as a game's main menu (the mark; the menu: all missions, each
+nation, Explore, which is the Lineup, a kept flight to continue, full screen; and the missions to choose from beside
+it, which the menu and the programmes narrow; arrows, Enter and Escape work it: keys.ts `front.*`); `app/front/scene.ts` its picture, on a canvas and a
 renderer of its own that share nothing with a flight's stages (rendering.md, "The front page's picture"; what the
 picture is of, world.md).
 

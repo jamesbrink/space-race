@@ -3,29 +3,81 @@
    smallest text keeps 4.5:1 with white cloud behind it (0.84 of near black over white is #343434; --faint on that is 4.9:1). */
 /* It scrolls up and down and never sideways: nothing in it reaches past its sides (the mark's dark, the rows, which do not move when pointed
    at), so a trackpad's sideways drift or a thumb's has nothing to move (tools/front-test.mjs, "steady"). */
-#title { --title-glass: rgba(8, 9, 12, 0.84); --title-side: clamp(16px, 5vw, 56px); position: fixed; inset: 0; z-index: 10; display: grid; grid-template-rows: 1fr auto auto auto; justify-items: center; align-items: center; gap: 28px;
-  padding: clamp(20px, 5vh, 56px) var(--title-side); overflow-y: auto; color: var(--ink); transition: opacity 0.55s ease; }
+#title { --title-glass: rgba(8, 9, 12, 0.84); --title-side: clamp(16px, 4.5vw, 64px); position: fixed; inset: 0; z-index: 10; overflow: hidden; color: var(--ink); transition: opacity 0.55s ease; }
+/* the menu's side of the picture is darkened, the rest left as it is: a main menu reads against the dark, the Earth beside it */
+#title::before { content: ''; position: absolute; inset: 0; z-index: -1; background: linear-gradient(90deg, rgba(4, 5, 8, 0.86), rgba(4, 5, 8, 0.6) 30%, rgba(4, 5, 8, 0) 62%); pointer-events: none; transition: opacity 0.5s ease; }
 #title[hidden] { display: none; }
 #title.leaving { opacity: 0; pointer-events: none; }
 /* left alone, the words make way for the picture; the first movement brings them back (front.ts) */
-#title > * { transition: opacity 0.5s ease; }
-#title.tucked > * { opacity: 0; pointer-events: none; transition: opacity 2.4s ease; }
+#title > *, #title::before { transition: opacity 0.5s ease; }
+#title.tucked > *, #title.tucked::before { opacity: 0; pointer-events: none; transition: opacity 2.4s ease; }
 /* while it is up, the page under it is not for using */
 body.titled #ui { visibility: hidden; }
 
-.title-mark { position: relative; width: min(760px, 58vw, 100%); align-self: end; text-align: center; }
-/* a soft dark behind the mark and its line, where the Moon's ground or the Earth would otherwise be behind them */
-.title-mark::before { content: ''; position: absolute; inset: -18% max(-8%, -1 * var(--title-side)) -14%; z-index: -1; background: radial-gradient(closest-side, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0.4) 55%, rgba(0, 0, 0, 0)); pointer-events: none; }
+/* the one screen: the menu's column and the missions beside it; going into a mission, it slides away to the left as the mission's page comes */
+.title-home { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(300px, min(500px, 38vw)) minmax(0, 1fr); gap: clamp(20px, 4vw, 64px); padding: clamp(20px, 5vh, 56px) var(--title-side); transition: transform 0.55s cubic-bezier(0.3, 0, 0.2, 1); }
+#title.leaving .title-home { transform: translateX(-7%); }
+@media (prefers-reduced-motion: reduce) { .title-home { transition: none; } #title.leaving .title-home { transform: none; } }
+
+/* the menu's column: the mark, what there is to do, the small print at its foot */
+.title-side { padding-top: clamp(40px, 9vh, 90px); display: grid; grid-template-rows: auto 1fr auto auto auto auto; gap: clamp(14px, 3vh, 30px); min-height: 0; align-content: center; }
+.title-mark { position: relative; width: 100%; }
 .logo { display: block; width: 100%; height: auto; overflow: visible; color: var(--ink); filter: drop-shadow(0 6px 28px rgba(0, 0, 0, 0.6)); }
 .logo-trail { stroke-dasharray: 1; stroke-dashoffset: 1; animation: logo-fly 1.5s cubic-bezier(0.3, 0, 0.2, 1) 0.25s forwards; }
 .logo-trail.late { animation-delay: 0.55s; }
 .logo-goal { opacity: 0; animation: logo-arrive 0.6s ease 1.5s forwards; }
 @keyframes logo-fly { to { stroke-dashoffset: 0; } }
 @keyframes logo-arrive { to { opacity: 1; } }
-.title-line { margin-top: clamp(10px, 2.4vh, 22px); font: clamp(10px, 1.5vw, 13px)/1.5 var(--mono); letter-spacing: 0.26em; text-transform: uppercase; color: var(--dim); }
+.title-line { margin: clamp(10px, 2.4vh, 20px) 0 0; font: clamp(9px, 1vw, 12px)/1.5 var(--mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--dim); }
 .title-line i { font-style: normal; color: var(--amber); margin: 0 0.5em; }
 
-.title-browse { width: min(720px, 100%); display: grid; gap: 8px; align-self: start; margin-bottom: 14px; }
+
+/* the main menu: four things to do, each a line of the menu and not a card; the one pointed at or chosen is lit by its amber edge */
+.title-menu { display: grid; align-content: center; gap: 2px; counter-reset: none; }
+.title-menu button { position: relative; display: grid; grid-template-columns: 26px 30px 1fr auto; align-items: center; gap: 14px; width: 100%; padding: 15px 16px 15px 18px; text-align: left; border-left: 2px solid transparent; border-bottom: 1px solid var(--line);
+  transition: background 0.18s, border-color 0.18s; }
+.title-menu button:first-child { border-top: 1px solid var(--line); }
+.title-menu .n { font: 11px/1 var(--mono); letter-spacing: 0.12em; color: var(--faint); }
+.title-menu .glyph { display: flex; font-size: 22px; color: var(--dim); transition: color 0.18s; }
+.title-menu .glyph .icon { margin: 0; }
+.title-menu .what { grid-column: 3; display: grid; gap: 4px; min-width: 0; }
+.title-menu .what b { font: 600 clamp(20px, 2.1vw, 27px)/1.05 var(--sans); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink); transition: color 0.18s, letter-spacing 0.25s; }
+.title-menu .what em { font-style: normal; font-size: 13px; line-height: 1.35; color: var(--dim); }
+.title-menu .tally { font: 10px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); white-space: nowrap; }
+.title-menu button:is(:hover, :focus-visible, [aria-pressed='true']) { background: linear-gradient(90deg, rgba(255, 196, 107, 0.16), rgba(255, 196, 107, 0)); border-left-color: var(--amber); outline: none; }
+.title-menu button:is(:hover, :focus-visible, [aria-pressed='true']) :is(.glyph, .what b, .n) { color: var(--amber); }
+.title-menu button:is(:hover, :focus-visible, [aria-pressed='true']) .what b { letter-spacing: 0.18em; }
+.title-menu button:is(:hover, :focus-visible, [aria-pressed='true']) .tally { color: var(--dim); }
+/* a kept flight, offered first: its lamp is lit */
+.title-menu .resume { margin-bottom: 10px; border: 1px solid rgba(255, 196, 107, 0.4); border-left: 2px solid var(--amber); border-radius: 2px; }
+.title-menu .resume :is(.n, .tally) { color: var(--amber); }
+.title-menu .resume .what b { font-size: clamp(16px, 1.6vw, 20px); }
+.title-menu .resume + button { border-top: 1px solid var(--line); }
+/* the page's own settings, under the menu */
+.title-set { margin: 0; }
+.title-set .switch { font: 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); padding: 9px 12px; border: 1px solid var(--line); border-radius: 2px; }
+.title-set .switch:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--faint); }
+/* what the keys do, under the menu: only where there is a keyboard to press */
+.title-keys { margin: 0; font: 10px/1.6 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--faint); }
+.title-keys kbd { font: inherit; color: var(--dim); padding: 1px 5px; border: 1px solid var(--line); border-radius: 2px; margin-right: 4px; }
+.title-keys span { margin-right: 14px; white-space: nowrap; }
+@media (hover: none) { .title-keys { display: none; } }
+
+/* the flights to choose from, once the menu has been asked for something: a panel of dark glass beside the menu, which scrolls by itself */
+.title-select { align-self: stretch; justify-self: end; width: min(680px, 100%); min-height: 0; display: grid; grid-template-rows: auto auto 1fr; align-content: start; gap: 14px; padding: 20px 20px 0; overflow-y: auto;
+  background: rgba(8, 9, 12, 0.72); backdrop-filter: blur(18px) saturate(1.15); -webkit-backdrop-filter: blur(18px) saturate(1.15); border: 1px solid var(--line); border-top: 2px solid var(--amber); border-radius: 3px; animation: title-in 0.28s ease; }
+.title-select[hidden] { display: none; }
+@keyframes title-in { from { opacity: 0; transform: translateY(10px); } }
+.title-select header { display: grid; gap: 4px; }
+.title-select h2 { display: flex; align-items: center; gap: 12px; margin: 0; font: 600 22px/1.1 var(--sans); letter-spacing: 0.16em; text-transform: uppercase; color: var(--amber); }
+.title-select h2 .icon { margin: 0; font-size: 22px; }
+.title-says { grid-column: 1; margin: 0; font-size: 13px; color: var(--dim); }
+.title-back { grid-column: 2; grid-row: 1 / 3; font: 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); padding: 9px 12px; border: 1px solid var(--line); border-radius: 2px; }
+.title-back:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--faint); }
+.title-select .title-flights { align-content: start; padding-bottom: 20px; }
+.title-select :is(.title-browse button, .title-flights button, .to-come) { backdrop-filter: none; -webkit-backdrop-filter: none; background: rgba(20, 21, 26, 0.7); }
+.title-browse { display: grid; gap: 8px; }
+.title-browse:not(:has(p:not([hidden]))) { display: none; }
 .title-browse p { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; }
 .title-browse p[hidden] { display: none; }
 .title-browse button { font: 11px/1 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); padding: 9px 12px; background: var(--title-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--line); border-radius: 2px; }
@@ -33,8 +85,8 @@ body.titled #ui { visibility: hidden; }
 .title-browse button[aria-pressed='true'] { color: var(--amber); border-color: rgba(255, 196, 107, 0.6); }
 .title-browse [data-of] button { letter-spacing: 0.1em; padding: 7px 10px; }
 .title-flights [hidden] { display: none; }
-.title-flights { width: min(720px, 100%); display: grid; gap: 10px; align-self: start; }
-.title-flights button { display: grid; grid-template-columns: auto auto 1fr auto auto; align-items: center; gap: 18px; width: 100%; padding: 16px 20px; text-align: left;
+.title-flights { display: grid; gap: 8px; }
+.title-flights button { display: grid; grid-template-columns: auto auto 1fr auto auto; align-items: center; gap: 18px; width: 100%; padding: 13px 18px; text-align: left;
   background: var(--title-glass); backdrop-filter: blur(14px) saturate(1.15); -webkit-backdrop-filter: blur(14px) saturate(1.15); border: 1px solid var(--line); border-left: 2px solid var(--amber); border-radius: 3px; transition: background 0.15s, border-color 0.15s, box-shadow 0.15s; }
 /* pointed at, a row is lit where it stands (its amber edge thickens inside it): one that moved would slide to and fro under a still pointer as the list scrolled past it */
 .title-flights button:is(:hover, :focus-visible) { background: rgba(28, 24, 16, 0.9); border-color: rgba(255, 196, 107, 0.6); box-shadow: inset 3px 0 0 var(--amber); }
@@ -63,21 +115,27 @@ body.titled #ui { visibility: hidden; }
 .title-flights .to-come .what b { font-size: 15px; font-weight: 500; color: var(--dim); }
 .title-flights .to-come .what em { font-size: 12px; color: var(--faint); }
 .title-flights .to-come .go { color: var(--faint); border-color: transparent; padding: 4px 12px; }
-.title-foot { max-width: 60ch; padding: 7px 14px; text-align: center; font-size: 12px; color: var(--faint); background: var(--title-glass); border-radius: 3px; }
-.title-rights { padding: 5px 10px; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); background: var(--title-glass); border-radius: 3px; }
+.title-foot { margin: 0; font-size: 12px; color: var(--faint); }
+.title-rights { margin: 0; font: 10px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--faint); }
 
-/* held upright the picture has the top of the page to itself: the Earth over the Moon's horizon, then the mark and the list, which scrolls over it */
-@media (orientation: portrait) {
-  #title { grid-template-rows: auto auto auto auto; padding-top: 42vh; }
-  .title-mark { width: min(760px, 100%); }
+/* a narrow or upright window: the picture has the top of the page, then the mark and the menu; a thing chosen puts its flights where the menu was */
+@media (orientation: portrait), (max-width: 860px) {
+  .title-home { display: block; overflow-y: auto; padding-top: 38vh; }
+  #title::before { position: fixed; background: linear-gradient(0deg, rgba(4, 5, 8, 0.86), rgba(4, 5, 8, 0.62) 45%, rgba(4, 5, 8, 0) 75%); }
+  .title-side { max-width: 560px; margin: 0 auto; padding-top: 0; }
+  .title-line { letter-spacing: 0.14em; }
+  /* (the small print goes under the missions, which come straight after the menu) */
+  .title-side { grid-template-rows: auto auto; }
+  .title-side :is(.title-foot, .title-rights, .title-keys, .title-set) { display: none; }
+  .title-select { width: 100%; max-width: 680px; margin: 18px auto 0; overflow: visible; padding: 16px 14px 0; }
 }
 @media (max-width: 620px) {
-  .title-mark { width: 100%; }
+  .title-menu button { grid-template-columns: 22px 26px 1fr; padding: 14px 12px; gap: 12px; }
+  .title-menu .tally { grid-column: 3; grid-row: 2; }
   .title-flights button { grid-template-columns: auto auto 1fr auto; padding: 14px; gap: 8px 12px; }
   .title-flights .to-come { grid-template-columns: auto auto 1fr auto; padding: 7px 14px; gap: 2px 12px; }
   .title-flights .when { grid-column: 3 / -1; grid-row: 2; justify-items: start; text-align: left; white-space: normal; }
   .title-flights .go { grid-column: 4; grid-row: 1; }
-  .title-flights .title-lineup .go { grid-column: 3; }
   .title-flights .when { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
 }
 @media (prefers-reduced-motion: reduce) {

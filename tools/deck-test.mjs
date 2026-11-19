@@ -662,7 +662,7 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
     await page.waitForTimeout(300);
   };
   const toFly = async (page) => {
-    await page.locator('.places [data-place=fly]:visible').first().click();
+    await page.locator(':is(.places [data-place=fly], .ways [data-way=fly]):visible').first().click();
     await page.waitForFunction(() => window.sr.cockpit.active, null, { timeout: 60000 });
     await page.waitForTimeout(800);
   };
@@ -708,8 +708,8 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
     const within = [
       ["the deck's Leave button", (page) => page.click('#ui > .cockpit .deck-foot [data-do=leave]')],
       ['Esc', (page) => page.keyboard.press('Escape')],
-      ['the Gallery tab', (page) => page.click('#ui .places [data-place=gallery]')],
-      ['the Launch site tab', (page) => page.click('#ui .places [data-place=site]')],
+      ['the Gallery tab', (page) => page.click('#ui :is(.places [data-place=gallery], .ways [data-way=gallery]):visible')],
+      ['the Launch site tab', (page) => page.click('#ui :is(.places [data-place=site], .ways [data-way=site]):visible')],
       ['the flight crumb', (page) => page.evaluate(() => document.querySelector('#ui [data-flight-home]').click())],
     ];
     for (const [name, out] of within) {
@@ -728,7 +728,7 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
       if (r.active || !r.keeping) fail(at, `not kept: active ${r.active}, kept ${r.keeping}`);
       if (!r.stored?.includes(id)) fail(at, `not kept in the browser's storage: ${r.stored}`);
       if (r.warns) fail(at, 'the browser asks before the page goes, though the flight is kept');
-      if (!(await page.$('.places .kept-mark'))) fail(at, 'the Fly tab does not say a flight is kept');
+      if (!(await page.$(':is(.places, .ways) .kept-mark'))) fail(at, 'the Fly tab does not say a flight is kept');
       const note = await page.evaluate(() => document.querySelector('.notes')?.textContent ?? '');
       if (!/kept/i.test(note)) fail(at, `no note that it is kept: "${note}"`);
       const here = r.hash;
@@ -781,7 +781,7 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
       // the mark beside Fly asks, and throws it away
       await handFly(page, id);
       await stop(page);
-      await page.click('#ui .places [data-place=gallery]');
+      await page.click('#ui :is(.places [data-place=gallery], .ways [data-way=gallery]):visible');
       await page.locator('.kept-mark:visible').first().waitFor();
       await page.waitForTimeout(800);
       await page.locator('.kept-mark:visible').first().click();
@@ -799,7 +799,7 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
       // Start over on the card
       await handFly(page, id);
       await stop(page);
-      await page.click('#ui .places [data-place=site]');
+      await page.click('#ui :is(.places [data-place=site], .ways [data-way=site]):visible');
       await page.waitForTimeout(800);
       await toFly(page);
       await page.click('.cockpit-kept [data-do=again]');

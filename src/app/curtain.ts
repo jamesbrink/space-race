@@ -1,4 +1,8 @@
+import { stepsIn } from './address.ts';
+import { goHome } from './home.ts';
+import { prefs } from './prefs.ts';
 import { esc } from '../util/dom.ts';
+import { is, KEYS, kbd } from '../util/keys.ts';
 /**
  * The curtain: what is shown while something is on its way in. There is one, the same wherever
  * something loads (a flight's gallery, its launch site): the name of what is coming, a bar that
@@ -23,6 +27,10 @@ export const CURTAIN = `
           <p class="loading-line"><span class="loading-now"></span><output class="loading-pct"></output></p>
           <ol class="loading-steps" aria-hidden="true"></ol>
           <button hidden title="Fetch it again">Try again</button>
+          <p class="loading-ways">
+            <button class="loading-cancel" data-cancel title="Stop loading and go back to where you were">${kbd('menu.close')}Cancel</button>
+            <button class="loading-sound switch" data-sound aria-pressed="false" title="Sound on or off, before it starts">${kbd('sound.toggle')}Sound</button>
+          </p>
         </div>
       </div>`;
 
@@ -49,12 +57,48 @@ function gate(e: KeyboardEvent): void {
   if (e.metaKey || e.ctrlKey || e.altKey) return;
   for (const curtain of up) {
     if (curtain.showing) {
+      // two keys are the curtain's own: Escape gives the load up, and the sound's key is heard, since whether there is
+      // to be sound is best said before there is any (it is let through to whoever keeps the sound, and settled here if nobody does)
+      if (is(e, 'sound.toggle') && !e.repeat) {
+        setTimeout(() => sound(), 0);
+        return;
+      }
       e.stopImmediatePropagation();
+      if (is(e, 'menu.close') && !e.repeat) cancel(curtain);
       return;
     }
   }
 }
-if (typeof window !== 'undefined') window.addEventListener('keydown', gate, true);
+
+/**
+ * Give up what is on its way in and go back to where the visitor was: the step before, if the page made one to come
+ * here (the front page, the gallery the site was asked for from); otherwise, come to by a link, out to the front page.
+ */
+function cancel(curtain?: Curtain): void {
+  // (a page that knows better where the visitor was says so: the site asked for from the gallery has not named itself in the address yet)
+  if (curtain?.onCancel?.()) return;
+  if (stepsIn() > 0) history.back();
+  else goHome();
+}
+
+/** Whether there is to be sound, as every curtain's switch shows it: called once the sound's key has been heard by whoever keeps the sound. */
+let heard = typeof localStorage === 'undefined' ? true : !prefs.get('soundOff');
+function sound(): void {
+  // (a site's sound hears the key itself and writes the choice down; where there is none yet, the choice is written here for it to find)
+  if (!prefs.get('soundOff') === heard) prefs.set('soundOff', heard);
+  heard = !prefs.get('soundOff');
+  for (const b of document.querySelectorAll('.loading [data-sound]')) b.setAttribute('aria-pressed', String(heard));
+}
+
+if (typeof window !== 'undefined') {
+  window.addEventListener('keydown', gate, true);
+  document.addEventListener('click', (e) => {
+    const on = (e.target as HTMLElement).closest?.('.loading [data-cancel], .loading [data-sound]');
+    if (on?.matches('[data-cancel]')) cancel([...up].find((c) => c.covers(on)));
+    // (the switch presses the sound's key, so whoever keeps the sound hears it as from the keyboard)
+    else if (on) window.dispatchEvent(new KeyboardEvent('keydown', { key: KEYS['sound.toggle'].slots[0], bubbles: true }));
+  });
+}
 
 export class Curtain {
   private readonly el: HTMLElement;
@@ -71,8 +115,16 @@ export class Curtain {
     return up.has(this) && this.el.getClientRects().length > 0;
   }
 
+  /** The page's own way of giving up what this curtain covers; true if it took it. Left unset, the visitor's last step is taken back. */
+  onCancel: (() => boolean) | null = null;
+
   constructor(el: HTMLElement) {
     this.el = el;
+  }
+
+  /** Whether `node` is on this curtain. */
+  covers(node: Element): boolean {
+    return this.el.contains(node);
   }
 
   /** The curtain is up: `what` is on its way in. */
@@ -82,6 +134,8 @@ export class Curtain {
     void el.offsetWidth; // (so the list's late entrance starts again on a retry)
     el.classList.add('began');
     up.add(this);
+    el.querySelector('[data-sound]')?.setAttribute('aria-pressed', String(!prefs.get('soundOff')));
+    heard = !prefs.get('soundOff');
     el.querySelector('button')!.hidden = true;
     el.querySelector('.loading-kicker')!.textContent = 'Loading';
     el.querySelector('.loading-name')!.textContent = what;
