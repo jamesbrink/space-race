@@ -1,3 +1,5 @@
+import { lc39Crew } from '../../crew/lc39.ts';
+import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
 import type { Measure } from '../../../../../src/measure.ts';
 import type { Flight, Move, Part } from '../../../../../src/types.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
@@ -431,6 +433,7 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-503',
   launch: '1968-12-21T12:51:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
+  site: LC39A,
   crew: ['Frank Borman', 'James A. Lovell Jr.', 'William A. Anders'],
   summary:
     'The first people to orbit the Moon flew there in a command and service module. Inside the adapter beneath them rode an instrumented steel cylinder. They circled the Moon ten times before turning for home.',
@@ -643,14 +646,14 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Apollo 8 · Saturn V',
       url: 'models/usa/apollo/apollo-8/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       ...cabin,
       // PAO launch transcript, tape 10: first entry at 04:58 EST, hatch closed at 05:34.
       seats: [
-        { node: 'Seat_Commander', label: 'Borman’s left couch', from: 'SideHatch', open: [-10380, -8220] },
-        { node: 'Seat_CommandModulePilot', label: 'Lovell’s centre couch', from: 'SideHatch', open: [-10380, -8220] },
-        { node: 'Seat_LunarModulePilot', label: 'Anders’s right couch', from: 'SideHatch', open: [-10380, -8220] },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Borman’s left couch', from: 'SideHatch', open: [-10380, -8220] },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Lovell’s centre couch', from: 'SideHatch', open: [-10380, -8220] },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Anders’s right couch', from: 'SideHatch', open: [-10380, -8220] },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip · rounded flight envelope',
       slider: ['Assembled', 'Taken apart'],
@@ -675,5 +678,7 @@ export const flight: Flight = {
       ],
       parts,
     },
+    mobileLauncher(1),
+    ...lc39Crew(['Borman', 'Lovell', 'Anders'], false),
   ],
 };

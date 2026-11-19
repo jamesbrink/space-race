@@ -48,9 +48,14 @@ of 213 × 224 km. [Siddiqi, *Challenge to Apollo*, appendix, Table I](https://ww
 Inspect the early 11A511 and its escape tower, the spacecraft with both solar wings deployed,
 the active probe and exterior handholds, or the Sirius-7K panel from Shatalov's centre couch.
 The cutaway shows Shatalov and his two empty return places as they were at launch. The slider
-illustrates deployment and separates the three spacecraft modules for inspection. The Launch
-site, historical weather and flyable trajectory are pending. [Spacecraft record](spacecraft.md)
+illustrates deployment and separates the three spacecraft modules for inspection. [Spacecraft record](spacecraft.md)
+
+## Launch site
+
+The launcher stands over [Site 31’s excavated pad](../../../places/tyuratam/site-31.md). The site opens with the access platforms down. At liftoff the Sun was at azimuth 173.8° true and elevation +22.4°. The Moon was at 227.3° and +3.8°. The viewing conditions use the place’s estimated sky.
 
 ![Soyuz 4 with both solar arrays deployed and the spacecraft modules still joined](../../../../../docs/readme/soyuz-4/orbital-configuration.jpg)
 
 [Assembled launcher](../../../../../docs/readme/soyuz-4/launcher.jpg) · [Spacewalk transfer hatch](../../../../../docs/readme/soyuz-4/transfer-hatch.jpg) · [Descent cabin](../../../../../docs/readme/soyuz-4/descent-cabin.jpg) · [Sirius console from the centre couch](../../../../../docs/readme/soyuz-4/sirius.jpg) · [Separated spacecraft modules](../../../../../docs/readme/soyuz-4/separation.jpg)
+
+On foot, Shatalov starts on the approach facing the spacecraft. His standing figure uses the reconstructed cabin clothing and communications cap. The apron position and outdoor clothing are illustrative.

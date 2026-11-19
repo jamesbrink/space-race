@@ -44,8 +44,14 @@ inspection. The cabin cutaway shows the Sirius-7K panel and Beregovoy in the cen
 The spacecraft record explains which details belong to No. 10 and which follow the 7K-OK type.
 [Spacecraft record](spacecraft.md)
 
-The Gallery uses studio light. The Launch site, historical weather and flyable trajectory are pending.
+The Gallery uses studio light.
+
+## Launch site
+
+The launcher stands over [Site 31’s excavated pad](../../../places/tyuratam/site-31.md). The site opens with the access platforms down. At liftoff the Sun was at azimuth 198.2° true and elevation +29.7°. The Moon was at 139.1° and +2.6°. The viewing conditions use the place’s estimated sky.
 
 ![Soyuz 3 with both solar arrays deployed and the spacecraft modules still joined](../../../../../docs/readme/soyuz-3/orbital-configuration.jpg)
 
 [Assembled launcher](../../../../../docs/readme/soyuz-3/launcher.jpg) · [Orbital workroom](../../../../../docs/readme/soyuz-3/orbital-cabin.jpg) · [Beregovoy in the descent cabin](../../../../../docs/readme/soyuz-3/descent-cabin.jpg) · [Sirius console from the centre couch](../../../../../docs/readme/soyuz-3/sirius.jpg) · [Separated spacecraft modules](../../../../../docs/readme/soyuz-3/separation.jpg)
+
+On foot, Beregovoy starts on the approach facing the spacecraft. His standing figure uses the reconstructed cabin clothing and communications cap. The apron position and outdoor clothing are illustrative.

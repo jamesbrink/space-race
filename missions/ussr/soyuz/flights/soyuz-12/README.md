@@ -45,7 +45,7 @@ loss of the station they had trained to visit. [RGANTD, *Flight of the Urals*](h
 Inspect the 11A511 launcher, the battery-powered ferry, the LKSA-3 camera, and the two suited
 cosmonauts at the Sirius controls. The slider opens the fairing, deploys the reconstructed
 antennas, and later spreads the three modules for inspection.
-The Launch site and Fly are pending. [Spacecraft record](spacecraft.md)
+The flight deck is pending. [Spacecraft record](spacecraft.md)
 
 ![Soyuz 12 spacecraft assembled for its independent orbital flight](../../../../../docs/readme/soyuz-12/orbital-configuration.jpg)
 
@@ -55,3 +55,9 @@ The Launch site and Fly are pending. [Spacecraft record](spacecraft.md)
 [Sirius controls from Lazarev's couch](../../../../../docs/readme/soyuz-12/sirius.jpg) ·
 [LKSA-3 multispectral camera](../../../../../docs/readme/soyuz-12/lksa-camera.jpg) ·
 [Separated spacecraft modules](../../../../../docs/readme/soyuz-12/separation.jpg)
+
+## Launch site
+
+The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky uses the flight date and the place’s estimated weather. The geometric Sun at liftoff was 254.3° true at elevation +12.4°. The Moon was at 241.5° true, elevation +10.2° (DE440). [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
+
+Walk as Lazarev or Makarov in the Sokol-K pressure garment, including the soft hood, hinged visor and chest closure. Each walk starts on the rail apron facing the launcher. The starting positions, footwear and garment details are reconstructed.

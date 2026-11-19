@@ -567,8 +567,7 @@ south of the track at the track's level.
 
 ### The ground and what grows
 
-The steppe as a kind of country is [missions/ussr/places/tyuratam/steppe.ts](steppe.ts), so the next pad on it (Site 31)
-can stand on the same; [ground.ts](ground.ts) says where on it the ground lies low and what the
+The steppe as a kind of country is [missions/ussr/places/tyuratam/steppe.ts](steppe.ts), and supplies the regional ground for both Site 1 and [Site 31](site-31.md); [ground.ts](ground.ts) says where on it the ground lies low and what the
 builders made of it. Every form is designed (clean masses, no blades or leaf cards); the plants thin with distance as the
 Cape's do (flora.ts) and the ground carries their tones to the horizon. Sources: docs/sources.md, "The steppe at Tyuratam".
 
@@ -607,9 +606,9 @@ were before there were four (their GLSL compared as text, November 2026).
 | The spring | 1 April | Vostok 1 (12 April 1961) | the ephemerals' flush, the tulips out | documented (the flush and the tulips that April); the colours estimated | as above |
 | The summer | 1 June | Vostoks 2 to 6 (August 1961 to June 1963) | the sward dried to straw, the steppe reddish grey; the tulips and rhubarb below ground | documented in words (Chertok); the colours estimated | Chertok vol. II p. 357, vol. III p. 387; Mikheev; the film of 6 August 1961 |
 | The autumn | 15 September | Voskhod 1 (12 October 1964) | the summer's straw greyer and paler; the wormwood past flowering, grey-green to grey with straw-coloured stems; the biyurgun reddish brown with its dried fruits; the saltworts rusty pink-brown; the teresken's hairs rufous; no snow, the ground dry | the day documented (a still, frosty, clear morning, minus 8, no snow; the stations dry after rain on 4 to 7 October); what each plant is in autumn documented in kind; the colours and the season's start estimated | Kamanin, 12 October 1964; Chertok vol. III pp. 238-239; NOAA ISD and GHCN-Daily at Kazalinsk, Kara-Kum and Aralsk; Flora of the USSR, vols. VI and XXVI |
+| The winter | 1 December | Soyuz 16 at Site 1, Soyuz 4 at Site 31 | Dormant grey shrubs and flattened sward. The ground appears bare for Soyuz 16 on 2 December 1974. Thick snow covered the Soyuz 4 launch area on 14 January 1969. | December cover assumed from Dzhusaly and Aralsk. January snow documented by witnesses, its 95% coverage estimated. Winter start and vegetation estimated. | NOAA ISD 35953099999 and 35746099999, IA1 on 2 December 1974. NASA SP-4408, p. 670. |
 
-What is not drawn of them: the deep winter (December to February) has no flight and takes the autumn's ground; the hoar
-frost of 12 October's dawn (gone by liftoff at about +7 °C: estimated); a fresh dusting from the snow showers of 17 and
+What is not drawn of them: the hoar frost of 12 October's dawn (gone by liftoff at about +7 °C: estimated); a fresh dusting from the snow showers of 17 and
 18 March (possible, not drawn); snow on the shrubs, the roads, the apron and the platform (the land's alone carries
 it); the globe beyond the land, which keeps its April colours (`RegionSurface.month`) whatever the season, so that seen
 from height the steppe round Site 1 in March is the land's snow and mud inside its square and April's brown beyond. No
@@ -1205,6 +1204,13 @@ rocket can leave the erector out by its date.
   ground at Site 1's figures). Round another pad at Tyuratam it is put where Site 1 lies from that pad (ground.ts
   `inSite1`, `standsInSite1`: the compass through world/frames.ts, as the Cape's are from Complex 5), with SRTM's lie
   let down to that pad's ground and faded to the edge of its own land; the meridians' convergence between the two
-  (0.02 degrees over 3 km) is left out. A pad laid there has nothing of its own yet (its lie, tracks, pit): that is its
-  own to give. No flight leaves from another pad here yet; tests/places.test.mjs lays the ground round a made-up one
-  3 km off and holds the land, the pit and Site 2's building to where they are round Site 1.
+  (0.02 degrees over 3 km) is left out. Soyuz 3 and 4 launch from [Site 31](site-31.md), whose rail approach, deck and excavation stand in its own frame.
+  The ground tests check that excavation and its transition to regional relief, as well as the registration of Site 1's terrain and Site 2's building viewed from another pad.
+
+## Soyuz crews at Site 1, 1967–1980
+
+Soyuz 1, 10, 12, 16 and T-2 used the same launch axis. The deck, pits, four support arms, northeast mast, approach rails, command bunker and three storage bays use the Site 1 geometry and dimensions above. The rail approach includes the inset flangeways through the concrete platform. The surrounding steppe uses the site's relief. The permanent works are assumed to retain their earlier dimensions through these launches. The gallery stacks share the reconstructed 35.695 m from the nozzle plane to the spacecraft aft face. Placing that face 28.945 m above the deck hangs their nozzles 6.750 m below it. The ring's turn relative to the deck is carried over from the existing reconstruction and is an estimate for these five launches.
+
+Soyuz 1 already had tall access steelwork beside its shroud. In the photograph reproduced as figure 7.1-2 in NASA/TM-2020-220573, successive platforms flank the spacecraft almost to the escape tower. NASA photograph S75-32339 shows the towers part-way open in 1974, with the separate low support arms holding the rocket. The model takes the tower shape from these photographs. Its two halves carry eight half-round work platforms each, the lowest at 17.1 m above the deck and the highest at 36.0 m. Platform count, height, spacing, tower cross-sections, ladders, colours, and the 86° swing are estimated. Detailed drawings and individual modification dates between the five launches remain unverified. [Soyuz 1 on its pad, fig. 7.1-2](https://ntrs.nasa.gov/api/citations/20200003165/downloads/20200003165.pdf) · [Soyuz installation, NASA S75-32339](https://www.nasa.gov/missions/apollo-soyuz/the-apollo-soyuz-mission/)
+
+The site opens with the towers upright. The clock and the pad slider can lower them to view the cleared pad. The times assigned to these working positions are illustrative. Each mission uses its own launch timestamp for the Sun and Moon and the place's estimated default weather. Auxiliary cable masts, lift cars, the erector and rolling stock, support personnel, and changes to buildings outside the pad between 1967 and 1980 are omitted.

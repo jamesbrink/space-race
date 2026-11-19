@@ -92,21 +92,21 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Gemini X](missions/usa/gemini/flights/gt-10/README.md) | 18 Jul 1966 | Young, Collins | Titan II GLV | ● | ● | · |
 | [Gemini XI](missions/usa/gemini/flights/gt-11/README.md) | 12 Sep 1966 | Conrad, Gordon | Titan II GLV | ● | ● | · |
 | [Gemini XII](missions/usa/gemini/flights/gt-12/README.md) | 11 Nov 1966 | Lovell, Aldrin | Titan II GLV | ● | ● | · |
-| [Soyuz 1, *Rubin*](missions/ussr/soyuz/flights/soyuz-1/README.md) | 23 Apr 1967 | Komarov | Soyuz 11A511 | ● | · | · |
+| [Soyuz 1, *Rubin*](missions/ussr/soyuz/flights/soyuz-1/README.md) | 23 Apr 1967 | Komarov | Soyuz 11A511 | ● | ● | · |
 | [Apollo 7](missions/usa/apollo/flights/apollo-7/README.md) | 11 Oct 1968 | Schirra, Eisele, Cunningham | Saturn IB | ● | ● | ● |
-| [Soyuz 3, *Argon*](missions/ussr/soyuz/flights/soyuz-3/README.md) | 26 Oct 1968 | Beregovoy | Soyuz 11A511 | ● | · | · |
-| [Apollo 8](missions/usa/apollo/flights/apollo-8/README.md) | 21 Dec 1968 | Borman, Lovell, Anders | Saturn V | ● | · | · |
-| [Soyuz 4, *Amur*](missions/ussr/soyuz/flights/soyuz-4/README.md) | 14 Jan 1969 | Shatalov | Soyuz 11A511 | ● | · | · |
-| [Apollo 9, *Gumdrop* and *Spider*](missions/usa/apollo/flights/apollo-9/README.md) | 3 Mar 1969 | McDivitt, Scott, Schweickart | Saturn V | ● | · | · |
-| [Apollo 10, *Charlie Brown* and *Snoopy*](missions/usa/apollo/flights/apollo-10/README.md) | 18 May 1969 | Stafford, Young, Cernan | Saturn V | ● | · | · |
-| [Soyuz 10, *Granit*](missions/ussr/soyuz/flights/soyuz-10/README.md) | 22 Apr 1971 UTC | Shatalov, Yeliseyev, Rukavishnikov | Soyuz 11A511 | ● | · | · |
-| [Soyuz 12, *Ural*](missions/ussr/soyuz/flights/soyuz-12/README.md) | 27 Sep 1973 | Lazarev, Makarov | Soyuz 11A511 | ● | · | · |
-| [Soyuz 16, *Buran*](missions/ussr/soyuz/flights/soyuz-16/README.md) | 2 Dec 1974 | Filipchenko, Rukavishnikov | Soyuz-U 11A511U | ● | · | · |
-| [Soyuz T-2, *Yupiter*](missions/ussr/soyuz/flights/soyuz-t-2/README.md) | 5 Jun 1980 | Malyshev, Aksyonov | Soyuz-U 11A511U | ● | · | · |
+| [Soyuz 3, *Argon*](missions/ussr/soyuz/flights/soyuz-3/README.md) | 26 Oct 1968 | Beregovoy | Soyuz 11A511 | ● | ● | · |
+| [Apollo 8](missions/usa/apollo/flights/apollo-8/README.md) | 21 Dec 1968 | Borman, Lovell, Anders | Saturn V | ● | ● | · |
+| [Soyuz 4, *Amur*](missions/ussr/soyuz/flights/soyuz-4/README.md) | 14 Jan 1969 | Shatalov | Soyuz 11A511 | ● | ● | · |
+| [Apollo 9, *Gumdrop* and *Spider*](missions/usa/apollo/flights/apollo-9/README.md) | 3 Mar 1969 | McDivitt, Scott, Schweickart | Saturn V | ● | ● | · |
+| [Apollo 10, *Charlie Brown* and *Snoopy*](missions/usa/apollo/flights/apollo-10/README.md) | 18 May 1969 | Stafford, Young, Cernan | Saturn V | ● | ● | · |
+| [Soyuz 10, *Granit*](missions/ussr/soyuz/flights/soyuz-10/README.md) | 22 Apr 1971 UTC | Shatalov, Yeliseyev, Rukavishnikov | Soyuz 11A511 | ● | ● | · |
+| [Soyuz 12, *Ural*](missions/ussr/soyuz/flights/soyuz-12/README.md) | 27 Sep 1973 | Lazarev, Makarov | Soyuz 11A511 | ● | ● | · |
+| [Soyuz 16, *Buran*](missions/ussr/soyuz/flights/soyuz-16/README.md) | 2 Dec 1974 | Filipchenko, Rukavishnikov | Soyuz-U 11A511U | ● | ● | · |
+| [Soyuz T-2, *Yupiter*](missions/ussr/soyuz/flights/soyuz-t-2/README.md) | 5 Jun 1980 | Malyshev, Aksyonov | Soyuz-U 11A511U | ● | ● | · |
 
-Four launch sites are built: Site 1 at Tyuratam (Vostok and Voskhod), and Complexes 5
-(Mercury-Redstone), 14 (Mercury-Atlas) and 19 (Gemini) at Cape Canaveral. A site is built once and
-dated, so a later flight from the same pad adds what had changed and keeps the rest.
+The 35 crewed flights and seven Gemini target launches share eight pads. At the Cape they use
+Complexes 5, 14, 19 and 34 and Kennedy's Pads 39A and 39B. At Tyuratam they use Sites 1 and 31.
+Each flight's record describes the hardware reconstructed for its date.
 
 ## The numbers are labelled
 

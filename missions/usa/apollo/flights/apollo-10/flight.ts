@@ -1,3 +1,5 @@
+import { lc39Crew } from '../../crew/lc39.ts';
+import { LC39B, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
 import { snoopyModel, snoopyPort, snoopyStackParts, snoopyViews } from './snoopy.ts';
 import { probePort, cm, sm, lift, doors, rocket, part, escapeParts, nodes, specification } from '../../vehicles/stack-gallery.ts';
 import type { Flight, Part } from '../../../../../src/types.ts';
@@ -330,6 +332,7 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-505',
   launch: '1969-05-18T16:49:00Z',
   launchSite: 'Launch Complex 39B, Kennedy Space Center',
+  site: LC39B,
   crew: ['Thomas P. Stafford', 'John W. Young', 'Eugene A. Cernan'],
   summary:
     'Young kept Charlie Brown in lunar orbit while Stafford and Cernan took Snoopy down over the Sea of Tranquility. The landing radar measured the terrain below. Only the ascent stage returned to dock.',
@@ -411,14 +414,14 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Apollo 10 · Saturn V',
       url: 'models/usa/apollo/apollo-10/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       dockingPorts: [charlieBrownPort, snoopyPort],
       ...blockIICabin(3871),
       seats: [
-        { node: 'Seat_Commander', label: 'Stafford’s left couch', from: 'SideHatch', open: [-9000, -6000] },
-        { node: 'Seat_CommandModulePilot', label: 'Young’s centre couch', from: 'SideHatch', open: [-9000, -6000] },
-        { node: 'Seat_LunarModulePilot', label: 'Cernan’s right couch', from: 'SideHatch', open: [-9000, -6000] },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Stafford’s left couch', from: 'SideHatch', open: [-9000, -6000] },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Young’s centre couch', from: 'SideHatch', open: [-9000, -6000] },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Cernan’s right couch', from: 'SideHatch', open: [-9000, -6000] },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -459,5 +462,7 @@ export const flight: Flight = {
       parts: [...command, ...service, ...snoopyStackParts, ...escapeParts, ...launcher],
     },
     snoopyModel,
+    mobileLauncher(3),
+    ...lc39Crew(['Stafford', 'Young', 'Cernan'], true),
   ],
 };

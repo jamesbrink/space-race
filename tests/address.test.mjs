@@ -201,7 +201,7 @@ test('what can stand in the gallery comes from the headings of the parts list', 
   // a model named for a spacecraft keeps the name as it is written (a phone's sheet shows the label as it stands)
   const apollo9 = flights.find((f) => f.id === 'usa/apollo/apollo-9');
   assert.deepEqual(
-    apollo9.models.map((m) => plinths(m)[0].label),
+    apollo9.models.filter((m) => m === exhibit(apollo9) || m.galleryCraft).map((m) => plinths(m)[0].label),
     ['Whole Apollo 9 · Saturn V', 'Whole LM-3 Spider'],
   );
   // every part stands in exactly one of the choices that are not the whole

@@ -152,6 +152,11 @@ export type { Thing };
 /** A click on board that was on nothing. */
 const NO_THING: CabinThing = { label: '', about: null, object: new THREE.Object3D() };
 
+/** A staged model owns its scene graph, including the pose of every joint, even when another figure wears the same GLB. */
+function modelKey(model: ModelDef, level = 0): string {
+  return `${model.id}:${lodUrl(model.url, level)}`;
+}
+
 /** Put every part of a model back where it was built. */
 function rest(object: THREE.Object3D): void {
   object.traverse((o) => o.userData.home && o.position.copy(o.userData.home as THREE.Vector3));
@@ -770,13 +775,17 @@ export class Stage {
     const crafts = Promise.all(recovery.map((r) => this.fetch(r.url)));
     const scenes = await Promise.all(
       flight.models.map((m, i) =>
-        this.fetch(m.url, (f, loaded = 0, total = 0) => {
-          const part = parts[i]!;
-          Object.assign(part, { fraction: f, loaded: f === 1 && total === 0 ? part.total : loaded, total: total || part.total });
-          const sized = parts.every((p) => p.total > 0);
-          const all = sized ? parts.reduce((a, p) => a + p.total, 0) : parts.length;
-          onProgress?.(parts.reduce((a, p) => a + (sized ? p.fraction * p.total : p.fraction), 0) / all, parts);
-        }),
+        this.fetch(
+          m.url,
+          (f, loaded = 0, total = 0) => {
+            const part = parts[i]!;
+            Object.assign(part, { fraction: f, loaded: f === 1 && total === 0 ? part.total : loaded, total: total || part.total });
+            const sized = parts.every((p) => p.total > 0);
+            const all = sized ? parts.reduce((a, p) => a + p.total, 0) : parts.length;
+            onProgress?.(parts.reduce((a, p) => a + (sized ? p.fraction * p.total : p.fraction), 0) / all, parts);
+          },
+          modelKey(m),
+        ),
       ),
     );
     const craftScenes = await crafts;
@@ -848,7 +857,7 @@ export class Stage {
     flight.models.forEach((def, i) => {
       for (let level = 1; level <= (this.fullDetail ? 0 : LOD_ABOVE.length); level++)
         this.arriving.push(
-          this.fetch(lodUrl(def.url, level)).then((object) => {
+          this.fetch(lodUrl(def.url, level), undefined, modelKey(def, level)).then((object) => {
             if (staged !== this.staged) return;
             rest(object);
             absent(object, def);
@@ -982,8 +991,8 @@ export class Stage {
     this.shadowsOwed = true; // drawn again in step(): at once, or a few times a second in a view nobody is steering
   }
 
-  private fetch(url: string, onProgress?: (fraction: number, loaded?: number, total?: number) => void): Promise<THREE.Object3D> {
-    let promise = this.loaded.get(url);
+  private fetch(url: string, onProgress?: (fraction: number, loaded?: number, total?: number) => void, key = url): Promise<THREE.Object3D> {
+    let promise = this.loaded.get(key);
     if (!promise) {
       promise = this.loader
         .loadAsync(import.meta.env.BASE_URL + url, (e) => {
@@ -993,11 +1002,11 @@ export class Stage {
           await fitPictures(gltf.scene); // (the tier's sizes, before anything is sent to the GPU: pictures.ts)
           this.sharePictures(gltf.scene);
           fitIndices(gltf.scene);
-          this.dress(gltf.scene, url);
+          this.dress(gltf.scene, key);
           return gltf.scene;
         });
-      this.loaded.set(url, promise);
-      promise.catch(() => this.loaded.delete(url)); // a failure is not remembered: the next try fetches again
+      this.loaded.set(key, promise);
+      promise.catch(() => this.loaded.delete(key)); // a failure is not remembered: the next try fetches again
     }
     void promise.then(() => onProgress?.(1));
     return promise;
@@ -1138,8 +1147,9 @@ export class Stage {
     for (const plane of this.cutPlanes) plane.constant = -plane.normal.dot(at);
     const whole = on && this.lifted.flying && this.def?.id === this.ascent?.model;
     // only the section's own model opens (and only its full level has an inside to show)
-    for (const [url, shells] of this.shellMaterials) {
-      const mine = on && url === this.def?.url;
+    const active = this.def && modelKey(this.def);
+    for (const [key, shells] of this.shellMaterials) {
+      const mine = on && key === active;
       const open = mine && !whole;
       for (const m of shells.values()) {
         m.visible = !(mine && whole); // (not drawn, and no shadow from it: the Sun is on what is inside)
@@ -1497,18 +1507,19 @@ export class Stage {
       disposeTree(r.group);
       for (const url of [r.def.url, ...LOD_ABOVE.map((_, i) => lodUrl(r.def.url, i + 1))]) this.loaded.delete(url);
     }
-    const kept = new Set(next?.models.map((m) => m.url) ?? []);
+    const kept = new Set(next?.models.map((m) => modelKey(m)) ?? []);
     const levels = (url: string) => [url, ...LOD_ABOVE.map((_, i) => lodUrl(url, i + 1))];
     this.defs.forEach((def, i) => {
-      if (kept.has(def.url)) return;
+      if (kept.has(modelKey(def))) return;
       const group = this.staged[i]?.group;
       if (group) {
         this.looks.remove(group);
         disposeTree(group);
       }
-      for (const url of levels(def.url)) {
-        this.loaded.delete(url);
-        this.shellMaterials.delete(url);
+      for (let level = 0; level <= LOD_ABOVE.length; level++) {
+        const key = modelKey(def, level);
+        this.loaded.delete(key);
+        this.shellMaterials.delete(key);
       }
     });
     const place = this.show.flightData?.surroundings;

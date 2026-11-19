@@ -20,6 +20,9 @@ from flight_suit import Wearer  # noqa: E402
 from soyuz_7kok import BOARDING_HATCH_AZIMUTH, BOARDING_HATCH_STATION, MM  # noqa: E402
 from srlib import group, material, run  # noqa: E402
 
+COMMANDER = Wearer("Malyshev", breadth=0.98)
+ENGINEER = Wearer("Aksyonov", breadth=0.96)
+
 
 def build():
     paints = soyuz_7kok.palette()
@@ -37,8 +40,8 @@ def build():
 
     console = group("NeptunConsole", lineup_enclosed=True)
     soyuz_cabin.build(
-        Wearer("Malyshev", breadth=0.98),
-        port=Wearer("Aksyonov", breadth=0.96),
+        COMMANDER,
+        port=ENGINEER,
         hand_controls=True,
         seated_figure=partial(sokol_k.build_seated, kv2=True),
         instruments=lambda _, pose: soyuz_neptun.build(console, pose),

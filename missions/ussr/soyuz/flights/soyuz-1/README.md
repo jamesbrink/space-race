@@ -29,7 +29,7 @@ whose reference stations are unspecified. [Gagarin Cosmonaut Training Center](ht
 The cabin cutaway and Komarov’s couch are reconstructed
 from period material. The gallery’s separation and solar-wing motions are illustrative.
 
-The Gallery uses studio light. The Launch site, historical weather and flyable trajectory are pending.
+The Gallery uses studio light. The flight deck is pending.
 
 ## Liftoff and orbit
 
@@ -50,3 +50,9 @@ publication. [TASS communiqué, NASA translation ST-PR-10595, p. 1](https://ntrs
 ![Soyuz 1 at the slider midpoint, with the right wing and antenna deployed and the left wing still against the hull](../../../../../docs/readme/soyuz-1/orbital-configuration.jpg)
 
 [Assembled launch vehicle](../../../../../docs/readme/soyuz-1/launcher.jpg) · [Three spacecraft modules separated](../../../../../docs/readme/soyuz-1/separation.jpg) · [Komarov in the descent cabin](../../../../../docs/readme/soyuz-1/descent-cabin.jpg) · [The Sirius-7K console from the centre couch](../../../../../docs/readme/soyuz-1/sirius.jpg)
+
+## Launch site
+
+The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky uses the flight date and the place’s estimated weather. [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
+
+Walk as Komarov in the light flight clothing reconstructed for the cabin. The model uses his existing standing figure. Each walk starts on the rail apron facing the launcher. The starting positions, footwear and garment details are reconstructed.

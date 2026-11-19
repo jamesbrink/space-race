@@ -275,3 +275,33 @@ export function soyuzGallery(
     parts: [...launcher, ...spacecraft].map((part) => ({ ...part, moves: part.moves ?? [moduleTravel(part.explode, part.order)] })),
   };
 }
+
+/** The model origin is the spacecraft's aft face. Its nozzle datum is 35.695 m below,
+ * from the measured lattice station and the reconstructed Block I and adapter in soyuz_11a511.py. */
+export function onSoyuzPad(vehicle: ModelDef, rotationY: number, tail: number): ModelDef {
+  const y = tail + 35.695;
+  return {
+    ...vehicle,
+    backdrop: 'ground',
+    rotationY,
+    position: [0, y, 0],
+    home: 'launcher',
+    wide: false,
+    views: vehicle.views.map((view) => {
+      const from = view.from;
+      return {
+        ...view,
+        ...(view.centreY !== undefined ? { centreY: y + view.centreY } : {}),
+        ...(from
+          ? {
+              from: [
+                from[0] * Math.cos(rotationY) + from[2] * Math.sin(rotationY),
+                from[1],
+                -from[0] * Math.sin(rotationY) + from[2] * Math.cos(rotationY),
+              ] as [number, number, number],
+            }
+          : {}),
+      };
+    }),
+  };
+}

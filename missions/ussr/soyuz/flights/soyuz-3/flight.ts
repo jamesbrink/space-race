@@ -1,5 +1,18 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
-import { CRAFT, descent, iglaMoves, orbital, service, soyuzGallery, soyuzGallerySpecs, wingMoves } from '../../vehicles/gallery.ts';
+import { TAIL, TURN } from '../../../places/tyuratam/site-1.parts.ts';
+import { SITE31, site31Pad } from '../../../places/tyuratam/site-31.ts';
+import { soyuzWalker } from '../../crew/walkout.ts';
+import {
+  CRAFT,
+  descent,
+  iglaMoves,
+  onSoyuzPad,
+  orbital,
+  service,
+  soyuzGallery,
+  soyuzGallerySpecs,
+  wingMoves,
+} from '../../vehicles/gallery.ts';
 
 const TASS = 'TASS communiqué, Pravda no. 301 (27 October 1968), p. 1 (preliminary orbit)';
 const SIDDIQI = 'Asif A. Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
@@ -138,6 +151,12 @@ const landing = '1968-10-30T07:25:03Z';
 const elapsed = (utc: string) => (Date.parse(utc) - Date.parse(launch)) / 1000;
 const duration = elapsed(landing);
 
+const vehicle = soyuzGallery('soyuz-3', 'Soyuz 3', 'Beregovoy', spacecraft, ['LowerCap']);
+vehicle.scale = '49.913 m nominal stack · 11A511 type drawing · hardware detail reconstructed';
+
+const crew = soyuzWalker('crew', 'Georgiy T. Beregovoy', 'models/ussr/soyuz/soyuz-3/crew.glb', 'flight', [-48, 0, 3.5], 1.8);
+vehicle.seats![0]!.figure = crew.id;
+
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-3',
   nation: 'USSR',
@@ -149,6 +168,7 @@ export const flight: Flight = {
   launchVehicle: 'Soyuz 11A511 · Ya15000-10',
   launch,
   launchSite: 'Tyuratam (Baikonur), Site 31',
+  site: SITE31,
   crew: ['Georgiy T. Beregovoy'],
   summary:
     'The first crewed Soyuz after the loss of Soyuz 1. Georgiy Beregovoy approached the uncrewed Soyuz 2 but did not dock. He returned safely after nearly four days in orbit.',
@@ -211,10 +231,5 @@ export const flight: Flight = {
     },
   ],
   motors: [],
-  models: [
-    {
-      ...soyuzGallery('soyuz-3', 'Soyuz 3', 'Beregovoy', spacecraft, ['LowerCap']),
-      scale: '49.913 m nominal stack · 11A511 type drawing · hardware detail reconstructed',
-    },
-  ],
+  models: [onSoyuzPad(vehicle, TURN, TAIL), site31Pad, crew],
 };

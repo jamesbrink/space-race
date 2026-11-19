@@ -7,8 +7,9 @@ import { vec3 } from '../../../../src/viewer/glsl.ts';
 import type { LandSpec } from '../../../../src/viewer/land.ts';
 import type { Compass } from '../../../../src/viewer/scenery/compass.ts';
 import { type GroundSpec, stood } from '../../../../src/viewer/scenery/ground.ts';
+import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './relief.ts';
 import { SITE1 } from './site-1.ts';
-import { CENTRE_TRACK, RAILS } from './tracks.ts';
+import { SITE31 } from './site-31.ts';
 import {
   STEPPE,
   STEPPE_COVER,
@@ -21,9 +22,9 @@ import {
   steppePalette,
   steppeTone,
 } from './steppe.ts';
-import { SCARP_FRAME_GLSL, SITE_RELIEF_GLSL, siteRelief } from './relief.ts';
+import { CENTRE_TRACK, RAILS } from './tracks.ts';
 import { TYURATAM_GROUND as MAPPED } from './tyuratam-ground.ts';
-import { HEIGHTS_GLSL, heightsAt, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, worksUniforms, waySurface, segmentDistance } from './works.ts';
+import { HEIGHTS_GLSL, heightsAt, segmentDistance, WAYS_GLSL, WORKS_FOR_KINDS, WORKS_PAINT, waySurface, worksUniforms } from './works.ts';
 
 /**
  * The steppe round Site 1 at Tyuratam, April 1961, as scenery: the ground the platform stands on,
@@ -838,7 +839,33 @@ function landSpec(season: SteppeSeason, compass: Compass): LandSpec {
     // the scarp, the ramp and the plots are graded earth: smooth, not faceted
     smooth: true,
   };
-  return at.x === 0 && at.z === 0 ? spec : inSite1(spec, at);
+  if (at.x === 0 && at.z === 0) return spec;
+  const local = inSite1(spec, at);
+  if (compass.origin === SITE31) {
+    // The common land is in compass metres. The rail approaches the excavated face along local +X.
+    const a = (SITE31.bearingX.value * Math.PI) / 180;
+    const east = Math.sin(a),
+      south = -Math.cos(a);
+    const radius = (x: number, z: number) => Math.hypot((east * x + south * z - 48) / 77, (-south * x + east * z) / 48);
+    // A graded apron and a broad cut in the steppe. The outline and depth are illustrative; site-31.md.
+    const regional = local.relief;
+    local.relief = (x, z) => -26 * (1 - smoothstep(0.55, 1, radius(x, z))) + regional(x, z) * smoothstep(134, 184, Math.hypot(x, z));
+    local.reliefGlsl = `
+      ${local.reliefGlsl.replace('float relief(vec2 p)', 'float regionalRelief(vec2 p)')}
+      vec2 inPad31(vec2 p) { return vec2(dot(p, vec2(${east}, ${south})), dot(p, vec2(${-south}, ${east}))); }
+      float pit31(vec2 p) { return length((inPad31(p) - vec2(48.0, 0.0)) / vec2(77.0, 48.0)); }
+      float relief(vec2 p) { return -26.0 * (1.0 - smoothstep(0.55, 1.0, pit31(p))) + regionalRelief(p) * smoothstep(134.0, 184.0, length(p)); }
+    `;
+    // Keep shrubs off the rail approach, work area and bare cut. These are also the cover values the flora reads.
+    local.cover = local.cover.replace(
+      'vec4 coverA(vec2 p) { return',
+      `vec4 coverA(vec2 p) {
+      vec2 q = inPad31(p);
+      if (pit31(p) < 1.05 || (q.x > -86.0 && q.x < 22.0 && abs(q.y) < 22.0)) return vec4(0.0, 0.0, 1.0, 0.0);
+      return`,
+    );
+  }
+  return local;
 }
 
 /** How far inside the flame pit's rim a point is, metres (negative outside it): as `inPit` in the shader. */

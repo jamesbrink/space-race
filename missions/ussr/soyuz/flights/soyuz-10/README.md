@@ -49,9 +49,15 @@ orbits from Siddiqi's mission table. The contemporary NASA chronology records th
 Inspect the 11A511 stack, the early station ferry with both solar wings open, the active probe
 and collar, or the Sirius controls from any of the three couches. The cutaway shows the crew
 together for launch. The slider illustrates deployment and separates the ship's modules for
-inspection. The Launch site, historical weather and flyable trajectory are pending.
+inspection. The flight deck is pending.
 [Spacecraft record](spacecraft.md)
 
 ![Soyuz 10 with its solar arrays deployed and the spacecraft modules joined](../../../../../docs/readme/soyuz-10/orbital-configuration.jpg)
 
 [Assembled launcher](../../../../../docs/readme/soyuz-10/launcher.jpg) · [Docking system](../../../../../docs/readme/soyuz-10/docking-system.jpg) · [Descent cabin](../../../../../docs/readme/soyuz-10/descent-cabin.jpg) · [Sirius console from the centre couch](../../../../../docs/readme/soyuz-10/sirius.jpg) · [Separated spacecraft modules](../../../../../docs/readme/soyuz-10/separation.jpg)
+
+## Launch site
+
+The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky uses the flight date and the place’s estimated weather. The geometric Sun at liftoff was 61.2° true, 9.5° below the horizon. The Moon was at 88.8° true, elevation +3.0° (DE440). [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
+
+Walk as Shatalov, Yeliseyev or Rukavishnikov in unpressurized flight clothing. Each standing figure uses the same cut and colour as his seated counterpart. Each walk starts on the rail apron facing the launcher. The starting positions, footwear and garment details are reconstructed.

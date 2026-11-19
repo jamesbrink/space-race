@@ -5,6 +5,7 @@ import math
 import bpy
 from mathutils import Vector
 
+import figurelib as fl
 import flight_suit
 from srlib import MeshBuilder, frame, material
 
@@ -12,6 +13,22 @@ from srlib import MeshBuilder, frame, material
 def build_seated(parent, place, prefix, wearer, *, kv2=False):
     # Keep the existing posed human anatomy and preserve its eye datum.
     keys = flight_suit.build_seated(parent, place, prefix, wearer)
+    dress(list(parent.children), place, keys, kv2, prefix, parent)
+    return keys
+
+
+def dress(meshes, place, keys, kv2, prefix="", parent=None):
+    """Apply the existing pressure garment to seated or standing anatomy, preserving the head and shoulders.
+    Geometry is in metres. On a standing figure the added meshes follow their head or torso joints.
+    """
+
+    def fitting(mesh, name, mat):
+        if parent is not None:
+            return mesh.build(f"{prefix}_{name}", mat, parent)
+        part = name.split("_")[0]
+        mesh.verts = [tuple(100 * Vector(p)) for p in mesh.verts]
+        return fl.emit(mesh, name, mat, bpy.data.objects[part])
+
     white = bpy.data.materials.get("suit-sokol-k-outer") or material("suit-sokol-k-outer", (0.8, 0.79, 0.72), roughness=0.84)
     blue = bpy.data.materials.get("suit-sokol-k-binding") or material(
         "suit-sokol-k-binding", (0.048, 0.112, 0.275), roughness=0.63, double_sided=True
@@ -20,15 +37,17 @@ def build_seated(parent, place, prefix, wearer, *, kv2=False):
     glass = bpy.data.materials.get("glass-visor-sokol-k") or material(
         "glass-visor-sokol-k", (0.57, 0.69, 0.72), roughness=0.14, alpha=0.15, double_sided=True
     )
-    for obj in list(parent.children):
+    for obj in meshes:
         if obj.type != "MESH":
             continue
-        name = obj.name.removeprefix(prefix + "_")
+        name = obj.name.removeprefix(prefix + "_") if prefix else obj.name
         if name.startswith(("Torso_", "Arms_", "Legs_", "Boots_Uppers", "Boots_Tongues", "Gloves_")):
             obj.data.materials[0] = white
         elif name.startswith("Boots_Soles"):
             obj.data.materials[0] = graphite
         elif name == "Helmet_Cap":
+            if parent is None:
+                fl.rig().skins = [(skin, weights) for skin, weights in fl.rig().skins if skin != obj]
             bpy.data.objects.remove(obj, do_unlink=True)
         elif name == "Helmet_Earphones":
             obj.data.materials[0] = blue
@@ -92,7 +111,7 @@ def build_seated(parent, place, prefix, wearer, *, kv2=False):
         valve = core - 0.133 * up + 0.033 * look
         regulator = MeshBuilder()
         regulator.lathe([(0.034, 0), (0.034, 0.008), (0.026, 0.017), (0, 0.018)], 32, matrix=frame(valve, look))
-        regulator.build(f"{prefix}_Torso_KV2Regulator", blue, parent)
+        fitting(regulator, "Torso_KV2Regulator", blue)
     else:
         chest.ribbon(
             [core + 0.09 * up - 0.13 * right, core + 0.055 * up - 0.09 * right, core + 0.029 * up, core + 0.009 * up + 0.128 * right],
@@ -101,9 +120,8 @@ def build_seated(parent, place, prefix, wearer, *, kv2=False):
         )
         valve = core - 0.137 * up + 0.084 * right + 0.033 * look
         hardware.lathe([(0.028, 0), (0.028, 0.006), (0.018, 0.014), (0, 0.015)], 32, matrix=frame(valve, look))
-    hood.build(f"{prefix}_Helmet_SokolHood", white, parent)
-    rim.build(f"{prefix}_Helmet_SokolRim", blue, parent)
-    visor.build(f"{prefix}_Helmet_SokolVisor", glass, parent)
-    chest.build(f"{prefix}_Torso_SokolClosure", blue, parent)
-    hardware.build(f"{prefix}_Helmet_SokolFittings", graphite, parent)
-    return keys
+    fitting(hood, "Helmet_SokolHood", white)
+    fitting(rim, "Helmet_SokolRim", blue)
+    fitting(visor, "Helmet_SokolVisor", glass)
+    fitting(chest, "Torso_SokolClosure", blue)
+    fitting(hardware, "Helmet_SokolFittings", graphite)

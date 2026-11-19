@@ -1,5 +1,19 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
-import { CRAFT, descent, iglaMoves, orbital, service, soyuzGallery, soyuzGallerySpecs, wingMoves } from '../../vehicles/gallery.ts';
+import { TAIL, TURN } from '../../../places/tyuratam/site-1.parts.ts';
+import { SITE1 } from '../../../places/tyuratam/site-1.ts';
+import { soyuzPad } from '../../../places/tyuratam/soyuz-pad.ts';
+import { soyuzWalker } from '../../crew/walkout.ts';
+import {
+  CRAFT,
+  descent,
+  iglaMoves,
+  onSoyuzPad,
+  orbital,
+  service,
+  soyuzGallery,
+  soyuzGallerySpecs,
+  wingMoves,
+} from '../../vehicles/gallery.ts';
 
 const TASS = 'TASS communiqué of 23 April 1967, NASA translation ST-PR-10595, p. 1 (preliminary orbit)';
 const SIDDIQI = 'Asif A. Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
@@ -128,6 +142,9 @@ const spacecraft: Part[] = [
   },
 ];
 
+const vehicle = soyuzGallery('soyuz-1', 'Soyuz 1', 'Komarov', spacecraft);
+vehicle.seats![0]!.figure = 'crew';
+
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-1',
   nation: 'USSR',
@@ -138,6 +155,8 @@ export const flight: Flight = {
   spacecraft: 'Soyuz 7K-OK No. 4',
   launchVehicle: 'Soyuz 11A511',
   launch: '1967-04-23T00:35:00Z',
+  site: SITE1,
+  opens: { at: -7200, model: 'pad', view: 'towers' },
   launchSite: 'Tyuratam (Baikonur), Site 1',
   crew: ['Vladimir M. Komarov'],
   summary:
@@ -193,5 +212,9 @@ export const flight: Flight = {
     },
   ],
   motors: [],
-  models: [soyuzGallery('soyuz-1', 'Soyuz 1', 'Komarov', spacecraft)],
+  models: [
+    onSoyuzPad(vehicle, TURN, TAIL),
+    soyuzPad,
+    soyuzWalker('crew', 'Vladimir Komarov', 'models/ussr/voskhod/voskhod-1/crew.glb', 'flight', [-23, 0, 8]),
+  ],
 };

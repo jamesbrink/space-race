@@ -6,6 +6,9 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { CAPE_GROUND } from '../missions/usa/places/cape-canaveral/ground.ts';
+import { LC39A, LC39B } from '../missions/usa/places/cape-canaveral/lc-39.ts';
+import { compassAt } from '../src/viewer/scenery/compass.ts';
 import { angleBetween, cross, dot, geodeticToEcef, length, unit } from '../src/world/frames.ts';
 import { angleFromMiddle, fromPlane, placeOnPlane, planeAt, surfaceDirection, toPlane } from '../src/world/region.ts';
 import { readGreyPng } from '../tools/png.mjs';
@@ -91,6 +94,25 @@ function shore(name, lat, lon, of = { meta, maps }) {
   const v = (at(i, j) * (1 - fx) + at(i + 1, j) * fx) * (1 - fy) + (at(i, j + 1) * (1 - fx) + at(i + 1, j + 1) * fx) * fy;
   return ((v - 128) * info.spread * m.metres) / 127;
 }
+
+test('the local ground at Complex 39 agrees with the regional map across the river head and the Atlantic shore', () => {
+  const samples = [
+    [28.612, -80.605, true], // north of 39A, beyond the river head and outside the graded pad
+    [28.614, -80.619, true], // inland between the pads
+    [28.575, -80.595, false], // the open upper reach of the Banana River
+    [28.6075, -80.59, false], // Atlantic off 39A
+    [28.627, -80.604, false], // Atlantic off 39B
+  ];
+  for (const site of [LC39A, LC39B]) {
+    const compass = compassAt(site);
+    const local = CAPE_GROUND.land({ date: '1969-05-18' }, compass);
+    for (const [lat, lon, dry] of samples) {
+      const point = `${site.name} at ${lat}, ${lon}`;
+      assert.equal(shore('near', lat, lon) > 0, dry, `${point} on the regional map`);
+      assert.equal(local.relief(...compass.at(lat, lon)) > local.sea, dry, `${point} on the local terrain`);
+    }
+  }
+});
 
 test('the maps are what the viewer expects', () => {
   assert.equal(meta.spread, 8);

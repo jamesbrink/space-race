@@ -15,6 +15,7 @@ import { LC19_GROUND } from './lc-19.ground.ts';
 import { LC19 } from './lc-19.ts';
 import { LC34_GROUND } from './lc-34.ground.ts';
 import { LC34 } from './lc-34.ts';
+import { LC39A, LC39B } from './lc-39.ts';
 import { buildScenery, clearingsAt, pavedAt, shoreAt, shoresAt } from './scenery.ts';
 
 /**
@@ -90,10 +91,25 @@ export interface PadGround {
 }
 
 /** Each pad's own ground, by its SiteDef. */
+const LC39_GROUND: PadGround = {
+  clear: 170,
+  kept: [
+    [1025, 1025, 50],
+    [1025, -1025, 50],
+  ],
+  strips: [
+    [-170, 0, 280, 0, 320],
+    [-1010, 0, -170, 0, 85],
+  ],
+  ways: [],
+  sunk: [],
+};
 const OWN = new Map<SiteDef, PadGround>([
   [LC14, LC14_GROUND],
   [LC19, LC19_GROUND],
   [LC34, LC34_GROUND],
+  [LC39A, LC39_GROUND],
+  [LC39B, LC39_GROUND],
 ]);
 
 /** The origin pad's own ground laid on `compass` (metres, x east and z south of it), or null where it has none. */
@@ -528,7 +544,8 @@ function landSpec(compass: Compass, date: string): LandSpec {
     // Newfound Harbor between its two
     float riverward(vec2 p) {
       float n = -p.y;
-      float d = min(min(max(p.x - riverAt(n), riverWestAt(n) - p.x), p.x - indianAt(n)), max(harborWestAt(n) - p.x, p.x - harborEastAt(n)));
+      float banana = max(max(p.x - riverAt(n), riverWestAt(n) - p.x), n - uRiver[${RIVER.length - 1}].x);
+      float d = min(min(banana, p.x - indianAt(n)), max(harborWestAt(n) - p.x, p.x - harborEastAt(n)));
       d -= 30.0 * (fbm2(p * 0.0035, 6, 3) - 0.45);
       // Port Canaveral's harbour: dredged, so its banks are straight (scenery.ts: HARBOUR)
       ${HARBOUR.map(([x0, z0, x1, z1, half]) => `d = min(d, segment(p, vec4(${x0.toFixed(1)}, ${z0.toFixed(1)}, ${x1.toFixed(1)}, ${z1.toFixed(1)})) - ${half.toFixed(1)});`).join('\n    ')}
@@ -597,10 +614,8 @@ function landSpec(compass: Compass, date: string): LandSpec {
   const inlandAt = (x: number, z: number) => shoreAt(COAST, -z) - x + 26 * (fbm2(z * 0.006, 4, 5, 3) - 0.45);
   const riverwardAt = (x: number, z: number) => {
     const n = -z;
-    const d = Math.min(
-      Math.min(Math.max(x - shoreAt(RIVER, n), shoreAt(RIVER_WEST, n) - x), x - shoreAt(INDIAN, n)),
-      Math.max(shoreAt(HARBOR_WEST, n) - x, x - shoreAt(HARBOR_EAST, n)),
-    );
+    const banana = Math.max(x - shoreAt(RIVER, n), shoreAt(RIVER_WEST, n) - x, n - RIVER[RIVER.length - 1]![0]);
+    const d = Math.min(Math.min(banana, x - shoreAt(INDIAN, n)), Math.max(shoreAt(HARBOR_WEST, n) - x, x - shoreAt(HARBOR_EAST, n)));
     let r = d - 30 * (fbm2(x * 0.0035, z * 0.0035, 6, 3) - 0.45);
     for (const [x0, z0, x1, z1, half] of HARBOUR) {
       const dx = x1 - x0,

@@ -7,7 +7,20 @@ const args = process.argv.slice(2);
 const flightFilter = opt(args, '--flight', '');
 const siteUrl = url(args);
 // Ends are the paved approaches to the vehicle or to its boarding structure. The ramp and lift continue in walk-test.mjs.
+const lc39Stairs = [
+  [-49, -16],
+  [-24, -20],
+  [6, -24],
+  [11.7, -26.82],
+];
 const routes = {
+  'Launch Complex 39A, Kennedy Space Center': lc39Stairs,
+  'Launch Complex 39B, Kennedy Space Center': lc39Stairs,
+  'Tyuratam (Baikonur), Site 31': [
+    [-35, 3.5],
+    [-21, 3.5],
+    [-14, 3.5],
+  ],
   'Cape Kennedy, Launch Complex 19': [
     [13, -6.55],
     [6, -6.55],
@@ -33,6 +46,9 @@ try {
           ({ id, route }) => {
             const { clock, stage } = window.sr;
             clock.pause();
+            // Two crew members can wear the same suit. Each must have its own pose at every level.
+            const figure = stage.staged[window.sr.flight.models.findIndex((m) => m.id === id)];
+            if (figure.levels.some((level) => level && level.parent !== figure.group)) throw Error(`Missing suit instance for ${id}`);
             if (!stage.enterWalk(id)) throw Error(`Cannot walk as ${id}`);
             const { body, solids, yaw } = stage.walk;
             const start = body.position.clone();

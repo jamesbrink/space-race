@@ -20,4 +20,8 @@ In the Gallery, open the cutaway to look through the three rocket stages to the 
 
 ## Scope
 
-This flight opens in the Gallery and appears to scale in the Lineup. Its seats, windows, cabin lighting and static instruments can be inspected. Pad 39A, crew figures, launch-day sky, flight deck and flight simulation remain to be built. The timeline records the historical flight. Configuration and reconstruction limits are in [spacecraft.md](spacecraft.md).
+This flight opens in the Gallery and appears to scale in the Lineup. Its seats, windows, cabin lighting and static instruments can be inspected. The Launch site places SA-503 on mobile launcher 1. The timeline records the historical flight. Configuration and reconstruction limits are in [spacecraft.md](spacecraft.md).
+
+## Launch site
+
+At [Pad 39A](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-1. At liftoff the computed Sun was at azimuth 121.4° and elevation 6.8°. The Moon was below the horizon at azimuth 110.8° and elevation −17.5°.

@@ -1,3 +1,5 @@
+import { lc39Crew } from '../../crew/lc39.ts';
+import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
 import { derived, doc } from '../../../../../src/measure.ts';
 import type { Flight, Part } from '../../../../../src/types.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
@@ -479,6 +481,7 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-504',
   launch: '1969-03-03T16:00:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
+  site: LC39A,
   crew: ['James A. McDivitt', 'David R. Scott', 'Russell L. Schweickart'],
   summary:
     'Two spacecraft flew independently in Earth orbit. McDivitt and Schweickart tested Spider’s engines and returned to Scott aboard Gumdrop using the same docking system that would bring lunar crews home.',
@@ -567,14 +570,14 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Apollo 9 · Saturn V',
       url: 'models/usa/apollo/apollo-9/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       dockingPorts: [gumdropPort, spiderPort],
       ...blockIICabin(3871),
       seats: [
-        { node: 'Seat_Commander', label: 'McDivitt’s left couch', from: 'SideHatch', open: [-9000, -6000] },
-        { node: 'Seat_CommandModulePilot', label: 'Scott’s centre couch', from: 'SideHatch', open: [-9000, -6000] },
-        { node: 'Seat_LunarModulePilot', label: 'Schweickart’s right couch', from: 'SideHatch', open: [-9000, -6000] },
+        { node: 'Seat_Commander', figure: 'crew', label: 'McDivitt’s left couch', from: 'SideHatch', open: [-9000, -6000] },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Scott’s centre couch', from: 'SideHatch', open: [-9000, -6000] },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Schweickart’s right couch', from: 'SideHatch', open: [-9000, -6000] },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -601,5 +604,7 @@ export const flight: Flight = {
       parts: [...command, ...service, ...spiderStackParts, ...escapeParts, ...launcher],
     },
     spiderModel,
+    mobileLauncher(2),
+    ...lc39Crew(['McDivitt', 'Scott', 'Schweickart'], true),
   ],
 };
