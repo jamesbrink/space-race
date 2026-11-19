@@ -101,16 +101,17 @@ def tire(parent, name, sign, m):
         mesh.build(f"LRV_{tag}_{name}", m[mat], parent, smooth=smooth)
 
 
-def fender(parent, name, fore, sign, m):
+def fender(parent, name, fore, sign, m, *, repaired):
     skin, stays, seams = MeshBuilder(), MeshBuilder(), MeshBuilder()
     # The telescoping sections follow the tyre crown. Deployed ends are visible as small steps.
     direction = 1 if fore else -1
-    for lo, hi, r in ((-55, -33, 17.80), (-33, 45, 18.08), (45, 77, 17.80)):
+    sections = ((-55, -33, 17.80), (-33, 8, 18.08)) if repaired else ((-55, -33, 17.80), (-33, 45, 18.08), (45, 77, 17.80))
+    for lo, hi, r in sections:
         steps = max(5, round((hi - lo) * srlib.DETAIL / 4))
         section = [(-5.4, r - 0.82), (-5.15, r - 0.25), (-4.48, r), (0, r + 0.21), (4.48, r), (5.15, r - 0.25), (5.4, r - 0.82)]
         verts = [polar(radius, w, radians(direction * (lo + (hi - lo) * i / steps))) for i in range(steps + 1) for w, radius in section]
         skin.add(verts, [(i * 7 + j, (i + 1) * 7 + j, (i + 1) * 7 + j + 1, i * 7 + j + 1) for i in range(steps) for j in range(6)])
-    for a in (-33, 45):
+    for a in (-33,) if repaired else (-33, 45):
         angle = radians(direction * a)
         for w1, w2, r1, r2 in ((-5.2, -4.48, 17.95, 18.24), (-4.48, 0, 18.24, 18.45), (0, 4.48, 18.45, 18.24), (4.48, 5.2, 18.24, 17.95)):
             seams.tube(polar(r1 + 0.06, w1, angle), polar(r2 + 0.06, w2, angle), 0.11 * IN, caps=False)
@@ -119,6 +120,10 @@ def fender(parent, name, fore, sign, m):
         q = polar(17.35, -sign * 4.9, angle)
         stays.tube(point(0, -sign * 5.7, 1), q, 0.26 * IN)
         stays.tube(q, polar(17.86, -sign * 4.35, angle), 0.33 * IN)
+    if repaired:
+        from lrv3_equipment import map_extension
+
+        map_extension(parent, m)
     skin.build(f"LRV_FenderSkin_{name}", m["amber"], parent)
     stays.build(f"LRV_FenderBraces_{name}", m["alloy"], parent)
     seams.build(f"LRV_FenderSeams_{name}", m["ochre"], parent)
@@ -231,7 +236,7 @@ def suspension(parent, steer, x, sign, name, m):
     piston.build(f"LRV_Piston_{name}", m["hardware"], damper).location.z = length * IN
 
 
-def build_wheels(m):
+def build_wheels(m, mission):
     carrier = group("RoverSuspension")
     for fore, x, end in ((True, 45, "F"), (False, -45, "R")):
         # The front and rear steering actuators are independent. A motor drives the steering
@@ -258,7 +263,7 @@ def build_wheels(m):
             steer.location = point(x, 29.1 * sign, RADIUS)
             tire(group("LRV_Wheel_" + name, steer), name, sign, m)
             drive(group("LRV_Drive_" + name, steer), name, sign, m)
-            fender(group("LRV_Fender_" + name, steer), name, fore, sign, m)
+            fender(group("LRV_Fender_" + name, steer), name, fore, sign, m, repaired=mission == 17 and name == "RR")
             for assembly in steer.children:
                 assembly.location.y = (36 - 29.1) * sign * IN
             suspension(carrier, steer, x, sign, name, m)

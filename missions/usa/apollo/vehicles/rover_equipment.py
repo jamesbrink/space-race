@@ -134,7 +134,7 @@ def carrier(alloy, dark):
     mounts.build("LRV_ToolClips", dark, rack)
 
 
-def geology(alloy, ivory, dark):
+def geology(mission, alloy, ivory, dark):
     root = group("RoverGeology")
     tools, grips, basket, scoop = (MeshBuilder() for _ in range(4))
     # Stowed upright on the folding rear carrier. The rake is ten inches from heel to socket.
@@ -169,17 +169,19 @@ def geology(alloy, ivory, dark):
     # A 30-inch soil probe with an independent recording drum. Folded gnomon beside it.
     root = group("RoverSoilTools")
     probe, drum, scales = MeshBuilder(), MeshBuilder(), MeshBuilder()
-    x, y = -51, 11.5
-    tube(probe, (x, y, 22.1), (x, y, 52.1), 0.28)
-    tube(drum, (x, y, 52.1), (x, y, 58), 1.32)
-    tube(probe, (x, y, 58), (x, y, 59.9), 0.50)
+    if mission != 17:
+        x, y = -51, 11.5
+        tube(probe, (x, y, 22.1), (x, y, 52.1), 0.28)
+        tube(drum, (x, y, 52.1), (x, y, 58), 1.32)
+        tube(probe, (x, y, 58), (x, y, 59.9), 0.50)
     for dy in (-0.9, 0.9):
         tube(probe, (-49, 6 + dy, 25), (-49, 6, 42), 0.19)
     tube(probe, (-49, 6, 25), (-49, 6, 53), 0.32)
     for i in range(6):
         tube(scales, (-49, 6, 42 + i * 1.8), (-49, 6, 42.8 + i * 1.8), 0.41)
     probe.build("LRV_PenetrometerAndGnomon", alloy, root)
-    drum.build("LRV_PenetrometerRecordingDrum", ivory, root)
+    if mission != 17:
+        drum.build("LRV_PenetrometerRecordingDrum", ivory, root)
     scales.build("LRV_GnomonReferenceMarks", dark, root)
 
 
@@ -188,18 +190,21 @@ def samples(mission, ivory, dark):
     bags, straps = MeshBuilder(), MeshBuilder()
     # A15 loading transcript at 121:08:52 locates bag 4 on the right of the hand tool carrier.
     positions = ((-46.8, -19.25), (-46.8, 19.25)) if mission == 15 else ((-39, 11.8), (-46, -12.5))
+    if mission == 17:
+        positions = ((-61.1, 10.9), (-48.1, -1.8))
     for x, y in positions:
         # The flexible specimen bag has a narrower base and a rolled mouth; creasing is estimated.
-        mat = Matrix.Translation(point(x, y, 21.6)) @ Matrix.Diagonal((1, 0.64, 1, 1))
+        mat = Matrix.Translation(point(x, y, 25.9 if mission == 17 else 21.6)) @ Matrix.Diagonal((1, 0.64, 1, 1))
         bags.lathe(
             prof([(0, 0), (3.4, 0), (4.6, 2), (4.95, 11), (4.4, 14), (4.85, 14.8), (4.85, 15.4), (3.85, 15.4), (3.7, 13.8), (0, 13.8)]),
             16,
             matrix=mat,
         )
+        dz = 4.3 if mission == 17 else 0
         for dy in (-1.25, 1.25):
-            tube(straps, (x - 3.5, y + dy, 36.5), (x - 1.8, y + dy, 39.1), 0.24)
-            tube(straps, (x - 1.8, y + dy, 39.1), (x + 1.8, y + dy, 39.1), 0.24)
-            tube(straps, (x + 1.8, y + dy, 39.1), (x + 3.5, y + dy, 36.5), 0.24)
+            tube(straps, (x - 3.5, y + dy, 36.5 + dz), (x - 1.8, y + dy, 39.1 + dz), 0.24)
+            tube(straps, (x - 1.8, y + dy, 39.1 + dz), (x + 1.8, y + dy, 39.1 + dz), 0.24)
+            tube(straps, (x + 1.8, y + dy, 39.1 + dz), (x + 3.5, y + dy, 36.5 + dz), 0.24)
     bags.build("LRV_SampleCollectionBags", ivory, root)
     straps.build("LRV_SampleBagHandles", dark, root)
 
@@ -247,8 +252,13 @@ def equipment(mission):
     television(alloy, ivory, dark)
     antennas(alloy, gold, dark)
     carrier(alloy, dark)
-    geology(alloy, ivory, dark)
+    geology(mission, alloy, ivory, dark)
     samples(mission, ivory, dark)
-    camera(alloy, ivory, dark)
+    if mission != 17:
+        camera(alloy, ivory, dark)
     if mission == 16:
         magnetometer(alloy, ivory, dark)
+    if mission == 17:
+        from lrv3_equipment import payload
+
+        payload(alloy, ivory, dark)

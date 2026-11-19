@@ -84,7 +84,7 @@ def surface_equipment(commander):
 
 
 def build(mission):
-    people = (("Scott", 72), ("Irwin", 68)) if mission == 15 else (("Young", 69), ("Duke", 71.5))
+    people = {15: (("Scott", 72), ("Irwin", 68)), 16: (("Young", 69), ("Duke", 71.5)), 17: (("Cernan", 72), ("Schmitt", 69))}[mission]
     for i, (who, height) in enumerate(people):
         name = "LRV_Driver" if i == 0 else "LRV_Passenger"
         root = group(name)
