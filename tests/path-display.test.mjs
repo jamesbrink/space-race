@@ -12,6 +12,8 @@ function pausedDisplay(jobTime, jobPlan) {
     mapped: false,
     craftMark: null,
     others: new Map(),
+    refMarks: [],
+    refApsis: null,
     sample: { t: 12 },
     wantedAt: null,
     want: () => ({ key: '12|manual', plan: 'manual' }),
@@ -91,7 +93,11 @@ test('changing the selection hides the old meshes, marker layer and readout whil
   Object.assign(path, {
     mesh: { visible: true },
     flownMesh: { visible: true },
-    ringMesh: { visible: true },
+    ringMesh: { visible: true, userData: {} },
+    // (the record's line goes with the rest, and the line ahead's own ribbon is emptied)
+    refMesh: { visible: true },
+    ahead: { n: 5, geometry: { setDrawRange() {} } },
+    flown: { n: 0 },
     marksEl: { hidden: false, classList: { toggle() {} } },
     marks: [],
     host: {
@@ -108,7 +114,8 @@ test('changing the selection hides the old meshes, marker layer and readout whil
   });
   path.tick();
   assert.equal(path.shown, null);
-  assert.deepEqual([path.mesh.visible, path.flownMesh.visible, path.ringMesh.visible], [false, false, false]);
+  assert.deepEqual([path.mesh.visible, path.flownMesh.visible, path.ringMesh.visible, path.refMesh.visible], [false, false, false, false]);
+  assert.equal(path.ahead.n, 0);
   assert.ok(redrawn && path.marksEl.hidden);
   assert.deepEqual(path.laidOut, []);
   assert.equal(readout, null);

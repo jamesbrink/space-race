@@ -54,6 +54,8 @@
 .path-read p b { min-width: 0; white-space: normal; }
 .path-read .path-flown b { color: var(--faint); font-weight: 400; }
 .path-read .path-flown i { display: inline-block; width: 18px; height: 0; margin: 0 6px 3px 0; vertical-align: middle; border-top: 1px solid #8e9cab; }
+/* and the record's line's, while it is drawn: dashes of its own magenta (path.ts `plan`) */
+.path-read .path-planned i { border-top: 2px dashed #f08bd2; }
 /* (which frame the line is drawn in is what the Surface or Orbit switch above already says) */
 .path-read .path-frame { display: none; }
 
@@ -96,6 +98,10 @@
 .path-other > i { left: -4px; top: -4px; width: 8px; height: 8px; rotate: none; border-radius: 50%; background: rgba(10, 11, 14, 0.7); border: 1.5px solid #9cc9e6; }
 .path-other b { color: #9cc9e6; font-weight: 400; }
 .path-chip.path-craft, .path-chip.path-other { display: none; }
+/* the record's own events, on its line: a small open diamond and thin words in that line's magenta (path.ts `plan`), quieter than anything of the prediction's; never a chip */
+.path-ref > i { left: -3.5px; top: -3.5px; width: 7px; height: 7px; background: rgba(10, 11, 14, 0.7); border: 1.5px solid #f08bd2; }
+.path-ref b { color: #f08bd2; font-weight: 400; }
+.path-chip.path-ref { display: none; }
 .path-mark-probe { position: absolute; visibility: hidden; font: 10.5px/18px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 
 /* a window a little narrower than three panels abreast need: the ball and its panel close up */
