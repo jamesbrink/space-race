@@ -39,12 +39,12 @@ const ZERO: Vec3 = [0, 0, 0];
 
 /** Generalized velocity and inverse mass along the contact normal. The arm runs to the
  * bead centre: the remaining radius is parallel to the impulse and adds no torque. */
-function rotation(e: ContactElement, normal: Vec3, fraction: number) {
+function rotation(e: ContactElement, normal: Vec3, fraction: number, beyond: Vec3 = ZERO) {
   const body = e.body;
   if (!body) return { kick: ZERO, speed: 0, inverse: 0 };
   const first = sub(e.before, body.start),
     last = sub(e.after, body.end);
-  const arm = add(first, scale(sub(last, first), fraction));
+  const arm = add(add(first, scale(sub(last, first), fraction)), beyond);
   const lever = unturn(nlerp(body.q0, body.q1, fraction), cross(arm, normal));
   const kick = lever.map((n, i) => (body.inertia[i]! > 0 ? n / body.inertia[i]! : 0)) as unknown as Vec3;
   return { kick, speed: dot(lever, body.w), inverse: dot(lever, kick) };
@@ -97,18 +97,43 @@ export function contact(a: ContactElement, b: ContactElement, dt: number) {
 /**
  * The same contact against something that does not move (a structure at a site, the ground): `a` met a surface whose
  * outward normal is `normal` at `fraction` of the step, closing on it at `closing` m/s as the surface sees it. The
- * impulse is along the normal, at the bead, perfectly inelastic and without friction, as between two bodies; all of it
- * changes `a`. `depth`: how far past the surface the step would have carried the bead, which is undone along the normal.
+ * impulse is along the normal, at the bead, perfectly inelastic, as between two bodies; all of it changes `a`.
+ * `depth`: how far past the surface the step would have carried the bead, which is undone along the normal.
+ *
+ * `rub`: the surface drags on what slides over it (Coulomb's law). `slide` is the velocity of the bead's point of
+ * contact along the surface, as the surface sees it, and `friction` the coefficient: the impulse against the sliding
+ * is at most that share of the normal one, and no more than stops the point. It acts at the point of contact (the
+ * bead's centre less its radius along the normal), so something round rolls. Without it the surface is frictionless.
  */
-export function strike(a: ContactElement, normal: Vec3, fraction: number, closing: number, depth: number, dt: number) {
+export function strike(
+  a: ContactElement,
+  normal: Vec3,
+  fraction: number,
+  closing: number,
+  depth: number,
+  dt: number,
+  rub?: { slide: Vec3; friction: number },
+) {
   const ar = rotation(a, normal, fraction);
   const speed = Math.max(0, closing);
   const impulse = speed / (1 / a.mass + ar.inverse);
+  let v = scale(normal, impulse / a.mass);
+  let w = scale(ar.kick, impulse);
+  let drag = 0;
+  const sliding = rub ? length(rub.slide) : 0;
+  if (rub && impulse > 0 && sliding > 1e-9) {
+    const along = scale(rub.slide, 1 / sliding);
+    const tr = rotation(a, along, fraction, scale(normal, -a.radius));
+    drag = Math.min(rub.friction * impulse, sliding / (1 / a.mass + tr.inverse));
+    v = add(v, scale(along, -drag / a.mass));
+    w = add(w, scale(tr.kick, -drag));
+  }
   return {
     r: scale(normal, Math.max(0, depth)),
-    v: scale(normal, impulse / a.mass),
-    w: scale(ar.kick, impulse),
+    v,
+    w,
     impulse,
+    drag,
     energy: (impulse * speed) / 2,
     speed,
     after: dt * fraction,

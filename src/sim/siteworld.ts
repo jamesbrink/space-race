@@ -204,6 +204,27 @@ export class SiteWorld {
   }
 
   /**
+   * How far inside what stands here a point is at `t`, m: its distance to the nearest face of the box it is deepest
+   * in, and nothing outside every box. For holding what is drawn to what is solid (a model's own vertices, where the
+   * simulator strikes by its spheres).
+   */
+  depth(point: Vec3, t: number): number {
+    let deepest = 0;
+    for (const s of this.standing) {
+      const local = into(this.poseOf(s, t), point);
+      if (length(sub(local, s.middle)) > s.reach) continue;
+      s.tree ??= new BoxTree(s.piece.boxes);
+      const b = s.tree.boxes;
+      for (const box of s.tree.touching(local, 0)) {
+        let near = Infinity;
+        for (let k = 0; k < 3; k++) near = Math.min(near, local[k]! - b[6 * box + k]!, b[6 * box + 3 + k]! - local[k]!);
+        deepest = Math.max(deepest, near);
+      }
+    }
+    return deepest;
+  }
+
+  /**
    * The height (the site's +Y) of the highest solid surface under `point` at `t`, and what it is of: what something
    * falling straight down there lands on. Null where nothing stands under it within `depth` metres.
    */
