@@ -1696,10 +1696,11 @@ class Run {
    * to where the path had it at the instant it broke up, and the path must then show none.
    */
   async outcome(where, end, tolerance) {
-    const p = await this.predicted();
-    const from = await this.here();
+    // (in pieces already: there is nothing to predict, and the page owes no prediction to wait for)
     const before = await this.stood();
     if (before?.broke?.ended) return this.none(where, before.broke);
+    const p = await this.predicted();
+    const from = await this.here();
     if (!p?.ecef) return this.fail(where, `no end predicted (${p?.outcome ?? 'no prediction'})`);
     await end();
     const after = await this.stood();
@@ -1918,7 +1919,7 @@ if (!quick && !at) {
             if (await lit()) r.fail(name, 'an engine is still lit after every step: the hands cannot let go');
             await r.views(`${name} cut`);
             // (cut fast enough to stay up, it is held to where the path has it once round, as an orbital burn's is)
-            if ((await r.predicted())?.outcome === 'orbit') await r.around(`${name} cut, then round`, (way) => 2000 + 0.02 * way);
+            if (!(await r.stood())?.broke?.ended && (await r.predicted())?.outcome === 'orbit') await r.around(`${name} cut, then round`, (way) => 2000 + 0.02 * way);
             else
               await r.outcome(
                 `${name} cut, then down`,
