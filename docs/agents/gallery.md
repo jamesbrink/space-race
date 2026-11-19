@@ -16,8 +16,9 @@ Every flight has the same three places, in the same order, and opens in the firs
 
 - **The front page** is no flight's: it is what an address that names nothing shows (`front.ts`), the list of
   flights over a picture of its own, the Earth seen from out by the Moon ("The front page", below). It has one
-  entrance per flight, by date, and a line for each flight to come. An entrance always opens that flight's gallery. Before
-  them stands the way into the Lineup ("The Lineup", below), which is no flight's either.
+  entrance per flight, by date, and a line for each flight to come. An entrance always opens that flight's gallery (a
+  kept flight's Continue, on the menu, opens its flight deck). On the menu stands the way into the Lineup, named
+  Explore there ("The Lineup", below), which is no flight's either.
 - **Inside a flight** the places are a path: the gallery is the flight's page, from it the launch site, from the site the
   launch. On a wide page the title card has plain buttons for the ways from where it is (`nextStep` in `gallery.ts`:
   "Go to the launch site" in the gallery; "Gallery" and "Launch" at the site; back to either from the flight deck). A
@@ -27,8 +28,8 @@ Every flight has the same three places, in the same order, and opens in the firs
 - **The way back is always the same**: front page > nation > programme > flight > place, and the title card's crumbs
   say it (`crumbs`): "Space Race" is the front page, the nation and the programme the front page with its list narrowed
   to them (`#flights/<nation>[/<programme>]`, address.ts `parseBrowse`: still the front page's address, and no
-  flight's), the flight's name its gallery. On the front page the same narrowing is two rows of switches over the
-  list (a nation, then its programmes, named as the flights name them); choosing one rewrites the entry and is no step
+  flight's), the flight's name its gallery. On the front page the same narrowing is the menu's nations and, over the
+  list, a row of the chosen nation's programmes (a nation, then its programmes, named as the flights name them); choosing one rewrites the entry and is no step
   in the history, so Back out of a flight comes to the list as it was left.
 - **The flight's name is one line, whole.** A name too long for the title card at its usual size (a
   callsign with its Cyrillic: "Berkut (Беркут)") is set smaller until it fits (`fitName` in
@@ -55,7 +56,7 @@ Every flight has the same three places, in the same order, and opens in the firs
   its clock stopped at the instant it was left, and asks nothing. *Within the flight* (the deck's Leave, Esc, the Gallery and
   Launch site tabs, the flight's crumb, Back and Forward between its places) the deck parks it in the page, and a passing note
   says so; *beyond it* (another flight, the Lineup, the front page) and through a reload or a closed tab it is kept in the
-  browser's storage, one run a flight (simulator.md, "The deck": how). Where one is kept, the flight's Fly tab shows a lamp,
+  browser's storage, one run a flight (simulator.md, "The deck": how). Where one is kept, the way to its launch (Launch at the site on a wide page, which then says Resume; the Fly tab of a narrow page's switch) shows a lamp,
   its mission time and a mark that throws it away, and the front page's row for the flight says "In flight" and the time
   (`ui/runmark.ts`). Fly, now or days later, takes it up behind a card in the deck's style that says what is kept (its
   mission time, what it was doing, when it was left in plain words): Resume (focused: Space, Enter) goes on from exactly
@@ -108,7 +109,7 @@ text it stands in (`icons.css`).
   those the flight has (`lacks`), the Lineup wherever it is gone to, Walk, the camera. The panel tabs and the switches
   have none: a tab row has no room for one at 30 % of the width, and **a switch has its lamp and no icon** (the lamp says
   whether it is on, which a picture cannot; one mark before a name is enough).
-- **A flag** stands before a nation's name wherever it is named (the front page's rows and its nation switches, the
+- **A flag** stands before a nation's name wherever it is named (the front page's rows and its menu's nations, the
   crumbs, the Lineup's key, card and Programmes tab, a gallery's History tab): the flag flown 1961 to 1969, to its
   statute's proportions (`FLAGS`, by the nation's word in an id: China is an entry). It is decorative, the name is beside it.
 - **An emblem** stands before a programme's name (the front page's programme switches and rows, the crumbs, the Lineup's
@@ -145,11 +146,12 @@ picture is of, world.md).
   black and is opened again at the address that names nothing. A flight holds nothing of the front page and the
   front page nothing of a flight; the price is that the same flight gone into again is fetched from the browser's
   cache and its shaders built again.
-- **The words are read over a picture that can be white.** Nothing veils or blurs the whole picture. Each thing
-  that is read has its own dark glass (`--title-glass`, 0.84 of near black: the smallest text keeps 4.5:1 over
-  white cloud), and the mark a soft dark behind it. Held upright, the top two fifths of the page are left to the
-  picture and the list scrolls over the rest; on its side or on a desk the Earth is put clear of the mark, to its
-  right (`compose` in front.ts measures the mark and tells the scene where the Earth is to be).
+- **The words are read over a picture that can be white.** The menu's side of the picture is darkened
+  (a gradient that is gone by the middle; under the menu, held upright), and what is read there is `--dim` at the
+  least; the missions are on dark glass of their own (the smallest text keeps 4.5:1 over white cloud). Held upright,
+  the top of the page is left to the picture and the menu and missions scroll over the rest; on its side or on a
+  desk the Earth is put between the menu and the missions, clear of the mark first (`compose` in front.ts measures
+  both and tells the scene where the Earth is to be).
 
 `sr.front` is the handle: `sr.front.seek(120)` goes two minutes along the path, `sr.front.stats()` and
 `sr.front.cost()` say what it draws and what a frame costs, `sr.instant` the moment on show. `pnpm test:front`
@@ -160,8 +162,8 @@ as a phone. `tools/shot.mjs out.png "" "sr.front.seek(80)" 1440 900 --ui` takes 
 
 `#lineup` is every vehicle the flights have built, side by side on one floor at one scale, in the order they flew
 (`app/lineup.ts` the page; `app/lineup/` its scene, one vehicle of it, the hall and the arithmetic; `ui/lineup.ts` what is
-written round it and on it). It is at the front page's level and, like it, no flight's: the front page lists it before
-the flights, its crumb goes back out, and a flight gone into from it is another page's worth of state (home.ts).
+written round it and on it). It is at the front page's level and, like it, no flight's: the front page's menu has it
+(as Explore), its crumb goes back out, and a flight gone into from it is another page's worth of state (home.ts).
 
 - **It reads the flights' data and the history, and nothing else.** A flight appended to `missions/index.ts` stands in
   the row, in its programme's section, on the timeline and in the figures, without being told how (`row.ts`, tested

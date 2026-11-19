@@ -186,6 +186,9 @@ function paintKept(nav: Element): void {
   nav.querySelector('.kept-mark')?.remove();
   const fly = nav.querySelector<HTMLElement>('[data-place=fly], [data-way=fly]');
   fly?.classList.toggle('kept', keptMark !== null);
+  // (the way to a kept flight says what it now does)
+  const says = fly?.matches('[data-way]') ? fly.querySelector('span') : null;
+  if (says && fly?.getAttribute('aria-disabled') !== 'true') says.textContent = keptMark ? 'Resume' : 'Launch';
   if (!fly || !keptMark || fly.hidden) return;
   const mark = document.createElement('button');
   mark.className = 'kept-mark';
