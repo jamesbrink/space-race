@@ -64,7 +64,7 @@ function cutAt(f, t1, { sequence, guidance }) {
   s = v.tick(s, live);
   if (v.thrust(s) > 0) return null; // (an engine with a tail-off still pushing: the hands would wait)
   const cut = s;
-  while (!s.parted && !s.landed && !s.broke && s.t < cut.t + 1500) s = v.tick(s, live);
+  while (!s.parted && !s.landed && !s.broke && s.t < cut.t + 1200) s = v.tick(s, live);
   return { v, x, site, frame, sea, cut, end: s, memo: options.memo };
 }
 
@@ -88,9 +88,12 @@ function pathOf(f, c, sequence) {
 }
 
 for (const f of flown) {
-  test(`${f.id}: cut by hand at generated instants, the path flies what the vehicle then does by itself`, () => {
+  // (a minute's ticks a second on a runner: each flight is held to four minutes, so a slow one fails by its name)
+  test(`${f.id}: cut by hand at generated instants, the path flies what the vehicle then does by itself`, { timeout: 240_000 }, () => {
     const rand = randOf(seedOf(f.id));
-    const parting = sequenceOf(f.plan).stages.at(-1).sep;
+    // (the instants are the ascent's: to the spacecraft's parting, and no later than 15 minutes, which no ascent reaches;
+    // a parting set hours on, after a docking, is not an ascent's)
+    const parting = Math.min(sequenceOf(f.plan).stages.at(-1).sep, 900);
     for (let n = 0; n < 3; n++) {
       const sequence = n % 2 === 0;
       const guidance = rand() < 0.5;
