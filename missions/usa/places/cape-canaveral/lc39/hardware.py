@@ -180,6 +180,52 @@ def tower(parts, crane_parked):
     beam(parts("Hammerhead_Crane", "steel"), (-4, 0, DECK + 387), (-4, 0, DECK + 376), 0.25)
 
 
+def purge_console(parts):
+    """AS-511 FER §3.4.3 locates the LH2 purge console on level 200; its case and fittings are estimates."""
+    name = "LH2_Purge_Console"
+    # Local +Y faces the operator. Stand the reconstructed cabinet on the south side of level 200,
+    # leaving the central aisle free between its working face and the lift.
+    cabinet = parts.node(name)
+    cabinet.location = P(71, -5, DECK + 200 + 0.85)
+    cabinet.rotation_euler.z = 112 * pi / 180
+    case = parts(name, "steel")
+    trim = parts(name, "rail", True)
+    panel = parts(name, "deck")
+    # Two channel feet carry the cabinet above the tower floor.
+    for x in (-1.65, 1.65):
+        box(panel, (x - 0.3, -1.45, 0), (x + 0.3, 0.68, 0.18))
+        box(case, (x - 0.15, -1.17, 0.18), (x + 0.15, 0.4, 0.48))
+    box(case, (-2.25, -1.28, 0.48), (2.25, 0.54, 5.22))
+    box(panel, (-2.38, -1.36, 5.22), (2.38, 0.65, 5.36))
+    # Raised instrument plate, bezels and pointers. Layout, number and scales unrecorded.
+    box(panel, (-2.11, 0.55, 2.42), (2.11, 0.61, 5.03))
+    dial = parts(name, "white", True)
+    linkage = parts(name, "steel/control")
+    for x, slope in ((-1.01, 1), (0.99, -1)):
+        z = 4.16
+        trim.tube(P(x, 0.61, z), P(x, 0.74, z), 0.47 * FT)
+        dial.tube(P(x, 0.74, z), P(x, 0.76, z), 0.395 * FT)
+        beam(linkage, (x - 0.045 * slope, 0.79, z - 0.04), (x + 0.2 * slope, 0.79, z + 0.21), 0.04)
+        for tick in range(7):
+            theta = (-135 + 45 * tick) * pi / 180
+            beam(linkage, (x + 0.29 * sin(theta), 0.79, z + 0.29 * cos(theta)), (x + 0.34 * sin(theta), 0.79, z + 0.34 * cos(theta)), 0.03)
+        trim.tube(P(x, 0.62, 3.00), P(x, 0.9, 3.00), 0.15 * FT)
+        beam(linkage, (x - 0.27, 0.93, 2.96), (x + 0.27, 0.93, 3.04), 0.1)
+    # Cable entry below the electrical terminal strip, visible through its open-front guard.
+    box(panel, (-1.95, 0.55, 0.83), (1.95, 0.71, 2.14))
+    box(case, (-1.98, 0.71, 2.13), (1.98, 1.05, 2.23))
+    box(linkage, (-1.38, 0.72, 1.32), (1.38, 0.87, 1.77))
+    for i in range(6):
+        x = -1.12 + i * 0.45
+        trim.tube(P(x, 0.87, 1.56), P(x, 0.94, 1.56), 0.079 * FT, segs=8)
+        beam(linkage, (x, 0.79, 1.32), (x, 0.79, 0.99), 0.062)
+    # Conduit entries and unions on the case flank.
+    for y in (-0.85, -0.01):
+        trim.tube(P(2.25, y, 1.3), P(2.71, y, 1.3), 0.15 * FT)
+        trim.tube(P(2.35, y, 1.3), P(2.52, y, 1.3), 0.22 * FT, segs=6)
+        trim.tube(P(2.71, y, 1.3), P(2.71, y, 0.05), 0.135 * FT)
+
+
 def arms(parts, detailed):
     # Service envelopes approximated from the Saturn V flight manual, section VIII.
     for i, (level, tip) in enumerate(
@@ -451,7 +497,7 @@ def intertank_carrier(parts):
             beam(parts(parent, "deck/pipe_support"), (x + 0.12, y, z + 0.48), (x + 0.12, y, z + 2.11), 0.19)
 
 
-def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_valve=False, ecs_room=False):
+def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_valve=False, ecs_room=False, level200_purge=False):
     use(FT)
     parts = Parts(
         {
@@ -477,6 +523,8 @@ def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_va
         tail_masts(parts)
     tower(parts, detailed)
     arms(parts, detailed)
+    if level200_purge:
+        purge_console(parts)
     if arm2_quench:
         quench_valve(parts)
     if intertank_lox:

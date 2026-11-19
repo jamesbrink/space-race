@@ -70,7 +70,7 @@ interface Countdown {
   intertankLatch?: number;
   firstMotion?: number;
   terminalConfidence?: 'assumed' | 'documented';
-  holdDowns?: 'as-506' | 'as-507' | 'as-508' | 'as-509' | 'as-510';
+  holdDowns?: 'as-506' | 'as-507' | 'as-508' | 'as-509' | 'as-510' | 'as-511';
 }
 
 const cover508 =
@@ -133,6 +133,15 @@ const installations: Record<NonNullable<Countdown['holdDowns']> | 'common', Inst
       1: 'Two lines fed the S-IC oxygen tank through the intertank. During fast fill a gasket leaked at filter A224 in the lower fill-and-drain line. The leak stopped after about five minutes as the filter chilled. The exposed ground couplings and links follow this launcher’s Apollo 13 reconstruction.',
     },
   },
+  'as-511': {
+    pad: 'a-1972-04',
+    mastStrokes: { '1_2': 2.649, '3_2': 2.292, '3_4': 2.505 },
+    tail: 'From plate separation to full retraction, mast 1-2 took 2.649 seconds, mast 3-2 took 2.292 and mast 3-4 took 2.505. On this flight the team adjusted the first stage’s RP-1 level and inerted its fill line at T−60 minutes.',
+    hold: 'All four hold-downs released pneumatically within twelve milliseconds. The two primary arm-control switches closed 423 and 417 milliseconds after launch commit. Bolts sheared on one side of hold-down No. 4’s fixed hood, warping both its fixed and moving hoods. The exhibit shows the intact launcher at release.',
+    arm: {
+      1: 'Two lines fed oxygen into the first stage through the intertank. After the carrier retract command its connected indication persisted for 35.9 seconds, much longer than in warm ground tests. The switches were sensitive to the cold. The arm itself withdrew normally.',
+    },
+  },
 };
 
 export function mobileLauncher(
@@ -157,10 +166,11 @@ export function mobileLauncher(
   const as508 = holdDowns === 'as-508';
   const as509 = holdDowns === 'as-509';
   const as510 = holdDowns === 'as-510';
-  const laterLauncher = as507 || as508 || as509 || as510;
-  const manualSerial = as510 ? '510' : as508 ? '508' : '507';
+  const as511 = holdDowns === 'as-511';
+  const laterLauncher = holdDowns !== undefined && holdDowns !== 'as-506';
+  const manualSerial = as510 || as511 ? '510' : as508 ? '508' : '507';
   const manual = laterLauncher ? `Saturn V Flight Manual SA-${manualSerial}, section VIII, figure 8-8.` : MANUAL;
-  const evaluation = `AS-${holdDowns?.slice(3) ?? '506'} Flight Evaluation Report, §3.6.1.`;
+  const evaluation = `AS-${holdDowns?.slice(3) ?? '506'} Flight Evaluation Report, §${as511 ? '3.5.1' : '3.6.1'}.`;
   const armSchedule = `SA-${manualSerial} Flight Manual, figure 8-20. Nominal end of the retract-and-lock interval.`;
   const configuration = installations[holdDowns ?? 'common'];
   // Layout along the common countdown slider. Inflight sweeps share its final nine seconds.
@@ -185,7 +195,13 @@ export function mobileLauncher(
   const sequence = [
     key(-43200, 0, 'S-II aft access arm withdraws', 'estimated', manual + ' Withdrawn as required. Time placed before crew ingress.'),
     key(-43170, 0.1, 'S-II aft arm clear', 'estimated', manual + ' Travel duration reconstructed.'),
-    key(ingress, 0.1, 'Commander enters the spacecraft', as509 ? 'estimated' : 'documented', pao),
+    key(
+      ingress,
+      0.1,
+      as511 ? 'Scheduled crew ingress' : 'Commander enters the spacecraft',
+      as511 ? 'assumed' : as509 ? 'estimated' : 'documented',
+      as511 ? 'Apollo 16 press kit, countdown at T−2 h 40 min. The schedule stands in for the unrecorded entry time.' : pao,
+    ),
     key(
       parkCommand ?? parkedBy - 30,
       0.1,
@@ -195,22 +211,24 @@ export function mobileLauncher(
     ),
     key(parkedBy, 0.2, 'Crew access arm in its 12° standby position', 'estimated', pao + ' Arrival estimated from the standby exchanges.'),
     key(
-      -300,
+      as511 ? -277 : -300,
       0.2,
       'Crew access arm retracts from standby',
-      as510 ? 'estimated' : as509 ? 'assumed' : 'documented',
+      as510 || as511 ? 'estimated' : as509 ? 'assumed' : 'documented',
       as510 ? pao + ' Motion was observed just before the five-minute mark. The model rounds the start to that minute.' : pao,
     ),
     key(
-      retractedBy ?? (laterLauncher ? -290 : -270),
+      retractedBy ?? (as511 ? -267 : laterLauncher ? -290 : -270),
       0.4,
       'Crew access arm fully retracted',
-      retractedBy === undefined ? (laterLauncher ? 'assumed' : 'estimated') : 'documented',
-      laterLauncher && retractedBy === undefined
-        ? armSchedule
-        : retractedBy === undefined
-          ? pao + ' Travel duration approximated from the countdown.'
-          : pao + ' First full-retraction report.',
+      retractedBy === undefined ? (laterLauncher && !as511 ? 'assumed' : 'estimated') : 'documented',
+      as511
+        ? pao + ' The ten-second nominal stroke from SA-510 figure 8-20 is centred on the T−4:32 observation.'
+        : laterLauncher && retractedBy === undefined
+          ? armSchedule
+          : retractedBy === undefined
+            ? pao + ' Travel duration approximated from the countdown.'
+            : pao + ' First full-retraction report.',
     ),
     key(-30, 0.4, 'S-IC intertank arm withdraws', terminalConfidence, terminalSource),
     key(
@@ -390,13 +408,25 @@ export function mobileLauncher(
         'The deflector divides the exhaust beneath the launcher.',
         'Its refractory surface directs exhaust along the trench in both directions. The curved profile is approximated.',
       ),
-      ...(as510
+      ...(as510 || as511
         ? [
             part(
               'ECS_Room',
               'Environmental control room',
               'Air-handling units in the west side of the pad supplied conditioned air or nitrogen to the vehicle.',
-              'The team changed over to gaseous nitrogen at 23:10 EDT the night before launch. The purge ended at 09:44 EDT, ten minutes after liftoff. Postlaunch inspection found scorched ducts and loose anchors at the air plenum on the exterior wall. Its shape and placement on this wall are estimated.',
+              as511
+                ? 'The team switched from air to gaseous nitrogen 23 minutes before the count resumed at T−9 hours. Reducing the flow during changeover softened the pressure surge observed in the countdown demonstration. The room and exterior plenum follow the July 1971 reconstruction at this pad.'
+                : 'The team changed over to gaseous nitrogen at 23:10 EDT the night before launch. The purge ended at 09:44 EDT, ten minutes after liftoff. Postlaunch inspection found scorched ducts and loose anchors at the air plenum on the exterior wall. Its shape and placement on this wall are estimated.',
+            ),
+          ]
+        : []),
+      ...(as511
+        ? [
+            part(
+              'LH2_Purge_Console',
+              'Level 200 purge console',
+              'The tower’s 200-foot level carried a purge console for the liquid-hydrogen ground system.',
+              'Reach it from the tower elevator at level 200. Inspection after launch found a broken electrical terminal strip on the console. Its position on this level, instrument face and connections are reconstructed.',
             ),
           ]
         : []),
@@ -499,7 +529,7 @@ export function mobileLauncher(
             },
           ]
         : []),
-      ...(as508 || as509 || as510
+      ...(as508 || as509 || as510 || as511
         ? [
             {
               id: 'intertank-carrier',
@@ -521,7 +551,7 @@ export function mobileLauncher(
             },
           ]
         : []),
-      ...(as510
+      ...(as510 || as511
         ? [
             {
               id: 'ecs-plenum',
@@ -529,6 +559,17 @@ export function mobileLauncher(
               nodes: ['ECS_Air_Plenum'],
               span: 6,
               from: [-0.27, 0.14, -1] as [number, number, number],
+            },
+          ]
+        : []),
+      ...(as511
+        ? [
+            {
+              id: 'purge-console',
+              label: 'Level 200 purge console',
+              nodes: ['LH2_Purge_Console'],
+              span: 1.5,
+              from: [-0.94, 0.08, 0.34] as [number, number, number],
             },
           ]
         : []),
