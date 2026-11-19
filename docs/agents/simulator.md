@@ -162,7 +162,12 @@ it (`brokenAt`, as a blow from the vehicle does).
 body answered sphere by sphere is never without a tremor. A shed body's landing is then where it lies; the
 vehicle's flight ends there (`VehicleState.landing` with `lies`, `StagedState.landed`), and it came down as fast as
 the hardest it struck on the way to lying there, which is what its verdict is given on. A flight that ends lying at
-its site is not put afloat. Both figures are estimated.
+its site is not put afloat. Both figures are estimated. While it lies down it knocks on what it struck again and
+again, its far end at a metre a second: a body already touching, struck again under `SETTLING` (3 m/s, estimated), is
+not said to strike. And for the cost of it: a sphere that came within a cell (`NEARBY`, 0.25 m) of nothing is not
+asked again in that tick unless the answers have moved the body that far, since most of a hull lying on a site
+touches nothing (Freedom 7 fallen back on its pad: 4 s of computing for 11 s of flight, where asking every sphere
+every time took 15).
 
 **A hard strike on the site breaks parts free**, by the path a blow from something shed takes: the first blow that
 meets the game's rule sets `Sheds.activeBrokenAt` (`Sheds.broke`), the scene frees its visual fragments from that
