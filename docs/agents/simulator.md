@@ -898,6 +898,26 @@ read gives enough of to fly (issue #10).
   stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
   deck's own (a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
   both, Space is the next thing on both, and the throttle is the deck's own on both (below, "The throttle").
+- **Fly is taken by hand** (deck.ts `START`). Every entry to Fly stands the flight on its pad with guidance (G) and the
+  sequencer (B) off, on every kind (the ballistic, the orbital and the docking deck alike; nothing remembers it): the player
+  lights the engines, steers, throttles, stages, cuts, fires the retrorockets and puts out the parachutes, each with its
+  physical consequence ("What a hand can do"). Either switch thrown on has the record's guidance or its sequence fly that
+  part, and the mode line says so; both on is the flight as flown. A kept run resumes with the switches it had (the tape's
+  `setup`); starting over (N) stands it on the pad by hand again. A run is at stake once it is flown (`Deck.stake`: by hand
+  and with ticks flown), not while it stands untouched on its pad. What the mission intended is shown and not done, all of it
+  from the plan: the navball's target mark is a flight director (`Deck.director`: the ballistic deck's tilt programme,
+  predict.ts `programmeAxis`; the orbital deck's steering law, staged.ts `lawOf`, `axisAt`; each leaned by the trim while
+  guidance flies it), on the pad and while the launch vehicle burns; with the sequencer off the prompt names the next step
+  with the record's instant and its condition ("Next: engine cutoff at T+00:02:21"; a stage cut on a speed or on the
+  record's orbit says so, with that speed or that orbit); the throttle row marks where the record had the lever
+  (`ThrottleView.record`); above 60 km the middle figures are the orbit it would be on were it cut now (apogee, perigee,
+  the space-fixed speed: orbitdeck.ts `CLIMBING`). The end's card compares what was flown with the record (the ballistic
+  card's figures against the reports'; the orbital card's held checks and the landing's distance), as before. A key steers a
+  launch vehicle flown by hand at `FINE` of full throw, a tenth (estimated: KSP's fine controls, the game's and no vehicle's;
+  a simulated pilot holding the director on keys with a degree's deadband and 0.15 s to react breaks the Redstone up by its
+  bending load at T+49 s at full throw, and flies it whole to its cutoff, 60 km up at 2.0 km/s at T+140 s, at a tenth); the
+  finger's stick asks as far as it is pushed, and a spacecraft's jets are worked at their own throw. The launch site's own
+  clock, the idle show, every batch run and every figure are the record's still.
 - **The deck is an instrument, not a page.** What is always there: the navball and the path in the left corner; the
   phase and the two switches, the five figures, the throttle and the one action with its abort in the middle; the supplies
   as bars and the lamps (braking, lock, jets, what burns) on the right. Secondary detail is folded: the readings (the air,

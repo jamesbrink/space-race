@@ -261,7 +261,12 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   while pressed, `data-press` the key itself, dispatched); only its panels take the pointer. It tells the stage how
   much of the view it covers (`Ui.covers`). A flight kind (`cockpit.ts` ballistic, `orbitdeck.ts` into orbit) supplies what differs
   as data (`DeckSpec`: figures, readings, systems, steps, extra keys); a new kind is a class on `Deck`, not a second deck.
-  As flown is the default; G, B, a step of Space or the throttle takes a flight over, and the deck says so in its mode line.
+  Fly is taken by hand: on every entry guidance (G) and the sequencer (B) are off (deck.ts `START`, one rule for every kind), and the
+  player lights, steers, throttles, stages, cuts and fires; either switch, thrown on, has the record's guidance or sequence fly that part,
+  and the mode line says which. What the mission intended is shown, never done: the navball's flight director (the record's programme or
+  steering law), the next step with the record's time and condition, the record's throttle on the lever. A key steers a launch vehicle
+  flown by hand at a tenth of full throw (`FINE`, estimated: at full throw a hand on keys breaks the Redstone up). A kept run resumes with
+  its own switches. The launch site's clock, the idle show and every batch run stay the record's.
 - C is the camera everywhere: off foot it goes to the next rig there is as things stand ("The camera"), on foot
   between first and third person. Each has its own block in the legend. T is the look. M, on the flight deck, is the map
   (camera.md): the same camera pulled out to the whole path, the Earth turning under it; in it C chooses what it turns
