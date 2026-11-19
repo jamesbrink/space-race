@@ -492,7 +492,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   shades what three's lights light (`smokeShade`, worked out in the lights chunk as the clouds'
   shadow is, so it has no texels to crawl). All of it moves by the clock's seconds only, and all
   of its sizes and amounts are estimated, from film. In the cel look the same volumes are cut
-  into flat tones. The rigs that are about the vehicle (chase, locked, on board, pad: "The camera") go
+  into flat tones: the smoke at two fifths opaque, and what is thinner but still seen (from 0.15) as a wash of the same
+  tones a third opaque, so a thin trail low over the pad is drawn down to its cloud as the real look draws it. The rigs that are about the vehicle (chase, locked, on board, pad: "The camera") go
   with it or follow it, and the Sun's shadow map goes with it under them (`Shadows.shadeCraft`, stage/shadows.ts). The sky darkens with the
   eye's height as the air above it thins (`airAbove` in backdrops.ts: black by 50 km). Under it
   all is the Earth (`viewer/globe.ts`): the WGS 84 ellipsoid at the site's `seaLevel`, drawn in
