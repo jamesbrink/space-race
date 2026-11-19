@@ -231,7 +231,8 @@ const fragment = (apron: boolean, octaves: number, grains: number): string => /*
       vec3 tx = levelEast(uSite, d), ty = cross(d, tx);
       vec2 slope;
       float lit, bright;
-      ground(vQ, max(length(qx), length(qy)), vec3(dot(uSun, tx), dot(uSun, ty), dot(uSun, n)), vec3(dot(v, tx), dot(v, ty), dot(v, n)), slope, lit, bright);
+      float long_ = max(length(qx), length(qy));
+      ground(vQ, long_, abs(qx.x * qy.y - qx.y * qy.x) / (long_ * long_ + 1e-12), vec3(dot(uSun, tx), dot(uSun, ty), dot(uSun, n)), vec3(dot(v, tx), dot(v, ty), dot(v, n)), slope, lit, bright);
       n = normalize(n - made * (slope.x * tx + slope.y * ty));
       shade *= mix(1.0, lit, made);
       albedo *= 1.0 + made * bright;

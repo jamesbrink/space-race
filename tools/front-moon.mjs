@@ -427,7 +427,10 @@ function seenFrom(map, d, over) {
 /** The places along the limb that would do, levellest first (view.ts `SITE` says what is asked of one). */
 function findSite(map) {
   const found = [];
-  for (let angle = 198; angle <= 218; angle += 0.05) {
+  // (round the limb from `--find-site`'s two angles, 198 to 218 if none are given: the south-south-west)
+  const at = args.indexOf('--find-site');
+  const [from, to] = [Number(args[at + 1]) || 198, Number(args[at + 2]) || 218];
+  for (let angle = from; angle <= to; angle += 0.05) {
     const n = limbPoint(sky, angle);
     for (let toward = -1; toward <= 4; toward += 0.04) {
       const d = unit(along(e, n, Math.sin(toward * DEG), Math.cos(toward * DEG)));

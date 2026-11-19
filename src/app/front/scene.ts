@@ -49,12 +49,13 @@ const SUNLIGHT = [4.5, 4.3, 4.0] as const;
  */
 const HAZE = { extinction: 8e-5, scale: 1500 };
 /**
- * The faintest star drawn, and how bright. With the camera set for sunlit ground and cloud a photograph has none,
- * and an eye that keeps the ground out of its sight has the naked eye's few thousand over the whole sky: through
- * this lens, six degrees across, that is a dozen in the frame, and they are drawn faint. A limit of 4.5, as it was, is
- * one star a frame, which is none. Estimated: for the look.
+ * The faintest star drawn, and how bright: with the camera set for sunlit ground and cloud a photograph has none and
+ * an eye a few; estimated. Through this lens that is none for most of the path: the stars here are the bright table's
+ * 518 (heavens.ts `starsAlone`; the whole catalogue is a flight's sky's to fetch), six degrees of sky holds one of them
+ * in ten frames, and the first to come into this picture is one of magnitude 3.9, low on the left once the camera
+ * has settled. So the sky over the Moon is black, as a film exposed for this ground has it.
  */
-const STARS = { limit: 6.6, gain: 0.6 };
+const STARS = { limit: 4.5, gain: 0.55 };
 
 export interface FrontStats {
   /** Frames drawn in the last second, and the loop's rate. */

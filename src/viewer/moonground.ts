@@ -27,7 +27,8 @@ import type { Measure } from '../measure.ts';
  * same sum, is left as level ground. It has no relief of its own against the sky.
  *
  * **Grain** is the soil's own unevenness between and under the craters, as smooth noise at wavelengths from a few
- * pixels to a few dozen, slopes of a few degrees: for the look (estimated).
+ * pixels to a few dozen, slopes of a few degrees: for the look (estimated). It is drawn only where the ground is seen
+ * squarely enough for it to read as grain (from high up); seen along itself, as from the start, it would be streaks.
  *
  * Nothing here cuts: an octave comes in over a range of sizes on the screen (a crater two pixels tall is not drawn,
  * one four tall is, wholly), so as the camera goes out the small ones are gone before they could shimmer and the
@@ -123,8 +124,9 @@ export function cellOf(x: number, y: number, k: number): [number, number] {
 }
 
 /**
- * GLSL (ES 3): `ground(q, F, sun, eye, slope, lit, bright)`. `q`: the place, metres east and north on the site's
- * plane. `F`: how much ground a pixel covers the long way, metres. `sun` and `eye`: toward each, as east, north and
+ * GLSL (ES 3): `ground(q, F, aslant, sun, eye, slope, lit, bright)`. `q`: the place, metres east and north on the site's
+ * plane. `F`: how much ground a pixel covers the long way, metres; `aslant`: the short way over the long way (1 seen
+ * from above, 0.07 seen along itself from four degrees up). `sun` and `eye`: toward each, as east, north and
  * up parts (level ground's own up). Out: the ground's slope east and north (rise over run) to add to the map's, how
  * much of the Sun the craters' own walls leave (1: all), and how much brighter the ground is (fresh craters'
  * throw-out and the soil's mottle: about 0). `octaves` and `grains`: how many of each are worked through (fewer on a
@@ -154,7 +156,7 @@ export const groundGlsl = (octaves: number, grains: number): string => /* glsl *
     float kx = v.y - v.x, ky = v.z - v.x, kxy = v.x - v.y - v.z + v.w;
     return vec3(v.x + kx * u.x + ky * u.y + kxy * u.x * u.y, du * vec2(kx + kxy * u.y, ky + kxy * u.x));
   }
-  void ground(vec2 q, float F, vec3 sun, vec3 eye, out vec2 slope, out float lit, out float bright) {
+  void ground(vec2 q, float F, float aslant, vec3 sun, vec3 eye, out vec2 slope, out float lit, out float bright) {
     slope = vec2(0.0);
     lit = 1.0;
     bright = 0.0;
@@ -196,15 +198,17 @@ export const groundGlsl = (octaves: number, grains: number): string => /* glsl *
         bright += w * smoothstep(0.22, 0.0, age) * (1.0 - smoothstep(0.9, 2.0, s)) * 0.45;
       }
     }
-    // the soil's grain: wavelengths from a few pixels to a few dozen
-    float mottle = 0.0;
+    // the soil's grain: wavelengths from a few pixels to a few dozen. Seen along itself a round patch of it is a
+    // streak a dozen times as wide as it is tall, and a field of them is a grain of lines across the picture that the
+    // ground does not have: it is drawn by how squarely the ground is seen, and not at all under a tenth
+    float mottle = 0.0, square = smoothstep(0.1, 0.5, aslant);
     for (int k = 0; k < ${grains}; k++) {
       float wave = 96.0 * exp2(-float(k));
       float w = smoothstep(2.5, 6.0, wave / F) * (1.0 - smoothstep(48.0, 200.0, wave / F));
-      if (w <= 0.0) continue;
+      if (w * square <= 0.0) continue;
       vec3 g = grain(q / wave + 19.0 * float(k), uint(k + 64));
-      slope += w * 0.022 * g.yz;
-      mottle += w * g.x;
+      slope += w * square * 0.022 * g.yz;
+      mottle += w * square * g.x;
     }
     bright += 0.025 * mottle;
   }`;
