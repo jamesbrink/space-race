@@ -229,14 +229,16 @@ export class Ascent {
     });
     if (!this.flying(t)) return out(0);
     const { cutoff, fires = [] } = this.flown();
+    // (a run flown by hand keeps the lever's settings in its samples: each fire burns at its engine's there)
+    const hand = (either(this.flown().samples as readonly LiveSample[], t)[0] as LiveSample).throttles;
     const levels: { main: number; steering: number }[] = [];
-    if (flies?.engine) levels.push(fireLevel(t, 0, cutoff));
+    if (flies?.engine) levels.push(fireLevel(t, 0, cutoff, hand ? (Object.values(hand)[0] ?? 1) : 1));
     (flies?.fires ?? []).forEach((f, k) => {
       const sequence = fires[k];
       const when = sequence?.earlier?.find((b) => t >= b.from && t <= b.to) ?? sequence;
       // (the fire's engine, by the name the flight gives it: its throttle as the record has it)
       const curve = this.flight.plan?.craft[0]?.engines.find((e) => e.id === f.on)?.throttle?.curve;
-      const throttle = curve ? along(curve, t) : 1;
+      const throttle = hand?.[f.on ?? ''] ?? (curve ? along(curve, t) : 1);
       levels.push(when ? fireLevel(t, when.from, when.to, throttle, steeringShare[levels.length] ?? 0) : { main: 0, steering: 0 });
     });
     if (!levels.some((l) => l.main > 0 || l.steering > 0)) return out(1, levels);
