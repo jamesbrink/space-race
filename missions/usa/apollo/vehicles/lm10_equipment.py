@@ -48,8 +48,8 @@ def folded_wheel(root, name, x, z, sign, alloy, dark):
     tread.build(name + "ChevronStrips", titanium, wheel, smooth=False)
 
 
-def rover(parts, alloy, dark, white):
-    bay = quadrant(parts["LMRover"], "LM10_QuadI", 58.5, 58.5, 135)
+def rover(parts, alloy, dark, white, prefix="LM10"):
+    bay = quadrant(parts["LMRover"], f"{prefix}_QuadI", 58.5, 58.5, 135)
     # The underside of the center chassis faces outboard. Fore and aft fold over its inboard side.
     floor, framebars, mounts, seat = (MeshBuilder() for _ in range(4))
     box(floor, (0, -2.3, 92), (55, 2.3, 57))
@@ -70,17 +70,17 @@ def rover(parts, alloy, dark, white):
     for x in (-12, 12):
         box(seat, (x, 0.1, 91), (20, 1.8, 23))
     box(seat, (0, 1.9, 75), (11, 2.5, 12))
-    floor.build("LM10_CenterChassis", alloy, bay)
-    framebars.build("LM10_FoldedChassis", alloy, bay)
-    mounts.build("LM10_DeploymentSupports", dark, bay)
-    seat.build("LM10_FoldedSeatAndBatteryCovers", white, bay)
+    floor.build(f"{prefix}_CenterChassis", alloy, bay)
+    framebars.build(f"{prefix}_FoldedChassis", alloy, bay)
+    mounts.build(f"{prefix}_DeploymentSupports", dark, bay)
+    seat.build(f"{prefix}_FoldedSeatAndBatteryCovers", white, bay)
     for end, z in (("Front", 77), ("Rear", 109.6)):
         for side, sign in (("Left", -1), ("Right", 1)):
-            folded_wheel(bay, f"LM10_{end}{side}Wheel", 16.8 * sign, z, sign, alloy, dark)
-    cover = quadrant(parts["LMDescent"], "LM10_RoverBlanketMount", 58.5, 58.5, 135)
+            folded_wheel(bay, f"{prefix}_{end}{side}Wheel", 16.8 * sign, z, sign, alloy, dark)
+    cover = quadrant(parts["LMDescent"], f"{prefix}_RoverBlanketMount", 58.5, 58.5, 135)
     blanket = MeshBuilder()
     box(blanket, (0, -4.41, 92), (57.6, 0.5, 59.8))
-    mark_shells([blanket.build("LM10_RoverThermalCover", white, cover).name])
+    mark_shells([blanket.build(f"{prefix}_RoverThermalCover", white, cover).name])
 
 
 def mesa(bay, alloy, white, dark):
@@ -96,22 +96,29 @@ def mesa(bay, alloy, white, dark):
     fittings.build("LM10_MESAFittings", dark, bay)
 
 
-def build(parts, alloy, amber, dark, white, linen):
-    rover(parts, alloy, dark, white)
-    lm5_equipment.surface_bays(parts["LMSurfaceEquipment"], None, parts["LMDescent"], alloy, amber, dark, white, mesa_load=mesa, prefix="LM10")
+def rover_and_pallet(parts, alloy, amber, dark, white, prefix, mesa_load):
+    rover(parts, alloy, dark, white, prefix)
+    lm5_equipment.surface_bays(parts["LMSurfaceEquipment"], None, parts["LMDescent"], alloy, amber, dark, white, mesa_load=mesa_load, prefix=prefix)
     # The enlarged MESA projects forward from the earlier cabinet. Local depth and fairing are estimated.
-    skirt = quadrant(parts["LMDescent"], "LM10_EnlargedMESAMount", 58.5, -58.5, 45)
+    skirt = quadrant(parts["LMDescent"], f"{prefix}_EnlargedMESAMount", 58.5, -58.5, 45)
     cover = MeshBuilder()
     box(cover, (0, -4.0, 91), (61, 7.6, 54))
-    mark_shells([cover.build("LM10_EnlargedMESACover", amber, skirt).name])
-    pallet = quadrant(parts["LMRoverPallet"], "LM10_QuadIIIRoverPallet", -58.5, -58.5, 315)
-    carrier = group("LM10_ToolCarrierMount", pallet)
+    mark_shells([cover.build(f"{prefix}_EnlargedMESACover", amber, skirt).name])
+    pallet = quadrant(parts["LMRoverPallet"], f"{prefix}_QuadIIIRoverPallet", -58.5, -58.5, 315)
+    carrier = group(f"{prefix}_ToolCarrierMount", pallet)
     carrier.location = point(-12, 7, 55)
-    reflector = quadrant(parts["LMRetroreflector"], "LM10_QuadIIIReflectorPallet", -58.5, -58.5, 315)
-    trays, array, blanket, channels = (MeshBuilder() for _ in range(4))
+    trays = MeshBuilder()
     box(trays, (-12, 8, 91), (20, 2, 47))
     for z in (68, 114):
         tube(trays, (-22, 8, z), (-2, 8, z), 0.8)
+    trays.build(f"{prefix}_ToolPallet", alloy, pallet)
+    return carrier
+
+
+def build(parts, alloy, amber, dark, white, linen):
+    carrier = rover_and_pallet(parts, alloy, amber, dark, white, "LM10", mesa)
+    reflector = quadrant(parts["LMRetroreflector"], "LM10_QuadIIIReflectorPallet", -58.5, -58.5, 315)
+    array, blanket, channels = (MeshBuilder() for _ in range(3))
     # The two leaves of the 300-cube reflector fold face to face for flight.
     box(array, (12, 5.3, 91), (26.1, 2.3, 24))
     box(array, (5.6, 2.3, 91), (12.8, 2.3, 24))
@@ -122,7 +129,6 @@ def build(parts, alloy, amber, dark, white, linen):
     for x in (0, 24):
         tube(channels, (x, 1, 79), (x, 11.5, 91), 0.625)
         tube(channels, (x, 11.5, 91), (x, 1, 103), 0.625)
-    trays.build("LM10_ToolPallet", alloy, pallet)
     array.build("LM10_FoldedReflectorPanels", alloy, reflector)
     blanket.build("LM10_ReflectorCover", white, reflector)
     channels.build("LM10_ReflectorPallet", dark, reflector)
