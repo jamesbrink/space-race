@@ -60,7 +60,15 @@ for (const f of flights) {
     for (const e of run.events) {
       const def = e.event && plan.events.find((x) => x.id === e.event);
       if (solved.has(e.event)) assert.equal(e.t, solved.get(e.event), `${f.id}: ${e.event} when guidance cut it`);
-      else if (def?.at && clocked(def)) assert.equal(e.t, clockAt(plan, def), `${f.id}: ${e.event} at its clock's instant`);
+      else if (def?.at && clocked(def)) {
+        // (the plan as the run flew it: a braking burn timed for the landing place, and what follows it, sim/plan.ts `LandingAim`)
+        const as = plan.kind === 'orbital' ? (orbitalFlown(f).plan ?? plan) : plan;
+        const lit = as.events.find((x) => x.id === def.id);
+        assert.ok(
+          Math.abs(e.t - (def.at.value + clockAt(as, lit) - clockAt(plan, def))) < 1e-6,
+          `${f.id}: ${e.event} at its clock's instant`,
+        );
+      }
     }
     // the record's instants by the record's ids, as the orbital record's events give them
     if (plan.kind === 'orbital')
@@ -73,7 +81,16 @@ for (const f of flights) {
       const release = plan.events.find((e) => e.do.some((action) => 'separate' in action && action.separate === j.id));
       // (a joint the run parts itself, at a height or so long after a cut its guidance made on the state, parts when the run has it)
       const runs = release?.when.some((w) => 'height' in w) || (release && !Number.isFinite(clockAt(plan, release)));
-      const at = runs ? (run.events.find((e) => e.event === release.id)?.t ?? j.at.value) : j.at.value;
+      // (or when the plan as the run flew it has it: after a braking burn timed for the landing place, as much later as the burn)
+      const as = plan.kind === 'orbital' ? (orbitalFlown(f).plan ?? plan) : plan;
+      const shift =
+        release && Number.isFinite(clockAt(plan, release))
+          ? clockAt(
+              as,
+              as.events.find((e) => e.id === release.id),
+            ) - clockAt(plan, release)
+          : 0;
+      const at = runs ? (run.events.find((e) => e.event === release.id)?.t ?? j.at.value) : j.at.value + shift;
       for (const b of j.gone) assert.ok(run.bodies[b] <= at + 1e-9, `${f.id}: ${b} gone by ${j.id}'s ${at} s (${run.bodies[b]})`);
     }
     // what it gave for each check: one row a check, each a number

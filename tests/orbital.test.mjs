@@ -27,7 +27,10 @@ const all = await Promise.all(
   ),
 );
 // (a flight whose coast has a burn that brings it down: an uncrewed target's has none, and is held in staged.test.mjs)
-const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site && Number.isFinite(coastOf(f.plan).on));
+// (and not one whose coast is flown on another craft, `FlightPlan.target`: Apollo 7's rendezvous with its own S-IVB, and
+// the vent and dump before it, are the run from the pad's; begun at the published orbit with neither it is not that
+// flight's coast, and is held in staged.test.mjs and apollo-7-flight.test.mjs)
+const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site && Number.isFinite(coastOf(f.plan).on) && !f.plan.target);
 /** The plan a record is written into: a Vostok's (vostok-record.ts, `stages`) or a Mercury-Atlas's (mercury-atlas-plan.ts, `atlas`). */
 const planOf = (orbital) =>
   'atlas' in orbital ? mercuryAtlasPlan(orbital) : 'titan' in orbital ? geminiTitanPlan(orbital) : vostokPlan(orbital);
@@ -678,6 +681,9 @@ test('a lifting body’s lift is square to its motion, its ratio of the drag, an
  */
 function laidOn(f, { deltaV = 10, ratio = 0, bank = 0, thrust } = {}) {
   const plan = structuredClone(f.plan);
+  // (the braking burn by the clock: timed for the landing place, sim/plan.ts `LandingAim`, guidance would take off what a
+  // manoeuvre or a lift laid on moves the landing by, which is what these tests read)
+  delete plan.record.landing.aimed;
   const c = plan.craft[0];
   const t = (value) => ({ value, confidence: 'estimated', source: 'a test of the shape' });
   const at = f.plan.record.orbit.injection.at.value + 2000;

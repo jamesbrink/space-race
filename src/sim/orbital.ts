@@ -467,6 +467,12 @@ export interface OrbitResults {
   retroLongitude: number;
   /** How far the push was from straight against the motion, degrees. */
   retroOffRetrograde: number;
+  /**
+   * When the braking engine lit on this run, s from liftoff, and how long after the record's instant that was (before
+   * it, negative): nothing, by the clock; guidance's, where the burn is aimed at the landing place (`LandingAim`).
+   */
+  retroAt: number;
+  retroLate: number;
   /** The perigee the burn left it on, m above the reference ball: under the ground or not, it is where an airless orbit would go. */
   retroPerigee: number;
   /** Height above the sea at `entry.separation`, m. */
@@ -560,7 +566,40 @@ export interface OrbitFlown {
   results: OrbitResults;
   /** The coast's manoeuvres as this run flew them, in the order lit; left out with none. */
   burns?: BurnFlown[];
+  /**
+   * The plan as this run flew it, where guidance timed its braking burn for the landing place (`aimedAtLanding`): the
+   * flight's plan with that burn's command, and all the clock sets off after it, so much sooner or later. What flies
+   * the descent and says when each event happened. Left out, the plan given.
+   */
+  plan?: FlightPlan;
 }
+
+/**
+ * `plan` with everything the clock sets off from `from` on (seconds from liftoff) set off `by` seconds later: the braking
+ * burn's command and what follows it, moved together. Each event keeps the record's instant (`at`); the landing is no
+ * longer aimed at (it has been).
+ */
+export function delayed(plan: FlightPlan, from: number, by: number): FlightPlan {
+  const out = structuredClone(plan);
+  for (const e of out.events)
+    e.when = e.when.map((w) =>
+      'time' in w && w.time >= from - 1e-6 && w.time < Number.MAX_SAFE_INTEGER ? { ...w, time: w.time + by } : w,
+    );
+  if (out.record?.landing?.aimed) {
+    const { aimed: _, ...landing } = out.record.landing;
+    out.record.landing = landing;
+  }
+  return out;
+}
+
+/** The earliest the braking burn's chain is set off by the clock: its command's instant where it has one, its lighting's otherwise. */
+function brakingFrom(plan: FlightPlan): number {
+  const k = coastEvents(plan);
+  return Math.min(clockAt(plan, k.command), clockAt(plan, k.on));
+}
+
+/** How long before the braking burn's recorded command guidance works its instant, at the most, s: most of a revolution's half. */
+const AIMED_BEFORE = 3000;
 
 /** Where the air is taken to begin for the choice of step, and where it is thick: m above the sea. */
 const THIN = 150_000;
@@ -1251,6 +1290,14 @@ export function flyOrbit(
     );
   };
   const push = (s: State, at: number): Vec3 => pushAs(s, at, at);
+  // Where the braking burn is aimed at the landing place, guidance works its instant here: after the last manoeuvre, and
+  // at most `AIMED_BEFORE` before the recorded command. Not on a flight a hand is flying down, or begun later than that.
+  const aimedLanding = plan.record?.landing?.aimed;
+  const braking = Number.isFinite(on) && on < Number.MAX_SAFE_INTEGER ? brakingFrom(plan) : Infinity;
+  const aimedFrom =
+    aimedLanding && !hands && Number.isFinite(braking)
+      ? Math.max(braking - AIMED_BEFORE, ...moves.map((m) => (m.toward && 'station' in m.toward ? m.toward.until.value : m.off) + 1))
+      : Infinity;
   /** The run's own forces flown ahead with a burn, for guidance to solve one on (sim/pursuit.ts `Ahead`): the air, and the burn; steps of 1 s through it and 10 s after. */
   const flyAhead: Ahead = (s, from, to, burn) => {
     let x = s;
@@ -1307,6 +1354,8 @@ export function flyOrbit(
     retroLatitude: Number.NaN,
     retroLongitude: Number.NaN,
     retroOffRetrograde: Number.NaN,
+    retroAt: on,
+    retroLate: 0,
     retroPerigee: Number.NaN,
     separationAltitude: Number.NaN,
     interfaceAt: Number.NaN,
@@ -1464,6 +1513,7 @@ export function flyOrbit(
     ...ship.banks.map((b) => b.at),
     ...fixes.map((f) => f.at.value),
     ...ranges.map((c) => (c.when as { at: number }).at),
+    ...(aimedFrom > t && aimedFrom < braking ? [aimedFrom] : []),
   ]
     .filter(Number.isFinite)
     .sort((p, q) => p - q);
@@ -1527,6 +1577,101 @@ export function flyOrbit(
       read(x.at === t ? state : step(last, as, x.at - as, (s, at) => pushAs(s, at, as)), x.ids);
     }
     arrive();
+    const aimedShip = ship.landing;
+    if (t === aimedFrom && aimedLanding && aimedShip) {
+      // The braking burn timed for the landing place: its command so much sooner or later that the run, flown ahead from
+      // here on its own forces, comes down level with the place along its track (the secant on the delay, to 500 m: a
+      // second of delay is seven kilometres). Then the rest of the coast is that plan's, flown on from this state.
+      const here = { t, r: state.r, v: state.v };
+      const place = geodeticToEcef({ latitude: aimedShip.latitude.value, longitude: aimedShip.longitude.value, height: 0 });
+      /**
+       * How far beyond the place the run comes down with the command `by` later, m along its own track over the ground
+       * (short of it, negative): the angle at the Earth's centre from where it came down to the place, about the pole
+       * of its track as it came in (from where it was five minutes before it was down), so a miss of a quarter of the
+       * way round is still a distance with a sign. NaN where the burn does not bring it down on that pass (within
+       * fifty minutes of its end).
+       */
+      const missAt = (by: number): number => {
+        const trial = flyOrbit(
+          delayed(plan, braking, by),
+          site,
+          frame,
+          seaLevel,
+          60,
+          here,
+          undefined,
+          undefined,
+          Infinity,
+          pursued,
+        ).samples;
+        const end = trial[trial.length - 1]!;
+        let before: OrbitSample | undefined;
+        for (const x of trial) if (x.t <= end.t - 300) before = x;
+        if (!before || end.phase !== 'down' || end.t > off + by + 3000) return Number.NaN;
+        const [p0, p1] = [frame.toFixed(before.r, before.t), frame.toFixed(end.r, end.t)];
+        const pole = unit(cross(p0, p1));
+        return -Math.atan2(dot(cross(p1, place), pole), dot(p1, place)) * length(place);
+      };
+      const soonest = t + 1 - braking;
+      const NEAR = 500;
+      // The secant on the delay, begun at the speed the place below goes by at: on an orbit near a circle, three or four
+      // flights ahead.
+      let [d0, f0] = [0, missAt(0)];
+      let d1 = Math.max(soonest, -f0 / 7000);
+      let f1 = Number.isFinite(f0) ? missAt(d1) : Number.NaN;
+      for (let k = 0; k < 6 && Number.isFinite(f1) && Math.abs(f1) > NEAR && f1 !== f0; k++) {
+        const d2 = Math.max(soonest, d1 - (f1 * (d1 - d0)) / (f1 - f0));
+        [d0, f0, d1, f1] = [d1, f1, d2, missAt(d2)];
+      }
+      if (!(Math.abs(f1) <= NEAR)) {
+        // Where that fails (an orbit far from a circle, on which the burn brings it down only from part of the way
+        // round): every delay from the soonest to as long after the record's instant, four minutes apart, and between
+        // the two neighbours nearest the record's instant that come down either side of the place, by halving.
+        const tried: [number, number][] = [];
+        for (let d = soonest; d <= AIMED_BEFORE; d += 240) tried.push([d, missAt(d)]);
+        let pair: [[number, number], [number, number]] | null = null;
+        for (let i = 1; i < tried.length; i++) {
+          const [p, q] = [tried[i - 1]!, tried[i]!];
+          if (!Number.isFinite(p[1]) || !Number.isFinite(q[1]) || p[1] * q[1] > 0 || Math.abs(p[1] - q[1]) > 4e6) continue;
+          if (!pair || Math.min(Math.abs(p[0]), Math.abs(q[0])) < Math.min(Math.abs(pair[0][0]), Math.abs(pair[1][0]))) pair = [p, q];
+        }
+        f1 = Number.NaN;
+        if (pair) {
+          let [lo, hi] = pair;
+          for (let k = 0; k < 24; k++) {
+            d1 = (lo[0] + hi[0]) / 2;
+            f1 = missAt(d1);
+            if (!Number.isFinite(f1) || Math.abs(f1) <= NEAR) break;
+            if (f1 * lo[1] > 0) lo = [d1, f1];
+            else hi = [d1, f1];
+          }
+        }
+      }
+      if (Number.isFinite(f1) && Math.abs(f1) <= 500) {
+        const late = d1 + (aimedLanding.late?.value ?? 0);
+        const flown = delayed(plan, braking, late);
+        const rest = flyOrbit(flown, site, frame, seaLevel, every, here, hands, contacts, stopAt, pursued);
+        // (what the whole coast gave: this part's own, and of the rest what comes after)
+        const before = results as unknown as Record<string, number>;
+        const after = rest.results as unknown as Record<string, number>;
+        for (const [key, value] of Object.entries(before)) if (!Number.isFinite(after[key]) || !(key in after)) after[key] = value;
+        rest.results.period = results.period;
+        rest.results.apogee = Math.max(results.apogee, rest.results.apogee);
+        if (Number.isFinite(results.shadowIn)) rest.results.shadowIn = results.shadowIn;
+        if (Number.isFinite(results.shadowOut)) rest.results.shadowOut = results.shadowOut;
+        rest.results.retroLate = late;
+        const made = [...burns, ...(rest.burns ?? [])];
+        for (const b of burns) rest.results[`${b.lit}.velocity`] = b.velocity;
+        if (samples[samples.length - 1]!.t < t) samples.push(sample());
+        return {
+          samples: [...samples, ...rest.samples.slice(1)],
+          results: rest.results,
+          ...(made.length ? { burns: made } : {}),
+          plan: flown,
+        };
+      }
+      // (no instant brings it down there: lit by the clock, as recorded)
+    }
     let now = sample();
     phase = phaseAt(t, now.g, phase);
     now = { ...now, phase };

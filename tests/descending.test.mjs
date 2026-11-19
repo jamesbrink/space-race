@@ -65,7 +65,11 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
     const begun = down.tracks[bodies[0].id][0];
     for (const b of bodies.slice(0, 2)) {
       const want = down.landed[b.id];
-      held(predicted(descending(f.plan, dated, sea, { t: begun.t }, { follow: b.id }), begun), want, `${b.id} from the handing over`);
+      held(
+        predicted(descending(flown().plan ?? f.plan, dated, sea, { t: begun.t }, { follow: b.id }), begun),
+        want,
+        `${b.id} from the handing over`,
+      );
     }
   });
   test(`${f.id}: begun part-way down, from the run's own state of each body`, () => {
@@ -76,7 +80,7 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
     for (const at of [Object.values(down.opened[first.id])[0] + 30, down.landed[first.id].at - 120]) {
       const s = track.findLast((x) => x.t <= at);
       held(
-        predicted(descending(f.plan, dated, sea, { t: s.t }, { follow: first.id, from: down }), s),
+        predicted(descending(flown().plan ?? f.plan, dated, sea, { t: s.t }, { follow: first.id, from: down }), s),
         down.landed[first.id],
         `${first.id} from ${s.t.toFixed(0)} s`,
       );
@@ -88,10 +92,12 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
     const samples = coast.samples;
     const s = samples.findLast((x) => x.t <= down.tracks[first.id][0].t - 300);
     const start = { t: s.t, r: s.r, v: s.v };
-    const short = predicted(spacecraft(f.plan, dated, site, sea, start), start);
+    // (the plan as the run flew it: its braking burn where guidance timed it for the landing place, sim/plan.ts `LandingAim`)
+    const as = flown().plan ?? f.plan;
+    const short = predicted(spacecraft(as, dated, site, sea, start), start);
     assert.ok(short.impact && Math.abs(short.impact.altitude - coastOf(f.plan).floor) < 1, 'without it, it stops where the pilot leaves');
     held(
-      predicted(spacecraft(f.plan, dated, site, sea, start, { descend: { follow: first.id } }), start),
+      predicted(spacecraft(as, dated, site, sea, start, { descend: { follow: first.id } }), start),
       down.landed[first.id],
       `${first.id} from the coast`,
     );

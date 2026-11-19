@@ -7,7 +7,7 @@
 import type { Confidence, Curve, Heating, Measure, ShedBody } from '../../../../src/types.ts';
 import type { Vec3 } from '../../../../src/world/frames.ts';
 import type { DescentCrew, Guidance, OrbitResults } from '../../../../src/sim/orbital.ts';
-import type { AbortMode, Craft, Lands, Nozzle } from '../../../../src/sim/plan.ts';
+import type { AbortMode, Craft, LandingAim, Lands, Nozzle } from '../../../../src/sim/plan.ts';
 
 /** One stage, or one of several alike, as the record has it. Masses in kg, thrust in N, specific impulse in s, times in seconds from liftoff. */
 export interface StageRecord {
@@ -252,6 +252,8 @@ export interface VostokRecord {
     at: Measure;
     /** The place, as the flight's card names it ('Smelovka'). */
     near?: string;
+    /** That the braking burn was timed for this place, where it was (sim/plan.ts `LandingAim`). */
+    aimed?: LandingAim;
   };
   checks: OrbitCheck[];
 }

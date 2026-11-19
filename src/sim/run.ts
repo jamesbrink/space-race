@@ -19,7 +19,7 @@ import { downOf } from './descent.ts';
 import { ballisticOf, flownOnce, type Sample, sampleAt } from './fly.ts';
 import { flyLoose, type LooseFlown } from './loose.ts';
 import { type CoastContacts, coastEvents, coastOf, shipOf } from './orbital.ts';
-import { type Action, type EventDef, eventOf, type FlightPlan } from './plan.ts';
+import { type Action, clockAt, type EventDef, eventOf, type FlightPlan } from './plan.ts';
 import type { Target } from './pursuit.ts';
 import { type CoastRotation, conjugate, IDENTITY, multiply, nlerp, type Quat, rotateFor, turn } from './rigid.ts';
 import { wavesOf } from './sea.ts';
@@ -506,6 +506,14 @@ export function orbitalFlown(flight: SitedFlight): FlownWhole {
     orbitalWholes.set(plan, (whole = flyWhole(plan, siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1)));
   return whole;
 }
+/**
+ * The flight's plan as its record's run flew it: with its braking burn where guidance timed it for the landing place
+ * (orbital.ts `LandingAim`), and all the clock sets off after it; the flight's own plan where nothing was timed so.
+ * What to ask when the record's burn was lit on the run on show (`coastOf`, `shipOf`), in place of `flight.plan`.
+ */
+export function flownPlan(flight: SitedFlight): FlightPlan {
+  return flight.plan!.kind === 'orbital' && flight.flies ? (orbitalFlown(flight).plan ?? flight.plan!) : flight.plan!;
+}
 export function orbitalRecord(flight: SitedFlight): Run {
   const plan = flight.plan!;
   const had = orbitalRuns.get(plan);
@@ -513,39 +521,41 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const site = siteFrame(flight.site);
   const jd = julianDate(flight.launch);
   const whole = orbitalFlown(flight);
-  const centre = (flight.flies?.datum ?? 0) + (plan.record?.centre?.value ?? 0);
-  const samples = recordSamples(plan, whole, frameOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
+  // (the plan as the run flew it: its braking burn where guidance timed it for the landing place, orbital.ts `LandingAim`)
+  const flown = whole.plan ?? plan;
+  const centre = (flight.flies?.datum ?? 0) + (flown.record?.centre?.value ?? 0);
+  const samples = recordSamples(flown, whole, frameOf(flight), centre, (t) => sunPosition(terrestrialTime(jd + t / 86_400)));
   const end = samples[samples.length - 1]!;
   const ejected = whole.coast.results.ejectionAt;
   // (what the pilot's ejection lets go, by the joints it parts, leaves at the run's own instant of it)
-  const ejection = eventOf(plan, downOf(plan)?.ejection ?? '');
+  const ejection = eventOf(flown, downOf(flown)?.ejection ?? '');
   const ejecting = new Set(ejection?.do.flatMap((a) => ('separate' in a ? [a.separate] : [])) ?? []);
   // (and what a joint lets go that the run itself times, so long after a cut its guidance made on the state, leaves then)
-  const own = partedBy(plan, whole);
+  const own = partedBy(flown, whole);
   const dropped = flight.flies!.drops.map((d) =>
     d.on && ejecting.has(d.on) && Number.isFinite(ejected) ? ejected : (own.get(d.on?.split('/')[0] ?? '') ?? d.at),
   );
-  const sheds = new Sheds(plan, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
-  for (const def of plan.craft[0]!.sheds ?? []) {
+  const sheds = new Sheds(flown, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
+  for (const def of flown.craft[0]!.sheds ?? []) {
     const i = flight.flies!.drops.findIndex((d) => d.on === def.on);
     if (i < 0) continue;
-    const release = orbitalRelease(plan, def, samples, dropped[i]!);
+    const release = orbitalRelease(flown, def, samples, dropped[i]!);
     if (release) sheds.add(release);
   }
   // (the fire is the first stages': Block E's small flame, 28 m up inside the lattice, is not drawn; a stage's end is the record's cut, or its letting go where it has no cut of its own)
-  const stages = sequenceOf(plan).stages;
+  const stages = sequenceOf(flown).stages;
   const first = stages[1] ?? stages[0]!;
-  // (what happened: each of the plan's events at the record's instant of it, or the run's own where it decides it; the record's marks)
+  // (what happened: each of the flown's events at the record's instant of it, or the run's own where it decides it; the record's marks)
   const times = orbitalEvents(flight, whole);
   const events: RunEvent[] = [];
   const told = new Set<string>();
-  for (const e of plan.events) {
+  for (const e of flown.events) {
     const t = e.record ? times[e.record.id] : e.at?.value;
     if (t === undefined) continue;
     events.push({ event: e.id, ...(e.record ? { record: e.record.id } : {}), t });
     if (e.record) told.add(e.record.id);
   }
-  for (const m of plan.record?.marks ?? []) if (!told.has(m.id)) events.push({ record: m.id, t: times[m.id] ?? m.at.value });
+  for (const m of flown.record?.marks ?? []) if (!told.has(m.id)) events.push({ record: m.id, t: times[m.id] ?? m.at.value });
   events.sort((a, b) => a.t - b.t);
   const run = runOf(flight, {
     samples,
@@ -555,11 +565,11 @@ export function orbitalRecord(flight: SitedFlight): Run {
     live: true,
     out: { drogue: Infinity, main: Infinity },
     sheds,
-    fires: firesOf(flight, whole),
-    descent: descentOf(whole, centre, plan.record?.ground?.value),
+    fires: firesOf(flight, whole, undefined, flown),
+    descent: descentOf(whole, centre, flown.record?.ground?.value),
     events,
-    bodies: bodiesOf(plan, events),
-    results: held(plan, whole),
+    bodies: bodiesOf(flown, events),
+    results: held(flown, whole),
     ...(whole.target ? { target: whole.target } : {}),
   });
   if (whole.down) floatUprighting(flight, run);
@@ -618,6 +628,17 @@ export function orbitalEvents(
       plan.events.find((e) => e.automatic && e.do.some((a) => 'separate' in a && a.separate === joint)),
       at,
     );
+  // A braking burn guidance timed for the landing place (orbital.ts `LandingAim`): its command and all the clock sets off
+  // after it happened so much later than the record's instants, which are figures the run is held to.
+  if (whole.plan) {
+    for (const e of whole.plan.events) {
+      const [was, is] = [clockAt(plan, eventOf(plan, e.id)), clockAt(whole.plan, e)];
+      if (e.record && Number.isFinite(was) && Number.isFinite(is) && was < Number.MAX_SAFE_INTEGER && is !== was)
+        out[e.record.id] = (e.at?.value ?? was) + (is - was);
+    }
+    const from = Math.min(clockAt(plan, coastEvents(plan).command), clockAt(plan, coastEvents(plan).on));
+    for (const m of plan.record?.marks ?? []) if (m.at.value >= from) out[m.id] = m.at.value + whole.coast.results.retroLate;
+  }
   // A manoeuvre guidance solved on the flight's target (sim/pursuit.ts) is cut when it has given what was solved.
   for (const b of whole.coast.burns ?? []) if (b.solved) put(eventOf(plan, b.cut), b.off);
   const k = coastEvents(plan);
