@@ -234,7 +234,7 @@ def visor_shell(mesh, point, centre, radius, height, half_width):
         plate(mesh, outline, 0.12)
 
 
-def articulated_tail_masts(parts):
+def articulated_tail_masts(parts, rp1_valve=False):
     """Starboard and port masts from MSFC-MAN-504 fig. 8-7; local hinge geometry estimated."""
     parts.node("Tail_Service_Masts")
     steel = parts("Tail_Service_Masts", "steel")
@@ -271,6 +271,56 @@ def articulated_tail_masts(parts):
         hood = f"Tail_Visor_{label}"
         parts.node(hood, "Tail_Service_Masts", point(centre, 0, hood_height))
         visor_shell(parts(hood, "deck"), point, centre, 2.48, hood_height, 1.97)
+
+        if rp1_valve and label == "1_2":
+            mast_fuel_valve(parts, point, boom, centre, pivot_height)
+
+
+def mast_fuel_valve(parts, point, boom, centre, pivot_height):
+    """RP-1 mast cutoff A18651, AS-509 evaluation §3.4.1. External fittings and routing are estimated."""
+    node = "RP1_Mast_Cutoff"
+    radius, side, height = centre + 1.05, -1.52, 10.1
+    parts.node(node, "Tail_Service_Masts", point(radius, side, height))
+    pipe = parts("Tail_Service_Masts", "deck/fuel_riser", True)
+    flanges = parts(node, "deck/valve_flanges", True)
+    valve = parts(node, "steel/valve_body", True)
+    bolts = parts(node, "steel/flange_bolts", True)
+
+    def tube(mesh, a, b, r):
+        mesh.tube(P(*point(*a)), P(*point(*b)), r * FT)
+
+    # A deck penetration, a flanged valve body and a pneumatic actuator on the side.
+    tube(pipe, (radius, side, 1.04), (radius, side, pivot_height - 0.23), 0.32)
+    tube(pipe, (radius, side, 1.12), (radius, side, 1.28), 0.52)
+    for z in (height - 0.92, height - 0.58, height + 0.60, height + 0.94):
+        tube(flanges, (radius, side, z - 0.08), (radius, side, z + 0.08), 0.52)
+    tube(valve, (radius, side, height - 0.71), (radius, side, height + 0.75), 0.54)
+    for z in (height - 0.92, height + 0.94):
+        for i in range(8):
+            a = i * pi / 4
+            r, w = radius + 0.43 * cos(a), side + 0.43 * sin(a)
+            tube(bolts, (r, w, z - 0.13), (r, w, z + 0.14), 0.055)
+    tube(valve, (radius, side - 0.27, height), (radius, side - 1.04, height), 0.29)
+    tube(flanges, (radius, side - 0.85, height), (radius, side - 1.62, height), 0.54)
+    tube(valve, (radius, side - 1.55, height), (radius, side - 1.73, height), 0.59)
+    for i in range(8):
+        a = i * pi / 4
+        r, z = radius + 0.47 * cos(a), height + 0.47 * sin(a)
+        tube(bolts, (r, side - 1.68, z), (r, side - 1.79, z), 0.05)
+    # The earlier flight's evaluation identifies the gas that controlled this valve.
+    control = parts(node, "rail/pneumatic_line", True)
+    tube(control, (radius, side - 1.27, height + 0.42), (radius, side - 1.27, height + 0.86), 0.09)
+    tube(control, (radius, side - 1.27, height + 0.80), (radius + 0.76, side - 1.27, height + 0.9), 0.055)
+    tube(control, (radius + 0.73, side - 1.27, height + 0.9), (radius + 0.94, side - 1.27, height - 0.90), 0.055)
+    # The fixed pipe terminates at the trunnion. The delivery pipe rides on the boom
+    # and meets the sliding carrier within the original steel umbilical envelope.
+    tube(pipe, (radius, side, pivot_height - 0.29), (centre, side, pivot_height), 0.32)
+    tube(pipe, (centre, side - 0.32, pivot_height), (centre, -1.18, pivot_height), 0.48)
+    moving = parts(boom, "deck/delivery_pipe", True)
+    tube(moving, (centre + 0.18, -1.17, pivot_height), (17.15, -1.17, pivot_height), 0.26)
+    for r in (19.8, 23.6, 27.0):
+        tube(moving, (r - 0.08, -1.17, pivot_height), (r + 0.08, -1.17, pivot_height), 0.36)
+        beam(parts(boom, "steel/pipe_clamps"), point(r, -0.85, pivot_height + 0.3), point(r, -1.17, pivot_height + 0.3), 0.16)
 
 
 def quench_valve(parts):
@@ -334,7 +384,7 @@ def intertank_carrier(parts):
             beam(parts(parent, "deck/pipe_support"), (x + 0.12, y, z + 0.48), (x + 0.12, y, z + 2.11), 0.19)
 
 
-def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False):
+def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_valve=False):
     use(FT)
     parts = Parts(
         {
@@ -352,7 +402,7 @@ def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False):
     base(parts)
     if detailed:
         articulated_holddowns(parts)
-        articulated_tail_masts(parts)
+        articulated_tail_masts(parts, rp1_valve)
     else:
         holddowns(parts)
         tail_masts(parts)
