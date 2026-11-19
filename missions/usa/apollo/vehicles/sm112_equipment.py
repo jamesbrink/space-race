@@ -1,4 +1,4 @@
-"""Endeavour's sector I science pallet in launch stowage. Inches, see csm-112.md."""
+"""J-mission sector I science pallet in launch stowage. Inches, see csm-112.md and csm-113.md."""
 
 import math
 
@@ -10,7 +10,7 @@ from srlib import IN, MeshBuilder, interior, material
 SECTOR = Matrix.Rotation(math.radians(40), 4, "Z")
 
 
-def build(groups, origin_xa):
+def build(groups, origin_xa, *, spacecraft):
     alloy = material("apollo-sim-machined-alloy", (0.64, 0.65, 0.62), metallic=0.70, roughness=0.38)
     white = material("apollo-sim-thermal-white", (0.84, 0.82, 0.75), roughness=0.65)
     black = material("apollo-sim-instrument-black", (0.063, 0.068, 0.069), metallic=0.27)
@@ -45,7 +45,7 @@ def build(groups, origin_xa):
         for i in range(16):
             faces.extend([(n - 1 - i, n - 2 - i, i + 1, i), (i + n, i + 1 + n, 2 * n - 2 - i, 2 * n - 1 - i)])
         slab.add(vertices, faces)
-        slab.build(f"SM112_SIMSandwichShelf{xa}", alloy, groups["SIMBay"], smooth=False)
+        slab.build(f"SM{spacecraft}_SIMSandwichShelf{xa}", alloy, groups["SIMBay"], smooth=False)
 
     for xa in (841, 869, 932, 955):
         shelf(xa)
@@ -76,9 +76,9 @@ def build(groups, origin_xa):
             ]
             for a, b in zip(zpath, zpath[1:]):
                 pipe(routes, a, b, 0.31)
-    liners.build("SM112_InstrumentPalletLiners", white, groups["SIMBay"], smooth=False)
-    stiffeners.build("SM112_PalletSideStiffeners", alloy, groups["SIMBay"])
-    routes.build("SM112_SideHarnesses", black, groups["SIMBay"])
+    liners.build(f"SM{spacecraft}_InstrumentPalletLiners", white, groups["SIMBay"], smooth=False)
+    stiffeners.build(f"SM{spacecraft}_PalletSideStiffeners", alloy, groups["SIMBay"])
+    routes.build(f"SM{spacecraft}_SideHarnesses", black, groups["SIMBay"])
 
     # EVA handholds straddle the cut line and stay with the spacecraft.
     handrails = MeshBuilder()
@@ -88,7 +88,7 @@ def build(groups, origin_xa):
             rail = [(r * math.cos(a), r * math.sin(a), z) for r, z in ((76.8, bottom), (78.5, bottom + 1.5), (78.5, top - 1.5), (76.8, top))]
             for start, end in zip(rail, rail[1:]):
                 pipe(handrails, start, end, 0.45)
-    handrails.build("SM112_EVAHandrails", alloy, groups["SIMBay"])
+    handrails.build(f"SM{spacecraft}_EVAHandrails", alloy, groups["SIMBay"])
 
     # Clipped corners and rounded upper shoulders of the subsatellite launch container.
     def container_point(r, t, xa):
@@ -112,18 +112,18 @@ def build(groups, origin_xa):
     housing(compartment, 68.1, 68.6, -14, 870, outline)
     for t in (-18, -14, -10):
         handle.tube(container_point(68.85, t, 872), container_point(68.85, t, 882), 0.48 * IN)
-    compartment.build("SM112_SubsatelliteContainer", black, groups["SIMBay"], smooth=False)
-    handle.build("SM112_SubsatelliteContainerRibs", alloy, groups["SIMBay"])
+    compartment.build(f"SM{spacecraft}_SubsatelliteContainer", black, groups["SIMBay"], smooth=False)
+    handle.build(f"SM{spacecraft}_SubsatelliteContainerRibs", alloy, groups["SIMBay"])
 
     # Reconstruct the EVA foot restraint beside the panoramic camera.
     rest = MeshBuilder()
     outline = [(-3, 0), (3, 0), (4.4, 1.5), (3.2, 5.5), (4.2, 10.5), (2.8, 12), (-2.8, 12), (-4.2, 10.5), (-3.2, 5.5), (-4.4, 1.5)]
     housing(rest, 65, 66.2, -17, 897, outline, transform=point)
-    rest.build("SM112_EVAFootRestraint", black, groups["SIMBay"], smooth=False)
+    rest.build(f"SM{spacecraft}_EVAFootRestraint", black, groups["SIMBay"], smooth=False)
     fittings = MeshBuilder()
     for z in (899, 907):
         pipe(fittings, (57, -17, z), (65, -17, z), 0.85)
-    fittings.build("SM112_FootRestraintBrackets", alloy, groups["SIMBay"])
+    fittings.build(f"SM{spacecraft}_FootRestraintBrackets", alloy, groups["SIMBay"])
 
     # Shallow creases on the panoramic camera's thermal wrap, based on S71-2250-X.
     # The two removable-faced white panels interrupt the gold perimeter.
@@ -136,7 +136,7 @@ def build(groups, origin_xa):
             wrap.add(verts, [(0, 1, 4), (1, 2, 4), (2, 3, 4), (3, 0, 4)] if side == -1 else [(4, 1, 0), (4, 2, 1), (4, 3, 2), (4, 0, 3)])
     for z in (870.8, 892.3, 911.5):
         box(wrap, 67.35, 9, z, (0.55, 20.1, 1.25))
-    wrap.build("SM112_PanoramicThermalWrap", blanket, groups["SIMCameras"], smooth=False)
+    wrap.build(f"SM{spacecraft}_PanoramicThermalWrap", blanket, groups["SIMCameras"], smooth=False)
     # Optical head, cassette and scanning-camera installation, fig. A-1.
     equip, body, optics, trim = (MeshBuilder() for _ in range(4))
     box(body, 62, -4, 943.3, (13, 18, 16))
@@ -165,10 +165,10 @@ def build(groups, origin_xa):
         pipe(trim, (67.7, side * 7 - 4, 948), (68.6, side * 7 - 4, 948), 0.55)
         pipe(trim, (69, 12.4 + side * 4.5, 947.5), (70.4, 12.4 + side * 4.5, 948.7), 0.45)
     pipe(trim, (70.4, 7.9, 948.7), (70.4, 16.9, 948.7), 0.45)
-    equip.build("SM112_SIMCameraHousingsAndCassettes", white, groups["SIMCameras"], smooth=False)
-    body.build("SM112_SIMCameraPanels", white, groups["SIMCameras"], smooth=False)
-    optics.build("SM112_CameraOpticalPorts", glass, groups["SIMCameras"])
-    trim.build("SM112_CameraBezelsAndEVAHandles", black, groups["SIMCameras"])
+    equip.build(f"SM{spacecraft}_SIMCameraHousingsAndCassettes", white, groups["SIMCameras"], smooth=False)
+    body.build(f"SM{spacecraft}_SIMCameraPanels", white, groups["SIMCameras"], smooth=False)
+    optics.build(f"SM{spacecraft}_CameraOpticalPorts", glass, groups["SIMCameras"])
+    trim.build(f"SM{spacecraft}_CameraBezelsAndEVAHandles", black, groups["SIMCameras"])
 
     # Heads and inboard reel drives; launch view keeps both booms retracted.
     ends, instruments, drives = MeshBuilder(), MeshBuilder(), MeshBuilder()
@@ -182,9 +182,28 @@ def build(groups, origin_xa):
     box(drives, 61, 8, 847.4, (11, 14, 8.8))
     for t, z in ((4, 848.8), (10, 848.8), (4, 845.5), (10, 845.5)):
         pipe(ends, (66.6, t, z), (67, t, z), 1.1)
-    ends.build("SM112_SpectrometerHeadsAndDetectors", black, groups["SIMBooms"])
-    instruments.build("SM112_StowedBoomSleeves", alloy, groups["SIMBooms"])
-    drives.build("SM112_BoomDrivesAndXRayAlphaHousing", white, groups["SIMBooms"], smooth=False)
+    ends.build(f"SM{spacecraft}_SpectrometerHeadsAndDetectors", black, groups["SIMBooms"])
+    instruments.build(f"SM{spacecraft}_StowedBoomSleeves", alloy, groups["SIMBooms"])
+    drives.build(f"SM{spacecraft}_BoomDrivesAndXRayAlphaHousing", white, groups["SIMBooms"], smooth=False)
+
+    if spacecraft == 113:
+        # MR appendix A.1 and §9.12: position switches, guide shoes and tapered pins
+        # on the retraction mechanism. Local stations and dimensions are estimates.
+        switches, lugs, wiring = MeshBuilder(), MeshBuilder(), MeshBuilder()
+        for t, z in ((-13, 855), (16, 859)):
+            side = -1 if t < 0 else 1
+            box(switches, 56.4, t + side * 3.55, z - 1.0, (2.0, 1.0, 1.6))
+            for r, offset in ((55.7, 4.8), (57.2, 5.5)):
+                pipe(wiring, (r, t + side * 4, z - 0.8), (r, t + side * offset, z - 1.85), 0.15)
+                pipe(wiring, (r, t + side * offset, z - 1.85), (51, t + side * offset, z - 1.85), 0.15)
+        for dz in (-3.1, 3.1):
+            z, t = 855 + dz, -16.9
+            box(lugs, 59.2, t, z, (1.25, 1.25, 1.35))
+            pipe(lugs, (59.9, t, z), (62.7, t, z), 0.35)
+            pipe(lugs, (58.0, t, z), (58.6, t, z), 0.22)
+        switches.build("SM113_BoomPositionSwitches", black, groups["SIMBooms"], smooth=False)
+        lugs.build("SM113_GammaGuidePinsAndShoes", alloy, groups["SIMBooms"])
+        wiring.build("SM113_PositionTelemetryLeads", black, groups["SIMBooms"])
 
     if not interior():
         return
@@ -192,7 +211,7 @@ def build(groups, origin_xa):
     prism, satellite = MeshBuilder(), MeshBuilder()
     corners = [(7 * math.cos(math.tau * i / 6), 7 * math.sin(math.tau * i / 6)) for i in range(6)]
     housing(prism, 37.8, 67.8, -14, 878.7, corners)
-    prism.build("SM112_30InchSubsatellite", alloy, groups["Subsatellite"], smooth=False)
+    prism.build(f"SM{spacecraft}_30InchSubsatellite", alloy, groups["Subsatellite"], smooth=False)
     for i, (t, z) in enumerate(corners):
         nt, nz = corners[(i + 1) % 6]
         # Figure A-12 shows banks of cells separated by small gaps on six faces.
@@ -205,18 +224,18 @@ def build(groups, origin_xa):
                     uv = ((lo, w), (lo + 0.86, w), (lo + 0.86, w + 0.213), (lo, w + 0.213))
                     verts = [container_point(r, -14 + (tt + (t - nt) * u) * 1.018, 878.7 + (zz + (z - nz) * u) * 1.018) for r, u in uv]
                     satellite.add(verts, [(0, 1, 2, 3)])
-    satellite.build("SM112_SubsatelliteSolarPanels", cells, groups["Subsatellite"], smooth=False)
+    satellite.build(f"SM{spacecraft}_SubsatelliteSolarPanels", cells, groups["Subsatellite"], smooth=False)
     booms = MeshBuilder()
     for a in (0, 120, 240):
         angle = math.radians(a)
         t, z = -14 + 7.43 * math.cos(angle), 878.7 + 7.43 * math.sin(angle)
         booms.tube(container_point(38.3, t, z), container_point(66.1, t, z), 0.23 * IN)
         booms.tube(container_point(64.9, t, z), container_point(66.1, t, z), 0.46 * IN)
-    booms.build("SM112_ThreeFoldedSubsatelliteBooms", alloy, groups["Subsatellite"])
+    booms.build(f"SM{spacecraft}_ThreeFoldedSubsatelliteBooms", alloy, groups["Subsatellite"])
     hydro = groups["ReserveHydrogen"]
     centre = point(39, 0, 929) / IN
-    _ball("SM112_HydrogenThreeVacuumJacket", HYDROGEN_DIAMETER, centre, foil, hydro)
+    _ball(f"SM{spacecraft}_HydrogenThreeVacuumJacket", HYDROGEN_DIAMETER, centre, foil, hydro)
     pipework = MeshBuilder()
     pipe(pipework, (39, 0, 944.8), (39, 0, 946.9), 1)
     pipe(pipework, (39, 0, 946.9), (48, 0, 946.9), 0.45)
-    pipework.build("SM112_HydrogenOutlet", alloy, hydro)
+    pipework.build(f"SM{spacecraft}_HydrogenOutlet", alloy, hydro)

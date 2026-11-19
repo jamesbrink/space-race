@@ -1,5 +1,7 @@
-import type { Part, ViewDef } from '../../../../../src/types.ts';
-import { cm, lift, nodes, part, probePort, sm } from '../../vehicles/stack-gallery.ts';
+import type { Part } from '../../../../../src/types.ts';
+import { cm, lift, part, probePort, sm } from '../../vehicles/stack-gallery.ts';
+
+import { jMissionViews } from '../../vehicles/j-mission-views.ts';
 
 const ship = 'Spacecraft';
 export const endeavourPort = probePort(112);
@@ -258,94 +260,4 @@ export const endeavourService: Part[] = [
     moves: [lift(4, 41), { kind: 'swing', node: 'HGA_Deployment', axis: [0, 0, 1], angle: Math.PI / 2, from: 0.72, to: 1 }],
   },
 ];
-export const endeavourViews: ViewDef[] = [
-  {
-    id: 'endeavour',
-    label: 'Endeavour',
-    nodes: [...nodes(endeavourCommand), ...nodes(endeavourService)],
-    isolate: true,
-    from: [1, 0.23, -0.5],
-  },
-  {
-    id: 'sim-bay',
-    label: 'Inside the SIM bay',
-    nodes: ['SIMBay', 'SIMCameras', 'SIMBooms', 'ReserveOxygen'],
-    isolate: true,
-    from: [0.77, 0.07, -0.64],
-  },
-  { id: 'sim-cameras', label: 'Orbital cameras and film', nodes: ['SIMCameras'], onSelect: true, isolate: true, from: [0.74, 0.09, -0.67] },
-  { id: 'spectrometers', label: 'Spectrometer shelf', nodes: ['SIMBooms'], onSelect: true, isolate: true, from: [0.8, 0.3, -0.6] },
-  {
-    id: 'subsatellite',
-    label: 'Particles and fields subsatellite',
-    nodes: ['Subsatellite'],
-    onSelect: true,
-    isolate: true,
-    from: [0.75, 0.35, 0.55],
-    span: 1.1,
-  },
-  { id: 'sector-i', label: 'Sector I cryogenics', nodes: ['ReserveOxygen', 'ReserveHydrogen'], isolate: true, from: [0.12, 0.15, -1] },
-  {
-    id: 'sector-iv',
-    label: 'Sector IV power equipment',
-    nodes: ['ServicePower', 'AuxiliaryBattery'],
-    isolate: true,
-    from: [-0.77, 0.18, 0.64],
-  },
-  {
-    id: 'oxygen-reserve',
-    label: 'Sector I oxygen tank',
-    nodes: ['ReserveOxygen'],
-    onSelect: true,
-    isolate: true,
-    from: [-0.56, 0.38, -0.83],
-  },
-  {
-    id: 'oxygen-core',
-    label: 'Inside the redesigned tank',
-    nodes: ['ReserveOxygenCore'],
-    onSelect: true,
-    isolate: true,
-    span: 0.81,
-    from: [0.82, 0.12, -0.57],
-  },
-  {
-    id: 'auxiliary-battery',
-    label: 'Auxiliary battery',
-    nodes: ['AuxiliaryBattery'],
-    onSelect: true,
-    isolate: true,
-    span: 0.67,
-    from: [-0.34, 0.51, 0.94],
-  },
-  { id: 'hatch', label: 'Lightweight crew hatch', nodes: ['SideHatch'], isolate: true, from: [-0.85, -0.53, 0.1], span: 1.75 },
-  {
-    id: 'probe',
-    label: 'Endeavour docking probe',
-    nodes: [endeavourPort.part],
-    span: 1.55,
-    isolate: true,
-    from: [1, 0.82, 0.4],
-  },
-  {
-    id: 'console',
-    label: 'Main console',
-    nodes: ['MainConsole', 'ConsoleEquipment', 'FlightDirectorIndicators', 'DSKYFrontWeb'],
-    isolate: true,
-    from: [0.3, -1, 0],
-  },
-  {
-    id: 'water',
-    label: 'Drinking water dispenser',
-    nodes: ['WaterDispenser'],
-    onSelect: true,
-    isolate: true,
-    span: 0.36,
-    from: [0.45, 0.3, -1],
-  },
-  { id: 'navigation', label: 'Navigation station', nodes: ['CabinEquipmentBays'], isolate: true, from: [1, 0.5, 0.3] },
-  { id: 'dsky', label: 'DSKY', nodes: ['DSKYFrontWeb'], from: [0.3, -1, 0] },
-  { id: 'couches', label: 'Crew couches', nodes: ['CrewCouches'], span: 2.1, from: [-1, 0.8, 0.6] },
-  { id: 'sps', label: 'Service engine', nodes: ['ServiceEngine'], from: [-1, -0.35, 1] },
-  { id: 'antenna', label: 'S-band antenna', nodes: ['HighGainAntenna'], from: [-0.75, -0.5, 0.6] },
-];
+export const endeavourViews = jMissionViews('Endeavour', endeavourCommand, endeavourService, endeavourPort.part);

@@ -278,7 +278,7 @@ def _markings(parent, radius, forward):
     flag.build("SM_NationalFlag", material("apollo-sm-national-flag", (1, 1, 1), roughness=0.65, image=flag_image()), parent)
 
 
-def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_radius, white, silver, *, sim_door=None):
+def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_radius, white, silver, *, sim_door=None, spacecraft=None):
     """Exterior partitions from the flight plate, NAR P-64 and S68-42513."""
     # Environmental Control, p.121: two 130-degree panels, about 49 ft² each.
     # Aft offset estimated against the 154-in barrel in NASA S68-42513.
@@ -330,7 +330,7 @@ def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_rad
         sector(fairing, [(fairing_radius, fairing_top), (shield_radius, fairing_top)])
         sector(fairing, [(fairing_radius - 0.5, fairing_top), (fairing_radius - 0.5, forward)])
     if sim_door is not None:
-        skin = door.build("SM112_SIMJettisonPanel", silver, sim_door)
+        skin = door.build(f"SM{spacecraft}_SIMJettisonPanel", silver, sim_door)
         mark_shells([skin.name])
     for name, builder, finish in (
         ("SM_Panels", barrel, silver),
@@ -394,7 +394,7 @@ def structure(parent, origin_xa):
     mark_shells([web.name, aft.name, forward.name])
 
 
-def engine(parent, length, exit_radius):
+def engine(parent, length, exit_radius, *, yaw_parent=None):
     """The actual extension is hollow; continue its open bore through the chamber."""
     skin = material("apollo-sps-extension", (0.25, 0.23, 0.23), metallic=0.77, roughness=0.45)
     chamber = material("apollo-sps-chamber", (0.32, 0.29, 0.27), metallic=0.52, roughness=0.7)
@@ -467,8 +467,12 @@ def engine(parent, length, exit_radius):
         foot = Vector((x * 19.8, y * 19.8, length + 18.9))
         tip = Vector((x * 9, y * 9, length + 37.3))
         a, b = foot.lerp(tip, 0.12), foot.lerp(tip, 0.7)
-        bars.tube(a * IN, b * IN, 2.1 * IN, segs=20)
-        _line(bars, [foot, a, b, tip], 0.85)
+        separate = y and yaw_parent is not None
+        actuator = MeshBuilder() if separate else bars
+        actuator.tube(a * IN, b * IN, 2.1 * IN, segs=20)
+        _line(actuator, [foot, a, b, tip], 0.85)
+        if separate:
+            actuator.build("SPS_YawActuatorShaft", flange, yaw_parent)
     for x in (-1, 1):
         # Pivot fittings pick up the bulkhead on opposite sides of the ring.
         _line(bars, [(x * 18.5, 0, length + 18.4), (x * 23.8, 0, length + 18.4)], 1.3)
