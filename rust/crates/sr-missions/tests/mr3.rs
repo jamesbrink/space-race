@@ -2,6 +2,10 @@
 
 use sr_missions::usa::mercury::mr3::{FLIGHT, MISSES};
 use sr_sim::fly::{Flown, fly};
+use sr_sim::loads::Moment;
+use sr_sim::predict::coast;
+use sr_sim::{Body, Field, Sequence};
+use sr_world::V3;
 
 fn flown() -> Flown {
     fly(&FLIGHT.plan, &FLIGHT.site.site(), FLIGHT.site.above_sea())
@@ -56,4 +60,39 @@ fn the_flight_as_flown_stays_well_inside_what_its_structure_stands() {
 fn the_flight_says_which_of_its_figures_are_estimates() {
     let estimates = FLIGHT.plan.estimates();
     assert!(estimates.iter().any(|s| s.contains("Figure 4-9")), "the tilt curve is an estimate");
+}
+
+#[test]
+fn the_path_ahead_of_a_capsule_above_the_air_is_its_conic_and_comes_down() {
+    let field = Field::at(&FLIGHT.site.site(), FLIGHT.site.above_sea());
+    // 2 km/s up and 1 km/s along, from 100 km: far above the air, so the conic is the answer until it is back in it.
+    let from = Moment {
+        t: 150.0,
+        position: V3::new(0.0, 100_000.0, 0.0),
+        velocity: V3::new(1000.0, 2000.0, 0.0),
+        axis: V3::Y,
+    };
+    let ahead = coast(&FLIGHT.plan, &field, Body::Capsule, &from, 1295.0, &Sequence::default());
+    let top = ahead.top.map(|i| field.height(ahead.path[i])).expect("it has a top");
+    let conic = field.apogee(from.position, from.velocity).expect("it comes back");
+    assert!((top / conic - 1.0).abs() < 0.01, "{top} against {conic}");
+    assert!(ahead.lands && ahead.path.len() > 100, "{} places, down: {}", ahead.path.len(), ahead.lands);
+}
+
+#[test]
+fn the_path_ahead_at_separation_is_the_rest_of_the_flight_less_its_retrorockets() {
+    // From the simulator's own state as the capsule leaves the booster, the coast ahead tops out where the flight
+    // did, and comes down further on: the retrorockets, which the coast does not fire, took some 130 m/s off its
+    // speed along the ground for the five minutes that were left, which is the 30 km.
+    let f = flown();
+    let field = Field::at(&FLIGHT.site.site(), FLIGHT.site.above_sea());
+    let at = f.path.iter().find(|s| s.t >= FLIGHT.plan.separation.value + 1.0).expect("it separated");
+    let from = Moment { t: at.t, position: at.position, velocity: at.velocity, axis: V3::Y };
+    let mass = FLIGHT.plan.capsule_mass.value;
+    let ahead = coast(&FLIGHT.plan, &field, Body::Capsule, &from, mass, &Sequence::default());
+    let down = field.range(*ahead.path.last().expect("a path"));
+    assert!(ahead.lands);
+    assert!(down > f.range + 15_000.0 && down < f.range + 50_000.0, "{down} against {}", f.range);
+    let top = ahead.top.map(|i| field.height(ahead.path[i])).expect("it has a top");
+    assert!((top / f.apogee - 1.0).abs() < 0.01, "{top} against {}", f.apogee);
 }

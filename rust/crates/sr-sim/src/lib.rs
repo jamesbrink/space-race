@@ -13,6 +13,7 @@ pub mod guidance;
 pub mod heat;
 pub mod loads;
 pub mod plan;
+pub mod predict;
 pub mod sequence;
 pub mod stress;
 

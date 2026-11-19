@@ -25,7 +25,8 @@ T  hold the attitude    B  abort\n\
 Space  the next step    Z X  engine on, off\n\
 G  as flown (on the pad)    P  stop the clock\n\
 [ ]  slower, faster    C  camera (1 2 3 4)\n\
-L  the grade    K  camera shake    I  diagnostics\n\
+N  the path ahead    K  camera shake\n\
+L  the grade    I  diagnostics\n\
 H  hide these\n\
 drag  turn    wheel  zoom";
 
