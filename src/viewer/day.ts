@@ -28,7 +28,7 @@ export interface Day {
   /** The low cloud, or none. */
   cumulus: Cumulus | null;
   /** The middle deck round the site: how much of the sky its patches cover (not its cloud: `deckPatches`), and its height above the sea, metres. */
-  deck: { cover: number; height: number };
+  deck: { cover: number; height: number; overcast?: boolean };
   /**
    * The high cloud. `cover`: how much of the sky it hides at the site, or null where the record has none there and
    * the map's own stands; `height`: metres above the sea; `veil`: it is a sheet (cirrostratus), not fibres (cirrus);
@@ -75,6 +75,8 @@ function recoveryOf(site: SiteDef, region: string, weather: RecoveryWeather): Re
  * at 3,600 m (as Patrick had it on 5 May 1961) and cirrus at 10,500 m. Estimated: the map is (weather.ts).
  */
 export const DECK_HEIGHT = 3600;
+/** Geometric thickness of the rendered sheet (m), independent of its optical opacity. */
+export const DECK_DEPTH = 300;
 export const HIGH_HEIGHT = 10_500;
 
 /**
@@ -177,7 +179,11 @@ export function dayOf(when: { site: SiteDef; launch: string; weather?: DayWeathe
   const region = when.site.place.region?.name;
   return {
     cumulus,
-    deck: { cover: w.middle ? deckPatches(w.middle.cover.value) : 0, height: w.middle?.base.value ?? DECK_HEIGHT },
+    deck: {
+      cover: w.middle ? deckPatches(w.middle.cover.value) : 0,
+      height: w.middle?.base.value ?? DECK_HEIGHT,
+      ...(w.middle?.kind === 'stratocumulus' && w.middle.cover.value === 1 ? { overcast: true } : {}),
+    },
     high: {
       cover: w.high ? w.high.cover.value : null,
       height: w.high?.base.value ?? HIGH_HEIGHT,

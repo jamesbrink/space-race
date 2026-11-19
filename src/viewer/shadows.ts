@@ -159,7 +159,14 @@ const IBL = [
   'iblIrradiance += getIBLIrradiance( geometryNormal );',
   'vec3 iblRadiance = getIBLRadiance( geometryViewDir, geometryNormal, material.roughness );',
 ];
-const begin = THREE.ShaderChunk.lights_fragment_begin;
+const sunInfo = 'getDirectionalLightInfo( directionalLight, directLight );';
+const begin = THREE.ShaderChunk.lights_fragment_begin.replace(
+  sunInfo,
+  `${sunInfo}
+  #if defined( LOCAL_OVERCAST ) && UNROLLED_LOOP_INDEX == 0
+    directLight.color *= ceilingBeam(vFogWorld);
+  #endif`,
+);
 const maps = THREE.ShaderChunk.lights_fragment_maps;
 if (found && begin.includes(HEMI) && IBL.every((line) => maps.includes(line))) {
   THREE.ShaderChunk.lights_fragment_begin = `float skyOpen = 1.0;\n${begin.replace(found, CASCADED).replace(HEMI, HEMI.replace(';', ' * skyOpen;'))}`;

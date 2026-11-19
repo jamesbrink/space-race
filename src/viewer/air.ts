@@ -1,7 +1,7 @@
 import * as THREE from 'three';
-import type { Day } from './day.ts';
+import { type Day, DECK_DEPTH } from './day.ts';
 import { fieldAs, noise2 } from './field.ts';
-import { deckPatchGlsl } from './weather.ts';
+import { deckPatchGlsl, deckRegionalGlsl } from './weather.ts';
 import { newPlace } from './programs.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
 
@@ -336,6 +336,16 @@ function installAir(air: Air): void {
       uniform vec2 uDeckShade;${veiled ? '\n      uniform vec2 uVeilLight;' : ''}
       // the haze's colour as seen from where the eye is: hazeAboveUniform
       vec3 hazeSeen() { return mix(fogColor, vec3(dot(fogColor, vec3(0.2126, 0.7152, 0.0722))) * vec3(0.86, 0.95, 1.1) * 0.33, uHazeAbove.x); }
+      ${
+        deck.overcast
+          ? `#define LOCAL_OVERCAST
+      float cloudCeiling(vec3 world) {
+        float nearSite = 1.0 - ${deckRegionalGlsl('world')};
+        return nearSite * (1.0 - smoothstep(${(air.base + deck.height).toFixed(1)}, ${(air.base + deck.height + DECK_DEPTH).toFixed(1)}, world.y));
+      }
+      float ceilingBeam(vec3 world) { return 1.0 - 0.95 * cloudCeiling(world); }`
+          : ''
+      }
       ${cloudField(c, deck.height)}
       ${c ? `float deckShadeHere(vec3 world, vec3 toLight) { return deckShadeAt(world, toLight, ${air.base.toFixed(2)}, ${deck.cover.toFixed(2)}); }` : ''}
       // how much of the haze lies between the eye and a point, as a fraction of the light lost: 1 - exp(-tau)
@@ -354,11 +364,16 @@ function installAir(air: Air): void {
     ? /* glsl */ `
         airShade *= mix(uVeilLight.x, 1.0, smoothstep(uVeilLight.y - 400.0, uVeilLight.y + 400.0, vFogWorld.y));`
     : '';
+  // A continuous opaque deck scatters the direct beam into skylight. The added diffuse light is estimated.
+  const overcast = deck.overcast
+    ? `
+        reflectedLight.indirectDiffuse *= 1.0 + 0.65 * cloudCeiling(vFogWorld);`
+    : '';
   // (the air's own part of the chunk, between its marks, is the day's: another place on another day puts its own in its
   // place, so that what the chunk calls is what fog_pars_fragment above defines. exhaust.ts adds the smoke's shadow to
   // the same chunk, outside the marks)
   const own =
-    c || veiled
+    c || veiled || deck.overcast
       ? /* glsl */ `
     #if defined( USE_FOG ) && NUM_DIR_LIGHTS > 0
       {${
@@ -369,7 +384,7 @@ function installAir(air: Air): void {
         // and the middle deck's, from above (deckShadeUniform): its patches near the site, where its cover is the record's
         if (uDeckShade.x > 0.0) airShade *= mix(1.0, deckShadeHere(vFogWorld, toLight), uDeckShade.x);`
           : ''
-      }${veil}
+      }${veil}${overcast}
         reflectedLight.directDiffuse *= airShade;
         reflectedLight.directSpecular *= airShade;
       }

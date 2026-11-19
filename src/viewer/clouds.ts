@@ -18,8 +18,8 @@ import { ATMOSPHERE_COARSE_GLSL, atmosphereUniforms } from './atmosphere.ts';
 import { billowsData, DETAIL_SIDE, detailData, NOISE } from './cloudnoise.ts';
 import { fieldAs } from './field.ts';
 import { uOrigin } from './origin.ts';
-import { type Day, HIGH_HEIGHT } from './day.ts';
-import { cumulusBiasGlsl, cumulusCellsGlsl, deckHeightGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
+import { DECK_DEPTH, type Day, HIGH_HEIGHT } from './day.ts';
+import { cumulusBiasGlsl, cumulusCellsGlsl, deckHeightGlsl, deckRegionalGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
 import { type WeatherMap, weatherSlots } from './weathermap.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
 
@@ -198,7 +198,7 @@ const EARTH = EARTH_SPHERE;
  * height, as deep as the step in the Sun's light under it (air.ts: the shared chunk's veil, over 400 m each way).
  * Neither depth is recorded for any day: both estimated.
  */
-export const SHEET_DEPTH = { deck: 300, high: 800 } as const;
+export const SHEET_DEPTH = { deck: DECK_DEPTH, high: 800 } as const;
 
 /**
  * How much of a layer from `lo` to `hi` (metres above the sea) a ray from an eye `eyeH` up, going `ud` of the way
@@ -1085,7 +1085,13 @@ export const overGlsl = (day: Day | null | undefined): string => {
     float mid = 0.5 * (lo + hi);
     float ud = dot(uUp, dir);
     bool within = uEyeH > lo && uEyeH < hi;
-    float through = layerThrough(uEyeH, lo, hi, ud, d);
+    float through = layerThrough(uEyeH, lo, hi, ud, d);${
+      day?.deck.overcast
+        ? `
+    // Stratocumulus thins at its boundaries. Integrate a density that tapers at both faces.
+    if (kind == 0) through = mix(smoothstep(0.0, 1.0, through), through, ${deckRegionalGlsl('uEyeXZ')});`
+        : ''
+    }
     float limb, tm = shellHit(dir, !within ? mid : ud > 0.0 ? 0.5 * (uEyeH + hi) : 0.5 * (uEyeH + lo), limb);
     vec4 near = tm > 0.0 && through > 0.0 && (within || !hidden(tm, d)) ? sheetAt(dir, kind, height, tm, limb, through, d, dv, veil) : vec4(0.0);
     // A ray a little under level from inside the layer or over it comes up into it again far off, over the Earth's
@@ -1125,7 +1131,18 @@ ${
     // the Sun and grey on its far side, never black (the sky lights it and light comes through it); and greyer at its
     // thin rim than at its heart. Its slope from deckAt (gDeckSlope); the cirrus has none.
     vec2 slope = kind == 0 ? gDeckSlope : vec2(0.0);
-    float shaded = kind == 0 ? gDeckShade : 1.0;
+    float shaded = kind == 0 ? gDeckShade : 1.0;${
+      day?.deck.overcast
+        ? `
+    // The light inside a solid bank is diffuse. Its small folds lose contrast as the deck closes.
+    if (kind == 0) {
+      float bank = 1.0 - ${deckRegionalGlsl('xz')};
+      slope *= 1.0 - 0.85 * bank;
+      shaded = mix(shaded, 1.0, 0.85 * bank);
+      thick = mix(thick, 0.8, 0.8 * bank);
+    }`
+        : ''
+    }
     // looked along, a sheet is as many times thicker as the ray is longer in it
     // (seen from under it or from over it by which way the ray crosses it there: from inside the layer, up and down
     // are each a side of it; from outside, the side the eye is on)

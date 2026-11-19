@@ -23,6 +23,8 @@
 //    no pixel darker with it than without it (it had cut the cloud behind it out of a disc round the view).
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { flights } from '../missions/index.ts';
+import { lacks } from '../src/app/address.ts';
 import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
@@ -40,6 +42,7 @@ const FLIGHTS = [
   'ussr/vostok/vostok-1',
   'usa/mercury/ma-6-friendship-7',
   'usa/apollo/apollo-7',
+  'usa/apollo/apollo-12',
 ].filter((f) => !only || f === only);
 const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */
@@ -215,8 +218,19 @@ function install() {
 
 for (const id of FLIGHTS) {
   const name = id.split('/').at(-1);
-  const { page, errors, close } = await open(browser, `${url}#${id}/fly`, { viewport: [1280, 800], timeout: 240000 });
+  const flight = flights.find((flight) => flight.id === id);
+  const place = lacks(flight, 'fly') ? 'site/vehicle' : 'fly';
+  const { page, errors, close } = await open(browser, `${url}#${id}/${place}`, { viewport: [1280, 800], timeout: 240000 });
   await page.addStyleTag({ content: '#ui, #gallery, #title, .notes, .deck, #cockpit { display: none !important }' });
+  if (place === 'site/vehicle') {
+    // A launch site opens at its countdown view. Compare the recorded day at range zero,
+    // with time and exposure settled at each camera position, just as in the frozen-scene suite.
+    await page.evaluate(() => {
+      window.sr.clock.pause();
+      window.sr.clock.seek(0);
+      window.sr.stage.frozen = true;
+    });
+  }
   await page.evaluate(install);
   const day = await page.evaluate(() => {
     const air = window.sr.stage.pipe.clouds.airShown;
@@ -227,6 +241,7 @@ for (const id of FLIGHTS) {
       high: d && (d.high.cover ?? 0) > 0 ? d.high.height : null,
     };
   });
+  check(day.cumulus !== null || day.deck !== null || day.high !== null, `${name}: the flight’s weather is on screen`);
   // (the layers as clouds.ts has them: SHEET_DEPTH)
   const layers = [
     ...(day.deck !== null ? [{ sheet: 'the middle deck', lo: day.deck, hi: day.deck + 300 }] : []),

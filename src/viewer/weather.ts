@@ -53,6 +53,11 @@ export const EXTENT = 4_096_000;
 export const SIDE = 1024;
 /** Within the first of these distances from the site the cumulus cover is the record's; by the second it is the map's. Metres. */
 export const NEAR: readonly [number, number] = [12_000, 40_000];
+/** Distance over which the station's layered-cloud observation gives way to the regional pattern, metres. */
+export const DECK_REACH = [40_000, 150_000] as const;
+/** Regional weight, zero at the station, one beyond the reach of its report. */
+export const deckRegionalGlsl = (point: string): string =>
+  `smoothstep(${DECK_REACH[0].toFixed(1)}, ${DECK_REACH[1].toFixed(1)}, length(${point}))`;
 /** No more of the sky than this is covered by cumulus anywhere: past it the field's noise has no clear air left to cut. */
 export const MOST = 0.85;
 
@@ -518,7 +523,7 @@ export const sheetsGlsl = (prefix: string, day: Day | null | undefined): string 
   // record's cover of cloud that day (day.ts: deckPatches). On 5 May 1961 0.30, which is an eighth of the sky in
   // cloud (one okta of altocumulus at 3,600 m at Patrick at 10:00, NOAA ISD: documented for that hour, taken for
   // the morning), since its cloudlets cover some 0.45 of a patch there
-  float deckCoverAt(vec3 w, vec2 xz) { return mix(${deck.cover.toFixed(2)}, w.b, smoothstep(40000.0, 150000.0, length(xz))); }
+  float deckCoverAt(vec3 w, vec2 xz) { return mix(${deck.cover.toFixed(2)}, w.b, ${deckRegionalGlsl('xz')}); }
   float gDeckThick;   // how thick the middle deck is where deckAt last looked: 0 at a cloudlet's rim, 1 at its heart
   vec2 gDeckSlope;    // and how its top slopes there (rise over run, along the scene's x and z): 0 where it is too fine to light
   vec3 gDeckSun = vec3(0.0, 0.0, 1e3);   // toward the Sun along the scene's x and z (a unit vector), and the tangent of its height: set before deckAt
