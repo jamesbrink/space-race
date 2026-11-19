@@ -316,6 +316,7 @@ export class Solids {
   private readonly onSegment = new THREE.Vector3();
   private readonly away = new THREE.Vector3();
   private readonly point = new THREE.Vector3();
+  private readonly plane = new THREE.Plane();
 
   /** What is solid from now on. World matrices must be up to date when questions are asked. */
   set(roots: THREE.Object3D[]): void {
@@ -447,6 +448,15 @@ export class Solids {
         return n.bvh.shapecast({
           intersectsBounds: (box) => box.intersectsBox(this.region),
           intersectsTriangle: (triangle) => {
+            // A way that goes through the triangle's face has met it, whatever its edges say: the nearest points of
+            // the way and of the triangle's edges are then side by side, across the way, and read as a pass alongside.
+            // (A sweep longer than a wall is thick went through a tank's skin and a deck's plate so.)
+            triangle.getPlane(this.plane);
+            if (this.plane.intersectLine(this.segment, this.onSegment) && triangle.containsPoint(this.onSegment)) {
+              this.away.copy(this.plane.normal);
+              if (this.away.dot(travel) > 0) this.away.negate();
+              return this.away.dot(travel) < -1e-9;
+            }
             const distance = triangle.closestPointToSegment(this.segment, this.onTriangle, this.onSegment);
             if (distance >= r) return false;
             if (distance > 1e-8) this.away.subVectors(this.onSegment, this.onTriangle).divideScalar(distance);

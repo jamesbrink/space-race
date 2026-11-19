@@ -504,3 +504,37 @@ test('a ladder whose stiles stand a metre above the deck is left at the deck, an
   go(body, 0, 0, 0.3, 0);
   assert.ok(!body.on && body.grounded && Math.abs(body.position.y) < 1e-6);
 });
+
+test('a sphere sent right through a skin or a plate has met it: a tank is struck however long the sweep and wherever it crosses', () => {
+  // a tank's skin 0.89 m in radius and 12 m long, standing with its middle 9 m up, as flat strips (a Redstone's centre unit)
+  const tank = new THREE.Mesh(new THREE.CylinderGeometry(0.89, 0.89, 12, 24, 1, true));
+  tank.position.y = 9;
+  tank.updateMatrixWorld(true);
+  const solids = new Solids();
+  solids.set([tank]);
+  solids.gather(new THREE.Vector3(0, 9, 0), 20, 20);
+  // across it through the middle of a strip, off its middle line, short and long: each is met a person's radius outside the skin
+  for (const [a, b, z] of [
+    [-15, 15, 0],
+    [-15, 15, 0.31],
+    [-3, 3, 0.05],
+    [-1.5, -0.5, 0],
+    [15, -15, -0.2],
+  ]) {
+    const hit = solids.sweepSphere(new THREE.Vector3(a, 9, z), new THREE.Vector3(b, 9, z), 0.26);
+    assert.ok(hit, `from ${a} to ${b} at ${z}: it went through the tank`);
+    const x = a + (b - a) * hit.fraction;
+    const out = Math.hypot(x, z);
+    assert.ok(out > 0.89 + 0.26 - 0.06 && out < 0.89 + 0.26 + 0.01, `from ${a} to ${b} at ${z}: met ${out} m from the axis`);
+    assert.ok(hit.normal.x * (b - a) < 0, 'and the skin faces the way it came');
+  }
+  // a plate, through its face a long way from any edge
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.2, 12, 12));
+  plate.updateMatrixWorld(true);
+  solids.set([plate]);
+  solids.gather(new THREE.Vector3(), 20, 20);
+  const through = solids.sweepSphere(new THREE.Vector3(-3, 0, 0.05), new THREE.Vector3(3, 0, 0.05), 0.26);
+  assert.ok(through && Math.abs(-3 + 6 * through.fraction + 0.36) < 0.01, 'the plate is met at its face');
+  // and one that stops short of it has not met it
+  assert.equal(solids.sweepSphere(new THREE.Vector3(-1.5, 0, 0), new THREE.Vector3(-0.5, 0, 0), 0.26), null);
+});
