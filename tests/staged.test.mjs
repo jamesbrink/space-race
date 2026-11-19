@@ -993,8 +993,8 @@ for (const f of part(flown)) {
 
   if (f.id.startsWith('ussr/'))
     test(`${f.designation}: the sphere keeps its inertial pose when the attitude jets leave`, () => {
-      const ship = shipOf(f.plan),
-        samples = recordSamples(f.plan, shown, where(f)[1], 0, () => [1e11, 0, 0]);
+      const ship = shipOf(shown.plan ?? f.plan),
+        samples = recordSamples(shown.plan ?? f.plan, shown, where(f)[1], 0, () => [1e11, 0, 0]);
       const index = samples.findIndex((s) => s.passive);
       assert.ok(index > 0);
       const before = samples[index - 1],
@@ -1172,16 +1172,16 @@ for (const f of part(flown)) {
         (p.impact.longitude - at.ejectionLongitude) * Math.cos(at.ejectionLatitude * DEG),
       );
     assert.ok(apart < 0.01, `and ${(apart * 1000).toFixed(1)} m from its place`);
-    const before = shown.coast.samples.find((x) => x.t >= coastOf(plan).on - 30);
+    const before = shown.coast.samples.find((x) => x.t >= coastOf(as).on - 30);
     const i = p.points.findIndex((x) => x.t > before.t);
     const [a, b] = [p.points[i - 1], p.points[i]];
     const there = between(a.t, a.r, a.v, b.t, b.r, b.v, before.t).r;
     const off = Math.hypot(...before.r.map((x, k) => x - there[k]));
     assert.ok(off < 1, `round the orbit to the burn, ${off.toFixed(3)} m from the run`);
     // (with a manoeuvre still to come before the burn, which apsides lie ahead is the manoeuvre's: not held)
-    const moving = shipOf(plan).moves.some((m) => m.on > start.t && m.on < coastOf(plan).on);
+    const moving = shipOf(as).moves.some((m) => m.on > start.t && m.on < coastOf(as).on);
     // (with its apogee marked where the run passes one before the burn: begun forty minutes before it, Faith 7's does not)
-    const climbing = shown.coast.samples.filter((x) => x.t >= start.t && x.t <= coastOf(plan).on).map((x) => dot(x.r, x.v) > 0);
+    const climbing = shown.coast.samples.filter((x) => x.t >= start.t && x.t <= coastOf(as).on).map((x) => dot(x.r, x.v) > 0);
     const overApogee = climbing.some((up, k) => k > 0 && climbing[k - 1] && !up);
     assert.ok(moving || (!p.perigee && (Boolean(p.apogee) || !overApogee)), 'with its apogee marked (a perigee under the ground is not)');
     assert.ok(
@@ -1191,13 +1191,13 @@ for (const f of part(flown)) {
     // Begun within the burn, the burn in progress goes on along the line it lit on (from the run's own state as it lit):
     // the same landing as the run. Without that state, the line is the one it would light on from the start, which is not
     // the run's.
-    const on = coastOf(plan).on;
+    const on = coastOf(as).on;
     const lit = shown.coast.samples.find((x) => x.t === on);
-    const mid = shown.coast.samples.find((x) => x.t > on + 5 && x.t < coastOf(plan).off);
+    const mid = shown.coast.samples.find((x) => x.t > on + 5 && x.t < coastOf(as).off);
     assert.ok(lit && mid, 'the run keeps its state as the burn lit, and one within it');
     const from = { t: mid.t, r: mid.r, v: mid.v };
     const within = (options) => {
-      const j = propagate(spacecraft(f.plan, dated, site, sea, from, options), from, { site, seaLevel: sea, frame: dated });
+      const j = propagate(spacecraft(as, dated, site, sea, from, options), from, { site, seaLevel: sea, frame: dated });
       j.run();
       return j.result.impact;
     };
@@ -1322,7 +1322,7 @@ for (const f of part(flown)) {
       const at = coastOf(shown.plan ?? plan).on;
       const s = shown.coast.samples.find((p) => p.t >= at);
       const back = byHand(
-        f.plan,
+        shown.plan ?? f.plan,
         s.t,
         s.v.map((c) => -c / Math.hypot(...s.v)),
       );
@@ -1333,7 +1333,7 @@ for (const f of part(flown)) {
       assert.ok(down.down?.landed[his], 'and the pilot lands');
       const along = flyWhole(
         byHand(
-          f.plan,
+          shown.plan ?? f.plan,
           s.t,
           s.v.map((c) => c / Math.hypot(...s.v)),
         ),
