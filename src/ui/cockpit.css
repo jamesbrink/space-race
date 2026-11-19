@@ -2,6 +2,11 @@
 .cockpit-enter { margin-left: 4px; padding: 6px 12px; border: 1px solid var(--amber); border-radius: 2px; color: var(--amber); font: 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
 .cockpit-enter:hover { color: #0b0a07; background: var(--amber); }
 .cockpit-enter[hidden] { display: none; }
+/* (on a wide page the site's ways are the way in and out, gallery.ts `nextStep`: Launch ›, and from the deck ‹ Site; the clock's
+   button is the narrow page's, where the ways fold into the places' switch. L and Esc are the same on both) */
+@media (min-width: 960px) and (min-height: 520px) {
+  #ui:has(> .title .ways [data-way='fly']:not([aria-disabled='true'])) .cockpit-enter { display: none; }
+}
 .cockpit-enter kbd { display: none; }
 /* (at the controls the same button is the way out, and says which key is) */
 #ui.piloting .cockpit-enter kbd { display: inline-grid; min-width: 0; height: 16px; margin-right: 7px; border-color: rgba(255, 196, 107, 0.55); color: inherit; background: none; }

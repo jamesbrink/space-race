@@ -77,7 +77,7 @@ Every flight has the same three places, in the same order, and opens in the firs
   anything chosen within a place (a part, a section of the site, what stands in the gallery) rewrites the entry it is
   on, and so does the page settling an address into its own form (`settle`: `#pad` becomes the flight's
   `#…/site/pad`, a flight named with no place its gallery) and anything the idle show does. So Back is never pressed
-  twice to leave a place, and never traps. Taking the flight deck or leaving it by its own control (Fly it, L, Esc)
+  twice to leave a place, and never traps. Taking the flight deck or leaving it by its own control (Launch, or Fly it by the clock on a narrow page; L, Esc)
   is going between places, so a step too; following an address (Back, Forward, a link) is never one, whatever the
   page passes through on its way there (`following` in session.ts). How a place was left that the address does not say
   is kept with its entry (`keep`, `kept` in address.ts): the gallery's tab, chosen by hand, is open again on coming Back
