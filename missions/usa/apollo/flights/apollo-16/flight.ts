@@ -1,4 +1,7 @@
 import type { Flight } from '../../../../../src/types.ts';
+import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
+import { launchCrew } from './crew.ts';
+import { WEATHER } from './weather.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
@@ -28,6 +31,9 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-511',
   launch: '1972-04-16T17:54:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
+  site: LC39A,
+  opens: { at: boarding[0], model: 'pad', view: 'launcher' },
+  weather: WEATHER,
   crew: ['John W. Young', 'Thomas K. Mattingly II', 'Charles M. Duke Jr.'],
   summary:
     'Young and Duke took Orion to the Descartes highlands after a six-hour landing delay. Mattingly mapped the Moon from Casper and climbed outside on the way home to recover the film.',
@@ -37,6 +43,9 @@ export const flight: Flight = {
     { label: 'Recovery', value: 'Pacific Ocean · 27 April 1972' },
   ],
   timeline: [
+    { t: boarding[0], event: 'Scheduled crew ingress into Casper, Young first, then Duke and Mattingly' },
+    { t: -2995, event: 'Launch Control has reported arm 9 parked at 12° standby' },
+    { t: -272, event: 'Launch Control reports the crew arm swinging to full retraction' },
     { t: 0.3, event: 'SA-511 first moves as the hold-down arms release' },
     { t: 0.59, event: 'Instrument unit umbilical disconnects at Pad 39A' },
     { t: elapsed(0, 11, 56.21), event: 'SA-511 reaches Earth parking orbit' },
@@ -106,15 +115,15 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Apollo 16 · Saturn V',
       url: 'models/usa/apollo/apollo-16/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       dockingPorts: [casperPort, orionPort],
       ...cabin,
       cabin: { ...cabin.cabin, within: [...cabin.cabin.within, 'WaterDispenser'] },
       seats: [
-        { node: 'Seat_Commander', label: 'Young’s left couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_CommandModulePilot', label: 'Mattingly’s centre couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_LunarModulePilot', label: 'Duke’s right couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Young’s left couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Mattingly’s centre couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Duke’s right couch', from: 'SideHatch', open: boarding },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -133,5 +142,17 @@ export const flight: Flight = {
       }),
     },
     orionModel,
+    mobileLauncher(3, {
+      holdDowns: 'as-511',
+      ingress: boarding[0],
+      parkedBy: -2995,
+      pao: 'Kennedy Launch Control, 16 April 1972, tapes 6/1 and 16/1. Arm 9 was reported parked at 12° between T−50:57 and T−49:55 and swinging to full retract at T−4:32. Stroke endpoints are estimated.',
+      intertankClear: -17,
+      forwardRetract: -16.2,
+      firstMotion: 0.3,
+      terminalSource:
+        'SA-510 flight manual, figure 8-20, nominal ML-3 arm sequence assumed for SA-511. AS-511 Flight Evaluation Report, table 2-2 and §3.5.1, first motion and individual mast strokes.',
+    }),
+    ...launchCrew,
   ],
 };

@@ -440,3 +440,15 @@ test('SA-510 stands under the thin cirrus observed at range zero, with clear air
   assert.equal(flight.weather.wind.from.value, 156);
   assert.equal(day.map, 'cape-canaveral.1971-07-26');
 });
+
+test('SA-511 opens under the low cumulus and west wind measured at Pad 39A', async () => {
+  const flight = await load('usa/apollo/flights/apollo-16/flight.ts');
+  const day = dayOf(flight);
+  assert.equal(flight.weather.observed.at, flight.launch);
+  assert.equal(day.cumulus.cover, 0.2);
+  assert.equal(day.cumulus.height, 914);
+  assert.equal(day.wind.speed, 6.3);
+  assert.equal(flight.weather.wind.from.value, 269);
+  assert.equal(day.visibility, 16000);
+  assert.equal(day.map, 'cape-canaveral.1972-04-16');
+});

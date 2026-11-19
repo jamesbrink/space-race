@@ -9,7 +9,7 @@ the historical record. Each spacecraft and its launch vehicle is modelled from d
 stands at its launch site as that site was that morning, under that day's Sun, Moon and weather, and
 can be flown from liftoff to landing: as it was flown, or by your own hand.
 
-**41 crewed flights so far, Vostok 1 (April 1961) to Soyuz T-2 (June 1980).** All 41 have a Gallery and 40 have a Launch site.
+**41 crewed flights so far, Vostok 1 (April 1961) to Soyuz T-2 (June 1980).** All 41 have a Gallery and a Launch site.
 Sixteen can fly from launch, and six others have orbital chapters. The seven uncrewed Gemini targets can be flown too, from Complex 14 on their Atlas: the two lost ones as the record had them fail.
 
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
@@ -105,7 +105,7 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Apollo 14, *Kitty Hawk* and *Antares*](missions/usa/apollo/flights/apollo-14/README.md) | 31 Jan 1971 | Shepard, Roosa, Mitchell | Saturn V | ● | ● | · |
 | [Soyuz 10, *Granit*](missions/ussr/soyuz/flights/soyuz-10/README.md) | 22 Apr 1971 UTC | Shatalov, Yeliseyev, Rukavishnikov | Soyuz 11A511 | ● | ● | · |
 | [Apollo 15, *Endeavour* and *Falcon*](missions/usa/apollo/flights/apollo-15/README.md) | 26 Jul 1971 | Scott, Worden, Irwin | Saturn V | ● | ● | · |
-| [Apollo 16, *Casper* and *Orion*](missions/usa/apollo/flights/apollo-16/README.md) | 16 Apr 1972 | Young, Mattingly, Duke | Saturn V | ● | · | · |
+| [Apollo 16, *Casper* and *Orion*](missions/usa/apollo/flights/apollo-16/README.md) | 16 Apr 1972 | Young, Mattingly, Duke | Saturn V | ● | ● | · |
 | [Soyuz 12, *Ural*](missions/ussr/soyuz/flights/soyuz-12/README.md) | 27 Sep 1973 | Lazarev, Makarov | Soyuz 11A511 | ● | ● | · |
 | [Soyuz 16, *Buran*](missions/ussr/soyuz/flights/soyuz-16/README.md) | 2 Dec 1974 | Filipchenko, Rukavishnikov | Soyuz-U 11A511U | ● | ● | · |
 | [Soyuz T-2, *Yupiter*](missions/ussr/soyuz/flights/soyuz-t-2/README.md) | 5 Jun 1980 | Malyshev, Aksyonov | Soyuz-U 11A511U | ● | ● | · |
