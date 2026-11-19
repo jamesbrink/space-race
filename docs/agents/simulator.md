@@ -117,8 +117,48 @@ its GLB and its flight's data, not the tool: change what the bake makes and bake
   a sheet), what a sphere touches, and what is under a point. A piece's boxes are in a tree built when first asked.
   What a sphere starts in is not met: a vehicle stands in its launcher until it has left it.
 
-**Nothing in the simulator strikes these yet.** This is the data and the questions; the vehicle's contact with them
-is the next step, and until it lands a vehicle flown by hand still passes through its tower.
+**A vehicle flown by hand strikes them** (sim/sitecontact.ts `SiteContact`). Each tick the decks fly is put to the
+site after the tick's own contacts with what the vehicle has shed (deck/cockpit.ts `atSite`, deck/orbitdeck.ts): the
+hull's spheres still aboard are swept from where the tick began to where it ended, as the page draws the vehicle (on
+its launcher's support for the first seconds, viewer/ascent.ts `stood`), and the first meeting is answered by an
+impulse on the tick's outcome: along the surface's normal, perfectly inelastic, without friction, at the sphere that
+struck, about the centre of mass, so a blow off the axis turns the vehicle (contact.ts `strike`). Then whichever
+sphere is left deepest is answered, until none is in what it met. Nothing is written into the state from data: the
+tick is the integrator's, changed by an impulse. A contact at 1 m/s or more is said on the deck as any impact is
+(closing speed, energy), and the game's breakup rule is the same one (breakup.ts); slower, it is answered and not
+said (`REPORTED`, estimated: a vehicle lying on a deck touches it every tick). The page fetches a flight's solids
+with its models (app/session.ts) and a kept flight is stamped with them (deck/tape.ts `stampOf`, vite.config.ts
+`SOLID_STAMPS`), so it is not flown again on other shapes.
+
+`tests/sitecontact.test.mjs` flies **every flight as flown, by the live simulator, through its own site** for its
+first 30 s and holds that it touches nothing: a flight that strikes its site has a shape's fault or the model's, and
+the test names the piece and the hull. Three were found and settled so:
+
+- Gemini 3 struck the umbilical tower's top line a second after liftoff. The model's fault, in an estimate: the lines
+  were given 2.4 to 3.6 s to fall where the record has only that they let go at liftoff; a line let go with a
+  dropweight is down in a second or so (places/cape-canaveral/lc-19.parts.ts, for every Gemini flight).
+- Then its second stage struck the tower itself, and its engine the thrust mount. The shapes' fault, both: a hull
+  sphere wider than its stage (a slice's middle taken from a conduit down one side), and an engine of two chambers
+  side by side taken for round. A slice's middle is now the middle of where its surface spans, no sphere reaches
+  beyond its node's sides, a triangle's surface is put to every slice it passes through, and a slice much longer one
+  way than the other is a row of spheres.
+- Mercury-Atlas's booster engines stand in the launcher at liftoff and Apollo 7's instrument unit against service arm
+  3: neither is a strike. What a sphere starts in is not met, and each rises clear (the arms swing away in the data).
+
+It also holds, on sites made for it: a drift into a tower at liftoff strikes it and ends with no sphere in it; a
+blow takes the motion into the surface and keeps the motion along it; ten kilometres in one tick does not pass a
+deck; a blow off the axis turns the vehicle; a capsule alone comes down on a deck and, on a slope, is turned along
+it; a structure that has swung away is not struck.
+
+Not yet, and a vehicle flown by hand shows it:
+
+- **What a vehicle has shed does not strike the site**: a spent stage falls through a tower to the simulator's floor
+  (sim/shed.ts flies those, and knows no site).
+- **A vehicle at rest on a structure is not landed**: the flight ends where it meets the simulator's floor, as before.
+  Lying on a deck it is held up and slides without friction.
+- The recorded flights (the batch simulators, `pnpm figures`) know no site and are unchanged.
+- A flight replayed from its tape before its solids have arrived would not be struck: the page waits for them before
+  the curtain lifts.
 
 Simplified, and to be kept in mind by whoever uses it:
 

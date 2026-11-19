@@ -7,7 +7,8 @@ import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
 import { MISSES } from '../sim/misses.ts';
 import type { EventDef } from '../sim/plan.ts';
 import { afterwards, blownAloft, grown, keepContact, type Run, runOf } from '../sim/run.ts';
-import { Sheds } from '../sim/shed.ts';
+import { type ContactPose, Sheds } from '../sim/shed.ts';
+import type { SiteStrike } from '../sim/sitecontact.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from '../sim/vehicle.ts';
 import { landsOf, verdict } from '../sim/verdict.ts';
 import type { Command, MechanismDef, SitedFlight } from '../types.ts';
@@ -469,10 +470,13 @@ export class Cockpit extends Deck {
   private tick(before: VehicleState, pilot: Pilot): VehicleState {
     const v = this.vehicle!;
     const free = v.tick(before, pilot);
-    const { state, hits, impulses } = this.run.sheds!.ballistic(v, before, free);
+    const shed = this.run.sheds!.ballistic(v, before, free);
+    // and then what stands at the site, struck by the vehicle's own hull (sim/sitecontact.ts)
+    const site = this.atSite(before, shed.state);
+    const state = site.state;
     const touched = state !== free;
-    if (touched) this.kept = keepContact(this.run.samples, this.kept, before, free, impulses, v.sample);
-    for (const hit of hits) this.impact(hit);
+    if (touched) this.kept = keepContact(this.run.samples, this.kept, before, free, [...shed.impulses, ...site.hits], v.sample);
+    for (const hit of [...shed.hits, ...site.hits]) this.impact(hit);
     // (let go under thrust: said once, as it happens, and once more when it parts)
     if (state.loose !== null && before.loose === null && !hasLeft(state.craft, this.roles.booster.id))
       this.host.say?.(
@@ -491,6 +495,24 @@ export class Cockpit extends Deck {
     this.tally.note(s, state, v);
     this.note(before, state, s, touched);
     return state;
+  }
+
+  /** A tick against what stands at the site: the state as a contact there leaves it, and what was struck hard enough to say. */
+  private atSite(before: VehicleState, state: VehicleState): { state: VehicleState; hits: SiteStrike[] } {
+    const v = this.vehicle!;
+    const site = state.held || state.landing || state.ticks === before.ticks ? null : this.siteContact(() => v.start().q);
+    if (!site) return { state, hits: [] };
+    const centre = this.flight.plan!.craft[0]!.rigid!.capsule.centre.value;
+    // (the pose as sim/shed.ts `ballistic` gives it to its own contacts: the point flown is the centre of mass)
+    const pose = (s: VehicleState): ContactPose => {
+      const m = v.mass(s);
+      const station = m.centre + (s.separation ? centre : 0);
+      return { ...s, station, centre: station, mass: m.mass, inertia: [m.roll, m.across, m.across] };
+    };
+    const released = new Set(state.released.map((r) => r.on));
+    const left = new Set(this.flight.flies!.drops.filter((d) => d.on !== undefined && released.has(d.on)).flatMap((d) => d.nodes));
+    const met = site.meet(pose(before), pose(state), (node) => left.has(node));
+    return { state: met.r === state.r ? state : { ...state, r: met.r, v: met.v, q: met.q, w: met.w }, hits: met.hits };
   }
 
   /** A tick has been flown: keep its sample for the scene, and the times of what happened in it. */

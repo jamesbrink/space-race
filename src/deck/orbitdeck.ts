@@ -2219,6 +2219,18 @@ export class OrbitDeck extends Deck {
         }
         for (const hit of [...met.hits, ...run.sheds.siblings(was.t, s.t)]) this.impact(hit);
       }
+      // and then what stands at the site, struck by the vehicle's own hull (sim/sitecontact.ts)
+      const site = s.parted || s.broke || s.landed || s.held ? null : this.siteContact(() => v.start().q);
+      if (site) {
+        const left = new Set(this.flight.flies!.drops.filter((_, i) => run.dropped[i]! <= s.t).flatMap((d) => d.nodes));
+        const met = site.meet({ ...was, station: 0, mass: v.mass(was) }, { ...s, station: 0, mass: v.mass(s) }, (node) => left.has(node));
+        if (met.r !== s.r) {
+          this.kept = keepContact(run.samples, this.kept, was, s, met.hits, (state) => v.sample(state, centre));
+          s = { ...s, r: met.r, v: met.v, q: met.q, w: met.w };
+          touched = true;
+        }
+        for (const hit of met.hits) this.impact(hit);
+      }
       if (s.parted) break;
       if (s.broke) {
         run.samples.length = this.kept;

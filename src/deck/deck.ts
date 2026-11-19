@@ -1,4 +1,8 @@
 import type { Impact } from '../sim/contact.ts';
+import type { Quat } from '../sim/rigid.ts';
+import { SiteContact } from '../sim/sitecontact.ts';
+import type { SiteWorld } from '../sim/siteworld.ts';
+import type { SolidModel } from '../sim/solids.ts';
 import type { EscapeSweep } from '../sim/launchescape.ts';
 import type { TowerEscape } from '../sim/plan.ts';
 import '../ui/cockpit.css';
@@ -14,7 +18,7 @@ import { Scope } from '../util/scope.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
 import { type Clock, missionTime, Clock as Own } from '../world/clock.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
-import { DEG } from '../world/frames.ts';
+import { DEG, siteFrame } from '../world/frames.ts';
 import { ask } from './ask.ts';
 import { inProgress, type Stake, verdict } from './leaving.ts';
 import { type Entry, type EntryKind, pack, readTape, replay, SAVE, stampOf, type Taped } from './tape.ts';
@@ -43,6 +47,11 @@ export interface CockpitHost {
     held: readonly (readonly [string, number])[] | undefined,
     query: (sweep: EscapeSweep, holds: readonly (readonly [string, number])[]) => T,
   ): T;
+  /**
+   * What stands at the flight's site and the flown model's hull (the baked solids: sim/siteworld.ts, sim/solids.ts), once
+   * the page has them; null until then, and then nothing at the site is struck.
+   */
+  solids?(): { world: SiteWorld; hull: SolidModel } | null;
   /** The flight deck has been taken, or left: the page makes way and gives the view to the vehicle. */
   piloting(on: boolean): void;
   /** Something to say across the page: a title and a line (a mechanism worked by hand says where it is sent). */
@@ -264,6 +273,19 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       ? `<p class="cockpit-why">Largest collision: ${hit.name} at T+${hit.t.toFixed(1)} s, ${hit.speed.toFixed(2)} m/s closing and ${hit.energy.toFixed(1)} J absorbed.${this.breakupSeen ? ' Parts broke free during the flight.' : ''}</p>`
       : '';
   }
+  private siteMade: SiteContact | null = null;
+  /**
+   * The flown vehicle against what stands at its site (sim/sitecontact.ts), once the page has the site's solids:
+   * `standing` gives the vehicle's attitude at liftoff, by which the model's hull is the body's.
+   */
+  protected siteContact(standing: () => Quat): SiteContact | null {
+    if (this.siteMade) return this.siteMade;
+    const solids = this.pageHost.solids?.();
+    if (!solids || !this.flight.site) return null;
+    this.siteMade = new SiteContact(this.flight, solids.world, solids.hull, siteFrame(this.flight.site), frameOf(this.flight), standing());
+    return this.siteMade;
+  }
+
   protected impact(hit: Impact): void {
     if (hit.speed < 0.005 && hit.energy < 0.05) return; // both round to zero on the deck
     const breakup = Boolean(hit.activeBroken || hit.broken?.length);

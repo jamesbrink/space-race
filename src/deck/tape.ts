@@ -1,3 +1,4 @@
+import { solidModels, solidUrl } from '../sim/siteworld.ts';
 import type { Flight } from '../types.ts';
 import type { Clock } from '../world/clock.ts';
 
@@ -62,6 +63,8 @@ export function unpack(s: string): unknown {
 /** The simulator's own stamp: a hash of its code, made by the build (vite.config.ts); 'node' where nothing built it (a test). */
 const SIM: string = import.meta.env?.SIM_STAMP ?? 'node';
 const PAD_STAMPS: Record<string, string> = import.meta.env?.PAD_STAMPS ?? {};
+/** Each baked solids file's stamp, by its url (sim/siteworld.ts `solidUrl`): what a flight flown by hand can strike, and its hull. */
+const SOLID_STAMPS: Record<string, string> = import.meta.env?.SOLID_STAMPS ?? {};
 
 /** A string's hash, 53 bits as base 36 (cyrb53): enough to tell one flight's data from another's, not a secret. */
 export function hash(s: string): string {
@@ -79,7 +82,8 @@ export function hash(s: string): string {
 
 /**
  * What a kept run was flown on: the version of what is written, the simulator's code, and the flight's data that a deck
- * flies (its plan, its site and day, what its model sheds and works). Any of them changed, the run is not flown again.
+ * flies (its plan, its site and day, what its model sheds and works, and what stands at its site to be struck: the baked
+ * solids and where each model is placed). Any of them changed, the run is not flown again.
  */
 export function stampOf(flight: Flight): string {
   const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
@@ -94,7 +98,7 @@ export function stampOf(flight: Flight): string {
     sequence: pad.sequence?.map(({ at, slider }) => [at, slider]),
     parts: pad.parts.map(({ node, order, explode, moves }) => [node, order, explode, moves?.map(({ machine: _, ...pose }) => pose)]),
   };
-  return `${SAVE}.${SIM}.${hash(JSON.stringify([flight.plan ?? null, flight.site, flight.launch, flight.flies ?? null, mechanisms, ...(padPose ? [padPose] : []), ...(flight.docking ? [flight.docking, flight.specs] : [])]))}`;
+  return `${SAVE}.${SIM}.${hash(JSON.stringify([flight.plan ?? null, flight.site, flight.launch, flight.flies ?? null, mechanisms, ...(padPose ? [padPose] : []), ...(flight.docking ? [flight.docking, flight.specs] : []), solidModels(flight).map(({ def }) => [def.id, def.position, def.rotationY, SOLID_STAMPS[solidUrl(flight, def)]])]))}`;
 }
 
 /** What flies a tape again: a deck on a clock of its own (whose every change it follows, as the page's clock is followed). */

@@ -40,6 +40,8 @@ import { FlightPath } from '../viewer/path.ts';
 import type { Stage, Thing, WarmStep } from '../viewer/stage.ts';
 import { Clock, localTime, missionTime } from '../world/clock.ts';
 import { frameOf } from '../world/earthframe.ts';
+import { SiteWorld, solidModels, solidUrl } from '../sim/siteworld.ts';
+import { decodeSolids, type SolidModel } from '../sim/solids.ts';
 import { ecefToSite, siteFrame, siteToEcefDirection } from '../world/frames.ts';
 import { prefs } from './prefs.ts';
 
@@ -176,6 +178,24 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
   // (each kind of flight has its own deck behind the one: what its pilot could do, src/deck/decks.ts)
   const Deck = deckOf(flight);
+  // What stands at the site, as the simulator can strike it, and the flown model's hull (the baked solids, a few
+  // hundred kilobytes for this flight alone): fetched now, and there before the curtain lifts (`start`). A flight flown
+  // without them strikes nothing at its site, as before there were any.
+  let solids: { world: SiteWorld; hull: SolidModel } | null = null;
+  const solidsArrive = (async () => {
+    const flown = solidModels(flight).find((m) => m.kind === 'vehicle');
+    if (!flown) return;
+    const got = new Map<string, SolidModel>();
+    await Promise.all(
+      solidModels(flight).map(async ({ def }) => {
+        const url = solidUrl(flight, def);
+        const answer = await fetch(import.meta.env.BASE_URL + url);
+        if (!answer.ok) throw new Error(`${url}: ${answer.status}`);
+        got.set(url, decodeSolids(new Uint8Array(await answer.arrayBuffer())));
+      }),
+    );
+    solids = { world: SiteWorld.of(flight, (url) => got.get(url)), hull: got.get(solidUrl(flight, flown.def))! };
+  })().catch((e) => console.warn('the site’s solids did not arrive: nothing there will be struck', e));
   const escapeFrame = frameOf(flight);
   const escapeSite = siteFrame(flight.site);
   const cockpit = new Deck(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
@@ -193,6 +213,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
           return { ...hit, normal: escapeFrame.toInertial(siteToEcefDirection(escapeSite, hit.normal), at) };
         }, holds);
       }),
+    solids: () => solids,
     heat: (t) => effects.reading(t),
     say: (title, line) => ui.say(title, line),
     kept: (at, phase) => markKept(at === null ? null : missionTime(at), () => cockpit.discard(), phase),
@@ -416,6 +437,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     );
     try {
       await stage.load(flight, (f, parts) => said.arrive(f, parts));
+      await solidsArrive;
       if (gone) return; // (the page has gone to another flight meanwhile)
       said.arrive(1);
       show(id, true);
