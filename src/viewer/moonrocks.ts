@@ -150,7 +150,7 @@ function scatter(toward: number, lighter: boolean): Block[] {
 }
 
 /** A block's shape: a ball cut by planes, `detail` as an icosahedron's. */
-function shape(detail: number): THREE.BufferGeometry {
+export function lunarRockShape(detail: number): THREE.BufferGeometry {
   const geometry = new THREE.IcosahedronGeometry(1, detail);
   const next = seeded(7);
   const planes: [number, number, number, number][] = [];
@@ -275,7 +275,7 @@ export class MoonRocks {
       upright = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), up);
     for (const [level, list] of levels.entries()) {
       if (!list.length) continue;
-      const geometry = shape(LEVELS[level]!.detail);
+      const geometry = lunarRockShape(LEVELS[level]!.detail);
       const rocks = new THREE.InstancedMesh(geometry, rock, list.length);
       const seat = new Float32Array(list.length * 3),
         seatUp = new Float32Array(list.length * 3),
