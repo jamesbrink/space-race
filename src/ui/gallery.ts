@@ -109,13 +109,15 @@ export function nextStep(
   const nav: HTMLElement & { at?: (place: Place) => void } = document.createElement('nav');
   nav.className = 'ways';
   nav.setAttribute('aria-label', 'Where to go from here');
+  // (a reason without its place's name: "Fly: no trajectory yet" is "No trajectory yet" on the way to Fly)
+  const reason = (why: string): string => why.replace(/^[^:]*:\s*/, '').replace(/^./, (c) => c.toUpperCase());
   const back = (to: Place): string =>
     `<button class="way-back" data-way="${to}" title="${esc(PLACE_SAYS[to])}" aria-label="Back to the ${esc(PLACE_NAME[to].toLowerCase())}"><i aria-hidden="true">‹</i><span>${shortName(to)}</span></button>`;
   // (`short`: what a phone's top line has room for, where the name is longer than the place's own)
   const on = (to: Place, name: string, short = name): string => {
     const why = lacks(flight, to);
     const says = why
-      ? esc(why.replace(/^[^:]*:\s*/, '').replace(/^./, (c) => c.toUpperCase()))
+      ? esc(reason(why))
       : short === name
         ? esc(name)
         : `<b class="way-long">${esc(name)}</b><b class="way-short">${esc(short)}</b>`;
@@ -133,7 +135,7 @@ export function nextStep(
     // (a way not there yet says why where the passing notes are, for a finger that cannot point at its title)
     const notes = nav.closest('#gallery, #ui')?.querySelector<HTMLElement>('.notes');
     const why = lacks(flight, b.dataset.way as Place);
-    if (notes && why) sayIn(notes, PLACE_NAME[b.dataset.way as Place], why.replace(/^[^:]*:\s*/, '').replace(/^./, (c) => c.toUpperCase()));
+    if (notes && why) sayIn(notes, PLACE_NAME[b.dataset.way as Place], reason(why));
   });
   // (at the site the ways are back to the gallery and on to the launch; flying, back to the site or the gallery)
   nav.at = (place) => {
@@ -162,7 +164,13 @@ function fitWays(nav: HTMLElement, scope: Scope): void {
     const need = (): number => {
       const gap = parseFloat(getComputedStyle(title).columnGap) || 0;
       const kids = [...title.children].filter((c) => getComputedStyle(c).display !== 'none').length;
-      return size(':scope > h1') + size(':scope > .sub') + nav.offsetWidth + gap * Math.max(0, kids - 1) + parseFloat(getComputedStyle(title).paddingLeft);
+      return (
+        size(':scope > h1') +
+        size(':scope > .sub') +
+        nav.offsetWidth +
+        gap * Math.max(0, kids - 1) +
+        parseFloat(getComputedStyle(title).paddingLeft)
+      );
     };
     if (need() <= title.clientWidth) return;
     nav.classList.add('tight');
