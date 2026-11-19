@@ -33,6 +33,7 @@ import { type Sheet, sheet } from './sheet.ts';
 import './slider.ts';
 import type { Flight, ModelDef, Part, Spec } from '../types.ts';
 import { esc } from '../util/dom.ts';
+import { RoverDrive } from './rover.ts';
 import { dot, legend, lookoutsBar, si } from './ui.ts';
 import { lookoutsOf } from '../viewer/lookouts.ts';
 import { type Anchor, cleared, covers, type Frame, Labels, layOut } from '../viewer/labels.ts';
@@ -322,6 +323,12 @@ export class Gallery {
   private hovered: string | null = null;
   /** True while the cutaway is open only because an inside part was chosen. */
   private autoCut = false;
+  private drive: RoverDrive | null = null;
+  /** The active surface traverse, available to browser diagnostics. */
+  get roverDrive(): RoverDrive | null {
+    return this.drive;
+  }
+
   private restoreInspection: (() => void) | null = null;
 
   private endInspection(): void {
@@ -379,6 +386,7 @@ export class Gallery {
    * and its flight let go. What is handed back (the canvas, the stage) is for the next flight's gallery to take on.
    */
   dispose(): GalleryKept {
+    this.endDrive(false);
     if (this.touring) this.demo.stop();
     this.endInspection();
     this.open = false;
@@ -461,6 +469,7 @@ export class Gallery {
 
   /** Go out: it sleeps as it stands, and is as it was left when next come into. */
   leave(): void {
+    this.endDrive(false);
     if (!this.open) return;
     if (this.touring) this.demo.stop();
     this.open = false;
@@ -477,6 +486,7 @@ export class Gallery {
 
   /** Show what an address names: a part (chosen, in the whole vehicle) or what stands there. */
   go(what: string, snap = false): void {
+    this.endDrive(true);
     if (!this.ready) return void (this.wanted = what); // (kept: `enter` goes there when the vehicle has arrived)
     const to = galleryAt(this.vehicle, what);
     // a seat named is sat in; anything else named is looked at from outside, as the seat was left for
@@ -558,6 +568,7 @@ export class Gallery {
                 .join('')
             : ''
         }
+        ${m.lunarRover ? '<button data-drive-rover>Drive rover</button>' : ''}
         ${this.choices.map((p) => `<button data-plinth="${p.id}" aria-pressed="false">${esc(p.label)}</button>`).join('')}
       </nav>
       <button class="alone" hidden title="Show the whole of it again"><svg aria-hidden="true"></svg><b></b><span></span><i>${esc(this.choices[0]!.label)}</i><em class="x" aria-hidden="true"></em></button>
@@ -864,6 +875,7 @@ export class Gallery {
     this.q('.models').addEventListener('click', (e) => {
       const travelled = pressed ? Math.hypot(e.clientX - pressed.x, e.clientY - pressed.y) : 0;
       pressed = null;
+      if (this.ready && travelled < 10 && (e.target as HTMLElement).closest('[data-drive-rover]')) return this.beginDrive();
       const craft = (e.target as HTMLElement).closest<HTMLElement>('[data-craft]')?.dataset.craft;
       if (craft && this.ready && travelled < 10) return this.host.craft?.(craft);
       const id = (e.target as HTMLElement).closest<HTMLElement>('[data-plinth]')?.dataset.plinth;
@@ -980,6 +992,12 @@ export class Gallery {
       'keydown',
       (e) => {
         if (!this.open) return;
+        if (this.drive) {
+          if (modified(e)) return;
+          this.drive.keydown(e);
+          e.stopImmediatePropagation();
+          return;
+        }
         const typing = isTyping(e);
         if (modified(e) || typing) return;
         if (CAMERA_KEYS.has(keyOf(e))) return;
@@ -1016,6 +1034,25 @@ export class Gallery {
   /** Where the handle's switch is taking the slider (null: nowhere). */
   private apartTo: number | null = null;
   private showKeys: (open: boolean) => void = () => {};
+
+  private beginDrive(): void {
+    if (!this.made || !this.vehicle.lunarRover || this.drive) return;
+    if (this.touring) this.demo.stop();
+    this.made.stage.sleep(true);
+    this.drive = new RoverDrive(this.made.stage, this.vehicle, () => this.endDrive(true));
+  }
+
+  private endDrive(resume: boolean): void {
+    if (!this.drive) return;
+    this.drive.dispose();
+    this.drive = null;
+    if (resume && this.open) {
+      this.made?.stage.sleep(false);
+      this.setCel(prefs.get('cel'), false);
+      this.demo.touch();
+      this.root.querySelector<HTMLButtonElement>('[data-drive-rover]')?.focus();
+    }
+  }
 
   private async load(): Promise<void> {
     // the same curtain as the site's, saying what the gallery fetches: the vehicle, and its shaders built
@@ -1437,7 +1474,7 @@ export class Gallery {
     const now = performance.now();
     const dt = Math.min(0.25, (now - this.last) / 1000);
     this.last = now;
-    if (!this.ready) return;
+    if (!this.ready || this.drive) return;
     if (this.apartTo !== null && !this.touring) {
       const far = this.apartTo - this.apart;
       const step = dt / (0.5 * APART);

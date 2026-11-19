@@ -49,6 +49,7 @@ and says why.
   bearing. The clock runs the morning of the launch: the gantry rolls back, the trucks leave, the
   vehicle goes. Get down and walk it as the crew, climb the structure, drive the vehicles, work the
   machines by hand, by day or by night.
+- **Drive on the Moon.** Open the lunar rover in the Gallery for [Apollo 15](https://jamesbrink.online/space-race/#usa/apollo/apollo-15/gallery/rover) or [Apollo 16](https://jamesbrink.online/space-race/#usa/apollo/apollo-16/gallery/rover). Take the driver’s seat or follow the two astronauts across their landing site from behind the rover.
 - **Fly.** The recorded flight plays from liftoff to landing on real gravity, air and thrust. Take it
   over at any moment and fly it yourself from the flight deck, with a navball and a predicted path;
   do something out of order and you get what the hardware would have done.
