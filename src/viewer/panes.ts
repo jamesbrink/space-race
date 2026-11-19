@@ -85,7 +85,7 @@ function rayOf(whole: THREE.Material): THREE.Mesh['raycast'] {
 }
 
 export class Panes {
-  private readonly split: { pane: THREE.Mesh; twin: THREE.Mesh; whole: THREE.Material }[] = [];
+  private readonly split = new Map<THREE.Object3D, { pane: THREE.Mesh; twin: THREE.Mesh; whole: THREE.Material }>();
   private on = true;
 
   /**
@@ -122,9 +122,14 @@ export class Panes {
     pane.raycast = rayOf(whole);
     paneOf.set(twin, pane);
     pane.add(twin);
-    this.split.push({ pane, twin, whole });
+    this.split.set(pane, { pane, twin, whole });
     if (this.on) pane.material = front;
     else twin.visible = false;
+  }
+
+  /** A departed model no longer participates in pane comparisons. */
+  remove(root: THREE.Object3D): void {
+    root.traverse((node) => this.split.delete(node));
   }
 
   get enabled(): boolean {
@@ -135,7 +140,7 @@ export class Panes {
   set enabled(on: boolean) {
     if (on === this.on) return;
     this.on = on;
-    for (const { pane, twin, whole } of this.split) {
+    for (const { pane, twin, whole } of this.split.values()) {
       twin.visible = on;
       this.give(pane, on ? halvesOf(whole).front : whole);
     }

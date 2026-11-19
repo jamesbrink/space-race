@@ -12,14 +12,14 @@ import { SITE31 } from '../missions/ussr/places/tyuratam/site-31.ts';
 import { SEASONS, seasonOf, steppeCelGround, steppeFlora, steppeGround } from '../missions/ussr/places/tyuratam/steppe.ts';
 import { compassAt } from '../src/viewer/scenery/compass.ts';
 
-const PADS = [LC5, LC14, LC19, SITE1];
+const PADS = new Set(flights.map((flight) => flight.site).filter(Boolean));
 const FT = 0.3048;
 
 test('every pad says where its model frame sits on the land, with its confidence and source', () => {
   for (const pad of PADS) {
     assert.equal(typeof pad.grade.value, 'number', pad.name);
     assert.ok(pad.grade.value <= 0, `${pad.name}: the land is not under its model's zero`);
-    assert.ok(['documented', 'derived', 'estimated'].includes(pad.grade.confidence), pad.name);
+    assert.ok(['documented', 'derived', 'assumed', 'estimated'].includes(pad.grade.confidence), pad.name);
     assert.ok(pad.grade.source.length > 40, `${pad.name}: the grade's source says too little`);
   }
   // the two pads drawn so far stand where they stood before the grade was theirs (the place's -0.12 m), to the bit

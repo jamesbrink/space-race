@@ -188,6 +188,7 @@ export const flight: Flight = {
   spacecraft: 'Soyuz 7K-OK(A) No. 12',
   launchVehicle: 'Soyuz 11A511 · Ya15000-012',
   launch,
+  opens: { at: -7200, model: 'pad', view: 'platform' },
   launchSite: 'Tyuratam (Baikonur), Site 31',
   site: SITE31,
   crew: ['Vladimir A. Shatalov'],

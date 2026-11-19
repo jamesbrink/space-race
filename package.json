@@ -43,6 +43,8 @@
     "test:drive": "node tools/drive-test.mjs",
     "test:front": "node tools/front-test.mjs",
     "test:lineup": "node tools/lineup-test.mjs",
+    "test:soyuz-boarding": "node tools/soyuz-boarding-test.mjs",
+    "test:model-eviction": "node tools/model-eviction-test.mjs",
     "test:flights": "node tools/flights-test.mjs",
     "test:docking": "node tools/docking.mjs",
     "test:deck": "node tools/deck-test.mjs",

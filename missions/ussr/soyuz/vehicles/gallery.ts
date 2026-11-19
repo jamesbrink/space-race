@@ -284,6 +284,7 @@ export function onSoyuzPad(vehicle: ModelDef, rotationY: number, tail: number): 
     ...vehicle,
     backdrop: 'ground',
     rotationY,
+    seats: vehicle.seats?.map((seat) => ({ ...seat, from: 'Fairing_AccessCover' })),
     position: [0, y, 0],
     home: 'launcher',
     wide: false,

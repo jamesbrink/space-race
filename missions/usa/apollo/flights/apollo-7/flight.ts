@@ -1,7 +1,8 @@
-import type { Flight, Machine, Move, Part } from '../../../../../src/types.ts';
+import type { Flight, Part } from '../../../../../src/types.ts';
 
 import { LC34_CREW_AT, LC34_SPECS } from '../../../places/cape-canaveral/lc-34.parts.ts';
 import { LC34 } from '../../../places/cape-canaveral/lc-34.ts';
+import { coverHatchTravel, sideHatchTravel } from '../../vehicles/hatch.ts';
 import { cabin, lights } from './cabin.ts';
 import { crewModels, seatedHead } from './crew.ts';
 import { flies, motors, timeline, translationJets } from './flown.ts';
@@ -12,14 +13,6 @@ import { WEATHER } from './weather.ts';
 const KIT = 'NASA Apollo 7 press kit, 68-168K (6 October 1968)';
 const IN = 0.0254;
 
-function hatchTravel(node: string, angle: number, lead: number, machine: Machine): Move[] {
-  const open = BOARDING[0] + lead;
-  const close = BOARDING[1] - lead;
-  return [
-    { kind: 'swing', node, axis: [0, 1, 0], angle, from: open - 10, to: open, machine },
-    { kind: 'swing', node, axis: [0, 1, 0], angle: -angle, from: close, to: close + 10, machine },
-  ];
-}
 const parts: Part[] = [
   {
     node: 'CommandModule',
@@ -38,12 +31,7 @@ const parts: Part[] = [
   },
   {
     node: 'SideHatch',
-    clocked: hatchTravel('Side_Hatch_Pivot', (108 * Math.PI) / 180, -1, {
-      kind: 'door',
-      confidence: 'documented',
-      source:
-        'Walkover, Hart and Zosky, The Apollo Command Module Side Access Hatch System, JPL TM 33-425, §V. The crew or ground team operates the unified hatch by hand.',
-    }),
+    clocked: sideHatchTravel(BOARDING),
     name: 'Unified side hatch',
     group: 'Spacecraft',
     order: 2,
@@ -325,11 +313,7 @@ const parts: Part[] = [
   },
   {
     node: 'BoostCover',
-    clocked: hatchTravel('Boost_Hatch_Pivot', (125 * Math.PI) / 180, -10, {
-      kind: 'door',
-      confidence: 'estimated',
-      source: 'The boost cover had a separate hinged access door. Hand operation and its sound are reconstructed.',
-    }),
+    clocked: coverHatchTravel(BOARDING),
     name: 'Boost protective cover',
     group: 'Launch escape system',
     order: 0,

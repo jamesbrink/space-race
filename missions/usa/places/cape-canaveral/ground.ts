@@ -178,7 +178,7 @@ const PALETTE: Palette = {
  */
 
 /** The sea's surface, metres above the ground at the complex (under the pad by its `grade`: lc-5.ts): the land there is about 9.5 ft above NAVD 88 (USGS 3DEP). */
-const SEA = -2.9;
+const CAPE_GRADE_SEA = -2.9;
 
 /**
  * The swell, as height above the still sea at a point: crests along the shore, a 7.7 s period
@@ -195,7 +195,7 @@ const PHASE = /* glsl */ `
 const SWELL = /* glsl */ `
   ${PHASE}
   float lift(vec2 p, float ground, float far) {
-    float depth = ${SEA.toFixed(2)} - ground;
+    float depth = capeSea - ground;
     if (depth <= 0.0 || inland(p) > 0.0) return 0.0;   // the river lies still
     float crest = pow(0.5 + 0.5 * sin(swellPhase(p)), 3.0);
     float amp = 0.32 * smoothstep(0.0, 0.7, depth) * (1.0 + 0.5 * (1.0 - smoothstep(0.8, 2.5, depth)));
@@ -230,7 +230,7 @@ const PAINT = /* glsl */ `
     // The Atlantic. The ground's own height says where the water is and how deep (the mesh is the water's
     // surface over it); the swell's phase says where its crests are, and where it is shallow they break.
     float shore = inland(p);
-    float depth = ${SEA.toFixed(2)} - vLand.y;
+    float depth = capeSea - vLand.y;
     // the beach: dry sand paler and finer above the reach of the waves, a line of wrack where the last high water left it
     float beach = 1.0 - smoothstep(36.0, 50.0, shore);
     // (a tint on the ground's own sand, so its grain carries on down the beach)
@@ -472,6 +472,9 @@ function landSpec(compass: Compass, date: string): LandSpec {
   const fromPad5 = moved ? `(p - vec2(${pad5.x.toFixed(3)}, ${pad5.z.toFixed(3)}))` : 'p';
   const { COAST, RIVER, RIVER_WEST, INDIAN, HARBOR_WEST, HARBOR_EAST, HARBOUR } = shoresAt(compass);
   const own = ownGround(compass);
+  // At Complex 39 the ground grade and the sea share the hardstand's MSL datum.
+  const is39 = compass.origin === LC39A || compass.origin === LC39B;
+  const sea = is39 ? compass.origin.seaLevel.value - compass.origin.height.value - compass.origin.grade.value : CAPE_GRADE_SEA;
   const CLEARINGS = [...clearingsAt(compass, date), ...(own?.clear ?? [])];
   const PAVED = [...pavedAt(compass, date), ...(own?.kept ?? [])];
   const OWN_STRIPS = own?.strips ?? [];
@@ -483,6 +486,7 @@ function landSpec(compass: Compass, date: string): LandSpec {
 
   /** GLSL both the cover's bake and the terrain's shader use: the shore, the ways, the clearings. */
   const SHARED = /* glsl */ `
+    const float capeSea = ${sea.toFixed(6)};  // metres above the local ground grade
     uniform vec2 uCoast[${COAST.length}];   // the Atlantic shore: (metres north, metres east) of the pad, northward
     uniform vec2 uRiver[${RIVER.length}];   // the Banana River's east shore, the same way
     uniform vec2 uRiverWest[${RIVER_WEST.length}];   // its west shore, Merritt Island's east
@@ -612,17 +616,18 @@ function landSpec(compass: Compass, date: string): LandSpec {
    * the complex's height, easing out to the natural lie over 40 m: nothing the models stand on moves.
    */
   const inlandAt = (x: number, z: number) => shoreAt(COAST, -z) - x + 26 * (fbm2(z * 0.006, 4, 5, 3) - 0.45);
+  const stripDistance = (x: number, z: number, [x0, z0, x1, z1, half]: readonly [number, number, number, number, number, ...number[]]) => {
+    const dx = x1 - x0;
+    const dz = z1 - z0;
+    const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
+    return Math.hypot(x - x0 - dx * t, z - z0 - dz * t) - half;
+  };
   const riverwardAt = (x: number, z: number) => {
     const n = -z;
     const banana = Math.max(x - shoreAt(RIVER, n), shoreAt(RIVER_WEST, n) - x, n - RIVER[RIVER.length - 1]![0]);
     const d = Math.min(Math.min(banana, x - shoreAt(INDIAN, n)), Math.max(shoreAt(HARBOR_WEST, n) - x, x - shoreAt(HARBOR_EAST, n)));
     let r = d - 30 * (fbm2(x * 0.0035, z * 0.0035, 6, 3) - 0.45);
-    for (const [x0, z0, x1, z1, half] of HARBOUR) {
-      const dx = x1 - x0,
-        dz = z1 - z0;
-      const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
-      r = Math.min(r, Math.hypot(x - x0 - dx * t, z - z0 - dz * t) - half);
-    }
+    for (const strip of HARBOUR) r = Math.min(r, stripDistance(x, z, strip));
     return r;
   };
   const lc56At = (x: number, z: number) => {
@@ -637,12 +642,7 @@ function landSpec(compass: Compass, date: string): LandSpec {
   };
   const wayAt = (x: number, z: number) => {
     let best = 1e9;
-    for (const [x0, z0, x1, z1, w] of TRACKS) {
-      const dx = x1 - x0,
-        dz = z1 - z0;
-      const t = Math.max(0, Math.min(1, ((x - x0) * dx + (z - z0) * dz) / (dx * dx + dz * dz)));
-      best = Math.min(best, Math.hypot(x - x0 - dx * t, z - z0 - dz * t) - w);
-    }
+    for (const strip of TRACKS) best = Math.min(best, stripDistance(x, z, strip));
     return best;
   };
   /**
@@ -674,7 +674,7 @@ function landSpec(compass: Compass, date: string): LandSpec {
     const crest = 1.05 * (0.75 + 0.5 * fbm2(z * 0.012, 7, 73, 3));
     const bar = (s + 75) / 18;
     let h =
-      SEA -
+      sea -
       0.022 * Math.max(-s, 0) +
       0.45 * Math.exp(-bar * bar) +
       1.35 * smoothstep(0, 30, s) +
@@ -685,9 +685,14 @@ function landSpec(compass: Compass, date: string): LandSpec {
     const inner = -0.55 - 0.5 * (swale - 0.5) + 0.3 * (fbm2(x * 0.008, z * 0.008, 71, 3) - 0.45);
     h += (inner - h) * smoothstep(110, 220, s);
     const r = riverwardAt(x, z);
-    h = SEA - 0.015 * Math.max(-r, 0) + (h - (SEA - 0.015 * Math.max(-r, 0))) * smoothstep(-8, 70, r);
+    h = sea - 0.015 * Math.max(-r, 0) + (h - (sea - 0.015 * Math.max(-r, 0))) * smoothstep(-8, 70, r);
     let d = Math.min(lc56At(x, z) - 25, wayAt(x, z) - 6);
     for (const [cx, cz, cr] of CLEARINGS) d = Math.min(d, Math.hypot(x - cx, z - cz) - cr - 85);
+    // A crawler approached on a graded embankment and the storage vessels stood on level foundations.
+    if (is39 && own) {
+      for (const [cx, cz, radius] of own.kept) d = Math.min(d, Math.hypot(x - cx, z - cz) - radius);
+      for (const strip of own.strips) d = Math.min(d, stripDistance(x, z, strip));
+    }
     let out = Math.min(h * smoothstep(0, 40, d), 0.05) - BED_DOWN * (1 - smoothstep(0.3, 2.8, trackAt(x, z)));
     // where the origin pad's own model is built below the ground (its `sunk`: a pit, a flume), in its frame
     if (own)
@@ -715,18 +720,27 @@ function landSpec(compass: Compass, date: string): LandSpec {
       float s = inland(p);
       float crest = 1.05 * (0.75 + 0.5 * fbm2(vec2(p.y * 0.012, 7.0), 73, 3));
       float bar = (s + 75.0) / 18.0;
-      float h = ${SEA.toFixed(2)} - 0.022 * max(-s, 0.0) + 0.45 * exp(-bar * bar)
+      float h = capeSea - 0.022 * max(-s, 0.0) + 0.45 * exp(-bar * bar)
         + 1.35 * smoothstep(0.0, 30.0, s) + 0.15 * smoothstep(30.0, 45.0, s)
         + crest * smoothstep(44.0, 62.0, s) - 0.45 * smoothstep(60.0, 88.0, s);
       float swale = sin(s * 0.057 + 3.0 * fbm2(p * 0.004, 35, 3)) * 0.5 + 0.5;
       float inner = -0.55 - 0.5 * (swale - 0.5) + 0.3 * (fbm2(p * 0.008, 71, 3) - 0.45);
       h += (inner - h) * smoothstep(110.0, 220.0, s);
       float r = riverward(p);
-      float bank = ${SEA.toFixed(2)} - 0.015 * max(-r, 0.0);
+      float bank = capeSea - 0.015 * max(-r, 0.0);
       h = bank + (h - bank) * smoothstep(-8.0, 70.0, r);
       float kind;
       float d = min(lc56(p) - 25.0, way(p, kind) - 6.0);
       for (int i = 0; i < ${CLEARINGS.length}; i++) d = min(d, length(p - uSites[i].xy) - uSites[i].z - 85.0);
+      ${
+        is39 && own
+          ? `
+      for (int i = ${KEPT.length + PAVED.length - own.kept.length}; i < ${KEPT.length + PAVED.length}; i++)
+        d = min(d, length(p - uKept[i].xy) - uKept[i].z);
+      for (int i = ${STRIPS.length}; i < ${NSTRIPS}; i++)
+        d = min(d, segment(p, uStrips[i]) - uStripWidth[i]);`
+          : ''
+      }
       float land = min(h * smoothstep(0.0, 40.0, d), 0.05) - ${BED_DOWN.toFixed(2)} * (1.0 - smoothstep(0.3, 2.8, track(p)));
       ${(own?.sunk ?? [])
         .map(
@@ -825,7 +839,7 @@ function landSpec(compass: Compass, date: string): LandSpec {
     cover: COVER,
     relief,
     reliefGlsl: RELIEF,
-    sea: SEA,
+    sea,
     lift: SWELL,
     canopy: CANOPY,
     crown: 2.6,

@@ -170,9 +170,7 @@ def build(offset=0, *, spacecraft=101):
             mouth = centre + axis * (15 * IN) + out * (2 * IN)
             bell(f"RCS_Nozzle_{i}_{j}", mouth, -axis, 9, RCS_EXIT_DIAMETER / 2, dark, groups["ReactionControl"])
     hatch = groups["SideHatch"]
-    hatch_leaf = hatch
-    if not lunar:
-        hatch_leaf = side_hatch.hinge(hatch, "Side_Hatch_Pivot", CM_BASE, command_module.radius, side_hatch.opening())
+    hatch_leaf = side_hatch.hinge(hatch, "Side_Hatch_Pivot", CM_BASE, command_module.radius, side_hatch.opening())
     command_module.build(
         groups["CommandModule"],
         groups["HeatShield"],
@@ -186,9 +184,8 @@ def build(offset=0, *, spacecraft=101):
     hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft == 106)
     forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=lunar, hatch_setback=10 if probe_installed else 0)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
-    window_glazing.build(groups["CabinWindows"], CM_BASE, hatch_parent=hatch_leaf if not lunar else None)
-    if not lunar:
-        side_hatch.register_leaf(hatch_leaf)
+    window_glazing.build(groups["CabinWindows"], CM_BASE, hatch_parent=hatch_leaf)
+    side_hatch.register_leaf(hatch_leaf)
     main_console.build(groups["MainConsole"], CM_BASE)
     dsky_front.build(groups["DSKYFrontWeb"], CM_BASE)
     dsky_equipment.build(groups["DSKYFrontWeb"], CM_BASE)
