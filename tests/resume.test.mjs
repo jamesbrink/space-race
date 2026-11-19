@@ -3,7 +3,7 @@
 // back is flown again by the replay (in steps of up to five seconds, not the frames it was flown in) to the same state to
 // the last bit, and flown on from there with the same hands it stays the same as one never left. A ballistic flight and
 // one into orbit, each at several instants (powered, coasting, after a staging, the retrorockets or the braking burn, the
-// entry). And: what is written keeps every double; a stale stamp or a run of another version is not flown; a store that
+// entry), the throttle moved on the way (an `l` entry, as the deck writes its lever). And: what is written keeps every double; a stale stamp or a run of another version is not flown; a store that
 // throws keeps nothing and breaks nothing. (The decks themselves are flown so in a browser: tools/deck-test.mjs.)
 //
 // "The same" is on this machine: exact doubles may differ between machines (simulator.md, "A refactor moves no figure
@@ -76,7 +76,8 @@ class Flier {
     const [kind, , , , , ...p] = e;
     if (kind === 'h') {
       this.held = new Set(String(p[0]));
-    } else this.command(String(p[0]));
+    } else if (kind === 'l') this.lever = Number(p[0]);
+    else this.command(String(p[0]));
   }
   /** The run as written at this instant (tape.ts `Taped`), through its text. */
   written() {
@@ -102,12 +103,14 @@ class Ballistic extends Flier {
     this.guidance = true;
     this.hand = {};
     this.trim = { pitch: 0, yaw: 0 };
+    /** The throttle lever, as the deck's (deck.ts `lever`): null until a hand moves it. */
+    this.lever = null;
   }
   get ticks() {
     return this.state.ticks;
   }
   print() {
-    return pack([this.state, this.trim, this.hand, this.guidance]);
+    return pack([this.state, this.trim, this.hand, this.guidance, this.lever]);
   }
   pilot() {
     const auto = autopilot(this.v, {
@@ -129,6 +132,7 @@ class Ballistic extends Flier {
       const own = (x) => (x !== 0 ? x : this.guidance ? undefined : 0);
       return blend(auto(s), {
         ...this.hand,
+        ...(this.lever !== null && s.t < this.b.cutoff ? { throttle: this.lever } : {}),
         pitch: trimmed ? undefined : own(pitch),
         yaw: trimmed ? undefined : own(yaw),
         roll: own(roll),
@@ -166,6 +170,7 @@ class Ballistic extends Flier {
       this.clock.play(true);
     } else if (what === 'guidance') this.guidance = !this.guidance;
     else if (what.startsWith('rate:')) this.clock.setRate(Number(what.slice(5)));
+    else if (what.startsWith('lever:')) this.lever = Number(what.slice(6));
     else if (what.startsWith('event:')) this.hand.events = [...(this.hand.events ?? []), what.slice(6)];
   }
 }
@@ -184,6 +189,7 @@ class Orbital extends Flier {
     this.guidance = true;
     this.trim = { pitch: 0, yaw: 0 };
     this.asked = [];
+    this.lever = null;
     this.options = { guidance: true, sequence: true };
     const push = () => {
       const axis = (plus, minus) => Number(this.held.has(plus)) - Number(this.held.has(minus));
@@ -202,14 +208,16 @@ class Orbital extends Flier {
         this.trim = { pitch: lean(this.trim.pitch, p.pitch), yaw: lean(this.trim.yaw, p.yaw) };
       }
       options.trim = this.trim;
-      return inner(st);
+      const c = inner(st);
+      // (the lever on every stage, as the orbital deck gives it)
+      return this.lever === null ? c : { ...c, lever: st.stages.map(() => this.lever) };
     };
   }
   get ticks() {
     return this.state.ticks;
   }
   print() {
-    return pack([this.state, this.trim, this.asked, this.guidance, this.options.memo ?? null]);
+    return pack([this.state, this.trim, this.asked, this.guidance, this.options.memo ?? null, this.lever]);
   }
   follow() {
     let s = this.state;
@@ -235,6 +243,7 @@ class Orbital extends Flier {
       this.guidance = !this.guidance;
       this.options.guidance = this.guidance;
     } else if (what.startsWith('rate:')) this.clock.setRate(Number(what.slice(5)));
+    else if (what.startsWith('lever:')) this.lever = Number(what.slice(6));
   }
 }
 
@@ -291,13 +300,15 @@ test('a written run keeps every double, an infinity, NaN and minus zero as they 
 test('Freedom 7 flown by hand, written and flown again at each instant: the same state, and flown on beside the run never left, the same', () => {
   const f = freedom7;
   const list = frames(60 * 60 * 3, 7);
-  // the hands: lit at once; W held a while and D, leaning the programme; the clock run fast and back; guidance off on the
-  // spacecraft alone (so the keys are the jets), Q held; the retrorockets asked for early, by hand
+  // the hands: lit at once; W held a while and D, leaning the programme; the throttle down a while and back; the clock run
+  // fast and back; guidance off on the spacecraft alone (so the keys are the jets), Q held; the retrorockets asked for early, by hand
   const b = ballisticOf(f.plan);
   const hands = () => [
     { at: 0, kind: 'c', payload: ['ignite'] },
     { at: 20, kind: 'h', payload: ['w'] },
     { at: 22.5, kind: 'h', payload: [''] },
+    { at: 30, kind: 'l', payload: [0.8] },
+    { at: 36, kind: 'l', payload: [1] },
     { at: 40, kind: 'h', payload: ['d'] },
     { at: 41, kind: 'h', payload: [''] },
     { at: 50, kind: 'c', payload: ['rate:8'] },
@@ -344,6 +355,8 @@ test('Vostok 1 flown by hand up to its orbit, written and flown again at each in
     { at: 0, kind: 'c', payload: ['liftoff'] },
     { at: 30, kind: 'h', payload: ['w'] },
     { at: 31.5, kind: 'h', payload: [''] },
+    { at: 35, kind: 'l', payload: [0.85] },
+    { at: 42, kind: 'l', payload: [1] },
     { at: 45, kind: 'c', payload: ['rate:8'] },
     { at: 140, kind: 'c', payload: ['rate:1'] },
     { at: 150, kind: 'h', payload: ['a'] },
