@@ -503,7 +503,7 @@ export class Cockpit extends Deck {
     const site = state.held || state.landing || state.ticks === before.ticks ? null : this.siteContact(() => v.start().q);
     if (!site) return { state, hits: [] };
     const centre = this.flight.plan!.craft[0]!.rigid!.capsule.centre.value;
-    // (the pose as sim/shed.ts `ballistic` gives it to its own contacts: the point flown is the centre of mass)
+    // (the pose as sim/shed.ts gives it to its own contacts with what was shed: the point flown is the centre of mass)
     const pose = (s: VehicleState): ContactPose => {
       const m = v.mass(s);
       const station = m.centre + (s.separation ? centre : 0);
