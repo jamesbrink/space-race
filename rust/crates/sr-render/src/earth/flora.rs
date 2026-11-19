@@ -77,53 +77,80 @@ impl Cover {
     }
 }
 
+/// The noise the cover is cut from at a point (`earth_land.wesl` `Fields`), each about 0.5: what `earth/bake.rs`
+/// bakes once, so that the ground's shader reads four texels and not some forty lumps of noise. In order: the
+/// openings' three sizes and their drifts; old burns; the grass; the strand's edge; the ridges' wander (two) and
+/// spacing; the dune's sea grape and its oats (two); the verges; the mown grass (two).
+#[must_use]
+pub fn fields(p: Vec2) -> [f32; 16] {
+    [
+        billow(p / 330.0, 31),
+        billow(p / 85.0, 47),
+        grain(p / 22.0, 57),
+        billow(p / 1300.0, 58),
+        billow(p / 1700.0 + 5.3, 85),
+        grain(p * 0.04, 34),
+        billow(p / 600.0, 59),
+        billow(p * 0.0025, 35),
+        billow(p * 0.011, 46),
+        billow(p * 0.0007, 48),
+        grain(p * 0.05, 37),
+        grain(p * 0.1, 38),
+        grain(p * 0.03, 39),
+        grain(p * 0.03, 43),
+        billow(p * 0.06, 41),
+        grain(p * 0.025, 42),
+    ]
+}
+
 /// How much `p` is a swale between two old beach ridges, `shore` metres inland (`earth_land.wesl` `cover`): long,
 /// curving, broken lines along the shore, each its own width and strength; and where it is between a ridge's crest
-/// (0) and a swale's floor (1).
+/// (0) and a swale's floor (1). `f` is [`fields`] at `p`.
 #[must_use]
-pub fn ridges(p: Vec2, shore: f32) -> (f32, f32) {
-    let wander = 9.0 * (billow(p * 0.0025, 35) - 0.5) + 3.0 * (billow(p * 0.011, 46) - 0.5);
-    let spacing = 0.057 * (0.8 + 0.4 * billow(p * 0.0007, 48));
+pub fn ridges(p: Vec2, shore: f32, f: &[f32; 16]) -> (f32, f32) {
+    let wander = 9.0 * (f[7] - 0.5) + 3.0 * (f[8] - 0.5);
+    let spacing = 0.057 * (0.8 + 0.4 * f[9]);
     let phase = shore * spacing + wander;
     let ridge = phase.sin() * 0.5 + 0.5;
     let which = lattice3(IVec2::new((phase / std::f32::consts::TAU + 0.25).floor() as i32, 7), 50);
     let pieces = smoothstep(0.48, 0.62, grain(p * 0.0026 + Vec2::new(which.y, which.z) * 40.0, 49));
-    (smoothstep(0.78 + 0.16 * which.x, 0.995, ridge) * pieces * which.z * which.z, ridge)
+    (smoothstep(0.74 + 0.16 * which.x, 0.99, ridge) * pieces * (0.25 + 0.75 * which.z), ridge)
 }
 
 /// What covers the ground at `p` (metres east and north of the site), `shore` metres inland of the open sea's
 /// shore and `river` metres from enclosed water (`earth_land.wesl` `cover`).
 #[must_use]
 pub fn cover(p: Vec2, shore: f32, river: f32, made: &Made) -> Cover {
+    let f = fields(p);
     let zone = 0.75 * (shore / 400.0).clamp(0.0, 1.0) + 0.25 * (1.0 - smoothstep(150.0, 700.0, river));
-    let (swale, _) = ridges(p, shore);
-    let (big, mid, small) = (billow(p / 330.0, 31), billow(p / 85.0, 47), grain(p / 22.0, 57));
-    let drift = smoothstep(0.35, 0.65, billow(p / 1300.0, 58));
+    let (swale, _) = ridges(p, shore, &f);
+    let (big, mid, small) = (f[0], f[1], f[2]);
+    let drift = smoothstep(0.35, 0.65, f[3]);
     let opening = smoothstep(0.63, 0.68, big + 0.12 * (mid - 0.5) + 0.06 * (small - 0.5))
         .max(smoothstep(0.65, 0.7, mid + 0.14 * (small - 0.5) + 0.1 * (drift - 0.5)) * (0.4 + 0.6 * drift))
         .max(smoothstep(0.72, 0.78, small + 0.1 * (mid - 0.5)) * drift * 0.8);
-    let burn = smoothstep(0.6, 0.7, billow(p / 1700.0 + 5.3, 85) + 0.08 * (big - 0.5));
+    let burn = smoothstep(0.6, 0.7, f[4] + 0.08 * (big - 0.5));
     let mut woody = 0.95 - 0.8 * opening - 0.3 * swale - 0.25 * burn;
-    let mut herb = 0.2 + 0.7 * (1.0 - woody) * (0.75 + 0.35 * grain(p * 0.04, 34));
+    let mut herb = 0.2 + 0.7 * (1.0 - woody) * (0.75 + 0.35 * f[5]);
     let beach = 1.0 - smoothstep(38.0, 48.0, shore);
     let dune = smoothstep(38.0, 48.0, shore) * (1.0 - smoothstep(70.0, 95.0, shore));
-    let strand_edge = 160.0 + 140.0 * billow(p / 600.0, 59);
+    let strand_edge = 160.0 + 140.0 * f[6];
     let strand =
         smoothstep(55.0, 90.0, shore) * (1.0 - smoothstep(strand_edge - 40.0, strand_edge + 40.0, shore));
     woody *= smoothstep(55.0, 110.0, shore) * (1.0 - 0.35 * strand);
-    woody = woody.max(dune * 0.5 * smoothstep(0.55, 0.7, grain(p * 0.05, 37)));
-    let oats = 0.85 + 0.15 * grain(p * 0.1, 38) - 0.55 * smoothstep(0.62, 0.75, grain(p * 0.03, 39));
+    woody = woody.max(dune * 0.5 * smoothstep(0.55, 0.7, f[10]));
+    let oats = 0.85 + 0.15 * f[11] - 0.55 * smoothstep(0.62, 0.75, f[12]);
     herb = mix(herb, oats, dune) * (1.0 - beach);
     let marsh = 1.0 - smoothstep(20.0, 90.0, river);
     woody = mix(woody, 0.15, marsh);
     herb = mix(herb, 0.8, marsh);
-    let mown = 0.82 + 0.4 * (billow(p * 0.06, 41) - 0.5) - 0.5 * smoothstep(0.62, 0.78, grain(p * 0.025, 42));
+    let mown = 0.82 + 0.4 * (f[14] - 0.5) - 0.5 * smoothstep(0.62, 0.78, f[15]);
     woody *= 1.0 - made.cleared;
     herb = mix(herb, mown, made.cleared);
     herb = mix(herb, 0.12 + 0.2 * grain(p * 0.3, 45), made.graded);
     woody *= 1.0 - made.graded;
     let on_way = 1.0 - smoothstep(-0.5, 1.5, made.way);
-    let verge = 1.0 - smoothstep(4.0, 12.0 + 8.0 * grain(p * 0.03, 43), made.way);
+    let verge = 1.0 - smoothstep(4.0, 12.0 + 8.0 * f[13], made.way);
     woody *= 1.0 - verge;
     herb = mix(herb, 0.45, verge) * (1.0 - on_way);
     let dry = (1.0 - made.built) * smoothstep(0.0, 1.5, shore) * smoothstep(0.0, 1.5, river);

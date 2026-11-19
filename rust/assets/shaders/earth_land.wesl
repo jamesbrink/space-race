@@ -55,6 +55,29 @@ struct Site {
     steep: f32,
     // the way the wind blows over it (unit, east and north)
     wind: vec2<f32>,
+    // the noise the cover is cut from (`fields`)
+    f: Fields,
+}
+
+// The noise the cover is cut from at a point, each about 0.5 (sr-render/src/earth/flora.rs `fields`, which
+// earth/bake.rs bakes): a the openings' three sizes and their drifts; b old burns, the grass, the strand's edge, the
+// ridges' wander; c the wander's finer part, the ridges' spacing, the dune's sea grape and its oats; d the oats'
+// patches, the verges, the mown grass (two).
+struct Fields {
+    a: vec4<f32>,
+    b: vec4<f32>,
+    c: vec4<f32>,
+    d: vec4<f32>,
+}
+
+// The fields worked out from the noise itself, as flora.rs does.
+fn fields(p: vec2<f32>) -> Fields {
+    var f: Fields;
+    f.a = vec4(billow(p / 330.0, 31u), billow(p / 85.0, 47u), grain(p / 22.0, 57u), billow(p / 1300.0, 58u));
+    f.b = vec4(billow(p / 1700.0 + 5.3, 85u), grain(p * 0.04, 34u), billow(p / 600.0, 59u), billow(p * 0.0025, 35u));
+    f.c = vec4(billow(p * 0.011, 46u), billow(p * 0.0007, 48u), grain(p * 0.05, 37u), grain(p * 0.1, 38u));
+    f.d = vec4(grain(p * 0.03, 39u), grain(p * 0.03, 43u), billow(p * 0.06, 41u), grain(p * 0.025, 42u));
+    return f;
 }
 
 // What the ground there is.
@@ -91,8 +114,9 @@ fn cover(s: Site) -> Cover {
     // The old beach ridges lie along the shore, 110 m apart (ground.ts; Rink and Forrest 2005 have 109 m), and the
     // swales between them are what shows: long, curving, broken lines, each its own width and strength, running
     // out and taken up again, closer or wider from one tract to the next.
-    let wander = 9.0 * (billow(p * 0.0025, 35u) - 0.5) + 3.0 * (billow(p * 0.011, 46u) - 0.5);
-    let spacing = 0.057 * (0.8 + 0.4 * billow(p * 0.0007, 48u));
+    let f = s.f;
+    let wander = 9.0 * (f.b.w - 0.5) + 3.0 * (f.c.x - 0.5);
+    let spacing = 0.057 * (0.8 + 0.4 * f.c.y);
     let phase = s.shore * spacing + wander;
     let ridge = sin(phase) * 0.5 + 0.5;
     let which = lattice3(vec2<i32>(i32(floor(phase / TAU + 0.25)), 7), 50u);
@@ -100,34 +124,34 @@ fn cover(s: Site) -> Cover {
     c.swale = smoothstep(0.74 + 0.16 * which.x, 0.99, ridge) * pieces * (0.25 + 0.75 * which.z);
     // The openings: sandy, grassy, of every size from a room to a field, and in drifts: a tract full of them and the
     // next with few, so that from the air the scrub is mottled at every scale and not one even scatter.
-    let big = billow(p / 330.0, 31u);
-    let mid = billow(p / 85.0, 47u);
-    let small = grain(p / 22.0, 57u);
-    let drift = smoothstep(0.35, 0.65, billow(p / 1300.0, 58u));
+    let big = f.a.x;
+    let mid = f.a.y;
+    let small = f.a.z;
+    let drift = smoothstep(0.35, 0.65, f.a.w);
     var opening = smoothstep(0.63, 0.68, big + 0.12 * (mid - 0.5) + 0.06 * (small - 0.5));
     opening = max(opening, smoothstep(0.65, 0.7, mid + 0.14 * (small - 0.5) + 0.1 * (drift - 0.5)) * (0.4 + 0.6 * drift));
     opening = max(opening, smoothstep(0.72, 0.78, small + 0.1 * (mid - 0.5)) * drift * 0.8);
     // Old burns: the scrub is burned every decade or two and comes back lower and paler, in tracts a kilometre and
     // more across.
-    c.burn = smoothstep(0.6, 0.7, billow(p / 1700.0 + 5.3, 85u) + 0.08 * (big - 0.5));
+    c.burn = smoothstep(0.6, 0.7, f.b.x + 0.08 * (big - 0.5));
     var woody = 0.95 - 0.8 * opening - 0.3 * c.swale - 0.25 * c.burn;
-    var herb = 0.2 + 0.7 * (1.0 - woody) * (0.75 + 0.35 * grain(p * 0.04, 34u));
+    var herb = 0.2 + 0.7 * (1.0 - woody) * (0.75 + 0.35 * f.b.y);
     // from the sea: beach, then the dune's grasses with patches of sea grape, then the strand, open and low, out to a
     // ragged edge a few hundred metres in, and the scrub
     c.beach = 1.0 - smoothstep(38.0, 48.0, s.shore);
     c.dune = smoothstep(38.0, 48.0, s.shore) * (1.0 - smoothstep(70.0, 95.0, s.shore));
-    let strand_edge = 160.0 + 140.0 * billow(p / 600.0, 59u);
+    let strand_edge = 160.0 + 140.0 * f.b.z;
     c.strand = smoothstep(55.0, 90.0, s.shore) * (1.0 - smoothstep(strand_edge - 40.0, strand_edge + 40.0, s.shore));
     woody *= smoothstep(55.0, 110.0, s.shore) * (1.0 - 0.35 * c.strand);
-    woody = max(woody, c.dune * 0.5 * smoothstep(0.55, 0.7, grain(p * 0.05, 37u)));
-    let oats = 0.85 + 0.15 * grain(p * 0.1, 38u) - 0.55 * smoothstep(0.62, 0.75, grain(p * 0.03, 39u));
+    woody = max(woody, c.dune * 0.5 * smoothstep(0.55, 0.7, f.c.z));
+    let oats = 0.85 + 0.15 * f.c.w - 0.55 * smoothstep(0.62, 0.75, f.d.x);
     herb = mix(herb, oats, c.dune) * (1.0 - c.beach);
     // toward the lagoon, marsh grass at its edge
     c.marsh = 1.0 - smoothstep(20.0, 90.0, s.river);
     woody = mix(woody, 0.15, c.marsh);
     herb = mix(herb, 0.8, c.marsh);
     // the clearings: mown grass, thin and patchy, sand showing through; a few shrubs left standing
-    let mown = 0.82 + 0.4 * (billow(p * 0.06, 41u) - 0.5) - 0.5 * smoothstep(0.62, 0.78, grain(p * 0.025, 42u));
+    let mown = 0.82 + 0.4 * (f.d.z - 0.5) - 0.5 * smoothstep(0.62, 0.78, f.d.w);
     woody *= 1.0 - s.cleared;
     herb = mix(herb, mown, s.cleared);
     // graded aprons: sand, a little grass coming back
@@ -136,7 +160,7 @@ fn cover(s: Site) -> Cover {
     // the ways: bare, with a verge kept cut back ten metres and more, raggedly (the photographs' pale margins
     // along every road)
     let on_way = 1.0 - smoothstep(-0.5, 1.5, s.way);
-    let verge = 1.0 - smoothstep(4.0, 12.0 + 8.0 * grain(p * 0.03, 43u), s.way);
+    let verge = 1.0 - smoothstep(4.0, 12.0 + 8.0 * f.d.y, s.way);
     woody *= 1.0 - verge;
     herb = mix(herb, 0.45, verge) * (1.0 - on_way);
     // nothing grows where a model stands, nor in the water
@@ -266,26 +290,14 @@ fn herbs(s: Site, soil: Soil, c: Cover) -> Soil {
     // change comes on with distance, over four times the range at which the tufts themselves are lost)
     var cover = saturate(c.herb * mix(0.95, 0.8, shown(2.0, s.seen)));
     if see > 0.0 {
-        let cell = 0.55;
-        let tuft = nearest(s.p / cell, 9u);
-        // (they grow in drifts: thick here, none there)
-        let has = step(tuft.z, c.herb * (0.15 + 1.5 * grain(s.p * 0.3, 52u)));
-        let size = fract(tuft.z * 17.0);
-        let r = 0.14 + 0.38 * size * size;
-        // (its outline ragged)
-        let d = length(tuft.xy) * (0.85 + 0.35 * grain(s.p / 0.09 + tuft.z * 31.0, 58u));
-        let body = (1.0 - smoothstep(r * 0.55, r, d)) * has;
-        // (its blades: a fan of light and dark round its middle)
-        // (lighter and darker by its own lumps, not a star: a painted tuft is seen from above, where its blades
-        // lie every which way)
-        let blades = 0.85 + 0.3 * (grain(s.p / 0.07 + tuft.z * 50.0, 56u) - 0.5) * shown(0.06, s.seen);
-        let own = mix(HERB_DRY, HERB_GREEN, saturate(lush + (fract(tuft.z * 7.0) - 0.5) * 0.7)) * blades * (0.6 + 0.6 * d / r);
-        // its shadow on the sand, away from the Sun
-        let lee = tuft.xy * cell - s.sunward * (0.5 * r * cell);
-        let shade = (1.0 - smoothstep(r * cell * 0.5, r * cell, length(lee))) * has * (1.0 - body);
-        o.colour = mix(o.colour * (1.0 - 0.35 * shade * see), mix(green, own, see), mix(cover, body, see));
-        o.slope += -tuft.xy / max(d, 0.05) * (0.5 * body * see * d / r);
-        o.sky *= 1.0 - 0.3 * shade * see;
+        // (near the eye the tufts stand as plants (earth/sow.rs) round the site and the beach; the ground under them
+        // is drawn as their clumps and the sand between, from the noise, and not tuft by tuft: a search for the
+        // nearest tuft in every pixel cost more than it showed)
+        let clumped = grain(s.p / 0.3, 52u) * (0.5 + 1.0 * grain(s.p * 0.3, 59u) * saturate(c.herb * 1.6));
+        let body = smoothstep(0.5, 0.68, clumped);
+        let own = green * (0.75 + 0.5 * grain(s.p / 0.12, 56u));
+        o.colour = mix(o.colour, mix(green, own, see), mix(cover, body, see));
+        o.sky *= 1.0 - 0.2 * body * see;
         cover = mix(cover, body, see);
     } else {
         o.colour = mix(o.colour, green, cover);

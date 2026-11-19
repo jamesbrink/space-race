@@ -6,6 +6,7 @@
 //! the site is a designed ground in the repo's palette, its relief raised within two kilometres of the site.
 
 mod ab;
+mod bake;
 mod chart;
 mod coast;
 mod cube;
@@ -69,13 +70,13 @@ impl Plugin for EarthPlugin {
         .init_asset::<json::JsonFile>()
         .init_asset_loader::<json::JsonLoader>()
         .init_resource::<ab::EarthAb>()
-        .add_systems(Startup, lay::lay.after(crate::clouds::CloudsMade))
+        .add_systems(Startup, (lay::lay.after(crate::clouds::CloudsMade), bake::start))
         .add_systems(First, ab::turn)
         .add_systems(
             Update,
             (
                 (lay::light, leaves::follow).chain(),
-                (maps::describe, maps::arrive, relief::raise, grove::plant).chain(),
+                (maps::describe, maps::arrive, relief::raise, grove::plant, bake::land).chain(),
             ),
         );
     }

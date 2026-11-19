@@ -32,7 +32,9 @@ fn fragment(in: FullscreenVertexOutput) -> @location(0) vec4<f32> {
     if textureLoad(depth_drawn, pixel, 0) > 0.0 {
         discard;
     }
-    let marched = clamp(pixel / 2, vec2(0), vec2<i32>(textureDimensions(cloud_marched)) - 1);
+    let small = vec2<i32>(textureDimensions(cloud_marched));
+    let every = i32(round(view.viewport.z / f32(small.x)));
+    let marched = clamp(pixel / every, vec2(0), small - 1);
     if textureLoad(cloud_marched, marched, 0).a < CLOUDY {
         discard;
     }

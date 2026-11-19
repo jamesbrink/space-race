@@ -34,6 +34,9 @@ struct EarthFrame {
     // the day's map of the cover far from the site: how far across it is (m), whether there is one; and how far
     // the flight's clock moved in the last frame (s)
     day: vec4<f32>,
+    // the land's baked noise (sr-render/src/earth/bake.rs): half its near level's width and its wide one's (m), and
+    // whether it has landed
+    baked: vec4<f32>,
     // the eye's height (m); whether the whole Earth's relief has arrived, its shores, and the sorted coast
     eye: vec4<f32>,
     // the region's wider shore map: its scale's third is the texels it keeps a distance over, its fourth whether

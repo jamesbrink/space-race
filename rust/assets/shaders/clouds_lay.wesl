@@ -21,10 +21,12 @@ const REACH_KM: f32 = 700.0;
 // this-many-th part of the way it differs. Chosen so that a gantry 30 m off is not mixed with the sky behind it.
 const KEEN: f32 = 6.0;
 
-// clouds.wesl `picked`: which of four pixels the march's ray went through this frame.
-fn picked(frame_count: u32) -> vec2<i32> {
-    let k = frame_count % 4u;
-    return vec2<i32>(i32(k & 1u), i32(((k >> 1u) ^ k) & 1u));
+// Which of the `every` x `every` pixels under one of the march's this frame's ray goes through: each in turn, so
+// that over every^2 frames every pixel of the frame has had a ray of its own. clouds.wesl and clouds_lay.wesl have
+// the same.
+fn picked(frame_count: u32, every: i32) -> vec2<i32> {
+    let k = i32(frame_count % u32(every * every));
+    return vec2(k % every, (k / every + k) % every);
 }
 
 struct Laid {
@@ -69,8 +71,10 @@ fn fragment(
         }
     }
     let size = vec2<i32>(textureDimensions(reach_marched));
+    // (how many of the frame's pixels each way one of the march's stands for)
+    let every = i32(round(view.viewport.z / f32(size.x)));
     // Where this pixel falls among the march's rays, in the march's pixels.
-    let among = (floor(in.position.xy) - vec2<f32>(picked(globals.frame_count))) * 0.5;
+    let among = (floor(in.position.xy) - vec2<f32>(picked(globals.frame_count, every))) / f32(every);
     let corner = vec2<i32>(floor(among));
     let f = among - floor(among);
     var sum = vec4(0.0);

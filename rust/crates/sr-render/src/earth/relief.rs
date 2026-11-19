@@ -117,7 +117,7 @@ pub fn height(p: Vec2, shore: f32, river: f32, made: &Made) -> f32 {
         * (1.0 - smoothstep(140.0, 320.0, shore));
     // behind it the strand, a little above the beach, falling to the plain of ridges and swales
     let strand = beach * (1.0 - smoothstep(120.0, 350.0, shore));
-    let (_, ridge) = flora::ridges(p, shore);
+    let (_, ridge) = flora::ridges(p, shore, &flora::fields(p));
     let plain =
         (RIDGES * (0.5 - ridge) + 0.4 * (flora::grain(p / 45.0, 74) - 0.5)) * smoothstep(150.0, 300.0, shore);
     let wet = smoothstep(0.0, 30.0, river) * smoothstep(0.0, 10.0, shore);

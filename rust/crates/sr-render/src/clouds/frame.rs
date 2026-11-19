@@ -23,6 +23,11 @@ const SKYLIGHT: Vec3 = Vec3::new(2_300.0, 3_900.0, 6_800.0);
 /// cirrus over Florida stands at 9 to 12 km.
 const CIRRUS: f32 = 10_000.0;
 
+/// The march takes one ray for this many of the frame's pixels each way: a ninth of the rays, each pixel of the
+/// frame its own ray once in nine frames, which the temporal filter gathers. 2 is sharper in motion and costs twice
+/// as much. Chosen for the frame's budget.
+pub const MARCH_EVERY: u32 = 3;
+
 /// What the march needs to know each frame.
 #[derive(ShaderType, Debug, Clone, Copy, Default)]
 pub struct CloudFrame {
@@ -52,7 +57,7 @@ pub struct CloudFrame {
     /// its cloudlets.
     pub lay: Vec4,
     /// The day's map: how many metres it is across (0: there is none), and the height its high cloud is drawn
-    /// at, m.
+    /// at, m; then [`MARCH_EVERY`].
     pub day: Vec4,
     /// Where what is in the cumulus now was in the last frame's picture, less where it is in this one, m: the eye's
     /// move less the cloud's drift.
@@ -128,12 +133,12 @@ pub(super) fn look(
             ripple::bank_starts(air.deck.cover),
             air.deck.size * ripple::CLOUDLETS as f32,
         ),
-        day: Vec4::new(day.map_or(0.0, |day| day.extent), CIRRUS, 0.0, 0.0),
+        day: Vec4::new(day.map_or(0.0, |day| day.extent), CIRRUS, MARCH_EVERY as f32, 0.0),
         moved: moved.extend(0.0),
     };
 }
 
-/// Keeps the targets at half the size of what the eye draws into, whatever that becomes.
+/// Keeps the targets at a [`MARCH_EVERY`]th of the size of what the eye draws into, whatever that becomes.
 pub(super) fn fit(
     eyes: Query<&Camera, With<Eye>>,
     marched: Res<CloudSky>,
@@ -142,8 +147,8 @@ pub(super) fn fit(
     mut materials: ResMut<Assets<CloudLay>>,
 ) {
     let Some(size) = eyes.iter().find_map(Camera::physical_target_size) else { return };
-    let half = (size + 1) / 2;
-    let want = Extent3d { width: half.x.max(1), height: half.y.max(1), depth_or_array_layers: 1 };
+    let small = (size + MARCH_EVERY - 1) / MARCH_EVERY;
+    let want = Extent3d { width: small.x.max(1), height: small.y.max(1), depth_or_array_layers: 1 };
     if images.get(&marched.targets[0]).is_some_and(|image| image.texture_descriptor.size == want) {
         return;
     }

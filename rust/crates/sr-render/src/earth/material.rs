@@ -60,6 +60,9 @@ pub struct EarthFrame {
     /// one (1 or 0); then how far the flight's clock moved in the last frame (s); and what the A/B switch has turned
     /// off (`earth/ab.rs`): 1 the land's detail, 2 the sea's, 3 both.
     pub day: Vec4,
+    /// The land's baked noise (`earth/bake.rs`): half the width of its near level and of its wide one (m), and
+    /// whether it has landed (1 or 0).
+    pub baked: Vec4,
     /// The eye's height above the ground (m); whether the whole Earth's relief has arrived, and its shores; and
     /// whether the open sea has been told from enclosed water (`earth/coast.rs`), each 1 or 0.
     pub eye: Vec4,
@@ -121,6 +124,9 @@ pub struct EarthSurface {
     /// The day's map of the cover far from the site, read through the shore's sampler.
     #[texture(121)]
     pub day: Handle<Image>,
+    /// The land's baked noise (`earth/bake.rs`), read through the noise's sampler.
+    #[texture(122)]
+    pub baked: Handle<Image>,
 }
 
 impl MaterialExtension for EarthSurface {

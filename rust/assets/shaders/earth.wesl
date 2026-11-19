@@ -14,6 +14,8 @@ import super::earth_land::{Site, Soil, ground};
 import super::sea::{Waves, waves, Surf, surf, water, SEA, DEEP, LAGOON, LAGOON_EDGE, FOAM, SURF_ZONE, TURBID};
 import super::earth_glint::{sunlight, to_sun, glint, sun_on_water};
 import super::earth_frame::{Plane, EarthFrame, through_cloud};
+import super::earth_baked::fields_at;
+import bevy_pbr::render::mesh_view_bindings as view_bindings;
 
 // The made ground round the site (sr-render/src/earth/marks.rs).
 struct EarthMarks {
@@ -275,6 +277,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
             let sun_en = vec2(dot(earth.sun.xyz, earth.east.xyz), dot(earth.sun.xyz, earth.north.xyz));
             site.sunward = sun_en / max(earth.sun.y, 0.15);
             site.steep = saturate(dot(up, pbr.V));
+            site.f = fields_at(en, length(in.world_position.xyz - view_bindings::view.world_position), earth.baked);
             site.wind = select(vec2(-1.0, 0.0), normalize(earth.wind.xy), dot(earth.wind.xy, earth.wind.xy) > 1.0e-4);
             let soil = ground(site);
             colour = mix(colour, soil.colour, own);

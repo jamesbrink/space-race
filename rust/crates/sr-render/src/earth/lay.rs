@@ -53,7 +53,8 @@ pub fn lay(
             region_relief: blank.clone(),
             region_colour: blank.clone(),
             coast: blank.clone(),
-            day: blank,
+            day: blank.clone(),
+            baked: blank,
             marks: marks.map(|marks| marks.uniform(ground.east, ground.north)).unwrap_or_default(),
             noise: images.add(grain::image()),
             // (the clouds' own sheet, read where they read it; a copy only if there are no clouds)

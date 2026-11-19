@@ -18,9 +18,16 @@ const MOST: f32 = 0.22;
 const OPEN_AT: f32 = 5.0;
 const WIDEST: f32 = 0.0715;
 const TAU: f32 = 6.2831853;
-// A small turret stands this many times its radius high; a big one no higher than the layer's depth. Estimated:
-// fair-weather cumulus are about as tall as they are wide until the layer's top holds them down.
-const ASPECT: f32 = 1.6;
+// A big turret stands this many times its radius high, up to the layer's depth; a small one is flatter, a dome or a
+// lens: its height for its radius falls off below SMALL_TURRET (m). Estimated: fair-weather cumulus humilis are
+// wider than tall, and only the bigger ones heap up as tall as they are wide.
+const ASPECT: f32 = 1.8;
+const SMALL_TURRET: f32 = 160.0;
+// The spread is scaled by this everywhere, so that the field as drawn covers what the record says: measured from a
+// render straight down from 25 km over the site, which without it showed 0.21 of the sky covered where the record
+// has 0.10 (the gathering's swings are not even in the cover, and the cut cloud's edge is not the field's
+// outline). Measured, for this field and this gathering.
+const GATHER_TRIM: f32 = 0.7;
 // The patches each laying of the sheet takes, a fraction of a patch to a cell (about 60 km across).
 const PATCHES: f32 = 0.03;
 
@@ -96,7 +103,7 @@ fn gather(on: vec2<f32>) -> f32 {
     let clumps = noise2(on * 0.11 + 7.3);
     let broad = noise2(on * 0.022 + 3.9);
     let v = 0.35 * streets + 0.4 * clumps + 0.25 * broad;
-    return (0.12 + 1.8 * smoothstep(0.28, 0.72, v)) / 1.12;
+    return (0.12 + 1.8 * smoothstep(0.28, 0.72, v)) / 1.12 * GATHER_TRIM;
 }
 
 // How far every turret is spread for clouds covering `cover` of the sky (field.rs `spread_for`).
@@ -127,7 +134,8 @@ fn column(texel: vec4<f32>, spread: f32, cell: f32, depth: f32, clock: f32) -> C
     // The wider a turret the taller, up to the layer's depth. Each swells and sinks a little in its own time.
     let phase = fract(texel.g * 977.0);
     let breath = (0.9 + 0.1 * sin(clock / 160.0 + phase * TAU)) * (0.75 + 0.25 * phase);
-    col.top = depth * (1.0 - exp(-ASPECT * radius / depth)) * breath;
+    let aspect = ASPECT * radius / (radius + SMALL_TURRET);
+    col.top = depth * (1.0 - exp(-aspect * radius / depth)) * breath;
     col.age = texel.b;
     return col;
 }
