@@ -14,7 +14,7 @@ const date = (iso: string) =>
 
 /**
  * Which of its three places a flight has, as their icons: lit for each it has, dimmed for one it has not yet (address.ts
- * `lacks`, in the words the places' switch says when pointed at). Said in words as well, for whoever cannot see them.
+ * `lacks`, in the words the ways between the places say when pointed at). Said in words as well, for whoever cannot see them.
  */
 const placesOf = (f: Flight): string => {
   const has = PLACES.filter((p) => !lacks(f, p));

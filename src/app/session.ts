@@ -2,7 +2,7 @@ import { Box3, type Object3D, Vector3 } from 'three';
 import { deckOf } from '../deck/decks.ts';
 import { Flown } from '../deck/flown.ts';
 import { Callout } from '../ui/callout.ts';
-import { crumbs, Gallery, type GalleryKept, markKept, markPlace, nextStep, placesNav } from '../ui/gallery.ts';
+import { crumbs, Gallery, type GalleryKept, markKept, nextStep } from '../ui/gallery.ts';
 import { type Choice, choices, lookUp, nameOf, quiet, spaced, type Target } from './actions.ts';
 import {
   atSite,
@@ -850,17 +850,13 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     );
   }
   let gallery = makeGallery(kept);
-  // the same switch the gallery has, in the same spot, and the same way back in the crumbs
-  const places = placesNav(flight, 'site', (to) => go(to), scope);
   // (on a narrow page, which has no room for crumbs, the heading is the way out to the front page: gallery.css)
   document.querySelector('#ui .title h1')?.setAttribute('data-home', '');
-  document.querySelector('#ui .title .sub')?.after(places);
-  // (and the steps from the site: back to the gallery, on to the launch)
-  const next = nextStep(flight, 'site', (to) => go(to));
-  places.after(next);
-  /** The site is being seen as the launch site or from the flight deck: the switch, the crumbs and the address say which. */
+  // the steps from the site, in the spot the gallery has them: back to the gallery, on to the launch
+  const next = nextStep(flight, 'site', (to) => go(to), scope);
+  document.querySelector('#ui .title .sub')?.after(next);
+  /** The site is being seen as the launch site or from the flight deck: the ways, the crumbs and the address say which. */
   function placed(place: 'site' | 'fly', say = true): void {
-    markPlace(places, place);
     next.at?.(place);
     const trail = document.querySelector('#ui .crumbs');
     if (trail) trail.innerHTML = crumbs(flight, place);

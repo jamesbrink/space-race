@@ -20,9 +20,9 @@ Every flight has the same three places, in the same order, and opens in the firs
   kept flight's Continue, on the menu, opens its flight deck). On the menu stands the way into the Lineup, named
   Explore there ("The Lineup", below), which is no flight's either.
 - **Inside a flight** the places are a path: the gallery is the flight's page, from it the launch site, from the site the
-  launch. On a wide page the title card has plain buttons for the ways from where it is (`nextStep` in `gallery.ts`:
-  "Go to the launch site" in the gallery; "Gallery" and "Launch" at the site; back to either from the flight deck). A
-  narrow page has no room for them and keeps the one folded switch of the three places (`placesNav`; fold.css). A place
+  launch. Every place has plain buttons for the ways from where it is (`nextStep` in `gallery.ts`): "Go to the launch
+  site" in the gallery; "Gallery" and "Launch" at the site; back to either from the flight deck. On a wide page they
+  are in the title card; on a phone they are the top line's one control (below, "On a phone"). A place
   the flight does not have yet is **shown, dimmed, and says why** (`lacks` in `address.ts`: "Launch site: not built
   yet", "Fly: no trajectory yet"). It is never hidden: the visitor is told what is coming.
 - **The way back is always the same**: front page > nation > programme > flight > place, and the title card's crumbs
@@ -56,7 +56,7 @@ Every flight has the same three places, in the same order, and opens in the firs
   its clock stopped at the instant it was left, and asks nothing. *Within the flight* (the deck's Leave, Esc, the Gallery and
   Launch site tabs, the flight's crumb, Back and Forward between its places) the deck parks it in the page, and a passing note
   says so; *beyond it* (another flight, the Lineup, the front page) and through a reload or a closed tab it is kept in the
-  browser's storage, one run a flight (simulator.md, "The deck": how). Where one is kept, the way to its launch (Launch at the site on a wide page, which then says Resume; the Fly tab of a narrow page's switch) shows a lamp,
+  browser's storage, one run a flight (simulator.md, "The deck": how). Where one is kept, the way to its launch (Launch at the site, which then says Resume) shows a lamp,
   its mission time and a mark that throws it away, and the front page's row for the flight says "In flight" and the time
   (`ui/runmark.ts`). Fly, now or days later, takes it up behind a card in the deck's style that says what is kept (its
   mission time, what it was doing, when it was left in plain words): Resume (focused: Space, Enter) goes on from exactly
@@ -77,7 +77,7 @@ Every flight has the same three places, in the same order, and opens in the firs
   anything chosen within a place (a part, a section of the site, what stands in the gallery) rewrites the entry it is
   on, and so does the page settling an address into its own form (`settle`: `#pad` becomes the flight's
   `#…/site/pad`, a flight named with no place its gallery) and anything the idle show does. So Back is never pressed
-  twice to leave a place, and never traps. Taking the flight deck or leaving it by its own control (Launch, or Fly it by the clock on a narrow page; L, Esc)
+  twice to leave a place, and never traps. Taking the flight deck or leaving it by its own control (Launch, ‹ Site; L, Esc)
   is going between places, so a step too; following an address (Back, Forward, a link) is never one, whatever the
   page passes through on its way there (`following` in session.ts). How a place was left that the address does not say
   is kept with its entry (`keep`, `kept` in address.ts): the gallery's tab, chosen by hand, is open again on coming Back
@@ -104,7 +104,7 @@ Every small picture on the page is drawn by `ui/icons.ts` (inline SVG; no file, 
 text it stands in (`icons.css`).
 
 - **An icon goes beside its words, never instead of them**, in their colour and one stroke weight, `aria-hidden`: the
-  three places wherever they are offered (the switch, a phone's menu and its button, which gives its icon up before the
+  three places wherever they are offered (the ways, whose way on gives its icon up on a phone's top line before the
   flight's name gives up a letter; a place not built dims with its name), the three again on each front-page row lit for
   those the flight has (`lacks`), the Lineup wherever it is gone to, Walk, the camera. The panel tabs and the switches
   have none: a tab row has no room for one at 30 % of the width, and **a switch has its lamp and no icon** (the lamp says
@@ -339,10 +339,13 @@ looks) sits in every seat of every flight that has one, by the control and by C,
 
 Under 960 px wide or 520 px tall each place is the view with **one slim line across the top** and **one handle on
 the bottom edge**; everything else is in the sheet the handle opens (`fold.ts`, `sheet.ts`, the narrow block of
-`fold.css`). The launch site has the same top line, handle and sheet (its handle: the sections, Walk, More; its View tab:
+`fold.css`). The top line is the way back to the front page (the heading, its chevron), the flight's programme small,
+and at its right the ways on: in the gallery the one amber button "Launch site ›", at the site "‹ Gallery" and "Launch ›".
+Short of room the programme's line goes first and then the way back keeps only its chevron (`fitWays`); a way the flight
+lacks is the same button dashed and dimmed with its reason, which a tap puts in the notes. The launch site has the same top line, handle and sheet (its handle: the sections, Walk, More; its View tab:
 the slider, the views, the switches, the scale and the diagnostics line; the clock is a small line under the top line,
 the time of day said when it is opened), and the flight deck folds in its own terms (`cockpit.css`: the clock is the top
-line with the place control at its right; held upright, on show are one compact line of height, speed and climb over
+line with "‹ Site" at its right; held upright, on show are one compact line of height, speed and climb over
 the one action, the abort and More, with the stick and roll in the corners above it; on its side the five figures in the
 line. Everything else (the phase, the navball and the path, Guidance, the Sequencer, every key, the systems) is a swipe
 up on the deck or More away, and a swipe down puts it away; a warning of load or heat, or an event that is due, stays
@@ -395,7 +398,7 @@ the subject is a small panel elsewhere in the spacecraft.
 ## To look at it
 
 `/#usa/mercury/mr-3-freedom-7`, `/#usa/mercury/mr-4-liberty-bell-7`, `/#ussr/vostok/vostok-1`, `/#ussr/vostok/vostok-2`, `/#usa/mercury/ma-6-friendship-7`, `/#usa/mercury/ma-7-aurora-7`, `/#usa/mercury/ma-8-sigma-7`, `/#usa/mercury/ma-9-faith-7`, `/#usa/gemini/gt-3`, `/#usa/gemini/gt-4`, `/#usa/gemini/gt-5`, `/#usa/gemini/gt-7`, `/#usa/gemini/gt-6a`, `/#usa/gemini/gt-8`, `/#usa/gemini/gt-9a` or `/#usa/apollo/apollo-7`
-(Gemini 4 to 9A have their Launch site and are not flown yet: their Fly says so). While developing, `/?fixture#test/fixture/vehicle-only`
+(Gemini 4 to 7 have their Launch site and are not flown from it yet: their Fly says so; Gemini 8 to 12 fly their docking chapter). While developing, `/?fixture#test/fixture/vehicle-only`
 shows the flight that is only a vehicle (`tests/fixtures/vehicle-only`), through `only.ts`.
 `sr.gallery` is the handle; `sr.gallery.stage` its stage. `pnpm test:places` (`tools/places-test.mjs`, with `pnpm dev`
 running) goes between the places with slow loads and real keys and checks what is promised above. `tools/shot.mjs out.png

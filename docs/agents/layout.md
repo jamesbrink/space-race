@@ -151,7 +151,7 @@ src/
   app/demo.ts                         the idle show: the day run round, a tour of the flight, a callout on each thing; given a host, the site's or the gallery's
   ui/ui.ts  ui/style.css              the panels: one class that renders from the flight's data, and the page's looks
   ui/rover.ts  ui/rover.css           driving a lunar rover from its gallery, including touch controls and parking
-  ui/gallery.ts  ui/gallery.css       the gallery: the vehicle alone on a stage of its own, its History tab; the switch between the places
+  ui/gallery.ts  ui/gallery.css       the gallery: the vehicle alone on a stage of its own, its History tab; the ways between the places
   ui/history.ts  ui/history.css       the history's words as the page writes them, the same on the Lineup's card and in a gallery's History tab: the story, the name, the crew, a programme, a moment
   ui/fold.ts  ui/fold.css  ui/sheet.ts  ui/sheet.css  a place on a phone (the gallery and the launch site alike): the control block docked in the sheet's View pane,
                                       the handle's button, the hint said once; the sheet a finger moves, and what the browser is told to leave alone
