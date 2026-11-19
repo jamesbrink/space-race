@@ -254,12 +254,13 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   keeps its lamp and has none), a flag by nation, an emblem by programme, and a Soviet programme's emblem says it is this
   site's mark, not a patch it had ([gallery.md](docs/agents/gallery.md), "Icons, flags and emblems").
 - The flight deck (`deck.ts`, `cockpit.css`) is one for every flight: three panels, the navball and path in the left corner, the primary
-  figures, the G and B switches and the one action (Space) in the middle, the systems as bars and lamps on the right; its keys fold to one
-  line. Every key it shows is also a button that does what the key does (`data-do` a command, `data-hold` a key held
+  figures, the throttle, the G and B switches and the one action (Space) in the middle, the systems as bars and lamps on the right; its keys fold to one
+  line. The throttle is one lever for every flight and every liquid engine (the arrows, Z full, Cut; sim/lever.ts `handRange`: the engine's
+  own range, or the game's, estimated and said so, where it ran at one thrust); a solid's row says it burns until spent. Every key it shows is also a button that does what the key does (`data-do` a command, `data-hold` a key held
   while pressed, `data-press` the key itself, dispatched); only its panels take the pointer. It tells the stage how
   much of the view it covers (`Ui.covers`). A flight kind (`cockpit.ts` ballistic, `orbitdeck.ts` into orbit) supplies what differs
   as data (`DeckSpec`: figures, readings, systems, steps, extra keys); a new kind is a class on `Deck`, not a second deck.
-  As flown is the default; G, B or a step of Space takes a flight over, and the deck says so in its mode line.
+  As flown is the default; G, B, a step of Space or the throttle takes a flight over, and the deck says so in its mode line.
 - C is the camera everywhere: off foot it goes to the next rig there is as things stand ("The camera"), on foot
   between first and third person. Each has its own block in the legend. T is the look. M, on the flight deck, is the map
   (camera.md): the same camera pulled out to the whole path, the Earth turning under it; in it C chooses what it turns

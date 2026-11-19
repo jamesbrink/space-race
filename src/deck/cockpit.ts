@@ -1,7 +1,7 @@
 import { autopilot, blend, rateCommand, Tally } from '../sim/autopilot.ts';
 import { hasLeft } from '../sim/craft.ts';
 import { type Ballistic, ballisticOf, changed, type Doing, type Results } from '../sim/fly.ts';
-import { Lever, NOTCH } from '../sim/lever.ts';
+import { handRange } from '../sim/lever.ts';
 import { standing } from '../sim/loads.ts';
 import { type Hand, type Span, sentBy, travelAt } from '../sim/mechanism.ts';
 import { MISSES } from '../sim/misses.ts';
@@ -11,11 +11,10 @@ import { Sheds } from '../sim/shed.ts';
 import { type Controls, type LiveSample, type Pilot, TICK, type Vehicle, type VehicleState, vehicle } from '../sim/vehicle.ts';
 import { landsOf, verdict } from '../sim/verdict.ts';
 import type { Command, MechanismDef, SitedFlight } from '../types.ts';
-import { is, which } from '../util/keys.ts';
 import type { Clock } from '../world/clock.ts';
 import { frameOf } from '../world/earthframe.ts';
 import { angleBetween, DEG, siteFrame } from '../world/frames.ts';
-import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, GUARD, KEEP, MOST, TRIM, TRIM_MOST, tank } from './deck.ts';
+import { ABORT_ARMED, type CockpitHost, Deck, type DeckSpec, GUARD, KEEP, MOST, type ThrottleView, TRIM, TRIM_MOST, tank } from './deck.ts';
 import { pack } from './tape.ts';
 
 /**
@@ -154,7 +153,7 @@ export class Cockpit extends Deck {
     this.button.hidden = !this.vehicle;
   }
 
-  /** What a ballistic flight puts on the deck: its five figures, its four readings, its throttle and its mechanisms' switches. */
+  /** What a ballistic flight puts on the deck: its five figures, its four readings and its mechanisms' switches. */
   private static spec(flight: SitedFlight): DeckSpec {
     const mechanisms = flight.models.find((m) => m.id === flight.flies?.model)?.mechanisms ?? [];
     // (each is a switch among the deck's keys, lit while it is headed out. It has no key: every letter is taken)
@@ -164,7 +163,6 @@ export class Cockpit extends Deck {
           `<button data-work="${m.id}" class="switch" aria-pressed="false" title="${m.name}: ${m.says[1].toLowerCase()} or ${m.says[0].toLowerCase()} by hand. It goes back to its programme at the programme's next event">${m.name}</button>`,
       )
       .join('');
-    const throttles = Boolean(rolesOf(flight)?.engine.throttle?.range);
     // (a capsule with a rate command mode has its switch among the deck's keys: it has no key, every letter being taken)
     const rate = rolesOf(flight)?.craft.rigid?.capsule.rcs?.rate;
     const rated = rate
@@ -187,8 +185,7 @@ export class Cockpit extends Deck {
       guidance: "Guidance: the autopilot flies the record's tilt programme, and a key held takes its axis. Off, the hands fly alone",
       sequence: "Sequencer: events happen at the record's times. Off, each is set off by hand with the action button",
       choose: true,
-      flightKeys: `${throttles ? '<button data-press="arrowup" title="Throttle up a notch (the up arrow)"><kbd>↑</kbd>Throttle up</button><button data-press="arrowdown" title="Throttle down a notch (the down arrow)"><kbd>↓</kbd>Down</button><button data-press="z" title="Full throttle (Z)"><kbd>Z</kbd>Full</button>' : ''}
-            ${works}${rated}`,
+      flightKeys: `${works}${rated}`,
       enter: 'Fly this flight yourself (L)',
     };
   }
@@ -206,16 +203,50 @@ export class Cockpit extends Deck {
     return { guidance: this.guidance, sequence: this.sequence, trim: this.trim };
   }
 
-  /** The throttle lever of an engine that throttles (sim/lever.ts): none where it does not. */
-  private lever: Lever | null = null;
   private abortArmed = Number.NEGATIVE_INFINITY;
 
-  /** Move the throttle lever, by the slider, the arrow keys or Z: only an engine whose nature has a range has one. */
-  protected override setLever(to: number): void {
-    if (!this.lever) return;
-    this.lever.move(to);
-    const slider = this.root.querySelector<HTMLInputElement>('[data-lever]')!;
-    if (Number(slider.value) !== this.lever.at) slider.value = String(this.lever.at);
+  /**
+   * The lever moved: a hand on the engine (the flight is taken over). Raised again over its least after a cut, an engine
+   * that cannot be started again says so (the machine refuses it: sim/craft.ts).
+   */
+  protected override levered(from: number): void {
+    const s = this.state;
+    if (!this.on || !s) return;
+    this.touched = true;
+    const range = handRange(this.roles.engine);
+    const nature = this.roles.engine.starts;
+    if (range && from < range.least && this.lever.at >= range.least && s.cutoff && s.starts >= nature.count && !s.landing)
+      this.host.say?.(
+        'Not lit',
+        `The ${this.engineLabel(this.vehicle!.engine)} starts ${nature.count === 1 ? 'once' : `${nature.count} times`}, and cannot be again${nature.source ? `: ${nature.source}` : ''}`,
+      );
+  }
+
+  /** What the lever works: the booster's engine while it is aboard, from the live state (or the sample looked back at). */
+  protected override throttled(): ThrottleView | null {
+    const s = this.state;
+    const v = this.vehicle;
+    if (!s || !v) return null;
+    const roles = this.roles;
+    if (hasLeft(s.craft, roles.booster.id)) return null;
+    const engine = roles.engine;
+    const sample = this.run.samples[this.run.samples.length - 1] as LiveSample;
+    const main = sample.burning.find((m) => m.engine === v.engine);
+    const burnable = this.flow * roles.cutoff;
+    const left = Math.max(0, s.mass - (roles.craft.mass.value - burnable));
+    const lit = Boolean(main) && !s.cutoff;
+    const throttle = lit ? s.throttle || this.lever.at : this.lever.at;
+    return {
+      engines: engine.label,
+      burning: lit,
+      range: handRange(engine),
+      thrust: main?.thrust ?? 0,
+      left,
+      flow: this.flow * throttle,
+      isp: (engine.isp?.vacuum ?? engine.isp?.seaLevel)?.value ?? 0,
+      mass: s.mass,
+      ...(s.abortAt !== null ? { not: 'aborted: the lever is let go' } : {}),
+    };
   }
 
   /** The strip of what the pilot has to fly with, built from the flight's data: the engine and its tanks, each jet supply, the jets, the motors. */
@@ -240,7 +271,6 @@ export class Cockpit extends Deck {
       }
       <div class="tank motors" title="Every motor burning now, with its thrust"><span>Burning</span><b data-cell="motors"></b></div>`;
     for (const cell of el.querySelectorAll<HTMLElement>('[data-cell]')) this.cells.set(cell.dataset.cell!, cell);
-    this.root.querySelector<HTMLElement>('.cockpit-lever')!.hidden = !roles.engine.throttle?.range;
   }
 
   /** Take the flight deck: the vehicle stands on its pad, the clock stopped at liftoff, waiting for ignition. */
@@ -279,7 +309,7 @@ export class Cockpit extends Deck {
       this.touched,
       this.trim,
       this.hand,
-      this.lever && [this.lever.at, this.lever.lit],
+      [this.lever.at, this.lever.lit],
       this.towerAt,
       this.retropackAt,
       this.hatchAt,
@@ -307,9 +337,6 @@ export class Cockpit extends Deck {
     this.state = v.start();
     this.tally = new Tally();
     this.hand = {};
-    const range = rolesOf(this.flight)?.engine.throttle?.range;
-    this.lever = range ? new Lever(range) : null;
-    if (this.lever) this.setLever(this.lever.at);
     this.trim = { pitch: 0, yaw: 0 };
     this.touched = false;
     this.abortArmed = Number.NEGATIVE_INFINITY;
@@ -372,7 +399,7 @@ export class Cockpit extends Deck {
       if (rated) return blend(auto(s), { ...this.hand, ...rateCommand(s, { pitch, yaw, roll }, rated), automatic: this.sequence });
       return blend(auto(s), {
         ...this.hand,
-        ...(this.lever && s.abortAt === null ? { throttle: this.lever.asks(cut) } : {}),
+        ...(s.abortAt === null ? { throttle: this.lever.asks(cut) } : {}),
         pitch: trimmed ? undefined : own(pitch),
         yaw: trimmed ? undefined : own(yaw),
         roll: own(roll),
@@ -559,10 +586,9 @@ export class Cockpit extends Deck {
     const s = this.state;
     if (!this.on || !s || s.landing || this.clock.t < s.t - TICK) return;
     if (what === 'cutoff') {
-      // (the engine's own lever, where it has one: as Space does it)
+      // (the lever, as Space does it)
       if (!s.ignited || s.cutoff) return;
-      if (this.lever) this.setLever(0);
-      else this.hand.throttle = 0;
+      this.setLever(0);
     } else {
       const event = eventOf(this.roles, what as Step);
       if (!event) return;
@@ -727,15 +753,12 @@ export class Cockpit extends Deck {
       if (!step || now - this.eventAt < GUARD) return;
       this.eventAt = now;
       if (step === 'ignite') {
-        if (this.lever) this.lever.lit = true;
-        else this.hand.throttle = 1;
+        this.lever.lit = true;
         this.state = this.tick(this.state!, this.pilot()); // lit at this instant, so the clock has a flight to run
         this.clock.setRate(1);
         this.clock.play(true);
-      } else if (step === 'cutoff') {
-        if (this.lever) this.setLever(0);
-        else this.hand.throttle = 0;
-      } else if (step === 'hatch') return void this.blow();
+      } else if (step === 'cutoff') this.setLever(0);
+      else if (step === 'hatch') return void this.blow();
       else {
         const event = eventOf(this.roles, step);
         if (event) this.asks(event.id);
@@ -743,16 +766,6 @@ export class Cockpit extends Deck {
       if (!this.clock.running && step !== 'ignite') this.clock.play(true);
     }
     if (this.state) this.show(this.at(Math.min(this.clock.t, this.state.t)));
-  }
-
-  /** An engine with a lever: the up and down arrows move it a notch, Z puts it full. */
-  protected override extraKey(key: string, e: KeyboardEvent): boolean {
-    const notch = which(key, 'deck.lever');
-    if (!this.lever || (notch < 0 && !is(key, 'deck.full'))) return false;
-    this.setLever(notch < 0 ? this.lever.most : this.lever.at + (notch === 0 ? NOTCH : -NOTCH));
-    e.preventDefault();
-    e.stopPropagation();
-    return true;
   }
 
   /** Put a sample on the instruments. Only what has changed touches the page. */

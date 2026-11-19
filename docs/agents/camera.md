@@ -30,7 +30,8 @@ under a parachute the vehicle is below its horizon, and a pad camera in charge t
 chase takes over by itself, and gives the view back to orbit when it is on the pad again; with a
 flight in the air and the camera elsewhere, "Find the vehicle" (and C) goes to it. 0 is the reset:
 the section's first view in orbit and free, the vehicle centred in the others. While the vehicle is
-flown by hand W A S D Q E are its keys and the camera has the arrows, R, F, 0 and C.
+flown by hand W A S D Q E and the up and down arrows (the throttle) are its keys and the camera has the left and right
+arrows, R, F, 0 and C, and is tilted by dragging (viewer/camera/input.ts `SPOKEN`).
 
 **The map is M's, not C's** (`Cameras.mapped`; `available` never lists it). On the flight deck M (its switch beside
 the path's by the navball, and among the deck's keys) puts the `map` rig in charge from whichever rig has the camera,
