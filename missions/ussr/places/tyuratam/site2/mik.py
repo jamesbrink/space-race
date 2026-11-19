@@ -1,11 +1,24 @@
 """The assembly and test building of Site 2 (МИК 2-1), where every R-7 was put together and from which Gagarin's
-rocket was rolled out on 11 April: 2.04 km from Site 1's pad on bearing 252 degrees, and the one thing beyond the
+rocket was rolled out on 11 April: 1.99 km from Site 1's pad on bearing 253 degrees, and the one thing beyond the
 fences that stands over the land from the deck.
 
 The CIA's "Missile Assembly and Checkout Facility No 1": 395 by 105 ft and 70 ft high, a shed 30 ft broad along its
 west side, three tracks through it (PIC/JR-2/60 p. 16: measured off the U-2's photographs). Accepted on 11 May 1957.
 Its place and the bearing of its long axis are today's map's (OpenStreetMap way 173526300) less the extension built on
-its north-north-east end in 1973 to 1974.
+its south-south-west end in the 1970s: today's outline is 197 m long, and the hall of 1957 is its north-north-east 120 m.
+**It was first built at the other end of that outline, 77 m too far south-south-west**: nothing had been read that said
+which end was added. Three things now say so, each by itself. A KH-7 photograph of 24 September 1964 (mission 4011,
+frame DZB00401100008H009001, laid on Site 1's frame by four buildings of the yard to a metre or so) has its dark roof
+over the north-north-east 0.61 to 0.64 of today's outline and bare ground, with a smaller building on it, where the rest
+is now. The road to the instrumentation centre crosses the tracks 151 m south-south-west of the hall's middle on the
+CIA's plan (NPIC/R-1440/63 Figure 6), and on today's map 155 m from this middle and 79 m from the other. And the two
+buildings of the yard that the CIA measured (yard.py) lie from this middle as the CIA drew them from the hall's.
+
+Across its axis it is left on today's centre line. On the photograph its roof's east edge lies along today's east wall
+and its west edge 5 to 9 m inside today's west wall, so today's outline (49.3 m) is broader than the hall and its shed
+(41 m) too, and by the photograph the breadth was added on the west: that would put the hall's axis 8.7 m east of where
+it is built. But the photograph is not corrected for the camera's angle, which is not known and would move a roof 21 m
+up by as much: not settled, and not moved.
 
 The CIA's plan of the place (PIC/JR-2/60 Figure 8, a line drawing; some 1.3 ft a pixel as scanned) draws it with the
 shed as a strip along the whole of its west side, and three tracks through it some 40 ft apart, the middle one on its
@@ -43,7 +56,7 @@ from site1 import relief
 from site1.place import FOOTING, Local
 from site1.site import FT, Parts, box, stood
 
-AT = (-1941.0, -641.0)  # its middle, m east and north of Site 1's axis
+AT = (-1904.9, -573.5)  # its middle, m east and north of Site 1's axis: the north-north-east 120.4 m of today's outline, on its centre line
 LENGTH, BREADTH, HEIGHT = 395.0 * FT, 105.0 * FT, 70.0 * FT
 AXIS = 28.0  # the bearing of its long axis, degrees
 SHED = 30.0 * FT  # the lean-to's breadth
@@ -63,7 +76,10 @@ def build(parts: Parts) -> None:
         "Assembly and test building of Site 2 (MIK 2-1)",
         since="1957-05",
         confidence="documented",
-        source="PIC/JR-2/60 p. 16 (395 by 105 by 70 ft, measured); accepted 11 May 1957; OpenStreetMap way 173526300 less its extension of 1973-74",
+        source=(
+            "PIC/JR-2/60 p. 16 (395 by 105 by 70 ft, measured); accepted 11 May 1957; OpenStreetMap way 173526300 less its extension, "
+            "which KH-7 mission 4011 (24 September 1964) puts at the south-south-west end"
+        ),
     ):
         return
     g = "AssemblyBuilding"

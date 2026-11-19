@@ -68,12 +68,11 @@ export const SPURS: Line[] = [
 ];
 /**
  * The line the rocket came by: out of the assembly building's north gate (around.ts; site-1.md, "On the horizon") and
- * round to join the centre track 1.32 km west of the pad. Today's map has it as an abandoned line (way 676662205), cut
- * by the building's extension of 1973 to 1974, whose length (76 m) the first stretch here crosses (way 676662204, the
- * track through the building). That it was the way out in 1961 is derived: it is the one line from the gate to the pad.
+ * round to join the centre track 1.32 km west of the pad. Today's map has it as an abandoned line (way 676662205) from
+ * the building's north-north-east end, which was the hall's own in 1961 (the extension of the 1970s is at the other
+ * end: site2/mik.py). That it was the way out in 1961 is derived: it is the one line from the gate to the pad.
  */
 export const FROM_ASSEMBLY: Line = [
-  [-1912.4, -587.8],
   [-1877.0, -520.3],
   [-1754.5, -284.4],
   [-1673.8, -150.8],
