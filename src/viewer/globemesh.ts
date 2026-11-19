@@ -3,7 +3,7 @@
  * may go before it is worth making again. Pure doubles, no three.js, so both can be tested
  * (tests/globemesh.test.mjs).
  */
-import { WGS84_A, WGS84_B } from '../world/bodies.ts';
+import { EARTH } from '../world/bodies.ts';
 import type { Vec3 } from '../world/frames.ts';
 import { horizonAngle } from '../world/surface.ts';
 
@@ -11,8 +11,9 @@ import { horizonAngle } from '../world/surface.ts';
 export const SPOKES = 192;
 export const RINGS = 150;
 
-const A2 = WGS84_A * WGS84_A;
-const B2 = WGS84_B * WGS84_B;
+/** The Earth's figure squared, m^2: the one body (world/bodies.ts `EARTH`) the front page's ball is drawn on too (app/front/earth.ts). */
+const A2 = EARTH.equatorialRadius.value * EARTH.equatorialRadius.value;
+const B2 = EARTH.polarRadius.value * EARTH.polarRadius.value;
 
 /** Round the spokes: the same for every making. */
 const COS = Float64Array.from({ length: SPOKES + 1 }, (_, j) => Math.cos((2 * Math.PI * j) / SPOKES));
