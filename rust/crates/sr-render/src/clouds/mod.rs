@@ -13,6 +13,7 @@ mod material;
 mod mips;
 mod motion;
 mod pass;
+mod rays;
 mod ripple;
 mod timing;
 mod volume;
@@ -53,6 +54,7 @@ impl Plugin for CloudsPlugin {
             MaterialPlugin::<CloudLay>::default(),
             pass::CloudPassPlugin,
             motion::CloudMotionPlugin,
+            rays::CloudRaysPlugin,
             timing::TimingPlugin,
         ))
         .add_systems(Startup, make.in_set(CloudsMade))
@@ -75,7 +77,7 @@ pub fn day_map(assets: &AssetServer, file: &str) -> DayMap {
 
 fn make(mut commands: Commands, mut images: ResMut<Assets<Image>>, mut materials: ResMut<Assets<CloudLay>>) {
     let mut target = || images.add(Image::new_target_texture(8, 8, pass::TARGET, None));
-    let targets = [target(), target(), target()];
+    let targets = [target(), target(), target(), target()];
     let blank = images.add(Image::new_fill(
         Extent3d { width: 1, height: 1, depth_or_array_layers: 1 },
         TextureDimension::D2,
@@ -83,11 +85,11 @@ fn make(mut commands: Commands, mut images: ResMut<Assets<Image>>, mut materials
         TextureFormat::Rgba8Unorm,
         RenderAssetUsages::RENDER_WORLD,
     ));
-    let [cloud, haze, reach] = targets.clone();
+    let [cloud, haze, reach, rays] = targets.clone();
     let baked = field::baked();
     let sheet = images.add(field::texture(&baked));
     commands.insert_resource(CumulusSheet(sheet.clone()));
-    commands.insert_resource(Sheet(materials.add(CloudLay { cloud, haze, reach })));
+    commands.insert_resource(Sheet(materials.add(CloudLay { cloud, haze, reach, rays })));
     commands.insert_resource(CloudSky {
         frame: frame::CloudFrame::default(),
         volume: images.add(volume::block()),

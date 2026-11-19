@@ -148,10 +148,14 @@ const SHADE_MOST: f32 = 0.985;
 // Where a sunbeam is taken to cross the layer, as a share of its depth above the base: low, where a cumulus is
 // broadest, so that its shadow is the shape of its base. Estimated.
 const SHADOW_UP: f32 = 0.12;
+// Where the shadow begins and is whole, in how far inside a turret's outline (0 the outline, 1 the middle): the
+// cloud seen is the outline cut back by EDGE and by the noise, and the shadow must be no bigger. Matched by eye from
+// straight above.
+const SHADOW_EDGE: vec2<f32> = vec2<f32>(0.2, 0.36);
 
 // How much of the Sun the cloud over a column takes: 0 in the open, SHADE_MOST under the thick of a cloud.
 fn shade(col: Column) -> f32 {
-    return SHADE_MOST * smoothstep(0.0, 0.15, col.within) * smoothstep(0.0, 120.0, col.top);
+    return SHADE_MOST * smoothstep(SHADOW_EDGE.x, SHADOW_EDGE.y, col.within) * smoothstep(0.0, 120.0, col.top);
 }
 
 // How much of the Sun a place `height` m up has lost to the cumulus: what the field says of the columns its

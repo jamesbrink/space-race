@@ -16,39 +16,12 @@
 import bevy_core_pipeline::fullscreen_vertex_shader::FullscreenVertexOutput;
 import bevy_render::view::View;
 import bevy_render::globals::Globals;
+import super::clouds_frame::CloudFrame;
 import super::clouds_cover::{
     CELLS, EDGE, Column, along_wind, column, gather, mirrored, on_sheet, second_laying, shadow_from, sheet_texel,
     spread_for, SHADOW_UP,
 };
 
-struct CloudFrame {
-    // the vertical at the eye; w: the eye's height above the ground
-    up: vec4<f32>,
-    // east at the site; w: the ground's radius
-    east: vec4<f32>,
-    // north at the site; w: the clock
-    north: vec4<f32>,
-    // toward the Sun; w: how far one can see
-    sun: vec4<f32>,
-    // w: the height over which the haze thins by e
-    sunlight: vec4<f32>,
-    skylight: vec4<f32>,
-    // the eye over the ground in the cumulus' drifting frame (east, north), then the deck's
-    eye_over: vec4<f32>,
-    // cover, base, depth, a cloud's size
-    cumulus: vec4<f32>,
-    deck: vec4<f32>,
-    // how each layer drifts, m/s east and north: the cumulus, then the deck
-    wind: vec4<f32>,
-    // the cumulus' spread and the metres to a cell of its field; where the deck's banks begin, and the metres to
-    // a tile of its cloudlets
-    lay: vec4<f32>,
-    // the day's map: how far across it is, m (0: there is none); the height its high cloud is drawn at, m; how many
-    // pixels of the frame each way one of the march's stands for
-    day: vec4<f32>,
-    // (for clouds_motion.wesl)
-    moved: vec4<f32>,
-}
 
 // (clouds/pass.rs `lay_pipe`: the order of these is its order)
 @group(0) @binding(0) var<uniform> view: View;
@@ -95,7 +68,7 @@ const REST_DENSITY: f32 = 0.5;
 const LIGHT_NEAR: f32 = 6000.0;
 // Beyond this, m, the fraying of a cloud's edge is too fine to see, and is left out.
 const FINE_NEAR: f32 = 10000.0;
-const DECK_STEPS: i32 = 24;
+const DECK_STEPS: i32 = 12;
 // No cloud is marched beyond this, m.
 const REACH: f32 = 700000.0;
 // The light of the scattering orders that are not marched, as a gain on those that are: with it the sunlit side
@@ -671,7 +644,8 @@ fn march_deck(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, pixel:
             break;
         }
         let wobble = 0.7 + 0.6 * stagger(jitter, i);
-        let stride = min(max(0.006 * t, 14.0), max((end - start) / 10.0, 14.0)) * wobble;
+        // (a deck is a thin sheet: six strides through it, jittered, are as good as many to the temporal filter)
+        let stride = min(max(0.006 * t, 14.0), max((end - start) / 6.0, 14.0)) * wobble;
         let height = height_at(h, mu, t);
         let en = frame.eye_over.zw + level * t;
         // (as coarse as the stride, or as a pixel's footprint on the deck)
@@ -750,7 +724,7 @@ const HAZE_LOBES: vec3<f32> = vec3<f32>(0.88, 0.45, 0.6);
 // across and lost in the haze before it. Chosen for what it costs.
 const SHAFT_REACH: f32 = 12000.0;
 // Steps through the air below the cumulus' tops, where the shafts are; and before and after it.
-const SHAFT_STEPS: i32 = 12;
+const SHAFT_STEPS: i32 = 9;
 const HAZE_STEPS: i32 = 5;
 
 // How much light a metre of the air takes out of a ray at a height, and where it scatters it.

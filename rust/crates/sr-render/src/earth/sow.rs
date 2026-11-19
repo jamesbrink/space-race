@@ -144,6 +144,7 @@ fn clump(forms: &mut Forms, at: Vec3, radius: f32, tall: f32, green: Vec3, own: 
 /// the skyline seen from the pad is broken as the Cape's is and not ruled.
 pub fn skyline(lie: &Lie, corner: Vec2, side: f32, east: Vec3, north: Vec3) -> Forms {
     let mut forms = Forms::default();
+    forms.coarse = true;
     for (p, own) in points(corner, side, CLUMP_CELL, 13) {
         let reach = p.length();
         let grown =

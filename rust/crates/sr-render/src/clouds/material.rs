@@ -31,6 +31,9 @@ pub struct CloudLay {
     /// How far each ray went, where its cloud began and where its haze ended.
     #[texture(2)]
     pub reach: Handle<Image>,
+    /// The rays of light in the haze ([`super::rays`]).
+    #[texture(3)]
+    pub rays: Handle<Image>,
 }
 
 impl Material for CloudLay {

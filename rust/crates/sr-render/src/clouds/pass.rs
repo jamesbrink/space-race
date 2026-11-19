@@ -55,8 +55,9 @@ pub struct CloudSky {
     pub ripple: Handle<Image>,
     /// The day's weather as a map (`crate::air::DayMap`), or a blank one.
     pub day: Handle<Image>,
-    /// The three targets: the cloud's light, the haze's, and the distances.
-    pub targets: [Handle<Image>; 3],
+    /// The targets: the cloud's light, the haze's, the distances, and the rays of light in the haze
+    /// ([`super::rays`]).
+    pub targets: [Handle<Image>; 4],
 }
 
 /// The march's pipeline and what it binds.
@@ -65,8 +66,8 @@ pub(super) struct Pipe {
     layout: BindGroupLayoutDescriptor,
     pipeline: CachedRenderPipelineId,
     repeating: Sampler,
-    clamped: Sampler,
-    frame: UniformBuffer<CloudFrame>,
+    pub(super) clamped: Sampler,
+    pub(super) frame: UniformBuffer<CloudFrame>,
 }
 
 /// The pass.
@@ -185,7 +186,7 @@ pub(super) fn march(
     };
     let read = [&sky.volume, &sky.field, &sky.cover, &sky.ripple, &sky.day].map(|handle| images.get(handle));
     let [Some(volume), Some(field), Some(cover), Some(ripple), Some(day)] = read else { return };
-    let [Some(cloud), Some(haze), Some(reach)] = sky.targets.each_ref().map(|handle| images.get(handle))
+    let [Some(cloud), Some(haze), Some(reach), _] = sky.targets.each_ref().map(|handle| images.get(handle))
     else {
         return;
     };

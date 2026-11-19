@@ -27,6 +27,8 @@ pub struct Forms {
     /// (`shaders/earth_sway.wesl`).
     sway: Vec<[f32; 2]>,
     indices: Vec<u32>,
+    /// Whether the plants are for seeing from far off only, with fewer faces.
+    pub coarse: bool,
     /// The foot and own number of the plant being built.
     foot: Vec3,
     own: f32,
@@ -56,17 +58,19 @@ impl Forms {
     /// A shrub: a mound `radius` across its widest and `height` high, widest below its middle, its outline broken
     /// into lobes (a crown is several clumps of leaves, not one ball) and its sides rounded, not faceted.
     pub fn mound(&mut self, foot: Vec3, radius: f32, height: f32, leaf: Vec3, own: f32) {
-        const SIDES: u32 = 11;
-        const RINGS: [(f32, f32); 5] = [(0.0, 0.78), (0.22, 0.98), (0.48, 1.0), (0.72, 0.82), (0.9, 0.48)];
+        const FINE: [(f32, f32); 5] = [(0.0, 0.78), (0.22, 0.98), (0.48, 1.0), (0.72, 0.82), (0.9, 0.48)];
+        const COARSE: [(f32, f32); 3] = [(0.0, 0.8), (0.45, 1.0), (0.85, 0.55)];
+        // (seen only from far off, a shrub is a third of the faces)
+        let (sides, rings): (u32, &[(f32, f32)]) = if self.coarse { (6, &COARSE) } else { (11, &FINE) };
         self.begin(foot, own);
         let heart = foot + Vec3::Y * (0.3 * height);
         let first = self.positions.len() as u32;
         // (three to five lobes round it, each its own size)
         let lobes = 3.0 + (part(own, 60) * 3.0).floor();
-        for (ring, (up, out)) in RINGS.into_iter().enumerate() {
-            for side in 0..SIDES {
-                let n = ring as u32 * SIDES + side;
-                let angle = TAU * (side as f32 + 0.5 * ring as f32 + part(own, 0)) / SIDES as f32;
+        for (ring, &(up, out)) in rings.iter().enumerate() {
+            for side in 0..sides {
+                let n = ring as u32 * sides + side;
+                let angle = TAU * (side as f32 + 0.5 * ring as f32 + part(own, 0)) / sides as f32;
                 let lobe = 0.86 + 0.2 * (angle * lobes + part(own, 61) * TAU).sin();
                 let reach = radius * out * lobe * (0.9 + 0.2 * part(own, n + 1));
                 let lift = up * height * (0.9 + 0.2 * part(own, n + 20)) * (0.92 + 0.12 * lobe);
@@ -81,18 +85,18 @@ impl Forms {
             }
         }
         let top = self.vertex(foot + Vec3::Y * height, Vec3::Y, leaf * 1.2);
-        let last = RINGS.len() as u32 - 1;
+        let last = rings.len() as u32 - 1;
         for ring in 0..last {
-            for side in 0..SIDES {
-                let (a, b) = (first + ring * SIDES + side, first + ring * SIDES + (side + 1) % SIDES);
-                self.indices.extend([a, a + SIDES, b, b, a + SIDES, b + SIDES]);
+            for side in 0..sides {
+                let (a, b) = (first + ring * sides + side, first + ring * sides + (side + 1) % sides);
+                self.indices.extend([a, a + sides, b, b, a + sides, b + sides]);
             }
         }
-        for side in 0..SIDES {
+        for side in 0..sides {
             self.indices.extend([
-                first + last * SIDES + side,
+                first + last * sides + side,
                 top,
-                first + last * SIDES + (side + 1) % SIDES,
+                first + last * sides + (side + 1) % sides,
             ]);
         }
     }

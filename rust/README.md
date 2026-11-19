@@ -231,7 +231,9 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
   so that it covers the record's tenth seen from above. They are marched for one pixel in nine and laid on by
   depth; motion vectors are written for them, but the cloud's own working on the clock is not in them. Moist air
   under the bases, denser than the station's visibility allows (an estimate, labelled), carries the clouds' shadows
-  and light in the air; distinct shafts are still faint in stills. Cloud shadows fall on the land and the sea, not
+  and light in the air; distinct shafts are still faint in stills. Crepuscular rays are added on the picture
+  (`clouds/rays.rs`): an image-space approximation of in-scattering at scales the march does not resolve, not a
+  measurement, its strength by eye. Cloud shadows fall on the land and the sea, not
   yet on the models.
 - **By hand every strength is an estimate**: what the vanes, the rudders and the jets can do, how hard the air
   turns a body toward its trim and damps it, and how a parachute rights the capsule (`flight/attitude.rs`). They
