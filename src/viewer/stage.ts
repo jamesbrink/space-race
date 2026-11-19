@@ -772,30 +772,32 @@ export class Stage {
     const parts: LoadPart[] = flight.models.map((m) => ({ label: m.name, fraction: 0, loaded: 0, total: 0 }));
     // (only where there is a site for them to fly at: the gallery has none)
     const recovery = flight.site ? (flight.recovery ?? []) : [];
-    const crafts = Promise.all(recovery.map((r) => this.fetch(r.url)));
-    const scenes = await Promise.all(
-      flight.models.map((m, i) =>
-        this.fetch(
-          m.url,
-          (f, loaded = 0, total = 0) => {
-            const part = parts[i]!;
-            Object.assign(part, { fraction: f, loaded: f === 1 && total === 0 ? part.total : loaded, total: total || part.total });
-            const sized = parts.every((p) => p.total > 0);
-            const all = sized ? parts.reduce((a, p) => a + p.total, 0) : parts.length;
-            onProgress?.(parts.reduce((a, p) => a + (sized ? p.fraction * p.total : p.fraction), 0) / all, parts);
-          },
-          modelKey(m),
+    const [craftScenes, scenes] = await Promise.all([
+      Promise.all(recovery.map((r) => this.fetch(r.url))),
+      Promise.all(
+        flight.models.map((m, i) =>
+          this.fetch(
+            m.url,
+            (f, loaded = 0, total = 0) => {
+              const part = parts[i]!;
+              Object.assign(part, { fraction: f, loaded: f === 1 && total === 0 ? part.total : loaded, total: total || part.total });
+              const sized = parts.every((p) => p.total > 0);
+              const all = sized ? parts.reduce((a, p) => a + p.total, 0) : parts.length;
+              onProgress?.(parts.reduce((a, p) => a + (sized ? p.fraction * p.total : p.fraction), 0) / all, parts);
+            },
+            modelKey(m),
+          ),
         ),
       ),
-    );
-    const craftScenes = await crafts;
+    ]);
     if (token !== this.loads) return;
     if (this.root) this.scene.remove(this.root);
     if (this.setting.floor) this.scene.remove(this.setting.floor);
     for (const o of this.setting.scenery) this.scene.remove(o);
     if (this.setting.globe) this.scene.remove(this.setting.globe.group);
     // (another flight than the one on show: what is the last one's alone is let go, and every piece forgets it)
-    if (this.root) this.forget(flight);
+    if (this.root) this.forget();
+    this.releaseModels(flight);
     this.defs = flight.models;
     this.surfaces.set([]);
     this.staged = flight.models.map((def, i) => {
@@ -827,20 +829,22 @@ export class Stage {
     this.root.add(...this.staged.map((s) => s.group));
     this.scene.add(this.root);
     // (what came to it where it came down stands in the scene, not under the root: it is no part of what is framed)
+    this.arriving = [];
     this.recovered = recovery.map((def, i) => {
       rest(craftScenes[i]!);
       const r = new Recovery(def, new Staged(craftScenes[i]!, []), siteFrame(flight.site!), flight.site!.seaLevel.value);
       this.scene.add(r.group);
       this.looks.add(r.group);
       for (let level = 1; level <= (this.fullDetail ? 0 : LOD_ABOVE.length); level++)
-        void this.fetch(lodUrl(def.url, level)).then((object) => {
-          if (!this.recovered.includes(r)) return;
-          rest(object);
-          r.staged.add(level, object, this.onShow);
-          this.looks.add(object);
-          r.findRotors();
-          this.dirty = true;
-        });
+        this.awaitLevel(
+          this.fetch(lodUrl(def.url, level)).then((object) => {
+            if (!this.recovered.includes(r)) return;
+            rest(object);
+            r.staged.add(level, object, this.onShow);
+            r.findRotors();
+            this.dirty = true;
+          }),
+        );
       return r;
     });
     this.root.updateMatrixWorld(true);
@@ -853,10 +857,9 @@ export class Stage {
     for (const s of this.staged) this.lamps.add(s.full, this.scene);
     // the coarser levels arrive behind the scenes; a model that has none simply stays as it is
     const staged = this.staged;
-    this.arriving = [];
     flight.models.forEach((def, i) => {
       for (let level = 1; level <= (this.fullDetail ? 0 : LOD_ABOVE.length); level++)
-        this.arriving.push(
+        this.awaitLevel(
           this.fetch(lodUrl(def.url, level), undefined, modelKey(def, level)).then((object) => {
             if (staged !== this.staged) return;
             rest(object);
@@ -899,7 +902,7 @@ export class Stage {
     this.scenery = null;
     const place = flight.surroundings;
     if (place)
-      this.arriving.push(
+      this.awaitLevel(
         this.fetch(place).then((object) => {
           if (staged !== this.staged) return;
           this.surroundings = object;
@@ -914,7 +917,7 @@ export class Stage {
           this.dirty = true;
           // its coarser levels, for the buildings that are far off
           for (let level = 1; level <= LOD_ABOVE.length; level++)
-            this.arriving.push(
+            this.awaitLevel(
               this.fetch(lodUrl(place, level)).then((coarse) => {
                 if (this.scenery !== scenery) return;
                 this.scene.add(coarse);
@@ -926,7 +929,6 @@ export class Stage {
             );
         }),
       );
-    for (const p of this.arriving) p.catch((e) => console.warn('a level of detail did not arrive, and is done without:', e));
     this.section(flight.models[0]!.id, true);
   }
 
@@ -991,6 +993,11 @@ export class Stage {
     this.shadowsOwed = true; // drawn again in step(): at once, or a few times a second in a view nobody is steering
   }
 
+  /** An optional scene or detail level can fail independently, even if requested after warming began. */
+  private awaitLevel(level: Promise<void>): void {
+    this.arriving.push(level.catch((error) => console.warn('A level of detail could not be loaded:', error)));
+  }
+
   private fetch(url: string, onProgress?: (fraction: number, loaded?: number, total?: number) => void, key = url): Promise<THREE.Object3D> {
     let promise = this.loaded.get(key);
     if (!promise) {
@@ -1000,15 +1007,23 @@ export class Stage {
         })
         .then(async (gltf) => {
           await fitPictures(gltf.scene); // (the tier's sizes, before anything is sent to the GPU: pictures.ts)
+          // A superseded fetch is disposed by releaseModels. It must never register materials for its replacement.
+          if (this.loaded.get(key) !== promise) return gltf.scene;
           this.sharePictures(gltf.scene);
           fitIndices(gltf.scene);
           this.dress(gltf.scene, key);
           return gltf.scene;
         });
       this.loaded.set(key, promise);
-      promise.catch(() => this.loaded.delete(key)); // a failure is not remembered: the next try fetches again
+      promise.catch(() => {
+        if (this.loaded.get(key) === promise) this.loaded.delete(key); // a retry may already own the key
+      });
     }
-    void promise.then(() => onProgress?.(1));
+    if (onProgress)
+      void promise.then(
+        () => onProgress(1),
+        () => {},
+      );
     return promise;
   }
 
@@ -1461,17 +1476,19 @@ export class Stage {
     if (this.root) {
       this.scene.remove(this.root);
       for (const o of this.scenery?.all ?? (this.surroundings ? [this.surroundings] : [])) this.scene.remove(o);
-      this.forget(null);
+      this.forget();
     }
     // (and what else it fetched for the flight: a figure for scale, a crew to walk as)
-    for (const fetched of this.loaded.values()) void fetched.then(disposeTree, () => {});
-    this.loaded.clear();
-    this.shellMaterials.clear();
+    this.releaseModels(null);
+    this.pictures.clear();
+    this.veils.length = 0;
+    this.screensOf = { cut: false, veils: 0, list: [] };
     this.lamps.clear();
     this.root = null;
     this.surroundings = null;
     this.scenery = null;
     this.staged = [];
+    this.arriving = [];
     this.defs = [];
     this.parts = new Map();
     this.dirty = true;
@@ -1488,13 +1505,38 @@ export class Stage {
   /** The key of the setting on show (`Settings.keyOf`): another flight at another place or day is another setting. */
   private settingKey = 'orbit';
 
+  /** Evict the same GLTF roots that dress registered, including levels still arriving and auxiliary models. */
+  private releaseModels(next: FlightData | null): void {
+    const keep = new Set<string>();
+    if (next) {
+      for (let level = 0; level <= LOD_ABOVE.length; level++) {
+        for (const model of next.models) keep.add(modelKey(model, level));
+        if (next.surroundings) keep.add(lodUrl(next.surroundings, level));
+        if (next.site) for (const craft of next.recovery ?? []) keep.add(lodUrl(craft.url, level));
+      }
+    }
+    for (const [key, fetched] of this.loaded) {
+      if (keep.has(key)) continue;
+      this.loaded.delete(key);
+      this.shellMaterials.delete(key);
+      void fetched.then(
+        (object) => {
+          this.looks.remove(object);
+          this.glazing.remove(object);
+          disposeTree(object);
+        },
+        () => {},
+      );
+    }
+  }
+
   /**
    * Let go of the flight on show as another comes on (`load`): its models and what they wore on the GPU (a model the
    * next flight also has is kept), the place round its pad if the next has another, and every piece's state of it (the
    * cabin, a walk, what is worked by hand, a seat, what was followed and framed). The renderer, the camera, the passes
    * and the shadow maps stay: a stage is made once and shows flight after flight (app/session.ts).
    */
-  private forget(next: FlightData | null): void {
+  private forget(): void {
     if (this.walk.active) this.onFoot.exitWalk();
     if (this.cam.rig !== 'orbit') this.cam.set('orbit', true);
     this.cabin?.dispose();
@@ -1502,33 +1544,9 @@ export class Stage {
     this.pictures.clear(); // (the next flight's models share among themselves)
     for (const r of this.recovered.splice(0)) {
       this.scene.remove(r.group);
+      r.staged.group.removeFromParent(); // the GLTFs belong to the cache, only the lines belong to Recovery
       this.looks.remove(r.group);
       r.dispose();
-      disposeTree(r.group);
-      for (const url of [r.def.url, ...LOD_ABOVE.map((_, i) => lodUrl(r.def.url, i + 1))]) this.loaded.delete(url);
-    }
-    const kept = new Set(next?.models.map((m) => modelKey(m)) ?? []);
-    const levels = (url: string) => [url, ...LOD_ABOVE.map((_, i) => lodUrl(url, i + 1))];
-    this.defs.forEach((def, i) => {
-      if (kept.has(modelKey(def))) return;
-      const group = this.staged[i]?.group;
-      if (group) {
-        this.looks.remove(group);
-        disposeTree(group);
-      }
-      for (let level = 0; level <= LOD_ABOVE.length; level++) {
-        const key = modelKey(def, level);
-        this.loaded.delete(key);
-        this.shellMaterials.delete(key);
-      }
-    });
-    const place = this.show.flightData?.surroundings;
-    if (place && place !== next?.surroundings) {
-      for (const o of this.scenery?.all ?? (this.surroundings ? [this.surroundings] : [])) {
-        this.looks.remove(o);
-        disposeTree(o);
-      }
-      for (const url of levels(place)) this.loaded.delete(url);
     }
     this.hands.reset();
     this.onFoot.reset();

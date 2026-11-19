@@ -92,19 +92,11 @@ def tower(parts):
                 [(59.6, -15.4, DECK + z + 0.85), (100.4, -15.4, DECK + z + 0.85), (100.4, 15.4, DECK + z + 0.85), (81.2, 15.4, DECK + z + 0.85)],
             )
     # Access stairs to the deck; one of the tower elevator cars is exposed for walking.
-    stairs(parts("Launcher_Base", "deck/stair"), (42, 88, 0), (110, 88, DECK), 5)
-    stair_rails(parts("Launcher_Base", "rail/stair"), (42, 88, 0), (110, 88, DECK), 5)
+    stairs(parts("Launcher_Base", "deck/stair"), (42, 88, 0), (107.5, 88, DECK), 5)
+    stair_rails(parts("Launcher_Base", "rail/stair"), (42, 88, 0), (107.5, 88, DECK), 5)
     box(parts("Launcher_Base", "deck/landing"), (107.5, 66.9, DECK - 0.36), (112.5, 91, DECK + 0.08))
     lift = "Tower_Lift"
-    stops = [0, *[v + 0.85 for v in LEVELS if 0 < v <= 340]]
-    parts.node(
-        lift,
-        "Umbilical_Tower",
-        (77, 20, DECK),
-        lift=1,
-        stops=[v * FT for v in stops],
-        stop_names=["Deck" if v == 0 else f"Level {int(v)}" for v in stops],
-    )
+    parts.node(lift, "Umbilical_Tower", (77, 20, DECK))
     box(parts(lift, "deck"), (73, 15.8, DECK + 0.03), (81, 24, DECK + 0.3))
     for x in (73.2, 80.8):
         for y in (16, 23.8):
@@ -126,23 +118,27 @@ def arms(parts):
     ):
         name = f"Service_Arm_{i}"
         z = DECK + level
-        parts.node(name, origin=(60, 0, z))
+        # An outboard bearing keeps the parked truss clear of both tower columns.
+        parts.node(name, origin=(55, 0, z))
+        box(parts("Umbilical_Tower", "steel"), (54.5, -1.5, z - 1.4), (60.5, 1.5, z - 0.45))
         if i == 9:
             # The arm leaves level 320. The lower hatch sill on the flown CSM exhibits is 326.4 ft
             # above the engine exits. The rise and its stair arrangement are reconstructed.
             floor = parts(name, "deck")
-            truss(parts(name, "red"), lambda k, x: (x, (-3, 3, 3, -3)[k], z + (0, 0, 8.4, 8.4)[k]), [30, 45, 60], 0.39, 0.22)
-            box(floor, (30, -2.8, z + 0.19), (59.95, 2.8, z + 0.44))
+            box(parts("Umbilical_Tower", "deck"), (55, -2.8, z - 0.35), (59.4, 2.8, z + 0.03))
+            truss(parts(name, "red"), lambda k, x: (x, (-3, 3, 3, -3)[k], z + (0, 0, 8.4, 8.4)[k]), [30, 42.5, 55], 0.39, 0.22)
+            box(floor, (30, -2.8, z + 0.19), (54.95, 2.8, z + 0.44))
             stairs(floor, (30, 0, z + 0.44), (12, 0, z + 6.4), 5.5)
             stair_rails(parts(name, "rail"), (30, 0, z + 0.44), (12, 0, z + 6.4), 5.5)
-            box(floor, (4.65, -3, z + 6.06), (12, 3, z + 6.4))
+            # The two open hatch leaves occupy the positive-y side of the vestibule.
+            box(floor, (4.65, -3, z + 6.06), (12, 5.9, z + 6.4))
             room = parts(name, "white")
-            for y in (-3.1, 2.9):
+            for y in (-3.1, 5.7):
                 box(room, (4.65, y, z + 6.45), (12, y + 0.2, z + 14.1))
-            box(room, (4.65, -3.15, z + 14.1), (12, 3.15, z + 14.37))
+            box(room, (4.65, -3.15, z + 14.1), (12, 5.95, z + 14.37))
         else:
-            truss(parts(name, "red"), lambda k, x: (x, (-2, 2, 2, -2)[k], z + (0, 0, 5, 5)[k]), [tip, (tip + 60) / 2, 60], 0.39, 0.22)
-            box(parts(name, "deck"), (tip, -1.89, z + 0.2), (59.95, 1.89, z + 0.44))
+            truss(parts(name, "red"), lambda k, x: (x, (-2, 2, 2, -2)[k], z + (0, 0, 5, 5)[k]), [tip, (tip + 55) / 2, 55], 0.39, 0.22)
+            box(parts(name, "deck"), (tip, -1.89, z + 0.2), (54.95, 1.89, z + 0.44))
 
 
 def build(pad):

@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { flights } from '../missions/index.ts';
 import { A7_NOZZLE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { STRAP_ONS } from '../missions/ussr/vostok/vehicles/vostok-8k72k.ts';
-import { Plume, plumeExit, plumeShape } from '../src/viewer/plume.ts';
+import { coreLength, JUDGED_AT, Plume, plumeExit, plumeLength, plumeShape } from '../src/viewer/plume.ts';
 import { P0 } from '../src/world/bodies.ts';
 
 /** The A-7's exit pressure and an RD-107's, atmospheres: each engine's own (sim/plan.ts `Nozzle`). */
@@ -17,6 +18,53 @@ test('a fire without a nozzle record uses the neutral display fallback', () => {
   assert.equal(plumeExit(undefined), 1);
   assert.deepEqual(engine, {});
   assert.equal(plumeExit({ nozzle: { exit: { value: 0.5 * P0 } } }), 0.5);
+});
+
+/**
+ * The liquid engines' fires still drawn without a nozzle record (plume.ts `plumeExit` and `plumeLength`: the neutral
+ * fallback), by flight. Solid motors' nozzles are recorded on no flight, and the Gemini's thrusters' not either.
+ * SP-8120's Table I has the H-1's, the J-2's and the service module's AJ10-137's, not yet put in Apollo 7's record.
+ */
+const FALLBACK = {
+  'usa/apollo/apollo-7': ['h1-inboard', 'h1-outboard', 'sivb-j2', 'sps'],
+  'usa/gemini/gt-3': ['forward-thrusters', 'aft-thrusters'],
+};
+const SOLIDS = ['retrorockets', 'launch-escape-motor'];
+
+test('every ascent fire of the Mercury-Atlas and Gemini-Titan flights is drawn from its own nozzle record', () => {
+  let seen = 0;
+  for (const f of flights) {
+    const engines = f.plan?.craft[0]?.engines ?? [];
+    for (const fire of f.flies?.fires ?? []) {
+      const nozzle = fire.nozzle ?? engines.find((e) => e.id === fire.on)?.nozzle;
+      const neutral = SOLIDS.includes(fire.on) || (FALLBACK[f.id] ?? []).includes(fire.on);
+      if (/\/(ma-|gt-)/.test(f.id) && !neutral) {
+        assert.ok(nozzle?.chamber && nozzle.exit, `${f.id} ${fire.node} (${fire.on}) has a nozzle record with its chamber`);
+        seen++;
+      }
+      if (!nozzle) assert.ok(neutral, `${f.id} ${fire.node} (${fire.on}) is drawn neutral: list it in FALLBACK`);
+    }
+  }
+  assert.equal(seen, 4 * 3 + 3, 'four Mercury-Atlas flights of three ascent fires, and Gemini-Titan 3 of three');
+});
+
+test('the fire is as long as its supersonic core, scaled once to the A-7: Freedom 7 is left as it was', () => {
+  assert.equal(JUDGED_AT, A7_NOZZLE.chamber.value, 'judged at the A-7 record’s chamber');
+  assert.equal(plumeLength(A7_NOZZLE), 38, 'the A-7’s fire, 38 exit radii, to the bit');
+  assert.equal(plumeLength(undefined), 38, 'a fire without a record at the A-7’s');
+  assert.equal(plumeLength({}), 38);
+  // SP-8072, Figure 11: at a fully expanded Mach 1 the core is 3.45 times 1.38 squared, 6.57 exit diameters
+  const sonic = P0 * 1.1 ** 6; // (gamma 1.2: the chamber over the air that expands a jet to Mach 1)
+  assert.ok(Math.abs(coreLength(sonic) - 3.45 * 1.38 ** 2) < 1e-9);
+  assert.ok(plumeLength(STRAP_ONS.nozzle) > 38, 'a harder chamber blows a longer core');
+  let last = 0;
+  for (let pc = 1.5e6; pc < 2e7; pc += 1e5) {
+    const L = plumeLength({ chamber: { value: pc } });
+    assert.ok(L > last, `longer the harder the chamber (${pc} Pa)`);
+    last = L;
+  }
+  const own = new Plume(0.5, 1, null, undefined, 0, 45);
+  assert.equal(own.shape().length, 45, 'the fire drawn at its own length at sea level');
 });
 
 test('the jet is nearly matched at sea level and opens as the air thins, without a step', () => {

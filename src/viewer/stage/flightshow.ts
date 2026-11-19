@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { clone as cloneRigged } from 'three/addons/utils/SkeletonUtils.js';
+import type { EngineDef } from '../../sim/plan.ts';
 import type { Run } from '../../sim/run.ts';
 import { exitAreaOf } from '../../sim/staged.ts';
 import type { Burns, Flight as FlightData, JetDef, ModelDef, SitedFlight } from '../../types.ts';
@@ -21,7 +22,7 @@ import type { Staged } from '../lod.ts';
 import type { Looks } from '../look.ts';
 import { jointKey } from '../onfoot/gait.ts';
 import { absolute } from '../origin.ts';
-import { lightFires, Plume, plumeExit } from '../plume.ts';
+import { lightFires, Plume, plumeExit, plumeLength } from '../plume.ts';
 import type { LineState, Recovery } from '../recovery.ts';
 import { Swimmer } from '../swimmer.ts';
 import { TRAIL_STEP, Trail } from '../trail.ts';
@@ -1287,14 +1288,15 @@ export class FlightShow {
       const b = new THREE.Box3().setFromObject(node);
       return s.group.worldToLocal(new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2));
     };
-    // the pressure each engine's gas leaves its nozzle at, atmospheres, by the plan's engine (sim/plan.ts `Nozzle`); an engine
-    // whose plan gives none is drawn matched to the air at the sea, widening only as the air thins below that
+    // the pressure each engine's gas leaves its nozzle at, atmospheres, and its fire's length, by the plan's engine (sim/plan.ts
+    // `Nozzle`; plume.ts `plumeLength`) or the fire's own nozzle; an engine whose plan gives none is drawn matched to the air at
+    // the sea, widening only as the air thins below that, at the A-7's length
     const engines = flight.plan?.craft[0]?.engines ?? [];
     const hang = (
       node: THREE.Object3D,
       level: number,
       radius: number,
-      exit: number,
+      nozzle: Pick<EngineDef, 'nozzle'> | undefined,
       at: THREE.Vector3,
       cluster: Cluster | null,
       burns?: Burns,
@@ -1309,7 +1311,7 @@ export class FlightShow {
         .invert()
         .multiply(fromGroup)
         .multiply(mount ?? new THREE.Matrix4().makeTranslation(at));
-      const plume = new Plume(radius, exit, cluster, light, kindOf(burns));
+      const plume = new Plume(radius, plumeExit(nozzle), cluster, light, kindOf(burns), plumeLength(nozzle?.nozzle));
       plume.mesh.matrixAutoUpdate = false;
       plume.mesh.matrix.copy(new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(owner.matrixWorld).multiply(offset));
       root.add(plume.mesh);
@@ -1323,16 +1325,17 @@ export class FlightShow {
       const body = craft?.bodies.find((b) => b.nodes?.includes(flight.flies?.engine ?? '')) ?? craft?.bodies[0];
       const lit = craft?.engines.find((e) => e.body === body?.id);
       const exitArea = lit ? exitAreaOf(lit) : undefined;
-      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), plumeExit(lit), lowest(engine), null, flight.flies.burns);
+      if (engine && exitArea) hang(engine, level, Math.sqrt(exitArea / Math.PI), lit, lowest(engine), null, flight.flies.burns);
       level++;
     }
     for (const f of flight.flies.fires ?? []) {
       const node = s.full.getObjectByName(f.node);
-      // (its engine by the id it burns by; the braking burn's is the plan's braking engine)
-      const exit = plumeExit(engines.find((e) => e.id === f.on));
+      // (its engine by the id it burns by, the braking burn's the plan's braking engine; or its own nozzle, where it is drawn
+      // from one its engine's record is not: the Atlas's verniers, flown as part of the sustainer)
+      const nozzle = f.nozzle ? { nozzle: f.nozzle } : engines.find((e) => e.id === f.on);
       if (node && f.radius) {
         const mount = f.mount ? intoGroup.clone().multiply(node.matrixWorld) : undefined;
-        hang(node, level, f.radius, exit, lowest(node), null, f.burns, mount);
+        hang(node, level, f.radius, nozzle, lowest(node), null, f.burns, mount);
       } else if (node) {
         // every vertex under it, in the vehicle's frame as it stands
         const points: number[] = [];
@@ -1351,7 +1354,7 @@ export class FlightShow {
             node,
             level,
             cluster.radius,
-            exit,
+            nozzle,
             new THREE.Vector3(x, y, z),
             cluster.main.length > 1 || cluster.steering.length ? cluster : null,
             f.burns,

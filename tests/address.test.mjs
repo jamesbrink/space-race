@@ -5,36 +5,37 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { flights as catalog } from '../missions/index.ts';
 import {
   aboutNoFlight,
   atSite,
+  browseOf,
+  browseTo,
   byDate,
   craftNodes,
   entrances,
   exhibit,
   flightFor,
   formatAddress,
+  formatBrowse,
   formatLineup,
   galleryAt,
   galleryFlight,
   lacks,
   lineupFlights,
   listed,
-  browseOf,
-  browseTo,
-  formatBrowse,
   namesFront,
   namesLineup,
   namesNothing,
-  parseBrowse,
   openingFor,
   opensIn,
   PLACES,
   parseAddress,
+  parseBrowse,
   parseLineup,
   plinths,
-  programmeOf,
   plinthViews,
+  programmeOf,
   samePlace,
   scaleFigure,
   settle,
@@ -137,6 +138,32 @@ test('every flight has the same three places, and opens in its gallery', () => {
     assert.deepEqual(Object.keys(entrances(f)), PLACES);
     assert.equal(opensIn(f), 'gallery', f.id);
     for (const place of PLACES) assert.equal(entrances(f)[place], lacks(f, place) === null);
+  }
+});
+
+test('the completed Apollo and Soyuz launch sites retain their historical pad and their gallery vehicle', () => {
+  const groups = [
+    ['usa/apollo', ['apollo-8', 'apollo-9'], 'Kennedy Space Center, Launch Complex 39A'],
+    ['usa/apollo', ['apollo-10'], 'Kennedy Space Center, Launch Complex 39B'],
+    ['ussr/soyuz', ['soyuz-1', 'soyuz-10', 'soyuz-12', 'soyuz-16', 'soyuz-t-2'], 'Tyuratam (Baikonur), Site 1'],
+    ['ussr/soyuz', ['soyuz-3', 'soyuz-4'], 'Tyuratam (Baikonur), Site 31'],
+  ];
+  for (const [program, names, pad] of groups) {
+    for (const name of names) {
+      const id = `${program}/${name}`;
+      const flight = catalog.find((f) => f.id === id);
+      assert.equal(flight?.site?.name, pad, id);
+      assert.equal(lacks(flight, 'site'), null, id);
+      const models = atSite(flight).models;
+      assert.ok(
+        models.some((m) => m.id === 'pad' && m.backdrop === 'ground'),
+        id,
+      );
+      assert.ok(
+        models.some((m) => m.id === 'vehicle' && m.url === exhibit(flight).url),
+        id,
+      );
+    }
   }
 });
 

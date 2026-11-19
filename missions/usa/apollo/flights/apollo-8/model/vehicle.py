@@ -17,7 +17,7 @@ from srlib import IN, run  # noqa: E402
 def build():
     saturn_v.build()
     apollo_csm.build(saturn_v.CSM_OFFSET, spacecraft=103)
-    launch_escape.build(saturn_v.CSM_OFFSET, saturn_v.HEIGHT)
+    launch_escape.build(saturn_v.CSM_OFFSET, saturn_v.HEIGHT, boardable=True)
     return "Apollo 8, SA-503: 363 ft nominal height to the Q-ball"
 
 

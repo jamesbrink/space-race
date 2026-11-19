@@ -211,8 +211,11 @@ Section 3.2 of each mission report compares the Titan to the preceding flight. T
   panels) are smooth. In S65-21881 the milled panels show as a patchwork of tone on the bare
   tank walls; how many there are and where their lands run is not in anything read, and they
   are not drawn from the photograph.
-- **The first stage's expansion ratio of 8 is not from a primary source**; LSFR mentions a change
-  "to 12/1" that was considered. Both bells' exits, 44.8 and 64.8 in, stay estimated.
+- **The first stage's expansion ratio of 8 is the missile's**: NASA SP-8120 (Table I) gives 8 for
+  the LR87-AJ-5, nothing read gives the GLV's -AJ-7's, and LSFR mentions a change "to 12/1" that was
+  considered. Both bells' exits, 44.8 and 64.8 in, stay estimated and are not rebuilt yet to SP-8120's
+  43.14 and 64.0 in for the -AJ-5s. The fires' nozzle figures (chamber pressure, ratio, exit pressure)
+  are in `gemini-titan.ts` (`GLV_NOZZLES`), each with its confidence.
 - **No mass properties, no thrust curve.** The flight cannot be flown yet.
 - **Its levels of detail change at the viewer's own distances**: they have not been measured. Below
   half detail the ports and holes are dark discs, not openings.

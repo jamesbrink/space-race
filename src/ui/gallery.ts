@@ -1013,6 +1013,7 @@ export class Gallery {
         void stage
           .model(crew.url)
           .then((figure) => {
+            if (!this.scope.live) return;
             for (const name of crew.walker?.hide ?? []) figure.getObjectByName(name)?.removeFromParent();
             studio.person(figure, crew.walker?.forward);
             stage.reset();

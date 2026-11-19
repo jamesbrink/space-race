@@ -267,7 +267,7 @@ src/
   viewer/eye.ts                       the eye by night: what the lamps in view add, adapted to over the eye's own times
   viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
   viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
-  viewer/plume.ts                     the engine's fire as data: its place, how hard it burns, the shape the air lets it take, its light on the pad
+  viewer/plume.ts                     the engine's fire as data: its place, how hard it burns, the shape the air lets it take (its nozzle's exit, its core's length), its light on the pad
   viewer/flames.ts                    what a fire looks like by what it burns: its colours, its light, how much it hides (each with its source); and a gas jet by what it is (`GASES`)
   viewer/fires.ts                     which fires burn when and how hard, an engine's chambers found in its geometry, the jet's edge and where a cluster's jets merge; how hard a jet that is not a fire blows, and its shape (pure: tests/fires.test.mjs)
   viewer/trail.ts                     the smoke it leaves as data: the trail along the path flown (steam low down, a contrail in the cold), the cloud over the pad at liftoff
@@ -350,6 +350,7 @@ tools/
   separation-test.mjs                 browser check of the relative motion of released spacecraft parts in the rendered model
   flight-pixels.mjs                   checks the cockpit and chase canvas through adaptive resolution changes during flight
   flicker-test.mjs                    browser check for z-fighting
+  model-eviction-test.mjs             browser check that departed model levels and late loads are released while shared models survive a flight change
   flights-test.mjs                    browser check of going flight to flight with no reload: the right flight each time, memory and listeners back to their level, Back and Forward
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks
   studio-test.mjs                     browser check of each gallery view of a cabin's inside, read from the flights (`pnpm test:studio`): it opens the cutaway, and what it is of is on the screen and lit, both looks at 1280, 820 and 390
@@ -358,6 +359,7 @@ tools/
   history-test.mjs                    browser check of Back and Forward between the front page, flights and places, with real clicks; a gallery's History tab and its way to the Lineup
   mem-test.mjs                        browser check of what the page holds on the GPU as a phone (ready, late, on foot, in flight), against a budget
   wheels-test.mjs                     browser check that every slide and drive keeps each wheel on what it runs on, at each site
+  soyuz-boarding-test.mjs             browser check that each Soyuz crew member can walk from their start, take the lift and board their assigned couch
   crew-start-test.mjs                 browser check of every walking figure’s starting clearance, sight of the vehicle and route to its foot
   walk-test.mjs                       browser check that a site can be walked: on foot with the real W key along the ways a person could have gone (Site 1's), every leg arriving with its feet on the floor
   operate-test.mjs                    browser check of working something by hand on foot at each site, through the eyes and over the shoulder, at 1280 and 390: it is in view, off the figure, read out, and the view comes back

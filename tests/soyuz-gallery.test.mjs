@@ -195,7 +195,9 @@ test('Soyuz 4 models Shatalov’s solo launch with the two return places vacant'
     model.seats.map((seat) => seat.node),
     ['Seat_Commander'],
   );
-  assert.equal(model.seats[0].from, 'BO_SideHatchFace');
+  assert.equal(model.seats[0].from, 'Fairing_AccessCover');
+  assert.ok(root.getObjectByName('Fairing').getObjectByName(model.seats[0].from));
+  assert.ok(root.getObjectByName('OrbitalModule').getObjectByName('BO_SideHatchFace'));
   assert.ok(couches.getObjectByName('Seat_Commander'));
   assert.ok(couches.getObjectByName('Kazbek_Liners'));
   assert.ok(model.seats[0].hide.every((node) => couches.getObjectByName(node)));

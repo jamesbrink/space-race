@@ -1,8 +1,9 @@
-import { lc39Crew } from '../../crew/lc39.ts';
-import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
 import { derived, doc } from '../../../../../src/measure.ts';
 import type { Flight, Part } from '../../../../../src/types.ts';
+import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
+import { lc39Crew } from '../../crew/lc39.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
+import { boardingHatches } from '../../vehicles/hatch.ts';
 import { APOLLO9_THRUST } from '../../vehicles/propulsion.ts';
 import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
 import { spiderModel, spiderPort, spiderStackParts, spiderViews } from './spider.ts';
@@ -348,6 +349,8 @@ const properties = (inches: number, ixx: number, iyy: number, izz: number) => {
   };
 };
 const carrierRecord = 'AS-504 Flight Evaluation Report, table 21-14, p. 21-18. Actual at spacecraft separation.';
+const boarding: [number, number] = [-9060, -6000];
+
 export const flight: Flight = {
   docking: {
     interface: 'probe',
@@ -481,6 +484,7 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-504',
   launch: '1969-03-03T16:00:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
+  opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39A,
   crew: ['James A. McDivitt', 'David R. Scott', 'Russell L. Schweickart'],
   summary:
@@ -575,9 +579,9 @@ export const flight: Flight = {
       dockingPorts: [gumdropPort, spiderPort],
       ...blockIICabin(3871),
       seats: [
-        { node: 'Seat_Commander', figure: 'crew', label: 'McDivitt’s left couch', from: 'SideHatch', open: [-9000, -6000] },
-        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Scott’s centre couch', from: 'SideHatch', open: [-9000, -6000] },
-        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Schweickart’s right couch', from: 'SideHatch', open: [-9000, -6000] },
+        { node: 'Seat_Commander', figure: 'crew', label: 'McDivitt’s left couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Scott’s centre couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Schweickart’s right couch', from: 'SideHatch', open: boarding },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -601,10 +605,19 @@ export const flight: Flight = {
         { id: 'antenna', label: 'S-band antenna', nodes: ['HighGainAntenna'], from: [-0.75, -0.5, 0.6] },
         { id: 'f1', label: 'F-1 cluster', nodes: ['FirstStageEngines'], from: [-0.62, 0.08, 0.78] },
       ],
-      parts: [...command, ...service, ...spiderStackParts, ...escapeParts, ...launcher],
+      parts: boardingHatches([...command, ...service, ...spiderStackParts, ...escapeParts, ...launcher], boarding),
     },
     spiderModel,
-    mobileLauncher(2),
+    mobileLauncher(2, {
+      ingress: boarding[0],
+      parkedBy: -2040,
+      pao: 'Apollo 9 launch-day PAO commentary, crew insertion and prelaunch countdown.',
+      intertankClear: -22,
+      forwardRetract: -20,
+      terminalSource:
+        'Apollo 9 press kit, Mobile Launcher: first release at T−30 s. SA-504 flight manual fig. 8-8: nominal forward command at T−20 s, eight-second retraction. AS-504 flight evaluation §3.6.1: arm 1 latched to tower at +1.77 s.',
+      intertankLatch: 1.77,
+    }),
     ...lc39Crew(['McDivitt', 'Scott', 'Schweickart'], true),
   ],
 };

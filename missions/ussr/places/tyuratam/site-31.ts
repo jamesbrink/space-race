@@ -1,5 +1,6 @@
 import type { ModelDef, Part, SiteDef } from '../../../../src/types.ts';
 import { TYURATAM } from './place.ts';
+import { soyuzPad, soyuzTower } from './soyuz-pad.ts';
 
 const map = 'OpenStreetMap way 392622243, outline of Pad 31/6. The rocket axis is estimated from the centre of the deck.';
 export const SITE31: SiteDef = {
@@ -43,6 +44,8 @@ export const site31Pad: ModelDef = {
   url: 'models/ussr/places/tyuratam/site31/pad.glb',
   backdrop: 'ground',
   scale: '39.6 m deck · reconstructed from the mapped pad outline',
+  slider: soyuzPad.slider,
+  sequence: soyuzPad.sequence,
   parts: [
     hardware(
       'PadMast',
@@ -68,15 +71,17 @@ export const site31Pad: ModelDef = {
       'The four green trusses cradle the rocket above the opening.',
       'The reconstructed R-7 family support assembly is shared with Site 1. Site 31’s individual fittings and orientation against the rocket are assumed.',
     ),
-    hardware(
-      'ServiceTrusses',
-      'Service platforms',
-      'The access platforms are folded away from the launcher.',
-      'The launch photograph of Soyuz 4 shows the area above the rocket supports clear. The exhibit uses the taller Soyuz service towers at Site 1 as a family approximation for both flights.',
-    ),
+    soyuzTower('North', 'Site 31'),
+    soyuzTower('South', 'Site 31'),
   ],
   views: [
-    { id: 'platform', label: 'Launch platform', nodes: ['Platform', 'LaunchRing', 'ServiceTrusses'], span: 61, from: [1, 0.46, 1] },
+    {
+      id: 'platform',
+      label: 'Launch platform',
+      nodes: ['Platform', 'LaunchRing', 'SouthServiceTower', 'NorthServiceTower'],
+      span: 61,
+      from: [1, 0.46, 1],
+    },
     { id: 'rails', label: 'Rail approach', nodes: ['RailApproach'], span: 87, from: [-0.8, 0.42, 1] },
   ],
 };

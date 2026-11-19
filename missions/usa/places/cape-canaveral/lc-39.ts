@@ -1,4 +1,4 @@
-import type { ModelDef, Part, SiteDef } from '../../../../src/types.ts';
+import type { Keyframe, ModelDef, Move, Part, SiteDef } from '../../../../src/types.ts';
 import { CAPE_CANAVERAL } from './place.ts';
 
 const FT = 0.3048;
@@ -39,19 +39,76 @@ function part(node: string, name: string, summary: string, detail: string): Part
   return { node, name, summary, detail, order: 0, explode: [0, 0, 0], group: 'Launch Complex 39' };
 }
 
-export function mobileLauncher(number: 1 | 2 | 3): ModelDef {
-  const arms = [
-    'S-IC intertank',
-    'S-IC forward',
-    'S-II aft',
-    'S-II intermediate',
-    'S-II forward',
-    'S-IVB aft',
-    'S-IVB forward',
-    'Service module',
-    'Spacecraft access',
+const MANUAL = 'Saturn V Flight Manual SA-504, section VIII, figure 8-8.';
+function armSwing(node: string, from: number, to: number, degrees = 90): Move {
+  return {
+    kind: 'swing',
+    node,
+    from,
+    to,
+    axis: [0, 1, 0],
+    angle: (degrees * Math.PI) / 180,
+    machine: {
+      kind: 'hydraulic',
+      confidence: 'documented',
+      source: 'Apollo 8 press kit, Mobile Launcher. Hydraulic retraction. Mechanism sound approximated.',
+    },
+  };
+}
+
+interface Countdown {
+  ingress: number;
+  parkedBy: number;
+  pao: string;
+  intertankClear: number;
+  forwardRetract: number;
+  terminalSource: string;
+  intertankLatch?: number;
+}
+
+export function mobileLauncher(
+  number: 1 | 2 | 3,
+  { ingress, parkedBy, pao, intertankClear, forwardRetract, terminalSource, intertankLatch }: Countdown,
+): ModelDef {
+  // Layout along the common countdown slider. Inflight sweeps share its final nine seconds.
+  const arms: [string, number, number][] = [
+    ['S-IC intertank', 0.4, 0.5],
+    ['S-IC forward', 0.5, 0.6],
+    ['S-II aft', 0, 0.1],
+    ['S-II intermediate', 0.6, 0.6 + (0.4 * 6.4) / 9],
+    ['S-II forward', 0.6, 0.6 + (0.4 * 7.4) / 9],
+    ['S-IVB aft', 0.6, 0.6 + (0.4 * 7.7) / 9],
+    ['S-IVB forward', 0.6, 0.6 + (0.4 * 8.4) / 9],
+    ['Service module', 0.6, 1],
+    ['Spacecraft access', 0.1, 0.4],
+  ];
+  const key = (at: number, slider: number, event: string, confidence: Keyframe['confidence'], source: string): Keyframe => ({
+    at,
+    slider,
+    event,
+    confidence,
+    source,
+  });
+  const sequence = [
+    key(-43200, 0, 'S-II aft access arm withdraws', 'estimated', MANUAL + ' Withdrawn as required. Time placed before crew ingress.'),
+    key(-43170, 0.1, 'S-II aft arm clear', 'estimated', MANUAL + ' Travel duration reconstructed.'),
+    key(ingress, 0.1, 'Commander enters the spacecraft', 'documented', pao),
+    key(parkedBy - 30, 0.1, 'Crew access arm leaves the hatch', 'estimated', pao + ' Travel placed before the standby report.'),
+    key(parkedBy, 0.2, 'Crew access arm in its 12° standby position', 'estimated', pao + ' Placed at the broadcast confirming standby.'),
+    key(-300, 0.2, 'Crew access arm retracts from standby', 'documented', pao),
+    key(-270, 0.4, 'Crew access arm fully retracted', 'estimated', pao + ' Travel duration approximated from the countdown.'),
+    key(-30, 0.4, 'S-IC intertank arm withdraws', 'assumed', terminalSource),
+    key(intertankClear, 0.5, 'S-IC intertank arm clears the vehicle', 'assumed', terminalSource),
+    key(forwardRetract, 0.5, 'S-IC forward arm withdraws', 'assumed', terminalSource),
+    key(forwardRetract + 8, 0.6, 'S-IC forward arm clear', 'assumed', MANUAL + ' Eight-second withdrawal.'),
+    key(0, 0.6, 'First vehicle motion releases five inflight arms', 'assumed', MANUAL + ' Trigger within the first inch of rise.'),
+    ...(intertankLatch === undefined
+      ? []
+      : [key(intertankLatch, 0.6 + (0.4 * intertankLatch) / 9, 'Intertank arm latchback confirmed', 'documented', terminalSource)]),
+    key(9, 1, 'Inflight arms clear', 'assumed', MANUAL + ' Nominal sweeps use the published maximum retraction times.'),
   ];
   return {
+    sequence,
     id: 'pad',
     name: 'Mobile launcher ' + number,
     backdrop: 'ground',
@@ -119,19 +176,37 @@ export function mobileLauncher(number: 1 | 2 | 3): ModelDef {
         'Four arms carry the Saturn over the exhaust opening.',
         'Each holds a fitting at the foot of the first stage until release. Their geometry is reconstructed.',
       ),
-      part(
-        'Umbilical_Tower',
-        'Umbilical tower',
-        'Two elevators served the work platforms beside the Saturn.',
-        'The tower stood about 80 feet from the rocket, measured between their axes.',
-      ),
+      {
+        ...part(
+          'Umbilical_Tower',
+          'Umbilical tower',
+          'Two elevators served the work platforms beside the Saturn.',
+          'The tower stood about 80 feet from the rocket, measured between their axes.',
+        ),
+        actions: [
+          {
+            id: 'crew-elevator',
+            label: 'Call the crew elevator',
+            do: {
+              kind: 'lift',
+              node: 'Tower_Lift',
+              machine: { kind: 'lift', confidence: 'estimated', source: MANUAL + ' The tower elevator sound is approximated.' },
+              speed: (600 * FT) / 60,
+              stops: [0, 30, 60, ...Array.from({ length: 14 }, (_, i) => 80 + 20 * i)].map((level) => ({
+                name: level ? 'Level ' + level : 'Deck',
+                by: [0, level ? (level + 0.85) * FT : 0, 0],
+              })),
+            },
+          },
+        ],
+      },
       part(
         'Hammerhead_Crane',
         'Hammerhead crane',
         'The crane reached out across the top of the Saturn.',
         'The hook could reach 85 feet from the tower axis.',
       ),
-      ...arms.map((arm, i): Part => {
+      ...arms.map(([arm, from, to], i): Part => {
         const node = `Service_Arm_${i + 1}`;
         return {
           ...part(
@@ -140,23 +215,14 @@ export function mobileLauncher(number: 1 | 2 | 3): ModelDef {
             i === 8
               ? 'The crew crossed this arm to the white room at the command module hatch.'
               : 'This arm carried connections between the tower and the Saturn V.',
-            'Move the slider to inspect the swing away from the vehicle. The angles and timing are illustrative.',
+            'Move the slider to inspect the swing away from the vehicle. The clock follows the countdown. Final sweep angles and individual transit times are reconstructed.',
           ),
-          moves: [
-            {
-              kind: 'swing',
-              node,
-              axis: [0, 1, 0],
-              angle: Math.PI / 2,
-              from: 0,
-              to: 1,
-              machine: {
-                kind: 'motor',
-                confidence: 'estimated',
-                source: 'Saturn V Flight Manual, figure 8-8. The sound of the retraction mechanism is approximated.',
-              },
-            },
-          ],
+          moves:
+            i === 8
+              ? [armSwing(node, from, 0.2, 12), armSwing(node, 0.2, to, 78)]
+              : i === 0 && intertankLatch !== undefined
+                ? [armSwing(node, from, to, 72), armSwing(node, to, 0.6 + (0.4 * intertankLatch) / 9, 18)]
+                : [armSwing(node, from, to)],
         };
       }),
     ],

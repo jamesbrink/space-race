@@ -324,6 +324,35 @@ const LC34_ROUTES = [
   },
 ];
 
+/** Walk from each crew member’s starting place on the crawlerway to the hatch at the opening of crew ingress. */
+function lc39Routes(flight) {
+  const seats = flight.models.find((m) => m.id === 'vehicle').seats;
+  const deck = -47 * 0.3048;
+  const level = FT(320.85);
+  return seats.map((seat) => ({
+    name: `Complex 39: crawlerway, launcher stairs, elevator and white room to ${seat.label}`,
+    walker: seat.figure,
+    at: flight.opens.at,
+    from: flight.models.find((m) => m.id === seat.figure).position,
+    legs: [
+      { to: [-49, -16], y: deck, run: true, note: 'up the approach ramp' },
+      { to: [-24, -20], y: deck, run: true },
+      { to: [6, -24], y: deck, run: true },
+      { to: F(39, 88), y: deck, within: 0.12, note: 'at the foot of the access stairs' },
+      { to: F(110, 88), y: 0, within: 0.15, note: 'up the full flight onto the landing' },
+      { to: F(110, 62), y: 0, within: 0.15, note: 'through the rail opening onto the launcher deck' },
+      { to: F(77, 50), y: 0, within: 0.18 },
+      { to: F(77, 20), y: 0.09, within: 0.18, note: 'inside the elevator' },
+      { lift: { model: 'pad', part: 'Umbilical_Tower', action: 'crew-elevator', stop: 15 }, y: level + 0.09, note: 'ride to level 320' },
+      { to: F(75, 10), y: level, within: 0.15, note: 'out through the tower railing' },
+      { to: F(75, 0), y: level, within: 0.15 },
+      { to: F(33, 0), y: FT(320.44), within: 0.12, note: 'cross the hinge and the arm' },
+      { to: F(8, 0), y: FT(326.4), within: 0.1, note: 'up the inner stair and into the white room' },
+      { board: { seat: seat.node, hatch: [1.6, 99.88, -0.76], label: seat.label } },
+    ],
+  }));
+}
+
 /**
  * The ways walked, by site (SiteDef.name). Site 1 is in the site's own frame: x east, z south, y up from the deck
  * (places/tyuratam/site-1.md); where each thing stands is from the modules that build it (missions/ussr/places/tyuratam/site1/).
@@ -332,6 +361,7 @@ const ROUTES = {
   'Cape Canaveral, Launch Complex 14': LC14_ROUTES,
   'Cape Kennedy, Launch Complex 19': LC19,
   'Cape Kennedy, Launch Complex 34': LC34_ROUTES,
+  ...(flown.site?.name.startsWith('Kennedy Space Center, Launch Complex 39') ? { [flown.site.name]: lc39Routes(flown) } : {}),
   'Tyuratam (Baikonur), Site 1': [
     {
       name: 'the pilot’s own way: from the bus’s door past the State Commission to the stair’s foot',
@@ -476,6 +506,7 @@ const ROUTES = {
 
 /** The instant a way is walked at on this flight: its reading of the slider on the flight's own morning. */
 const atOf = (route) => {
+  if (route.at !== undefined) return route.at;
   const sequence = flown.models.find((m) => m.id === (route.model ?? 'pad'))?.sequence;
   return sequence ? timeAt(sequence, route.slider) : 0;
 };
@@ -499,17 +530,17 @@ for (const [n, route] of routes.entries()) {
   const hidePanels = await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
   // the morning's hardware where the route wants it, then on foot there
   await page.evaluate(
-    async ({ at, from }) => {
+    async ({ at, from, figure }) => {
       const sr = window.sr;
       sr.stage.setAutoRotate(false);
       sr.clock.pause();
       sr.clock.seek(at);
       await new Promise((done) => setTimeout(done, 4000)); // (the hardware hurries to where the clock was put)
-      const walker = sr.flight.models.find((m) => m.walker).id;
+      const walker = figure ?? sr.flight.models.find((m) => m.walker).id;
       sr.stage.enterWalk(walker, { x: from[0], y: from[1], z: from[2] });
       await new Promise((done) => setTimeout(done, 1500));
     },
-    { at: atOf(route), from: route.from },
+    { at: atOf(route), from: route.from, figure: route.walker },
   );
   console.log(`${route.name} (T${atOf(route) < 0 ? '' : '+'}${Math.round(atOf(route))} s)`);
   let ok = true;

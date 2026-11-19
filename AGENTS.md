@@ -63,6 +63,7 @@ pnpm test:impact      # needs pnpm dev: a glancing strike spins a capsule and a 
 pnpm test:separation  # needs `pnpm dev` running: released hardware moves clear in the rendered flight
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:sheet       # needs `pnpm dev` running: a phone's sheet under a finger on the gallery, the site and the Lineup at 390 and 820: every button in its View pane reached by swiping its line, the sheet and the page left still
+pnpm test:soyuz-boarding # needs the dev server: walk every Soyuz crew member from their starting place to their assigned couch via the pad lift
 pnpm test:crew-start   # needs the dev server: each crew member at every built site has clear ground, a view of the vehicle and a walkable approach
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone, and the first Escape freeing the mouse without ending the walk (walking.md)
 pnpm test:operate     # needs `pnpm dev` running: something worked by hand on foot at each site, in view and read out, through the eyes and over the shoulder, at 1280 and 390
@@ -70,6 +71,7 @@ pnpm test:sound       # needs `pnpm dev` running: what is heard driving a car, w
 pnpm test:drive       # needs `pnpm dev` running: every vehicle at every site goes forward a car's length from where it stands, or the test names what holds it
 pnpm test:front       # needs `pnpm dev` running: the front page: what it shows, going into a flight and back out, what it draws and holds
 pnpm test:lineup      # needs `pnpm dev` running: the Lineup: every flight in the row to scale, the card, its gallery and back, the levels of detail, what it holds as a phone
+pnpm test:model-eviction # needs the dev server: switching Apollo sites releases departed suits and late loads while retaining shared models
 pnpm test:flights     # needs `pnpm dev` running: flight to flight and back with no reload: the right flight each time, memory and listeners back to their level
 pnpm test:night       # needs `pnpm dev` running: both sites by night (stills with --shots), the light through dusk and dawn without a jump, the eye off a floodlit apron and back
 ```

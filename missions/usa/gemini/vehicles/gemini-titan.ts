@@ -1,4 +1,5 @@
-import { doc, type Measure } from '../../../../src/measure.ts';
+import { assumed, doc, estimated, type Measure } from '../../../../src/measure.ts';
+import type { Nozzle } from '../../../../src/sim/plan.ts';
 import type { CabinDef, Confidence, ModelDef, Motor, Part, Spec, ViewDef } from '../../../../src/types.ts';
 
 /**
@@ -68,6 +69,33 @@ export const SP149 = 'Summary of Gemini Extravehicular Activity (NASA SP-149)';
 /** NASA's press kit for Gemini 7 and Gemini 6 together. */
 export const KIT_7_6 = 'NASA release 65-362, the Gemini 7/6 press kit (29 November 1965)';
 export const LAUNCH_SYSTEMS = 'Gemini Program Launch Systems Final Report (Aerospace, January 1967)';
+
+const SP8120 = 'NASA SP-8120, Liquid Rocket Engine Nozzles (1976), Table I, pp. 5 and 6';
+/** The words for an exit pressure worked from a chamber's and an area ratio: how it was reached, and that it is an estimate. */
+const expanded = (psia: number, ratio: number, atm: number): string =>
+  `the chamber’s ${psia} psia expanded isentropically through ${ratio}:1 as a gas of gamma 1.2 (taken for Aerozine 50 and nitrogen tetroxide as for kerosene and oxygen: not this engine’s): ${atm} atmosphere`;
+
+/**
+ * The GLV's nozzles, for the shape of their fires (sim/plan.ts `Nozzle`; viewer/plume.ts): nothing the simulator flies reads
+ * them. Its engines were the Titan II missile's with changes for a man aboard: the LR87-AJ-7 of two chambers and the
+ * LR91-AJ-7. SP-8120 gives the missile's -AJ-5s, taken here for the -AJ-7s (it gives their exits as 43.14 and 64.0 in
+ * across, which vehicles/titan_ii_glv.py does not yet build to: titan-ii-glv.md). psia to Pa by 6,894.757.
+ */
+export const GLV_NOZZLES = {
+  first: {
+    chamber: assumed(783 * 6894.757, `${SP8120}: 783 psia at sea level and at altitude, the LR87-AJ-5's`),
+    expansion: assumed(8, `${SP8120}: 8, the LR87-AJ-5's, its bell regeneratively cooled throughout`),
+    exit: estimated(91_070, expanded(783, 8, 0.9)),
+  },
+  second: {
+    chamber: assumed(827 * 6894.757, `${SP8120}: 827 psia at altitude, the LR91-AJ-5's`),
+    expansion: doc(
+      49.2,
+      `${LAUNCH_SYSTEMS}, p. II.C-23, of the GLV's: "The high expansion ratio chamber (49.2:1) was achieved by use of an ablative extension from 13:1". ${SP8120}: 49.2 for the LR91-AJ-5`,
+    ),
+    exit: estimated(9_150, expanded(827, 49.2, 0.09)),
+  },
+} satisfies Record<string, Nozzle>;
 
 /**
  * The type's sizes, in the drawings' inches: the spacecraft's from McDonnell's (SEDR 300 vol. 1, Figures 2-3 and 2-4),

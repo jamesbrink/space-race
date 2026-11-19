@@ -177,6 +177,10 @@ aft; then the capsule from the adapter.
   not from a drawing, the bells' tubes are a count of ours, and the booster engines' cant is left out.
   The baffled injector a later vehicle is given (113-D) is a face, a ring and six vanes in a chamber of
   that representative size, with none of its orifices, and its igniter a plain container.
+- **The fires' nozzles are the type's, not 109-D's** (`mercury-atlas.ts`, `MA2_NOZZLES`): chamber
+  pressures and area ratios from a secondary table of the LR89-5 and LR105-5 (checked against NASA
+  SP-8120's MA-5 booster) and the LR101's data sheet; each exit pressure is worked from them with a
+  general gamma and is estimated. The model's bells are not sized from those ratios.
 - **The booster section's ribs** (96), the fairings' exact section and the radiation shield's form
   are estimates. The jettison tracks, the latch, the helium bottles, the fill and drain fittings and
   the ground disconnects are left out.
