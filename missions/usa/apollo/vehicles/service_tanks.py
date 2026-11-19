@@ -278,7 +278,7 @@ def _markings(parent, radius, forward):
     flag.build("SM_NationalFlag", material("apollo-sm-national-flag", (1, 1, 1), roughness=0.65, image=flag_image()), parent)
 
 
-def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_radius, white, silver):
+def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_radius, white, silver, *, sim_door=None):
     """Exterior partitions from the flight plate, NAR P-64 and S68-42513."""
     # Environmental Control, p.121: two 130-degree panels, about 49 ft² each.
     # Aft offset estimated against the 154-in barrel in NASA S68-42513.
@@ -286,6 +286,7 @@ def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_rad
     ecs_top = ecs_bottom + 49 * 144 / (radius * math.radians(130))
     _markings(parent, radius, forward)
     barrel, ecs, inner, rim, fairing, eps = (MeshBuilder() for _ in range(6))
+    door = MeshBuilder()
     for a, b in zip(ANGLES, ANGLES[1:]):
         deg = (a + b) / 2
         angle = (math.radians(a), math.radians(b))
@@ -298,9 +299,28 @@ def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_rad
         # II/III span 65..195 and V/VI 245..375 degrees. The inner surfaces
         # and annuli use precisely the same angular subdivisions as these skins.
         has_ecs = zone >= 65 or zone < 15
-        for lo, hi, paint in ((aft, ecs_bottom, barrel), (ecs_bottom, ecs_top, ecs if has_ecs else barrel), (ecs_top, forward, barrel)):
-            sector(paint, [(radius, lo), (radius, hi)])
-        sector(inner, [(radius - 1, forward), (radius - 1, aft)])
+        if sim_door is not None and a >= 15 and b <= 65:
+            # MSC-05161 fig. A-2. The tank panel closes the sector forward of the cut line.
+            bottom, top = aft + 2.5, forward - 37
+            for lo, hi in ((aft, bottom), (top, forward)):
+                sector(barrel, [(radius, lo), (radius, hi)])
+                sector(inner, [(radius - 1, hi), (radius - 1, lo)])
+            sector(
+                door, [(radius, bottom + 0.12), (radius, top - 0.12), (radius - 1, top - 0.12), (radius - 1, bottom + 0.12), (radius, bottom + 0.12)]
+            )
+            # Close the free edges of the jettisoned honeycomb panel.
+            for edge in (a, b):
+                if edge in (15, 65):
+                    ca, sa = math.cos(math.radians(edge)), math.sin(math.radians(edge))
+                    points = [
+                        (r * ca * IN, r * sa * IN, h * IN)
+                        for r, h in ((radius - 1, bottom + 0.12), (radius, bottom + 0.12), (radius, top - 0.12), (radius - 1, top - 0.12))
+                    ]
+                    door.add(points, [(0, 1, 2, 3) if edge == 15 else (3, 2, 1, 0)])
+        else:
+            for lo, hi, paint in ((aft, ecs_bottom, barrel), (ecs_bottom, ecs_top, ecs if has_ecs else barrel), (ecs_top, forward, barrel)):
+                sector(paint, [(radius, lo), (radius, hi)])
+            sector(inner, [(radius - 1, forward), (radius - 1, aft)])
         sector(rim, [(radius - 1, aft), (radius, aft)])
         sector(rim, [(radius, forward), (radius - 1, forward)])
         # P-64 and p.58: eight power radiators interleaved with plain panels.
@@ -309,6 +329,9 @@ def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_rad
         sector(fairing, [(radius, forward), (fairing_radius, forward)])
         sector(fairing, [(fairing_radius, fairing_top), (shield_radius, fairing_top)])
         sector(fairing, [(fairing_radius - 0.5, fairing_top), (fairing_radius - 0.5, forward)])
+    if sim_door is not None:
+        skin = door.build("SM112_SIMJettisonPanel", silver, sim_door)
+        mark_shells([skin.name])
     for name, builder, finish in (
         ("SM_Panels", barrel, silver),
         ("SM_ECSRadiators", ecs, white),

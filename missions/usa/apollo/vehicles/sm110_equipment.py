@@ -8,7 +8,7 @@ from service_tanks import OXYGEN_DIAMETER, _ball, _lathe, _line, _ring
 from srlib import IN, MeshBuilder, interior, material
 
 
-def build(reserve, core, battery, origin_xa):
+def build(reserve, core, battery, origin_xa, *, oxygen_xa=920):
     if not interior():
         return
     silver = material("apollo-oxygen-stainless", (0.56, 0.58, 0.58), metallic=0.76, roughness=0.33)
@@ -22,7 +22,7 @@ def build(reserve, core, battery, origin_xa):
         return (r * math.cos(a) - t * math.sin(a), r * math.sin(a) + t * math.cos(a), xa - origin_xa)
 
     def tank(x, y, z):
-        return bay(53 + x, y, 920 + z)
+        return bay(53 + x, y, oxygen_xa + z)
 
     centre = tank(0, 0, 0)
     _ball("SM110_OxygenThreeVacuumJacket", OXYGEN_DIAMETER, centre, jacket, reserve)

@@ -55,7 +55,10 @@ def build(parts, metal, panel, dark, white, *, spacecraft=3):
     # MSC-00126 A.2.1: LM-4 divided its four batteries equally between the
     # two forward quadrants. Exact case stations within each bay are estimated.
     locations = [(63, y, z) for y in (-37, 37) for z in (72, 106)] if spacecraft >= 4 else [(x, -49, z) for x in (-54, -37) for z in (78, 99)]
-    if spacecraft == 8:
+    if spacecraft == 10:
+        # LM-10 handbook §1.3: the five batteries stand on the aft (-Z) bulkhead.
+        locations = [(-85, y, z) for y, z in ((-19, 78), (0, 78), (19, 78), (-10, 94), (10, 94))]
+    if spacecraft in (8, 10):
         # NASA TN D-6976 table I. The narrow ascent batteries sit side by side.
         for owner, centres, size, opposite in (
             (parts["LMDescentPower"], locations, (9.04, 16.94, 9.96), False),
@@ -66,8 +69,17 @@ def build(parts, metal, panel, dark, white, *, spacecraft=3):
     else:
         batteries(parts["LMDescentPower"], locations, metal, panel, dark)
         batteries(parts["LMAscentPower"], [(-66, y, 174) for y in (-11, 11)], metal, panel, dark)
+    stores = [("Water", 52, -47, 88, 11), ("Oxygen", 42, -59, 107, 7)]
+    if spacecraft == 10:
+        stores = [
+            ("Water", -43, 43, 95, 10),
+            ("Oxygen", -56, -38, 91, 7),  # Original vessels in quadrants II and III.
+            ("Water2", 52, -47, 88, 11),
+            ("Oxygen2", 42, -59, 107, 7),
+            ("Waste", 34, -43, 73, 5.8),  # J-mission additions in IV.
+        ]
     for name, locations in (
-        ("LMDescentConsumables", [("Water", 52, -47, 88, 11), ("Oxygen", 42, -59, 107, 7)]),
+        ("LMDescentConsumables", stores),
         (
             "LMAscentLifeSupport",
             [("Water1", -60, -16, 190, 6), ("Water2", -60, 16, 190, 6), ("Oxygen1", -60, -28, 165, 5), ("Oxygen2", -60, 28, 165, 5)],

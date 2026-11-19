@@ -113,7 +113,7 @@ def science_bay(parts, alloy, dark, white, amber):
     tools.build("LM6_SideExperimentAndTools", white, rtg)
 
 
-def generator_and_carrier(rtg, alloy, dark, prefix):
+def generator_and_carrier(rtg, alloy, dark, prefix, *, carrier_parent=None):
     generator, fins = MeshBuilder(), MeshBuilder()
     gen = group(f"{prefix}_SNAP27Generator", rtg)
     gen.location = point(0, -0.4, 2.1)
@@ -130,7 +130,7 @@ def generator_and_carrier(rtg, alloy, dark, prefix):
         tube(carrier, (-end, -1.4, 21), (end, -1.4, 35), 0.38)
     for x in (-5.2, -2.6, 0, 2.6, 5.2):
         tube(carrier, (x, 1.3, 25), (x, 1.3, 32), 0.36)
-    carrier.build(f"{prefix}_FoldedHandToolCarrier", alloy, rtg)
+    carrier.build(f"{prefix}_FoldedHandToolCarrier", alloy, carrier_parent if carrier_parent is not None else rtg)
     generator.build(f"{prefix}_GeneratorHousing", dark, gen)
     fins.build(f"{prefix}_GeneratorRadiatorFins", alloy, gen)
 

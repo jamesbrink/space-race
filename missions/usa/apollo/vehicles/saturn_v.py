@@ -480,31 +480,32 @@ def build(*, lunar_module=None, adapter_number=None, impact_radio=None):
         lunar_module(IU_TOP)
 
 
-def pogo_accumulator():
+def pogo_accumulator(stage_number):
     """SA-509 evaluation fig. 6-11. Annular reservoir above the center J-2's oxygen pump; external profile estimated."""
+    prefix = f"SII{stage_number}_"
     part = group("PogoAccumulator")
     part["lineup_enclosed"] = True
     # Match the engine cluster's -45 degree index and the existing pump inlet at (21, 0, 14).
     part.rotation_euler.z = math.radians(-45)
-    mount = group("SII9_AccumulatorMount", part)
+    mount = group(prefix + "AccumulatorMount", part)
     mount.location = (21 * IN, 0, station(1664 + 14) * IN)
     alloy = bpy.data.materials["saturn-machined-alloy"]
     steel = bpy.data.materials["saturn-engine-steel"]
     # A continuous vessel wall narrows to the pipe at each end; the bore remains open.
     profile = [(4.4, 0), (4.4, 3), (8.8, 4), (11.3, 6), (12, 8), (12, 20), (11.3, 22), (8.8, 24), (4.4, 25), (4.4, 29), (3.8, 29), (3.8, 0), (4.4, 0)]
-    lathe_obj("SII9_AccumulatorVessel", prof(profile), alloy, mount)
+    lathe_obj(prefix + "AccumulatorVessel", prof(profile), alloy, mount)
     if interior():
         feed = MeshBuilder()
         path = [(0, 0, 29), (0, 0, 33), (0, 0, 37), (-4, 0, 44), (-11, 0, 52), (-15, 0, 57)]
         feed.loft([structure.metric(point) for point in path], [(4.4 * IN, 4.4 * IN)] * len(path), caps=(False, False), resample=3)
-        feed.build("SII9_OxygenFeed", steel, mount)
+        feed.build(prefix + "OxygenFeed", steel, mount)
         lines = MeshBuilder()
         for side in (-1, 1):
             structure.pipe(lines, [(side * 9, 0, 23.7), (side * 9, 0, 27), (side * 14, 0, 31), (side * 19, 0, 32)], 0.45)
-        lines.build("SII9_AccumulatorConnections", alloy, mount)
+        lines.build(prefix + "AccumulatorConnections", alloy, mount)
 
 
-def sii_external_equipment(stage_number=7):
+def sii_external_equipment(stage_number=7, *, ullage=True):
     """SA-507 and SA-508 Flight Manuals, figs. 5-2 and 5-19. Visible envelopes in inches."""
     collar = bpy.data.objects["LowerInterstage"]
     stage = bpy.data.objects["SaturnSecondStage"]
@@ -524,7 +525,7 @@ def sii_external_equipment(stage_number=7):
         mark_shells([mesh.build(name, paint, parent, smooth=False).name])
 
     # Four aft interstage fairings, retained with the collar. Absolute clocking and profiles estimated.
-    for i in range(4):
+    for i in range(4 if ullage else 0):
         angle = i * math.pi / 2 + math.pi / 4
         cover(
             f"SII{stage_number}_UllageFairing_{i + 1}",
@@ -537,3 +538,28 @@ def sii_external_equipment(stage_number=7):
     angle = math.radians(122)  # In the white field alongside the UNITED STATES legend.
     for i, (lo, hi, paint) in enumerate(((COLLAR_TOP + 8, 1969.9, white), (1970, 2014.9, dark), (2015, SECOND_TOP - 42, white))):
         cover(f"SII{stage_number}_SystemsTunnel_{i + 1}", stage, angle, [(lo, 8, 5), (hi, 8, 5)], paint)
+
+
+def sic10_retrorockets():
+    """SA-510 flight manual §IV, fig. 4-20: two forward-exhausting motors inside each of fairings A and C."""
+    case = material("sic10-retro-case", (0.32, 0.34, 0.29), metallic=0.45, roughness=0.55)
+    rim = bpy.data.materials["saturn-machined-alloy"]
+    nozzle = bpy.data.materials["saturn-engine-steel"]
+    # The case and end fittings are scaled from the figure. The 7.5-degree cant is documented.
+    for fin, azimuth in (("A", -45), ("C", 135)):
+        pair = group(f"FirstStageRetros{fin}", lineup_enclosed=True)
+        pair.rotation_euler.z = math.radians(azimuth)
+        for i, lateral in enumerate((-12, 12), 1):
+            prefix = f"SIC10_Retro{fin}{i}_"
+            motor = group(prefix + "Mount", pair)
+            motor.location = (205 * IN, lateral * IN, station(100) * IN)
+            motor.rotation_euler.y = math.radians(7.5)
+            lathe_obj(prefix + "Case", prof([(0, 4), (6, 4), (7.2, 5), (7.2, 62), (7, 64), (6, 65), (4, 66)]), case, motor, segs=36)
+            lathe_obj(prefix + "Nozzle", prof([(4, 66), (3.4, 68), (5.2, 73), (4.7, 73), (2.8, 68), (2.8, 66), (0, 66)]), nozzle, motor, segs=36)
+            supports = MeshBuilder()
+            for z in (6, 59):
+                supports.lathe(prof([(7.22, z), (7.6, z + 0.3), (7.6, z + 1.3), (7.22, z + 1.6)]), segs=36)
+            for side in (-1, 1):
+                supports.tube((side * 5 * IN, 0, 4.6 * IN), (side * IN, 0, -2 * IN), 0.8 * IN)
+            supports.tube((-2.7 * IN, 0, -2 * IN), (2.7 * IN, 0, -2 * IN), 1.4 * IN)
+            supports.build(prefix + "BandsAndLugs", rim, motor)

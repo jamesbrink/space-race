@@ -29,7 +29,7 @@ def vessel(mesh, xyz, radius, half_length):
     surface(mesh, xyz, profile)
 
 
-def engine(parent, ascent, metal, graphite, jacket, brass):
+def engine(parent, ascent, metal, graphite, jacket, brass, *, j_mission=False):
     """Separate extension, ablative chamber jacket, manifold and mounting structure."""
     # Table I, NASA 19700026405: approximately 85/51 in overall, 58/31 in exit.
     radius, throat, length, exit_z = (15.5, 2.5, 51, 112) if ascent else (29, 4, 85, 18.48)
@@ -43,6 +43,9 @@ def engine(parent, ascent, metal, graphite, jacket, brass):
         (radius * 0.47, 0.39 * length),
         (throat * 1.7, 0.53 * length),
     ]
+    if j_mission:
+        # LM-10 extended the crushable skirt by ten inches below the previous exit.
+        section.insert(0, (radius + 3.6, -10))
     inner = [(r - 0.38, z) for r, z in reversed(section)]
     surface(skirt, start, section + inner + [section[0]], 64)
     skirt.build("LM3_" + name + "_NozzleExtension", graphite, parent)
@@ -94,7 +97,7 @@ def engine(parent, ascent, metal, graphite, jacket, brass):
     feed.build("LM3_" + name + "_ExternalLines", brass, parent)
 
 
-def tanks(descent, ascent, structure, metal, oxidizer, fuel, brass):
+def tanks(descent, ascent, structure, metal, oxidizer, fuel, brass, *, j_mission=False):
     if not interior():
         return
     # A.2-4: beams enclose a central engine bay and four propellant bays.
@@ -112,6 +115,8 @@ def tanks(descent, ascent, structure, metal, oxidizer, fuel, brass):
         (descent, "DPS", [(53, 0, 92), (-53, 0, 92), (0, 53, 92), (0, -53, 92)], 24, 31),
         (ascent, "APS", [(0, 53, 175), (-5, -54, 177)], 23, 23),
     ):
+        if name == "DPS" and j_mission:
+            h += 3.36 / 2  # LM-10 tank length increase, Apollo 15 press kit, Lunar Module Changes.
         feed = MeshBuilder()
         bands = MeshBuilder()
         for i, (x, y, z) in enumerate(centres):
@@ -139,6 +144,8 @@ def tanks(descent, ascent, structure, metal, oxidizer, fuel, brass):
         for i, sign in enumerate((-1, 1)):
             sphere = MeshBuilder()
             pos = (sign * 49, 46, 93) if name == "DPS" else (-24, sign * 18, 191)
+            if name == "DPS" and j_mission:
+                pos = (-41, -41, 77 if i == 0 else 103)
             vessel(sphere, pos, 10 if name == "DPS" and i else 7.8, 10 if name == "DPS" and i else 7.8)
             sphere.build(f"LM3_{name}_HeliumVessel_{i + 1}", metal, owner)
         bands.build("LM3_" + name + "_TankSupports", metal, owner)
