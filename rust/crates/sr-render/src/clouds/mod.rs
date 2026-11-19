@@ -67,6 +67,19 @@ fn hang(
     }
 }
 
+/// The Sun's light as it reaches a cloud through the air in its way, lux in red, green and blue, with the Sun
+/// this high (the sine of its elevation).
+#[must_use]
+pub fn sunlight(high: f32) -> Vec3 {
+    lux::RAW_SUNLIGHT * (-AIR_MASS / high.max(0.03)).exp()
+}
+
+/// The clear sky's light on a cloud, cd/m^2: less as the Sun goes down.
+#[must_use]
+pub fn skylight(high: f32) -> Vec3 {
+    SKYLIGHT * high.max(0.03).sqrt()
+}
+
 fn layer(l: Layer) -> Vec4 {
     Vec4::new(l.cover, l.base, l.depth, l.size)
 }
@@ -87,15 +100,14 @@ fn look(
     let over = Vec2::new(origin.0.as_vec3().dot(ground.east), origin.0.as_vec3().dot(ground.north));
     let (cumulus, deck) = (over - air.cumulus.drift * air.clock, over - air.deck.drift * air.clock);
     // The Sun's light as it reaches the cloud, through the air in its way; and less sky as the Sun goes down.
-    let high = sky.sun.dot(up).max(0.03);
-    let sunlight = lux::RAW_SUNLIGHT * (-AIR_MASS / high).exp();
+    let high = sky.sun.dot(up);
     material.frame = CloudFrame {
         up: up.extend(height),
         east: ground.east.extend(sky.radius as f32),
         north: ground.north.extend(air.clock),
         sun: sky.sun.extend(air.visibility),
-        sunlight: sunlight.extend(0.0),
-        skylight: (SKYLIGHT * high.sqrt()).extend(0.0),
+        sunlight: sunlight(high).extend(0.0),
+        skylight: skylight(high).extend(0.0),
         over: Vec4::new(cumulus.x, cumulus.y, deck.x, deck.y),
         cumulus: layer(air.cumulus),
         deck: layer(air.deck),

@@ -5,7 +5,10 @@
 //! own gravity is off; the field (attraction and the turning frame) is `sr-sim`'s, applied with everything else.
 
 pub mod bodies;
+mod chutes;
 mod drive;
+mod dust;
+mod fire;
 mod setup;
 mod staging;
 
@@ -98,6 +101,10 @@ impl Plugin for FlightPlugin {
             .add_observer(setup::ready)
             .add_systems(FixedUpdate, staging::stage.in_set(Step::Stage))
             .add_systems(FixedUpdate, (drive::fly, drive::fall, drive::settle).in_set(Step::Drive))
+            .add_systems(
+                Update,
+                (fire::kindle.run_if(resource_added::<Parts>), fire::stoke, chutes::fly, dust::raise),
+            )
             .add_systems(PostUpdate, setup::show.before(Place));
     }
 }

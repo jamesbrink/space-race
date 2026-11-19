@@ -57,6 +57,8 @@ pub struct Chute {
     pub drag_area: Measure,
     /// How long it takes to fill, s.
     pub fills: Measure,
+    /// The canopy's constructed diameter, m.
+    pub diameter: Measure,
 }
 
 impl Chute {

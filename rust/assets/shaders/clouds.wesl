@@ -127,17 +127,28 @@ fn inside(h: f32, mu: f32, base: f32, top: f32) -> Slab {
 }
 
 // How dense the cloud is at a point: its place over the ground in the layer's drifting frame, and its height.
-fn density(en: vec2<f32>, h: f32, layer: vec4<f32>, fine: bool) -> f32 {
+fn density(en: vec2<f32>, h: f32, layer: vec4<f32>, fine: bool, banked: bool) -> f32 {
     let lifted = (h - layer.y) / layer.z;
     if lifted <= 0.0 || lifted >= 1.0 {
         return 0.0;
     }
+    // A deck of cloudlets does not sprinkle the whole sky: it lies in banks, a quarter of the sky at most, and
+    // within a bank it is that much thicker, so that the sky's cover is still the record's.
+    var cover = layer.x;
+    var bank = 1.0;
+    if banked {
+        bank = smoothstep(0.56, 0.66, noise2(en / (layer.w * 22.0) + 41.0));
+        if bank <= 0.0 {
+            return 0.0;
+        }
+        cover = min(layer.x * 4.0, 0.85);
+    }
     let field = field_at(en, layer.w);
     // (the field's own quantiles, measured: a fraction `cover` of it lies above 0.74 - 0.48 cover; the cloud's
     // edge, once the noise has cut it, stands about 0.055 above this threshold)
-    let threshold = 0.685 - 0.48 * layer.x;
+    let threshold = 0.685 - 0.48 * cover;
     // How far inside its cloud a column stands: a slope, not a step, so that the noise has something to carve.
-    let within = saturate((field - threshold) / 0.16);
+    let within = saturate((field - threshold) / 0.16) * bank;
     if within <= 0.0 {
         return 0.0;
     }
@@ -160,7 +171,8 @@ fn density(en: vec2<f32>, h: f32, layer: vec4<f32>, fine: bool) -> f32 {
     }
     // (cloud is cloud almost as soon as there is any: its water does not thin toward its edge as the slope does)
     d = saturate(d * 4.0);
-    return d * EXTINCTION;
+    // (a deck's cloudlets are thin: the Sun comes through them)
+    return d * EXTINCTION * select(1.0, 0.28, banked);
 }
 
 fn henyey_greenstein(cosine: f32, g: f32) -> f32 {
@@ -174,7 +186,7 @@ fn phase(cosine: f32, spread: f32) -> f32 {
 }
 
 // How much cloud lies between a point and the Sun.
-fn toward_sun(en: vec2<f32>, h: f32, layer: vec4<f32>) -> f32 {
+fn toward_sun(en: vec2<f32>, h: f32, layer: vec4<f32>, banked: bool) -> f32 {
     let sun = frame.sun.xyz;
     let level = vec2(dot(sun, frame.east.xyz), dot(sun, frame.north.xyz));
     let rise = dot(sun, frame.up.xyz);
@@ -183,7 +195,7 @@ fn toward_sun(en: vec2<f32>, h: f32, layer: vec4<f32>) -> f32 {
     var stride = 45.0;
     for (var i = 0; i < 5; i++) {
         let at = gone + 0.5 * stride;
-        depth += density(en + level * at, h + rise * at, layer, false) * stride;
+        depth += density(en + level * at, h + rise * at, layer, false, banked) * stride;
         gone += stride;
         stride *= 1.9;
     }
@@ -201,7 +213,7 @@ struct Seen {
 }
 
 // March one layer along the ray from the eye and add what is seen to `seen`.
-fn march(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, layer: vec4<f32>, over: vec2<f32>, steps: i32, jitter: f32) -> Seen {
+fn march(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, layer: vec4<f32>, over: vec2<f32>, steps: i32, jitter: f32, banked: bool) -> Seen {
     var seen = seen_in;
     if layer.x <= 0.0 {
         return seen;
@@ -215,21 +227,36 @@ fn march(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, layer: vec4
     let level = vec2(dot(ray, frame.east.xyz), dot(ray, frame.north.xyz));
     let radius = frame.east.w + h;
     let cosine = dot(ray, frame.sun.xyz);
-    let span = end - start;
-    var last = start;
+    // Long strides through clear air; on meeting cloud, back to where the air was last clear and through the
+    // cloud in short ones. A cloud's light is in its skin, the first few metres the Sun reaches: strides that
+    // land deep inside find only the shade there, and every cloud comes out grey.
+    var t = start + jitter * clamp(0.035 * start, 25.0, 0.28 * layer.w);
+    var short_left = 0;
     for (var i = 0; i < steps; i++) {
-        // closer together near the eye, where the cloud is large on the screen
-        let along = pow((f32(i) + jitter) / f32(steps), 1.7);
-        let t = start + span * along;
-        let stride = t - last;
-        last = t;
+        if t >= end {
+            break;
+        }
+        // (never so long that a whole cloud could stand between two of them)
+        let long_stride = clamp(0.035 * t, 25.0, 0.28 * layer.w);
+        let short_stride = max(0.006 * t, 9.0);
         let height = h + mu * t + t * t * (1.0 - mu * mu) / (2.0 * radius);
         let en = over + level * t;
-        let d = density(en, height, layer, true);
+        let d = density(en, height, layer, true, banked);
         if d <= 0.0 {
+            short_left = max(short_left - 1, 0);
+            t += select(long_stride, short_stride, short_left > 0);
             continue;
         }
-        let shade = toward_sun(en, height, layer);
+        if short_left == 0 {
+            // (enough short strides to come back to here)
+            short_left = 12;
+            t = max(t - long_stride + short_stride * jitter, start);
+            continue;
+        }
+        short_left = max(short_left, 4);
+        let stride = short_stride;
+        t += stride;
+        let shade = toward_sun(en, height, layer, banked);
         // Light that has scattered once, and then again and again: each time weaker, deeper, and less directed.
         var sunlit = 0.0;
         var strength = 1.0;
@@ -290,11 +317,11 @@ fn fragment(
     var seen = Seen(vec3(0.0), 1.0, 0.0, 0.0);
     // Nearest layer first: the cumulus from under the deck, the deck from over it.
     if h < frame.deck.y {
-        seen = march(seen, ray, h, mu, limit, frame.cumulus, frame.eye_over.xy, 56, jitter);
-        seen = march(seen, ray, h, mu, limit, frame.deck, frame.eye_over.zw, 18, jitter);
+        seen = march(seen, ray, h, mu, limit, frame.cumulus, frame.eye_over.xy, 220, jitter, false);
+        seen = march(seen, ray, h, mu, limit, frame.deck, frame.eye_over.zw, 48, jitter, true);
     } else {
-        seen = march(seen, ray, h, mu, limit, frame.deck, frame.eye_over.zw, 18, jitter);
-        seen = march(seen, ray, h, mu, limit, frame.cumulus, frame.eye_over.xy, 56, jitter);
+        seen = march(seen, ray, h, mu, limit, frame.deck, frame.eye_over.zw, 48, jitter, true);
+        seen = march(seen, ray, h, mu, limit, frame.cumulus, frame.eye_over.xy, 220, jitter, false);
     }
     if seen.weight <= 0.0 {
         discard;

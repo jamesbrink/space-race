@@ -129,11 +129,15 @@ pub struct Parts {
     pub retropack: &'static str,
     /// The antenna canister, which leaves with the drogue when the main parachute comes out.
     pub canister: &'static str,
+    /// Where the parachutes' lines meet the capsule, m up its axis from the model's origin.
+    pub chute_height: f64,
 }
 
 /// An engine's fire, as it is drawn (`src/viewer/flames.ts`, `plume.ts`).
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Flame {
+    /// The node of the vehicle's model the nozzle is part of: the fire goes where it goes.
+    pub node: &'static str,
     /// Height of the nozzle's exit in the vehicle's frame, m.
     pub exit_height: Measure,
     /// Radius of the nozzle's exit, m.
@@ -189,6 +193,8 @@ pub struct Flight {
     pub parts: Parts,
     /// Its engine's fire.
     pub flame: Flame,
+    /// Its parachutes' two colours, linear.
+    pub canopy: [[f32; 3]; 2],
     /// What it is flown from.
     pub plan: Plan,
     /// The record's clock.

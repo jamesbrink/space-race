@@ -58,17 +58,18 @@ fn recipe(look: Look) -> Recipe {
             bloom: Bloom { intensity: 0.08, ..Bloom::NATURAL },
             vignette: Vignette { intensity: 0.0, ..default() },
         },
+        // A print, not a transparency: the shade a little thin and cool, the light a little warm, the colours
+        // held back from their brightest, and the corners let go.
         Look::Film => Recipe {
-            curve: Tonemapping::TonyMcMapface,
+            curve: Tonemapping::AcesFitted,
             grading: ColorGrading {
-                global: ColorGradingGlobal { post_saturation: 0.92, ..default() },
-                // Shade thin and a touch lifted, as a print's; the light keeps its weight and its warmth.
-                shadows: ColorGradingSection { saturation: 0.88, contrast: 1.05, ..default() },
-                midtones: ColorGradingSection { contrast: 1.06, ..default() },
-                highlights: ColorGradingSection { saturation: 0.95, gain: 1.03, ..default() },
+                global: ColorGradingGlobal { post_saturation: 0.86, ..default() },
+                shadows: ColorGradingSection { saturation: 0.82, contrast: 1.04, gain: 1.03, ..default() },
+                midtones: ColorGradingSection { saturation: 0.96, contrast: 1.05, ..default() },
+                highlights: ColorGradingSection { saturation: 0.9, ..default() },
             },
-            bloom: Bloom { intensity: 0.1, ..Bloom::NATURAL },
-            vignette: Vignette { intensity: 0.28, radius: 0.9, smoothness: 0.7, ..default() },
+            bloom: Bloom { intensity: 0.12, ..Bloom::NATURAL },
+            vignette: Vignette { intensity: 0.3, radius: 0.92, smoothness: 0.75, ..default() },
         },
     }
 }

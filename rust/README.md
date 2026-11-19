@@ -23,6 +23,23 @@ Or from `rust/`: `cargo run --release -p space-race -- --help`. One frame to a f
 cargo run -p space-race -- --shot out.png --pose 200,6,60,14 [--at <seconds>] [--reference]
 ```
 
+## Fly it
+
+It opens on the pad at T-12 s and flies the flight as it was flown, hands off: liftoff, the tilt programme, cutoff,
+the tower and the booster leaving, apogee, retrofire, the retropack, the drogue, the main parachute, the sea.
+
+| | |
+|---|---|
+| Space | stop the clock, and start it |
+| `,` `.` | slower, faster: 1, 2, 5, 10, 25, 50, 100 times |
+| C, or 1 2 3 4 | the camera: pad, tracking (a long lens on the ground), chase, onboard |
+| drag, wheel | turn the pad and chase cameras; zoom all of them |
+| G | the grade: Film (the game's own) or Reference (straight) |
+| H | put the panels away |
+
+`--at <seconds>` opens anywhere in the flight (`--at 150 --rig chase` is the separation, `--at 620` the main
+parachute); `--bench` prints what a frame costs once a second.
+
 Rust 1.99.1 (`rust-toolchain.toml`; rustup fetches it). Run cargo from `rust/`: the toolchain and the linker
 setting are found from there.
 
@@ -81,3 +98,35 @@ simulator makes); positions are doubles drawn from the eye. And for the code:
 - **Gravity has no J2.** The frame turns with the Earth, so Coriolis and centrifugal accelerations are in.
 - **The Sun is the Almanac's low-precision formula** (0.01 degrees), not DE440; UTC is taken for UT1.
 - **The pilot's standing figure is not shown**: at liftoff he is aboard.
+- **The land near the site is a designed ground** in the repo's palette over the region's shore map. The web
+  build's painted relief, roads, plants, the far complexes and the lighthouse are not here.
+- **The flame is two shells of light**, bright where they are seen squarely, not a marched volume; it lights the
+  pad. The dust it raises is a few dozen soft puffs. Brightness, glare and dust are estimates and say so.
+- **The cloud's light is part estimate**: the sky's light on it, the ground's albedo under it and the gain that
+  stands for the scattering orders not marched are constants in `clouds.wesl` and `clouds/mod.rs`, each labelled.
+  The cover, bases, depth, size and wind are the flight's record. The altocumulus is gathered into banks, which
+  is ours. Cloud shadows fall on the land and the sea, not yet on the models.
+- **The vehicle is steered, not torqued**: its bodies turn to where the plan has them point. Nothing collides
+  yet: the bodies have mass and no shape, and the sea stops what reaches it.
+- **Parachutes are drawn from their documented diameters**; their lines' length and inflated shape are estimates.
+- **Exposure follows height** (a stop less out of the air) rather than what is in view.
+
+## Not here yet
+
+Walking and driving, the gallery, the Lineup and the front page, sound, the map and the predicted path, the pad's
+morning played on the clock, taking the flight over by hand, every other flight, the cel look, the web and mobile
+builds (the engine supports them; none was built).
+
+## What it showed
+
+Measured on an M4 Max (halcyon), release build, the window at 3200 x 1800: **60 frames a second, vsync-capped,
+from the count through liftoff** (`--bench`), with the atmosphere raymarched, both cloud layers marched at full
+resolution with self-shadowing, temporal anti-aliasing, ambient occlusion, four shadow cascades and bloom all on.
+
+- The engine does the hard parts the web build had to write and then ration: a physically based atmosphere that
+  holds from the pad to 187 km, HDR end to end, cascaded shadows, temporal anti-aliasing.
+- The same figures, ported with their sources, give the same flight: 200.1 km and 540 km here against 200.3 km
+  and 534 km in the web build (the record: 187.4 km and 487.3 km), the miss written down in both.
+- The models needed nothing redone: Draco off, materials finished by name.
+- What it cost: Bevy has no Draco, so there is an unpack step; its shader language (WESL) reserves many common
+  words; the engine's API moves every release.

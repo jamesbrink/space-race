@@ -221,6 +221,7 @@ pub static FLIGHT: Flight = Flight {
     models: &MODELS,
     parts: redstone::PARTS,
     flame: redstone::FLAME,
+    canopy: redstone::CANOPY,
     plan: PLAN,
     events: &EVENTS,
     misses: &MISSES,

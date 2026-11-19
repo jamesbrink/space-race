@@ -141,6 +141,7 @@ pub const DROGUE: Chute = Chute {
         "a 6 ft conical ribbon parachute (Hammack p. 9) at a drag coefficient of 0.5, the usual figure for the type",
     ),
     fills: Measure::estimated(1.0, "a small ribbon parachute fills in about a second: not recorded"),
+    diameter: Measure::documented(6.0 * FT, "Hammack p. 9: a 6 ft conical ribbon drogue"),
 };
 
 /// The main parachute: a 63 ft ringsail, out at 10,000 ft.
@@ -155,6 +156,7 @@ pub const MAIN: Chute = Chute {
         9.0,
         "out reefed at 10:15, full at 10:28 by Shepard's calls: nine seconds, evenly, is ours",
     ),
+    diameter: Measure::documented(63.0 * FT, "Hammack p. 9: a 63 ft ringsail main parachute"),
 };
 
 /// The spent booster's drag area as it tumbles.
@@ -185,10 +187,12 @@ pub const PARTS: Parts = Parts {
     ],
     retropack: "Retropack",
     canister: "AntennaCanister",
+    chute_height: 2.08,
 };
 
 /// The A-7's fire: alcohol and liquid oxygen (`src/viewer/flames.ts`, `plume.ts`).
 pub const FLAME: Flame = Flame {
+    node: "RedstoneEngine",
     exit_height: Measure::derived(
         -17.855,
         "the bell's lip in vehicle.glb (node Engine_A7), below the capsule's widest plane",
@@ -202,3 +206,7 @@ pub const FLAME: Flame = Flame {
     length: Measure::estimated(38.0, "exit radii at sea level, judged against film of the launches"),
     colours: [[1.0, 0.93, 0.78], [1.0, 0.9, 0.62], [1.0, 0.56, 0.15], [1.0, 0.3, 0.05], [0.7, 0.8, 1.0]],
 };
+
+/// The main canopy's two colours, linear: orange and natural white gores (`flight.ts`, the canopy: #ee7a30 and
+/// #efeadc, from the recovery photographs).
+pub const CANOPY: [[f32; 3]; 2] = [[0.855, 0.195, 0.03], [0.863, 0.823, 0.716]];

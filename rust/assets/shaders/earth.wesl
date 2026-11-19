@@ -109,6 +109,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     let edge = max(fwidth(inland), 0.5);
     let sea = mix(marble_sea, 1.0 - smoothstep(-edge, edge, inland), on_map);
 
+    let seen_land = max(length(fwidth(en)), 0.001);
     // The land near the site: sand, with herbs and scrub in patches, and the beach.
     let patches = fbm2(en / 190.0) * 0.6 + fbm2(en / 31.0 + 5.0) * 0.4;
     let cleared = smoothstep(90.0, 420.0, far);
@@ -117,6 +118,13 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
     land = mix(land, HERB_GREEN, smoothstep(0.4, 0.75, growth));
     land = mix(land, LEAF, smoothstep(0.72, 1.0, growth) * 0.85);
     land = mix(SAND, land, smoothstep(15.0, 90.0, inland));
+    // Up close the sand is not one colour: damp and dry, trodden and blown, and thin tufts where it was not graded.
+    // Each scale fades out where it would be finer than can be seen.
+    let near_by = 1.0 - smoothstep(600.0, 2500.0, far);
+    let tufts = smoothstep(0.58, 0.74, fbm2(en / 4.5 + 31.0)) * smoothstep(0.35, 0.6, fbm2(en / 60.0)) * saturate(2.0 / seen_land);
+    land = mix(land, mix(HERB_DRY, HERB_GREEN, 0.3), tufts * 0.7 * near_by * (1.0 - growth));
+    let mottle = (fbm2(en / 1.7 + 3.0) - 0.5) * saturate(0.7 / seen_land) + (fbm2(en / 19.0 + 8.0) - 0.5) * saturate(8.0 / seen_land);
+    land *= 1.0 + 0.22 * mottle * near_by;
     let near_land = on_map * (1.0 - smoothstep(6000.0, 40000.0, far));
     land = mix(marble, land, near_land);
 

@@ -4,6 +4,7 @@
 //! the Sun is, what the cloud is, where a model stands, and the look is made here. One module to a thing drawn.
 
 pub mod air;
+pub mod canopy;
 pub mod clouds;
 pub mod earth;
 pub mod eye;
@@ -12,7 +13,9 @@ pub mod materials;
 pub mod models;
 pub mod noise;
 pub mod origin;
+pub mod plume;
 pub mod sky;
+pub mod smoke;
 
 use bevy::prelude::*;
 
@@ -22,12 +25,16 @@ pub struct RenderPlugins;
 
 impl Plugin for RenderPlugins {
     fn build(&self, app: &mut App) {
+        app.add_systems(PostUpdate, eye::adapt.after(origin::Place));
         app.add_plugins((
             origin::OriginPlugin,
             materials::MaterialsPlugin,
             sky::SkyPlugin,
             earth::EarthPlugin,
             clouds::CloudsPlugin,
+            plume::PlumePlugin,
+            canopy::CanopyPlugin,
+            smoke::SmokePlugin,
             look::LookPlugin,
         ));
     }
