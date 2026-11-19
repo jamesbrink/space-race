@@ -1147,9 +1147,11 @@ for (const f of part(flown)) {
     // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the record's coast forty
     // minutes before it, which the propagator, going once round, then carries down
     const sep = whole.ascent.separation;
-    const late = coastOf(plan).on - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= coastOf(plan).on - 2400) : null;
+    // (the plan as the run flew it: its braking burn where guidance timed it for the landing place, sim/plan.ts `LandingAim`)
+    const as = shown.plan ?? f.plan;
+    const late = coastOf(as).on - sep.t > 5000 ? shown.coast.samples.find((x) => x.t >= coastOf(as).on - 2400) : null;
     const start = late ? { t: late.t, r: late.r, v: late.v } : { t: sep.t, r: sep.r, v: sep.v };
-    const job = propagate(spacecraft(f.plan, dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });
+    const job = propagate(spacecraft(as, dated, site, sea, start), start, { site, seaLevel: sea, frame: dated });
     job.run();
     const p = job.result;
     assert.equal(p.outcome, 'impact');
@@ -1316,7 +1318,8 @@ for (const f of part(flown)) {
     test(`${f.designation}: a burn by hand is the same physics: against the motion it comes down, along it it stays up`, () => {
       const [site, dated, sea] = where(f);
       const x = steer(f.plan, site, dated, sea);
-      const at = coastOf(plan).on;
+      // (the instant the run on show lit its burn: guidance's, where the burn is timed for the landing place)
+      const at = coastOf(shown.plan ?? plan).on;
       const s = shown.coast.samples.find((p) => p.t >= at);
       const back = byHand(
         f.plan,
