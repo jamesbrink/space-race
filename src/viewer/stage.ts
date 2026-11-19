@@ -2393,7 +2393,19 @@ export class Stage {
       backdrop.update(dt);
       this.setting.tick?.(dt);
     }
-    backdrop.scene.visible = !this.frozen;
+    // Frozen, the sky is drawn and only its stars are held back: points a pixel across, which a test's nudge of the
+    // camera moves from pixel to pixel. (The whole sky was once held back, when it was little more than its stars: the
+    // clouds' sheets, laid over it, were then drawn over nothing, a black band over every frozen frame's horizon.)
+    const hold = this.frozen ? backdrop.scene : null;
+    if (this.starsHeld !== hold) {
+      const stars = (sky: THREE.Scene, on: boolean) =>
+        sky.traverse((o) => {
+          if ((o as THREE.Points).isPoints) o.visible = on;
+        });
+      if (this.starsHeld) stars(this.starsHeld, true);
+      if (hold) stars(hold, false);
+      this.starsHeld = hold;
+    }
     backdrop.camera.quaternion.copy(this.camera.quaternion);
     if (backdrop.camera.aspect !== this.camera.aspect || backdrop.camera.fov !== this.camera.fov) {
       backdrop.camera.fov = this.camera.fov; // the walker's lens is wider, and the sky must turn with the ground
@@ -2786,8 +2798,10 @@ export class Stage {
     return at && { ...at, r: ((Math.hypot(size.x, size.z) / 2) * scale) / away };
   }
 
-  /** For tests: nothing moves unless the camera is moved, and the sky (stars are single pixels) is hidden. */
+  /** For tests: nothing moves unless the camera is moved, and the sky's stars (single pixels) are hidden. */
   frozen = false;
+  /** The sky whose stars are held back for a frozen stage (`frozen`), if any. */
+  private starsHeld: THREE.Scene | null = null;
 
   /** For tests: the seconds the camera's rig has been stepped through in all (tools/camera-test.mjs sets a camera's movement against the time it was moved for, not against the clock's). */
   camStepped = 0;
