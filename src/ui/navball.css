@@ -36,9 +36,12 @@
 .path-read p[hidden] { display: none; }
 .path-read p span { flex: none; width: 4.6em; text-transform: uppercase; letter-spacing: 0.12em; }
 /* the switch, and whose future it is beside it; off, only the switch */
-.path-read .path-head { align-items: center; gap: 8px; margin: 0; }
+/* (its two switches, the path's and the map's, side by side; whose future the path shows has the line under them) */
+.path-read .path-head { align-items: center; gap: 3px 8px; margin: 0; flex-wrap: wrap; }
 .path-read .path-head button { flex: none; margin-left: -4px; }
-.path-read .path-head .path-as { width: auto; flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.06em; color: var(--faint); }
+.path-read .path-head button + button { margin-left: -6px; }
+.path-read .path-head .path-as { width: auto; flex: 1 1 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.06em; color: var(--faint); }
+.path-read .path-head .path-as:empty { display: none; }
 .path-read.off p:not(.path-head) { display: none; }
 /* while the engine burns under guidance, which future: two halves of one control, the one on show lit */
 .path-read .path-kind { align-items: center; gap: 0; margin-top: 5px; }
@@ -86,6 +89,13 @@
 .path-chip b { font-weight: 600; letter-spacing: 0.1em; color: var(--ink); }
 .path-chip.path-apogee b, .path-chip.path-perigee b, .path-chip.path-down b, .path-chip.path-impact b { color: var(--amber); }
 .path-chip em { font-style: normal; color: var(--dim); }
+/* on the map: the vehicle (a chevron, amber) and whatever else flies (a ring, in its line's own blue-white), each with its name */
+.path-craft > i { left: -6px; top: -6px; width: 12px; height: 12px; rotate: none; border: 0; background: var(--amber); clip-path: polygon(50% 0, 100% 100%, 50% 72%, 0 100%); filter: drop-shadow(0 0 1.5px rgba(10, 11, 14, 0.95)); }
+.path-craft { z-index: 1; }
+.path-craft b { color: var(--amber); }
+.path-other > i { left: -4px; top: -4px; width: 8px; height: 8px; rotate: none; border-radius: 50%; background: rgba(10, 11, 14, 0.7); border: 1.5px solid #9cc9e6; }
+.path-other b { color: #9cc9e6; font-weight: 400; }
+.path-chip.path-craft, .path-chip.path-other { display: none; }
 .path-mark-probe { position: absolute; visibility: hidden; font: 10.5px/18px var(--mono); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
 
 /* a window a little narrower than three panels abreast need: the ball and its panel close up */

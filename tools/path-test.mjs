@@ -22,7 +22,11 @@
 //     hour ahead),
 //   - a marker away from its place, a chip for a place that is in view, a chip that points elsewhere than its place,
 //     or one that overlaps a panel or another chip,
-//   - an apsis marked where the path's radial speed does not change sign, a path that does not end where it comes down.
+//   - an apsis marked where the path's radial speed does not change sign, a path that does not end where it comes down,
+//   - in the map (M), taken from the chase view at every third instant: a view that is not the map's or does not take in
+//     the whole line ahead; no path with its switch off; an orbit drawn over the turning Earth, or not whole (its line
+//     short of a revolution, or ending away from the vehicle); the vehicle's marker off the vehicle; another body that
+//     flies with no line or marker; no outline of the Earth; and, out of it, anything but the chase view it was taken from.
 // Then each flight is taken over at seeded instants (--seed) and flown by scripted hands (Freedom 7 pitched hard over
 // and its engine cut early; Vostok 1's ascent pitched and its stages cut early or late, its braking engine fired forward
 // and back in orbit), checked at each step as above, run on to its end with nothing more done, and where it ends held
@@ -1350,6 +1354,127 @@ class Run {
     }
   }
 
+  /**
+   * The map (M: camera/map.ts, path.ts `mapped`) at the instant on show, taken from the chase view with nobody having
+   * set it: the view is the map's and takes in all of the line ahead; the path is drawn whatever its switch says; an
+   * orbit is drawn as it lies among the stars and whole, its line coming round to the vehicle; the vehicle's marker is
+   * on the vehicle; every other thing that flies in the run has its marker and its line; the Earth's outline is drawn;
+   * and going back out of it gives the chase view back with the path as it was.
+   */
+  async map(where) {
+    const m = await this.page.evaluate(
+      async ([SETTLE]) => {
+        const sr = window.sr;
+        const st = sr.stage;
+        const p = sr.path;
+        const frames = async (n) => {
+          for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r));
+        };
+        st.frozen = false;
+        st.setAutoRotate(false);
+        st.setCamera('chase');
+        await frames(3);
+        const was = p.showing;
+        p.show(false, false); // (the map draws the path whatever its switch says)
+        st.setMap(true);
+        for (let i = 0; i < 400 && (st.cameraMode !== 'map' || st.cam.blend || st.cam.map.busy); i++) await frames(1);
+        st.frozen = true;
+        await new Promise((r) => setTimeout(r, 300));
+        // biome-ignore lint/security/noGlobalEval: the one wait, shared by the page's steps
+        await eval(SETTLE);
+        await frames(20);
+        const c = window.__drawCamera ?? st.camera;
+        const rect = st.viewRect();
+        const v = c.position.clone();
+        // (where a place is on the page, and whether it is in front of the eye: the far plane is the scene's, fitted to
+        // the globe, and the line is drawn past it)
+        const px = (x, y, z) => {
+          const ahead = v.set(x, y, z).applyMatrix4(c.matrixWorldInverse).z < 0;
+          v.set(x, y, z).project(c);
+          return [((v.x + 1) / 2) * rect.width, ((1 - v.y) / 2) * rect.height, ahead];
+        };
+        const L = p.line();
+        let out = 0;
+        for (let i = 0; i < L.t.length; i++) {
+          const [x, y, ahead] = px(L.p[i * 3], L.p[i * 3 + 1], L.p[i * 3 + 2]);
+          if (!(ahead && x >= -1 && x <= rect.width + 1 && y >= -1 && y <= rect.height + 1)) out++;
+        }
+        const ship = c.position.clone();
+        const vessel = st.show.vessel(ship);
+        const n = L.t.length;
+        const shown = p.shown;
+        const others = sr.stage.show.ascent?.others(sr.clock.t).filter((o) => !o.down) ?? [];
+        const mark = p.craftMark;
+        const at = vessel ? px(ship.x, ship.y, ship.z) : null;
+        const result = {
+          rig: st.cameraMode,
+          focus: st.cam.map.focus,
+          // (a future to show: none for a vehicle in pieces or one come down, and then the map shows the Earth and no more)
+          wanted: Boolean(p.want()) && Boolean(shown),
+          points: n,
+          out,
+          outcome: shown?.result.outcome ?? null,
+          frame: shown?.frame ?? null,
+          // (how far the line's far end is from the vehicle, m, and how long it runs, in revolutions of its curve)
+          closes:
+            n > 1 && vessel ? Math.hypot(L.p[(n - 1) * 3] - ship.x, L.p[(n - 1) * 3 + 1] - ship.y, L.p[(n - 1) * 3 + 2] - ship.z) : null,
+          round: n > 1 && shown ? (L.t[n - 1] - L.t[0]) / Math.max(1e-9, shown.curve.t[shown.curve.n - 1] - shown.curve.t[0]) : 0,
+          marker: mark && at ? Math.hypot(mark.ex - rect.left - at[0], mark.ey - rect.top - at[1]) : null,
+          markerSeen: mark ? !mark.el.classList.contains('gone') && !p.marksEl.hidden : false,
+          others: others.length,
+          otherLines: [...p.others.values()].filter((o) => o.mesh.visible && o.line.n > 1).length,
+          otherMarks: [...p.others.values()].filter((o) => !o.mark.el.classList.contains('gone')).length,
+          limb: p.limbMesh.visible,
+          flown: p.drawn.flownOpacity,
+        };
+        // and out again: the chase view, and the path as its switch has it
+        st.frozen = false;
+        st.setMap(false);
+        for (let i = 0; i < 400 && (st.cameraMode === 'map' || st.cam.blend); i++) await frames(1);
+        await frames(5);
+        result.back = st.cameraMode;
+        result.left = p.mesh.visible || Boolean(p.shown);
+        result.limbLeft = p.limbMesh.visible && p.mesh.visible;
+        p.show(was, false);
+        return result;
+      },
+      [SETTLE],
+    );
+    this.cases++;
+    this.log(
+      `  ${where}: about the ${m.focus === 'body' ? 'Earth' : 'vehicle'}, ${m.points} points${m.outcome === 'orbit' ? `, ${m.round.toFixed(2)} of a revolution, closing ${(m.closes / 1000).toFixed(1)} km from the vehicle` : ''}, ${m.others} other${m.others === 1 ? '' : 's'}`,
+    );
+    if (m.rig !== 'map') return this.fail(where, `no map: the view is ${m.rig}`);
+    if (m.back !== 'chase') this.fail(where, `out of the map the view is ${m.back}, not the chase view it was taken from`);
+    if (m.left || m.limbLeft) this.fail(where, 'out of the map, with the path switched off, something of it is still drawn');
+    if (!m.wanted) return void this.log(`  ${where}: no path`);
+    if (!m.limb) this.fail(where, 'the Earth has no outline on the map');
+    if (m.points < 2)
+      return this.fail(where, 'no path on the map, though there is one to show (its switch is off: the map draws it all the same)');
+    if (m.out)
+      this.fail(
+        where,
+        `${m.out} of the ${m.points} points of the line ahead are outside the window: the map nobody has set takes it all in`,
+      );
+    if (!(m.marker !== null && m.marker <= OFF && m.markerSeen))
+      this.fail(
+        where,
+        `the vehicle's marker is ${m.marker === null ? 'missing' : `${m.marker.toFixed(1)} px off the vehicle`}${m.markerSeen ? '' : ', unseen'}`,
+      );
+    if (m.outcome === 'orbit') {
+      if (m.frame !== 'orbit')
+        this.fail(where, `an orbit is drawn on the map over the turning Earth (${m.frame}), not as it lies among the stars`);
+      if (!(m.round > 0.999 && m.closes < 100_000))
+        this.fail(
+          where,
+          `the orbit is not drawn whole: ${m.round.toFixed(3)} of a revolution, its end ${(m.closes / 1000).toFixed(0)} km from the vehicle`,
+        );
+    }
+    if (m.otherLines !== m.others || m.otherMarks < m.others)
+      this.fail(where, `${m.others} other bodies fly, ${m.otherLines} have a line and ${m.otherMarks} a marker`);
+    if (m.flown < 1) this.fail(where, `the line flown is drawn at ${m.flown.toFixed(2)} on the map`);
+  }
+
   /** A vehicle in pieces, flown no further: no path may be on show for it. */
   async none(where, broke) {
     const shown = await this.page.evaluate(async () => {
@@ -1544,6 +1669,8 @@ for (const [W, H] of handsOnly ? [] : SIZES) {
             }
           }
           await r.page.evaluate(() => window.sr.stage.setLook?.('real'));
+          // (and the map, at every third instant of the full run and every instant of a short one)
+          if (!all || k % 3 === 0) await r.map(`${key} ${W} T+${t} map`);
         }
       },
     });

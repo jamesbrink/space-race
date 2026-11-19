@@ -929,7 +929,9 @@ read gives enough of to fly (issue #10).
   (`CabinDef.periscope.mechanism`). Nothing of it reaches the physics: no drag or heating figure for a periscope left
   out has been read.
 - **The flight deck has a navball and a predicted path.** The path is off until it is asked for (J, or its switch) and is then as it was
-  left (`prefs` `pathOn`): a new visitor sees the vehicle and the sky first. Both read what the cockpit shows
+  left (`prefs` `pathOn`): a new visitor sees the vehicle and the sky first. M (its switch
+  beside the path's, and among the deck's keys) is the map: the camera pulled out to the whole path and the Earth it goes
+  round, the deck still at hand under it (camera.md, "The map is M's"; what is drawn there, rendering.md, "On the map"). Both read what the cockpit shows
   (`Cockpit.listen`: every sample put on the instruments, with the live state, or null when the
   clock has been put back) and nothing else of it. The navball (`src/deck/navball.ts`, I tucks it; it is the deck's left-hand panel, the path's figures beside it) is
   the sphere of directions fixed to north, east and down at the place under the vehicle, seen
@@ -939,7 +941,7 @@ read gives enough of to fly (issue #10).
   Orbit (space-fixed, with radial and normal). `ballOf(r, v, attitude, t, target)` is all of its
   mathematics and is tested; the canvas is redrawn only when the attitude has moved a twentieth
   of a degree, and not at all while tucked. The path (`src/sim/predict.ts`, drawn by
-  `viewer/path.ts`, J: M is kept for a map) is where the centre of mass goes from the instant on show if the pilot
+  `viewer/path.ts`, J; M is the map) is where the centre of mass goes from the instant on show if the pilot
   does nothing more. **One propagator for every vehicle** (`propagate`): it is given the vehicle as a `Flier`
   (`sim/fliers.ts`: what pushes it at a state, with its own simulator's force functions; the next instant it has
   scheduled; the height it next acts at coming down; what it does at each, as data: events to mark, a new velocity, an

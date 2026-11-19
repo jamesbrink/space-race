@@ -47,6 +47,8 @@ export interface UiHandlers {
   nextCamera(): RigId;
   /** Bring the view back to what the camera is about; with a flight in the air and the view elsewhere, to the vehicle. */
   refind(): void;
+  /** In the map: turn about the other of the vehicle and the Earth, and say which. */
+  mapFocus(): void;
   /** Draw the scene as a cel-shaded drawing, or as it would look. */
   cel(on: boolean): void;
   holdPace(on: boolean): void;
@@ -82,6 +84,7 @@ const CAMERA_LABEL: Record<RigId, string> = {
   locked: 'Camera · chase, locked',
   onboard: 'Camera · on board',
   pad: 'Camera · pad',
+  map: 'Camera · map',
   eyes: 'On foot · through the eyes',
   shoulder: 'On foot · over the shoulder',
 };
@@ -95,6 +98,7 @@ const CAMERA_CLASS: Partial<Record<RigId, string>> = {
   locked: 'chasing',
   onboard: 'aboard',
   pad: 'tracking',
+  map: 'mapping',
 };
 
 const clock = (t: number) => {
@@ -224,6 +228,18 @@ function legendMarkup(f: Flight): string {
     tracking: {
       pads: [pad('arrows', 'pad.frame'), pad('pair', 'orbit.zoom')],
       main: [['drag', 'move it in the frame'], ['scroll · pinch', 'tighter · wider'], ...camera('centre the vehicle')],
+      more: rest([]),
+    },
+    mapping: {
+      pads: [pad('arrows', 'orbit.turn'), pad('pair', 'orbit.zoom')],
+      main: [
+        ['drag', 'turn round it'],
+        ['scroll · pinch', 'closer · further'],
+        keyRow(null, 'map.focus'),
+        keyRow('the whole path', 'cam.home'),
+        keyRow(null, 'map.show'),
+        keyRow(null, 'page.bare'),
+      ],
       more: rest([]),
     },
     'on-foot': {
@@ -842,7 +858,13 @@ export class Ui {
     }
     if (!quiet) {
       const touchDeck = this.root.classList.contains('piloting') && matchMedia('(hover: none), (pointer: coarse)').matches;
-      const next = touchDeck ? 'More → Next view' : 'C for the next view';
+      // (in the map C is the map's own, and M is the way back)
+      const next =
+        mode === 'map'
+          ? `${capsOf('map.focus')[0]} turns it about the vehicle or the Earth · ${capsOf('map.show')[0]} goes back`
+          : touchDeck
+            ? 'More → Next view'
+            : 'C for the next view';
       this.say(RIGS[mode].name, `${RIGS[mode].says} · ${next}`);
     }
   }
@@ -900,6 +922,8 @@ export class Ui {
 
   /** C: the next rig there is as things stand; with only this one to choose from, back to what it is about (the vehicle, lost off the screen). */
   private nextCamera(): void {
+    // (in the map C chooses what it turns about: 'map.focus')
+    if (this.cameraMode === 'map') return void this.on.mapFocus();
     const next = this.on.nextCamera();
     if (next !== this.cameraMode) {
       this.setCamera(next);

@@ -33,6 +33,7 @@ import { scripted, unattended } from '../util/env.ts';
 import { capsOf, is, isTyping, modified, modifierOnly, which } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
+import { RIGS } from '../viewer/camera/index.ts';
 import { Effects } from '../viewer/effects.ts';
 import { uOrigin } from '../viewer/origin.ts';
 import { FlightPath } from '../viewer/path.ts';
@@ -126,6 +127,14 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     camera: (mode) => stage.setCamera(mode, stage.veiled),
     nextCamera: () => stage.nextCamera,
     refind: () => stage.refind(),
+    mapFocus: () => {
+      const focus = stage.mapFocus();
+      if (focus)
+        ui.say(
+          RIGS.map.name,
+          focus === 'craft' ? 'Turning about the vehicle · C for the Earth' : 'Turning about the Earth · C for the vehicle',
+        );
+    },
 
     walk: (on) => (on ? void stage.enterWalk(current.id) : stage.onFoot.exitWalk()),
     walkReturn: () => stage.onFoot.returnToStart(),
@@ -302,10 +311,17 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       },
       aboard: () => stage.seats.aboard(),
       beforeDraw: (fn) => stage.beforeDraw(fn),
+      map: () => stage.cameraMode === 'map',
+      setMap: (on) => stage.setMap(on),
+      craftName: flight.callsign,
+      others: () => stage.show.ascent?.others(clock.t) ?? [],
+      otherAt: (drop, t) => stage.show.ascent?.otherAt(drop, t) ?? null,
     },
     deck.querySelector<HTMLElement>('[data-do=path]'),
   );
   navball.onFrame((frame) => path.setFrame(frame));
+  // the map (M): the camera pulled out to the whole path, which says what there is to take in
+  stage.mapOf = () => (cockpit.active ? path.mapOf(clock.t) : null);
   // the deck lies over the bottom of the view (the vehicle is framed above it), and the path's labels keep off every panel
   ui.covers(deck);
   path.obstacles = () => ui.panelElements();
@@ -542,6 +558,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   // the rig in charge of the camera has changed, by the page's asking or the stage's own doing (the vehicle left the pad while it was looked at)
   stage.onRig = (id) => {
     ui.showCamera(id, !ready || stage.veiled || demo.active);
+    deck.querySelector('[data-map]')?.setAttribute('aria-pressed', String(id === 'map'));
     panelOnly();
     lookouts();
   };

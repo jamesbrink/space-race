@@ -23,6 +23,7 @@ import {
   Zoom,
   zoomBy,
 } from '../src/viewer/camera/maths.ts';
+import { focusOf, MapRig, mapFit, mapFrame } from '../src/viewer/camera/map.ts';
 import { OnboardRig } from '../src/viewer/camera/onboard.ts';
 import { ChaseRig, OrbitRig } from '../src/viewer/camera/orbit.ts';
 import { TrackRig } from '../src/viewer/camera/track.ts';
@@ -767,4 +768,187 @@ test('an exhibit is sat in from the orbiting view and left back to it as it was;
   cams.set('onboard');
   assert.equal(cams.rig, 'orbit');
   assert.deepEqual(rigs, ['onboard', 'orbit']);
+});
+
+/** A world with a body to map: a ball of `R` whose centre is `R` under the site's origin, turned by `state.turned`, a vehicle `height` over it and a path that reaches `reach` from the centre and `extent` from the vehicle. */
+const R = 6_378_137;
+function mapWorld(craft, state) {
+  const centre = V(0, -R, 0);
+  return {
+    ...world(craft),
+    clearance: (p) => p.distanceTo(centre) - R,
+    upAt: (p, out) => out.copy(p).sub(centre).normalize(),
+    map: () =>
+      state.none ? null : { centre, pole: V(0, 0, 1), radius: R, turned: state.turned, reach: state.reach, extent: state.extent },
+  };
+}
+
+test('the map`s frame does not turn with the Earth: a view that keeps its angles keeps its place among the stars', () => {
+  const pole = V(0.3, 0.2, 0.93).normalize();
+  // a direction fixed among the stars is, in the scene (which is fixed to the Earth), turned back about the pole by the Earth's turn
+  const star = offsetOf(0.7, 1.1, 1, mapFrame(pole, 0));
+  for (const turned of [0.1, 1, 2.5, 7]) {
+    const seen = offsetOf(0.7, 1.1, 1, mapFrame(pole, turned));
+    const want = star.clone().applyAxisAngle(pole, -turned);
+    assert.ok(seen.distanceTo(want) < 1e-12, `turned ${turned}`);
+    assert.ok(near(seen.dot(pole), star.dot(pole), 1e-12), 'and as far north as it was');
+  }
+  // straight up in it is the pole
+  assert.ok(offsetOf(0, 0, 1, mapFrame(pole, 3)).distanceTo(pole) < 1e-12);
+});
+
+test('the map turns about the vehicle while all that is shown is near it, about the body once it is not, and does not go back and forth between', () => {
+  assert.equal(focusOf(500e3, R, 'craft'), 'craft');
+  assert.equal(focusOf(500e3, R, 'body'), 'craft');
+  assert.equal(focusOf(13_000e3, R, 'craft'), 'body');
+  assert.equal(focusOf(0.5 * R, R, 'craft'), 'craft', 'between the two it stays as it was');
+  assert.equal(focusOf(0.5 * R, R, 'body'), 'body');
+  // it takes in all that is shown, and more of the frame covered is further off
+  const of = { radius: R, reach: R + 250e3, extent: 2 * R };
+  const whole = mapFit('body', of, 35, 1);
+  assert.ok(2 * of.reach < 2 * whole * Math.tan((35 * Math.PI) / 360), 'the ball that holds the path is inside the frame`s height');
+  assert.ok(mapFit('body', of, 35, 0.6) > whole);
+  assert.ok(
+    mapFit('craft', { radius: R, reach: R, extent: 0 }, 35, 1) > 100e3,
+    'with no path, a region round the vehicle and not the vehicle`s skin',
+  );
+  assert.ok(mapFit('craft', { ...of, extent: 500e3 }, 35, 1) > mapFit('craft', { ...of, extent: 200e3 }, 35, 1));
+  // a frame narrower than it is tall (a phone upright): all of it inside the width too
+  const upright = mapFit('body', of, 35, 1, 390 / 844);
+  assert.ok(upright > whole);
+  assert.ok(
+    2 * of.reach < 2 * upright * Math.tan((35 * Math.PI) / 360) * (390 / 844),
+    'the ball that holds the path is inside the frame`s width',
+  );
+  assert.equal(mapFit('body', of, 35, 1, 1.6), whole, 'a frame wider than tall is held by its height');
+});
+
+test('the map rig: taken up it shows everything, the vehicle on the near side; zooming out pulls straight back; the eye stays out of the Earth', () => {
+  const craft = craftAt(V(0, 200e3, 0), 3);
+  const state = { turned: 0, reach: R + 260e3, extent: 2 * R + 400e3 };
+  const rig = new MapRig(mapWorld(craft, state), 35);
+  const middle = V(0, 200e3 + 10, 0);
+  rig.enter({ position: V(40, 200e3 + 20, 30), quaternion: new THREE.Quaternion(), fov: 35 }, middle);
+  rig.update(0, NONE, false);
+  assert.equal(rig.focus, 'body', 'an orbit: about the Earth');
+  assert.ok(rig.pivot.distanceTo(V(0, -R, 0)) < 1e-6);
+  const eye = posed(rig).position;
+  assert.ok(near(eye.distanceTo(rig.pivot), mapFit('body', rig.world.map(), 35, 1), 1), 'from where all of it is seen');
+  // the vehicle is on the side of the Earth the eye is on, well inside its limb
+  const toEye = eye.clone().sub(rig.pivot).normalize();
+  assert.ok(toEye.dot(middle.clone().sub(rig.pivot).normalize()) > 0.7, 'the vehicle faces the eye');
+  // zooming out by the wheel: the pivot does not move and the direction does not change
+  const before = posed(rig).position.sub(rig.pivot).normalize();
+  rig.zoom(0.5, V(1, 2, 3));
+  run(rig, 2, 60);
+  assert.ok(rig.pivot.distanceTo(V(0, -R, 0)) < 1e-6);
+  assert.ok(posed(rig).position.sub(rig.pivot).normalize().distanceTo(before) < 1e-9);
+  // and in, however hard: never into the Earth, about the body or about the vehicle
+  for (let i = 0; i < 80; i++) {
+    rig.zoom(-0.5, null);
+    run(rig, 0.2, 60);
+  }
+  assert.ok(posed(rig).position.distanceTo(V(0, -R, 0)) > R, 'the eye is over the ground');
+  rig.refocus();
+  run(rig, 3, 60);
+  assert.equal(rig.focus, 'craft');
+  assert.ok(rig.pivot.distanceTo(middle) < 1e-6, 'about the vehicle');
+  const seeded1 = seeded(7);
+  for (let i = 0; i < 200; i++) {
+    rig.drag((seeded1() - 0.5) * 400, (seeded1() - 0.5) * 400, 800, false);
+    rig.zoom((seeded1() - 0.6) * 0.8, null);
+    run(rig, 0.1, 60);
+    const at = posed(rig).position;
+    assert.ok(at.distanceTo(V(0, -R, 0)) > R + 1000, `the eye is ${Math.round(at.distanceTo(V(0, -R, 0)) - R)} m over the Earth`);
+    assert.ok([at.x, at.y, at.z].every(Number.isFinite));
+  }
+});
+
+test('the map rig stands still among the stars while the Earth turns, goes with the vehicle it turns about, and changes what it turns about without a jump', () => {
+  const craft = craftAt(V(0, 200e3, 0), 3);
+  const state = { turned: 0, reach: R + 260e3, extent: 2 * R + 400e3 };
+  const rig = new MapRig(mapWorld(craft, state), 35);
+  rig.enter({ position: V(40, 200e3 + 20, 30), quaternion: new THREE.Quaternion(), fov: 35 }, V(0, 200e3 + 10, 0));
+  rig.update(0, NONE, false);
+  const centre = V(0, -R, 0);
+  const pole = V(0, 0, 1);
+  const first = posed(rig).position.sub(centre);
+  // a quarter of a day: the Earth has turned a quarter, and in the scene the eye has gone a quarter round the pole the other way
+  run(rig, 4, 60, (_t, dt) => (state.turned += (Math.PI / 2 / 4) * dt));
+  const then = posed(rig).position.sub(centre);
+  assert.ok(then.distanceTo(first.clone().applyAxisAngle(pole, -Math.PI / 2)) < 1e-3 * first.length());
+  // about the vehicle: it is carried with it, at the distance it had, and the pivot slides there (never steps)
+  const d = rig.distance;
+  rig.refocus();
+  let last = rig.pivot.clone();
+  let most = 0;
+  run(rig, 3, 60, () => {
+    most = Math.max(most, rig.pivot.distanceTo(last));
+    last = rig.pivot.clone();
+  });
+  assert.ok(most < 0.05 * R, `the pivot went ${Math.round(most / 1000)} km in a frame at most`);
+  assert.ok(near(rig.distance, d, 1e-6 * d), 'from as far off as it was');
+  run(rig, 2, 60, (_t, dt) => (craft.matrix.elements[12] += 7800 * dt));
+  assert.ok(rig.pivot.distanceTo(V(7800 * 2, 200e3 + 10, 0)) < 1e-3, 'the pivot is the vehicle, wherever it has got to');
+  // the reset gives the choice back: an orbit is turned about the Earth, all of it in the frame
+  rig.home();
+  run(rig, 4, 60);
+  assert.equal(rig.focus, 'body');
+  assert.ok(near(rig.distance, mapFit('body', rig.world.map(), 35, 1), 1e-3 * rig.distance));
+  // a path that has shrunk to a fall near the vehicle (nobody has set the view): about the vehicle again, and nearer
+  state.extent = 300e3;
+  run(rig, 5, 60);
+  assert.equal(rig.focus, 'craft');
+  assert.ok(near(rig.distance, mapFit('craft', rig.world.map(), 35, 1), 1e-3 * rig.distance));
+});
+
+test('the map is M`s: C never offers it, it comes back to the view it was taken from, and there is none without something to map', async () => {
+  const element = () => ({
+    style: {},
+    setAttribute() {},
+    getAnimations: () => [],
+    animate: () => ({}),
+    append() {},
+    addEventListener() {},
+  });
+  globalThis.document ??= { createElement: element };
+  globalThis.window ??= { addEventListener() {} };
+  const { Cameras } = await import('../src/viewer/camera/index.ts');
+  const craft = craftAt(V(0, 200e3, 0), 3);
+  const state = { turned: 0, reach: R + 260e3, extent: 2 * R, none: true };
+  const scene = { ...mapWorld(craft, state), solidAt: () => null, free: () => true, piloted: () => true, watching: () => true };
+  const rigs = [];
+  const camera = new THREE.PerspectiveCamera(35, 1.5, 0.1, 1e9);
+  const canvas = {
+    ...element(),
+    parentElement: element(),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 900, height: 600 }),
+    clientHeight: 600,
+  };
+  const cams = new Cameras(camera, canvas, scene, { taken() {}, home() {}, rig: (id) => rigs.push(id) }, 35);
+  cams.calm = true;
+  cams.set('chase');
+  cams.update(1 / 60);
+  assert.ok(!cams.available().includes('map'), 'C does not go to the map');
+  cams.mapped(true);
+  assert.equal(cams.rig, 'chase', 'nothing to map: no map');
+  state.none = false;
+  cams.set('locked');
+  cams.update(1 / 60);
+  const was = camera.position.clone();
+  cams.mapped(true);
+  cams.update(1 / 60);
+  assert.equal(cams.rig, 'map');
+  assert.ok(camera.position.distanceTo(V(0, -R, 0)) > 3 * R, 'pulled out to the whole Earth');
+  assert.equal(cams.next(), 'map', 'C in the map is the map`s own (what it turns about)');
+  assert.equal(cams.refocus(), 'craft');
+  assert.equal(cams.refocus(), 'body');
+  cams.refind();
+  assert.equal(cams.rig, 'map', 'the reset stays in the map');
+  cams.mapped(false);
+  cams.update(1 / 60);
+  assert.equal(cams.rig, 'locked', 'back to the view it was taken from');
+  assert.ok(camera.position.distanceTo(was) < 1e-6, 'as that view was left');
+  assert.equal(cams.refocus(), null);
+  assert.deepEqual(rigs, ['chase', 'locked', 'map', 'locked']);
 });

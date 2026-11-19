@@ -125,14 +125,15 @@ kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; 
 .legend-more dl.keys { grid-template-columns: 1fr 1fr; }
 .legend-more-toggle { flex: none; display: flex; align-items: center; justify-content: space-between; width: 100%; margin-top: 9px; padding: 7px 0 0; border-top: 1px solid var(--line); font: 10px/1.4 var(--mono); letter-spacing: 0.16em; text-transform: uppercase; color: var(--faint); }
 /* one body is on show: the walker's on foot, else the one for the rig that has the camera */
-#ui:not(.walking, .flying, .chasing, .aboard, .tracking) .legend-body:not(.on-foot, .in-flight, .chasing, .aboard, .tracking) { display: block; }
+#ui:not(.walking, .flying, .chasing, .aboard, .tracking, .mapping) .legend-body:not(.on-foot, .in-flight, .chasing, .aboard, .tracking, .mapping) { display: block; }
 #ui.flying:not(.walking) .legend-body.in-flight { display: block; }
 #ui.chasing:not(.walking) .legend-body.chasing { display: block; }
 #ui.aboard:not(.walking) .legend-body.aboard { display: block; }
 #ui.tracking:not(.walking) .legend-body.tracking { display: block; }
+#ui.mapping:not(.walking) .legend-body.mapping { display: block; }
 #ui.walking .legend-body.on-foot { display: block; }
 #ui.flying [data-rotate] { display: none; }
-#ui:is(.chasing, .aboard, .tracking) [data-rotate] { display: none; }
+#ui:is(.chasing, .aboard, .tracking, .mapping) [data-rotate] { display: none; }
 /* the vehicle is in the air and the camera is elsewhere: one press goes to it */
 .find-vehicle { flex: none; padding: 8px 14px; pointer-events: auto; font: 500 11px/1.4 var(--mono); letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; color: var(--amber); background: var(--glass); border: 1px solid rgba(255, 196, 107, 0.55); border-radius: 2px; }
 .find-vehicle:is(:hover, :focus-visible) { color: var(--ink); border-color: var(--ink); }

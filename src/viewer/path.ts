@@ -15,6 +15,7 @@ import {
 } from '../sim/predict.ts';
 import type { SitedFlight } from '../types.ts';
 import { WGS84_A, WGS84_B } from '../world/bodies.ts';
+import { step } from '../world/orbit.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame, type Vec3 } from '../world/frames.ts';
 import { absolute, uOrigin } from './origin.ts';
@@ -51,7 +52,9 @@ import {
   unseen,
   type Words,
 } from './pathmarks.ts';
-import { is, isTyping, modified } from '../util/keys.ts';
+import type { MapOf } from './camera/rig.ts';
+import { esc } from '../util/dom.ts';
+import { capsOf, is, isTyping, modified } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
 import { disposeTree } from './dispose.ts';
 
@@ -303,6 +306,7 @@ const FRAG = /* glsl */ `
   ${DEPTH}
   uniform vec3 uColour, uInk;
   uniform float uCut, uOpacity, uCel, uCore, uHalf, uClip, uGap, uFade, uRatio, uDim;
+  uniform float uBehind;      // how much of the line is drawn where the Earth is in front of it (0: none; the map draws it faintly)
   uniform vec4 uEnds;         // its ends, in seconds from the line's zero: it comes in from x over y, and goes out by z over w (no fade where y or w is 0)
   uniform vec3 uShip;         // the vehicle's middle in the view's frame
   uniform vec4 uShipSeg;      // and on the target: its long axis from end to end, pixels
@@ -316,10 +320,19 @@ const FRAG = /* glsl */ `
   varying float vSide, vT, vWide;
   varying vec3 vView;
   void main() {
-    // behind what the scene has drawn (the vehicle, the ground, the cabin's walls): a hundredth nearer than it is, so the
-    // sea it comes down to does not hide its end (overlay.ts: the finished frame it is drawn over has no depth of its own)
-    if (behindScene(-vView.z * 0.99, uView)) discard;
     float eye = length(vView);
+    // behind the Earth: the ray from the eye to here passes inside its ellipsoid first (by how many pixels: pathline.ts
+    // limbPx; stretched along the pole, it is a sphere), faded over the pixel and a half before the limb, so a line that
+    // goes down behind it, to the ground, has gone before the globe's own depth, which is nearer by only the 1 % the
+    // line is drawn nearer by where the ray grazes it, can cut it as a step or a speckle
+    vec3 e = -uCentre + uPole * dot(-uCentre, uPole) * uStretch;
+    vec3 f = vView + uPole * dot(vView, uPole) * uStretch;
+    float k = -dot(e, f) / max(dot(f, f), 1e-6);
+    float seen = k > 0.0 && k < 1.0 ? smoothstep(0.0, 1.4, (length(e + f * k) - uRadius) / max(length(f) * k, 1e-3) * uPxPerRad) : 1.0;
+    // behind what the scene has drawn (the vehicle, the ground, the cabin's walls): a hundredth nearer than it is, so the
+    // sea it comes down to does not hide its end (overlay.ts: the finished frame it is drawn over has no depth of its own).
+    // (In the map what the Earth hides is drawn faintly, uBehind: there the Earth's own depth is not asked.)
+    if ((uBehind <= 0.0 || seen >= 1.0) && behindScene(-vView.z * 0.99, uView)) discard;
     // (the ribbon is narrower the deeper it is, and its core with it: never under a pixel across, which breaks into dots)
     float ribbonHalf = uHalf * vWide;
     float px = abs(vSide) * ribbonHalf;
@@ -370,14 +383,7 @@ const FRAG = /* glsl */ `
     a *= smoothstep(uClip, 2.0 * uClip, eye);
     // fainter the deeper in the view it is, as it is narrower
     a *= mix(1.0, uDim, depthOf(eye));
-    // behind the Earth: the ray from the eye to here passes inside its ellipsoid first (by how many pixels: pathline.ts
-    // limbPx; stretched along the pole, it is a sphere), faded over the pixel and a half before the limb, so a line that
-    // goes down behind it, to the ground, has gone before the globe's own depth, which is nearer by only the 1 % the
-    // line is drawn nearer by where the ray grazes it, can cut it as a step or a speckle
-    vec3 e = -uCentre + uPole * dot(-uCentre, uPole) * uStretch;
-    vec3 f = vView + uPole * dot(vView, uPole) * uStretch;
-    float k = -dot(e, f) / max(dot(f, f), 1e-6);
-    if (k > 0.0 && k < 1.0) a *= smoothstep(0.0, 1.4, (length(e + f * k) - uRadius) / max(length(f) * k, 1e-3) * uPxPerRad);
+    a *= mix(uBehind, 1.0, seen);
   #if !defined(FLOWN) && !defined(RING)
     if (vT < uCut) {
       float dash = fract(vT / 3.0);                                     // under power: dashes, three seconds of flight each
@@ -409,6 +415,28 @@ export interface PathHost {
    * the line is laid out for the frame it is drawn in. Returns what lets it go.
    */
   beforeDraw?(fn: () => void): () => void;
+  /**
+   * The view is the map (camera/map.ts): the path is drawn whatever its switch says, an orbit whole and as it lies among
+   * the stars, what the Earth hides faintly, the line flown from any distance, with the vehicle and what else flies marked.
+   */
+  map?(): boolean;
+  /** Go to the map, or back from it to the view it was taken from (M). */
+  setMap?(on: boolean): void;
+  /** What the flown vehicle is called on the map. */
+  readonly craftName?: string;
+  /** What else flies in the run at the instant on show (viewer/ascent.ts `others`), and where one of them was at an instant before it (`otherAt`). */
+  others?(): readonly OtherCraft[];
+  otherAt?(drop: number, t: number): { r: Vec3; v: Vec3 } | null;
+}
+
+/** Something else that flies in the run (a stage let go, the flight's target): which drop of the flight's it is, its name, when it left, and its state in the frame that does not turn. */
+export interface OtherCraft {
+  drop: number;
+  name: string;
+  from: number;
+  r: Vec3;
+  v: Vec3;
+  down: boolean;
 }
 
 /** A sample of the flight as the flight deck shows it (sim/vehicle.ts: LiveSample), and the live state it came from, or null when looking back. */
@@ -485,6 +513,9 @@ const KINDS = {
   peak: ['Max', 54],
   drogue: ['Drogue', 48],
   main: ['Main', 52],
+  // (on the map: the vehicle itself, and each other thing that flies; their words are their names)
+  craft: ['', 130],
+  other: ['', 30],
 } as const satisfies Record<string, readonly [string, number]>;
 type Kind = keyof typeof KINDS;
 const NEXT = 25;
@@ -561,7 +592,59 @@ interface Line {
   n: number;
 }
 
+/** Something else that flies, on the map: its line (the way it came, and from above the air the way it goes), its marker, and when its line was last made and cut. */
+interface Other {
+  line: Line;
+  mesh: THREE.Mesh;
+  curve: Curve | null;
+  /** Whether the way it goes ends where it comes down into the air (cut there), not at the end of what is looked ahead (where it goes out). */
+  lands: boolean;
+  /** The flight's instant the curve was made at and the wall's. */
+  at: number;
+  made: number;
+  /**
+   * Its chords as last cut: the wall's instant, the flight's, the eye they were cut for, the frame they are in and the
+   * place they are measured from. Cut again when the eye has moved or the curve is another, a few times a second at most.
+   */
+  cut: number;
+  cutAt: number;
+  cutFor: [number, number, number];
+  cutIn: 'surface' | 'orbit';
+  anchor: [number, number, number];
+  mark: Mark;
+}
+/** The most chords of another body's line, the points its way here is kept as, and the most steps of its way on. */
+const OTHER_MOST = 768;
+const OTHER_KEPT = 96;
+const OTHER_STEPS = 720;
+/** Seconds between two of those steps; the least time between two makings of its line and between two cuttings of it, ms. */
+const OTHER_STEP = 10;
+const OTHER_EVERY = 500;
+const OTHER_CUT = 120;
+/**
+ * The height, m, above which another body's way on is drawn as a coast under gravity alone, and at which that line stops
+ * coming down: under it the air decides where a spent stage goes within minutes, which is its own flight's to say
+ * (sim/shed.ts) and is not predicted here; over it the air takes an orbit down over revolutions, which the one
+ * revolution drawn does not show. Estimated: chosen as the height a spent stage's orbit does not outlast a revolution from.
+ */
+const OTHER_AIR = 120_000;
+/**
+ * On the map the Earth's outline is drawn, a thin line round its limb as the eye sees it: its night side is black on a
+ * black sky, and an orbit over it then reads as a line hung in space beside a crescent. So many points round, this far
+ * over the ellipsoid's equatorial radius (m: clear of the limb by a pixel from where the whole Earth is seen), this strong.
+ */
+const LIMB = 128;
+const LIMB_OVER = 40_000;
+const LIMB_OPACITY = 0.5;
+const limbColour = new THREE.Color(0x6f86a6);
+/** How much of what the Earth hides is drawn on the map. */
+const BEHIND = 0.3;
+
+const UP = new THREE.Vector3(0, 1, 0);
+const RIGHT = new THREE.Vector3(1, 0, 0);
 const ink = new THREE.Color(0x0a0b0e);
+/** The line of something else that flies: a cool blue-white, nothing like the amber of the way ahead nor the grey of the way it came. */
+const other = new THREE.Color(0x9cc9e6);
 const amber = new THREE.Color(0xffc46b);
 /** The line flown: a cool grey, nothing like the amber of the way ahead (and the key beside the navball draws it so: navball.css). */
 const pale = new THREE.Color(0x8e9cab);
@@ -611,6 +694,9 @@ export class FlightPath {
   readonly mesh: THREE.Mesh;
   private readonly flownMesh: THREE.Mesh;
   private readonly ringMesh: THREE.Mesh;
+  /** The Earth's outline, on the map (`LIMB`). */
+  private readonly limbMesh: THREE.Mesh;
+  private readonly limb = ribbonGeometry(LIMB);
   private readonly ahead = ribbonGeometry(MOST);
   private readonly behind = ribbonGeometry(FLOWN_MOST);
   /** The line flown: instants and places in the frame that does not turn, as heard from the flight deck. */
@@ -668,6 +754,11 @@ export class FlightPath {
   private readonly keyNow = new Float64Array(20).fill(Number.NaN);
   private readonly markAt = new Float64Array(3);
   private marks: Mark[] = [];
+  /** On the map: the vehicle's own marker, and with `others` each other body's (laid out with the path's, never a chip). */
+  private craftMark: Mark | null = null;
+  private readonly others = new Map<number, Other>();
+  /** The view is the map (`PathHost.map`), as the last frame found it. */
+  private mapped = false;
   private laid = new Map<string, MarkOut>();
   private drawnAt = -1;
   /** The camera the stage last drew through (the line is sampled for it), and the size of what it drew into. */
@@ -749,6 +840,7 @@ export class FlightPath {
       uDepth: { value: new THREE.Vector2(1, 1) },
       uThin: { value: DEPTH_THIN },
       uDim: { value: DEPTH_DIM },
+      uBehind: { value: 0 },
       uColour: { value: new THREE.Color() },
       uInk: { value: new THREE.Color() },
       uCut: { value: -1 },
@@ -814,8 +906,21 @@ export class FlightPath {
     );
     this.mesh = make(this.ahead.geometry, 'Predicted path', 12, { uEnds: { value: new THREE.Vector4() } }, {});
     this.ringMesh = make(ring.geometry, 'Where the path comes down', 12, { uEnds: { value: new THREE.Vector4() } }, { RING: '' });
-    this.mesh.add(this.flownMesh, this.ringMesh); // (one object for the stage: all three are drawn from the same anchor)
-    this.flownMesh.matrixAutoUpdate = this.ringMesh.matrixAutoUpdate = true;
+    this.limbMesh = make(
+      this.limb.geometry,
+      'The Earth’s outline on the map',
+      9,
+      // (no ends: a ring; a Vector4 begins with a 1 in its last place, which would be an end to go out by)
+      {
+        uCore: { value: FLOWN_CORE },
+        uColour: { value: new THREE.Color() },
+        uOpacity: { value: LIMB_OPACITY },
+        uEnds: { value: new THREE.Vector4(0, 0, 0, 0) },
+      },
+      { FLOWN: '' },
+    );
+    this.mesh.add(this.flownMesh, this.ringMesh, this.limbMesh); // (one object for the stage: all of them are drawn from the same anchor)
+    this.flownMesh.matrixAutoUpdate = this.ringMesh.matrixAutoUpdate = this.limbMesh.matrixAutoUpdate = true;
 
     this.marksEl = document.createElement('div');
     this.marksEl.className = 'path-marks';
@@ -827,6 +932,7 @@ export class FlightPath {
     this.readout.innerHTML = `
       <p class="path-head">
         <button data-path="show" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (J)"><kbd>J</kbd>Path</button>
+        <button data-path="map" class="switch" aria-pressed="false" title="The map: the whole path from far out, the way it came and what else flies, the Earth turning under it; again for the view it was taken from (${capsOf('map.show').join(' ')})"><kbd>${capsOf('map.show')[0]}</kbd>Map</button>
         <span class="path-as" data-path-cell="as"></span>
       </p>
       <p class="path-kind" data-path-row="kind" role="group" aria-label="Which future the path shows while the engine burns" title="While the engine burns: the path if guidance flies on to the record's cutoff, or if the engine were cut now (K)">
@@ -839,6 +945,7 @@ export class FlightPath {
     this.readout.addEventListener('click', (e) => {
       const what = (e.target as HTMLElement).closest<HTMLElement>('[data-path]')?.dataset.path;
       if (what === 'show') this.show(!this.on);
+      if (what === 'map') this.toMap(!this.mapped);
       if (what === 'guided' || what === 'coast') this.setGuided(what === 'guided');
       (document.activeElement as HTMLElement | null)?.blur?.(); // or Space, the next event's key, would press it again
     });
@@ -846,7 +953,8 @@ export class FlightPath {
     this.scope.on(window, 'keydown', (e) => {
       const typing = isTyping(e);
       if (!source.active || e.repeat || modified(e) || typing) return;
-      if (is(e, 'path.show')) this.show(!this.on); // (J: M is kept for the map)
+      if (is(e, 'path.show')) this.show(!this.on);
+      if (is(e, 'map.show')) this.toMap(!this.mapped);
       if (is(e, 'path.choose') && this.choosing()) this.setGuided(!this.guided);
     });
     source.listen((sample, live) => {
@@ -914,8 +1022,72 @@ export class FlightPath {
     if (remember) prefs.set('pathOn', on);
     this.button?.setAttribute('aria-pressed', String(on));
     this.readout.querySelector('[data-path=show]')!.setAttribute('aria-pressed', String(on));
-    this.readout.classList.toggle('off', !on);
+    this.readout.classList.toggle('off', !on && !this.mapped);
     this.wake();
+  }
+
+  /** To the map, or back from it (M, its switch): the stage's to do (`PathHost.setMap`), and what is drawn follows the view it then has (`remap`). */
+  private toMap(on: boolean): void {
+    this.host.setMap?.(on);
+    this.wake();
+  }
+
+  /** The view has become the map, or stopped being it: an orbit is drawn in the map's frame, the switch says so, and what else flies is let go with it. */
+  private remap(): void {
+    const mapped = Boolean(this.source.active && this.host.map?.());
+    if (mapped === this.mapped) return;
+    this.mapped = mapped;
+    this.readout.querySelector('[data-path=map]')!.setAttribute('aria-pressed', String(mapped));
+    this.readout.classList.toggle('off', !this.on && !mapped);
+    this.uniforms.uBehind!.value = mapped ? BEHIND : 0;
+    this.sampledFor = '';
+    if (this.shown) this.build(this.shown.result, this.shown.key, this.shown.plan, false);
+    if (!mapped) this.unmark();
+    this.host.overlay(this.mesh);
+  }
+
+  /** Take the map's own markers and lines away. */
+  private unmark(): void {
+    for (const o of this.others.values()) this.dropOther(o);
+    this.others.clear();
+    this.craftMark?.el.remove();
+    this.craftMark?.chip.el.remove();
+    this.craftMark = null;
+  }
+
+  private dropOther(o: Other): void {
+    o.mesh.removeFromParent();
+    o.line.geometry.dispose();
+    (o.mesh.material as THREE.Material).dispose();
+    o.mark.el.remove();
+    o.mark.chip.el.remove();
+  }
+
+  /**
+   * What a map of the flight is of (camera/rig.ts `MapOf`), at the clock's instant `t`: the Earth, how far it has turned,
+   * and how far what is drawn of the flight reaches from its centre and from the vehicle (the path on show, the line
+   * flown, the vehicle itself). Null with nothing flown.
+   */
+  mapOf(t: number): MapOf | null {
+    const s = this.sample;
+    if (!s || !this.source.active) return null;
+    const r = s.centre ?? s.r;
+    let reach = Math.hypot(r[0], r[1], r[2]);
+    let extent = 0;
+    const take = (p: ArrayLike<number>, n: number) => {
+      // (a few hundred of its points: the furthest of a curve is not between two of them by more than a part in a thousand)
+      const every = Math.max(1, Math.floor(n / 256));
+      for (let i = 0; i < n; i += every) {
+        const x = p[i * 3]!;
+        const y = p[i * 3 + 1]!;
+        const z = p[i * 3 + 2]!;
+        reach = Math.max(reach, Math.hypot(x, y, z));
+        extent = Math.max(extent, Math.hypot(x - r[0], y - r[1], z - r[2]));
+      }
+    };
+    if (this.shown && this.shown.curve.n > 1) take(this.shown.curve.r, this.shown.curve.n);
+    if (this.flown.n > 1) take(this.flown.r, this.flown.n);
+    return { centre: this.centre, pole: this.pole, radius: WGS84_A, turned: this.earth.angle(t), reach, extent };
   }
 
   /** While the engine burns: the path if guidance flies on to the record's cutoff (true), or if the engine were cut now. Remembered. */
@@ -1019,7 +1191,7 @@ export class FlightPath {
   /** Which future is to be shown from the sample on show: null for none (off, not flying, down). */
   private want(): { key: string; plan: string; burn: Burn | null; sequence: Sequence | undefined; guided?: boolean } | null {
     const s = this.sample;
-    if (!s || !this.on || !this.source.active || s.landed) return null;
+    if (!s || !(this.on || this.mapped) || !this.source.active || s.landed) return null;
     // (a flight into orbit: its deck predicts, from the sample on show and what it has planned)
     if (!this.ballistic) {
       if (!this.source.predict || !(s.t > 0)) return null;
@@ -1048,6 +1220,7 @@ export class FlightPath {
   /** A frame: a slice of the prediction being worked out, a new one begun if it is time, and the line turned and eased. */
   private tick(): void {
     this.raf = 0;
+    this.remap();
     const want = this.want();
     const s = this.sample;
     if (!want || !s) {
@@ -1056,6 +1229,7 @@ export class FlightPath {
       if (this.shown || this.mesh.visible) {
         this.shown = null;
         this.mesh.visible = this.flownMesh.visible = this.ringMesh.visible = false;
+        this.unmark();
         this.host.overlay(this.mesh);
       }
       this.marksEl.hidden = true;
@@ -1207,7 +1381,8 @@ export class FlightPath {
   /** Lay the line along a prediction, eased from where the one on show has it now (`ease`). */
   private build(result: Prediction, key: string, plan: string, ease: boolean): void {
     const n = result.outcome === 'none' ? 0 : result.points.length;
-    const frame = result.outcome === 'orbit' ? this.frame : 'surface';
+    // (an orbit in the navball's frame; on the map, as it lies among the stars, where it closes on itself)
+    const frame = result.outcome === 'orbit' ? (this.mapped ? 'orbit' : this.frame) : 'surface';
     const old = this.shown;
     const next: Shown = {
       key,
@@ -1634,6 +1809,13 @@ export class FlightPath {
       end.to = was.to + (end.to - was.to) * mix;
       end.over = was.over + (end.over - was.over) * mix;
     }
+    // On the map an orbit is drawn whole: on past the curve's end along the stretch of it already flown, a revolution
+    // later, back to the vehicle (`round`: the curve's span, s). It does not stop short of the vehicle, nor go out.
+    const round = this.mapped && shown.frame === 'orbit' && shown.result.outcome === 'orbit' && this.shift === 0 && now > t0 ? t1 - t0 : 0;
+    if (round) {
+      end.to = now + round;
+      end.over = 0;
+    }
     const ends = (this.mesh.material as THREE.ShaderMaterial).uniforms.uEnds!.value as THREE.Vector4;
     ends.set(0, 0, end.to - shown.result.from, end.over);
     put(15, this.vessel.x);
@@ -1659,9 +1841,6 @@ export class FlightPath {
       this.sceneOf(from, 0, impact.t, 'surface', 0, a, 0);
       ringAt.set(a[0]!, a[1]!, a[2]!);
     }
-    if (same) return;
-    this.sampledFor = shown.key + shown.frame;
-    const began = performance.now();
     this.lensEye[0] = eye.x;
     this.lensEye[1] = eye.y;
     this.lensEye[2] = eye.z;
@@ -1670,18 +1849,39 @@ export class FlightPath {
       pxPerRad: this.lineSize.y / 2 / tanHalf,
       near: 1.02 * camera.near,
     };
+    // on the map: the vehicle's own marker where it is drawn, and what else flies
+    this.layOthers(shown.frame, now + this.shift, lens, vessel !== null);
+    if (same) {
+      this.hang();
+      return;
+    }
+    this.sampledFor = shown.key + shown.frame;
+    const began = performance.now();
     const anchor: [number, number, number] = vessel ? [this.vessel.x, this.vessel.y, this.vessel.z] : [p[0]!, p[1]!, p[2]!];
     // ahead: from the vehicle to the end
     const ahead = this.ahead;
+    // (the orbit's closing stretch: the curve a revolution earlier, moved by what the curve's two ends differ by, the
+    // Earth's bulge turning the orbit a little each time round, less and less of it toward the vehicle, so the line
+    // neither steps where the curve ends nor misses the vehicle where it closes)
+    const closing = new Float64Array(3);
+    if (round) {
+      this.alongAt(shown, t1, closing, 0, mix);
+      this.alongAt(shown, t0, q, 0, mix);
+      for (let k = 0; k < 3; k++) closing[k] = closing[k]! - q[k]!;
+    }
     const along = (t: number, out: Float64Array, o: number) => {
-      this.alongAt(shown, t, out, o, mix);
+      if (round && t > t1) {
+        this.alongAt(shown, t - round, out, o, mix);
+        const left = 1 - Math.min(1, (t - t1) / Math.max(now - t0, 1e-6));
+        for (let k = 0; k < 3; k++) out[o + k] = out[o + k]! + closing[k]! * left;
+      } else this.alongAt(shown, t, out, o, mix);
       if (pinned) {
         const w = weight(t - now);
         for (let k = 0; k < 3; k++) out[o + k] = out[o + k]! + pin[k]! * w;
       }
     };
     this.along = along;
-    ahead.n = sample(along, c.t, now, Math.min(t1, end.to), lens, MOST, ahead.t, ahead.p);
+    ahead.n = sample(along, c.t, now, round ? end.to : Math.min(t1, end.to), lens, MOST, ahead.t, ahead.p);
     upload(ahead, anchor, shown.result.from);
     // behind: the line flown, from its first point to the vehicle, in the frame the path is drawn in
     const behind = this.behind;
@@ -1718,6 +1918,7 @@ export class FlightPath {
     }
     upload(behind, anchor, 0);
     this.mesh.position.set(...anchor);
+    this.hang();
     this.mesh.quaternion.identity();
     this.flownMesh.position.set(0, 0, 0);
     this.flownMesh.quaternion.identity();
@@ -1752,6 +1953,268 @@ export class FlightPath {
       flownOpacity: this.drawn.flownOpacity,
     };
     this.host.overlay(this.mesh);
+  }
+
+  /** Every marker there is to lay out: the path's own, and on the map the vehicle's and each other body's. */
+  private every(): Mark[] {
+    if (!this.craftMark && !this.others.size) return this.marks;
+    const all = [...this.marks];
+    if (this.craftMark) all.push(this.craftMark);
+    for (const o of this.others.values()) all.push(o.mark);
+    return all;
+  }
+
+  /** A marker of the map's own (the vehicle, another body): a glyph and a name, always ahead, never a chip. */
+  private extraMark(kind: 'craft' | 'other', id: string, name: string): Mark {
+    return {
+      id,
+      kind,
+      t: Number.POSITIVE_INFINITY,
+      r: [0, 0, 0],
+      figure: name,
+      at: new THREE.Vector3(),
+      el: this.markEl(kind),
+      ex: 0,
+      ey: 0,
+      label: null,
+      chip: this.chipOf(kind),
+      words: unseen(),
+      written: '',
+    };
+  }
+
+  /**
+   * On the map, each frame: the vehicle's marker where it is drawn, and each other thing that flies (`PathHost.others`: a
+   * stage let go, the flight's target) with its marker and its line, in the frame the path is drawn in. Its line is the
+   * way it came since it left (as the line flown, the last revolution or so) and, from above `OTHER_AIR`, the way it goes:
+   * a coast under gravity alone from where it is, to where it comes down to that height, once round, or two hours (lower,
+   * its flight is the air's, which is not predicted here, and it has no line ahead). The line is made again as the clock
+   * goes on and cut into chords for the eye a few times a second: the chords stand in the scene, so between two cuttings
+   * they are where they were, only as fine as the eye last needed. One that comes down is let go.
+   */
+  private layOthers(
+    frame: 'surface' | 'orbit',
+    t: number,
+    lens: { eye: readonly [number, number, number]; pxPerRad: number; near: number },
+    craft: boolean,
+  ): void {
+    if (this.limbMesh.visible !== this.mapped) {
+      this.limbMesh.visible = this.mapped;
+      this.limbFor[0] = Number.NaN;
+    }
+    if (!this.mapped) {
+      if (this.craftMark || this.others.size) this.unmark();
+      return;
+    }
+    this.outline(lens.eye);
+    this.mapAt = t;
+    if (craft) {
+      this.craftMark ??= this.extraMark('craft', 'craft', this.host.craftName ?? 'Vehicle');
+      this.craftMark.at.copy(this.vessel);
+    } else if (this.craftMark) {
+      this.craftMark.el.remove();
+      this.craftMark.chip.el.remove();
+      this.craftMark = null;
+    }
+    const list = this.host.others?.() ?? [];
+    for (const [drop, o] of this.others)
+      if (!list.some((x) => x.drop === drop && !x.down)) {
+        this.dropOther(o);
+        this.others.delete(drop);
+      }
+    const wall = performance.now();
+    const a = this.markAt;
+    for (const x of list) {
+      if (x.down) continue;
+      let o = this.others.get(x.drop);
+      if (!o) {
+        const line = ribbonGeometry(OTHER_MOST);
+        const material = new THREE.ShaderMaterial({
+          vertexShader: VERT,
+          fragmentShader: FRAG,
+          uniforms: {
+            ...this.uniforms,
+            uCore: { value: FLOWN_CORE },
+            uColour: { value: new THREE.Color() },
+            uOpacity: { value: 0.8 },
+            uEnds: { value: new THREE.Vector4() },
+          },
+          defines: { FLOWN: '' },
+          transparent: true,
+          depthWrite: false,
+          depthTest: false,
+          side: THREE.DoubleSide,
+        });
+        const mesh = new THREE.Mesh(line.geometry, material);
+        mesh.name = `Path of ${x.name}`;
+        mesh.frustumCulled = false;
+        mesh.renderOrder = 10;
+        mesh.raycast = () => {};
+        mesh.layers.mask = this.mesh.layers.mask; // (drawn last with the rest: overlay.ts)
+        // (drawn before the path's own lines: what they are all drawn with is worked out for the frame by whichever is first)
+        mesh.onBeforeRender = (renderer, _scene, camera) => this.prepare(renderer, camera as THREE.PerspectiveCamera);
+        this.mesh.add(mesh);
+        o = {
+          line,
+          mesh,
+          curve: null,
+          lands: false,
+          at: Number.NaN,
+          made: 0,
+          cut: 0,
+          cutAt: t,
+          cutFor: [Number.NaN, 0, 0],
+          cutIn: frame,
+          anchor: [0, 0, 0],
+          mark: this.extraMark('other', `other${x.drop}`, x.name),
+        };
+        this.others.set(x.drop, o);
+      }
+      this.sceneOf(x.r, 0, t, frame, t, a, 0);
+      o.mark.at.set(a[0]!, a[1]!, a[2]!);
+      // its line: made again when the clock has gone back, or on by a hundredth of what it shows, at most twice a second
+      const span = Math.min(FLOWN_SPAN, Math.max(0, t - x.from));
+      if (!o.curve || t < o.at || (t - o.at > Math.max(1, 0.01 * span) && wall - o.made > OTHER_EVERY)) {
+        const made = this.otherCurve(x, t, span);
+        o.curve = made.curve;
+        o.lands = made.lands;
+        o.at = t;
+        o.made = wall;
+        o.cut = 0;
+      }
+      const c = o.curve;
+      const eye = lens.eye;
+      const moved = o.cutFor[0] !== eye[0] || o.cutFor[1] !== eye[1] || o.cutFor[2] !== eye[2] || o.cutIn !== frame;
+      if (c && c.n > 1 && (o.cut === 0 || (moved && wall - o.cut > OTHER_CUT))) {
+        o.cut = wall;
+        o.cutAt = t;
+        o.cutFor = [eye[0], eye[1], eye[2]];
+        o.cutIn = frame;
+        let hint = 0;
+        const v = new Float64Array(3);
+        const place = (at: number, out: Float64Array, p: number) => {
+          hint = curveAt(c, at, v, 0, hint);
+          this.sceneOf(v, 0, at, frame, t, out, p);
+        };
+        o.line.n = sample(place, c.t, c.t[0]!, c.t[c.n - 1]!, lens, OTHER_MOST, o.line.t, o.line.p);
+        o.anchor = [a[0]!, a[1]!, a[2]!];
+        upload(o.line, o.anchor, 0);
+        // (the far end of the way it came comes in from nothing; the way it goes ends where it meets the air, or goes out)
+        const ends = (o.mesh.material as THREE.ShaderMaterial).uniforms.uEnds!.value as THREE.Vector4;
+        const t1 = c.t[c.n - 1]!;
+        ends.set(c.t[0]!, Math.min(FLOWN_LEAD, 0.1 * (t - c.t[0]!)), t1, o.lands ? 0 : 0.08 * Math.max(0, t1 - t));
+        this.host.overlay(this.mesh);
+      }
+      o.mesh.visible = Boolean(c && c.n > 1);
+    }
+  }
+
+  /**
+   * The Earth's outline as the eye sees it (`LIMB`): the circle in which the cone from the eye touches a ball `LIMB_OVER`
+   * over the Earth's equatorial radius, which is a circle of that ball square to the line from its centre to the eye.
+   */
+  private readonly limbN = new THREE.Vector3();
+  private readonly limbU = new THREE.Vector3();
+  private readonly limbV = new THREE.Vector3();
+  private outline(eye: readonly [number, number, number]): void {
+    // (drawn again only when the eye has moved)
+    const was = this.limbFor;
+    if (was[0] === eye[0] && was[1] === eye[1] && was[2] === eye[2]) return;
+    was[0] = eye[0];
+    was[1] = eye[1];
+    was[2] = eye[2];
+    const c = this.centre;
+    const n = this.limbN.set(eye[0] - c.x, eye[1] - c.y, eye[2] - c.z);
+    const d = n.length();
+    const rho = WGS84_A + LIMB_OVER;
+    if (!(d > 1.001 * rho)) {
+      this.limb.geometry.setDrawRange(0, 0); // (from inside that ball there is no outline to draw)
+      return;
+    }
+    n.divideScalar(d);
+    const u = this.limbU.crossVectors(n, Math.abs(n.y) < 0.9 ? UP : RIGHT).normalize();
+    const v = this.limbV.crossVectors(n, u);
+    const along = (rho * rho) / d;
+    const radius = rho * Math.sqrt(1 - (rho * rho) / (d * d));
+    const at: [number, number, number] = [c.x + n.x * along, c.y + n.y * along, c.z + n.z * along];
+    const line = this.limb;
+    for (let i = 0; i <= LIMB; i++) {
+      const a = (2 * Math.PI * i) / LIMB;
+      const x = Math.cos(a) * radius;
+      const y = Math.sin(a) * radius;
+      line.t[i] = 0;
+      line.p[i * 3] = at[0] + u.x * x + v.x * y;
+      line.p[i * 3 + 1] = at[1] + u.y * x + v.y * y;
+      line.p[i * 3 + 2] = at[2] + u.z * x + v.z * y;
+    }
+    line.n = LIMB + 1;
+    upload(line, at, 0, true);
+    this.limbAt = at;
+    this.host.overlay(this.mesh);
+  }
+  /** The eye the outline was last drawn for, and the place its points are measured from. */
+  private readonly limbFor: [number, number, number] = [Number.NaN, 0, 0];
+  private limbAt: [number, number, number] = [0, 0, 0];
+
+  /**
+   * The map's own lines hung where they belong under the path's mesh, which stands at the vehicle: each is measured from
+   * a place of its own (the Earth's outline from its middle, another body's line from where that body was when its
+   * chords were cut), so they are put there again whenever the path's mesh has moved. After the mesh is placed, never
+   * before: hung from where it stood a frame ago, they were out by as far as the vehicle went in that frame.
+   */
+  private hang(): void {
+    if (!this.mapped) return;
+    const m = this.mesh.position;
+    this.limbMesh.position.set(this.limbAt[0] - m.x, this.limbAt[1] - m.y, this.limbAt[2] - m.z);
+    const c = this.centre;
+    for (const o of this.others.values()) {
+      // (chords cut as the line lay among the stars at one instant are, at a later one, where the Earth's turn since has
+      // left them in the scene, which is fixed to the Earth: turned back about its axis by that much)
+      const turned = o.cutIn === 'orbit' ? this.earth.angle(this.mapAt) - this.earth.angle(o.cutAt) : 0;
+      o.mesh.quaternion.setFromAxisAngle(this.pole, -turned);
+      const at = this.hung.set(o.anchor[0] - c.x, o.anchor[1] - c.y, o.anchor[2] - c.z).applyQuaternion(o.mesh.quaternion);
+      o.mesh.position.set(at.x + c.x - m.x, at.y + c.y - m.y, at.z + c.z - m.z);
+    }
+  }
+  private readonly hung = new THREE.Vector3();
+  /** The flight's instant the map's lines were last laid for. */
+  private mapAt = 0;
+
+  /** Another body's line as a curve in the frame that does not turn (`layOthers`): the way it came over the last `span` seconds, then the way it goes from above the air. */
+  private otherCurve(x: OtherCraft, t: number, span: number): { curve: Curve | null; lands: boolean } {
+    const points: { t: number; r: Vec3; v: Vec3 }[] = [];
+    const n = Math.max(1, Math.min(OTHER_KEPT, Math.ceil(span)));
+    for (let i = 0; i < n && span > 0; i++) {
+      const at = t - span + (span * i) / n;
+      const was = this.host.otherAt?.(x.drop, at);
+      if (was) points.push({ t: at, r: was.r, v: was.v });
+    }
+    points.push({ t, r: x.r, v: x.v });
+    // its height over the ellipsoid, near enough (the radius of the ellipsoid along the line to it)
+    const height = (r: Vec3): number => {
+      const d = Math.hypot(r[0], r[1], r[2]);
+      const s = r[2] / Math.max(d, 1);
+      return d - (WGS84_A * WGS84_B) / Math.hypot(WGS84_B * Math.sqrt(1 - s * s), WGS84_A * s);
+    };
+    let lands = false;
+    if (height(x.r) > OTHER_AIR) {
+      let state = { r: x.r, v: x.v };
+      let turned = 0;
+      for (let i = 1; i <= OTHER_STEPS; i++) {
+        const next = step(state, t + (i - 1) * OTHER_STEP, OTHER_STEP);
+        const cos =
+          (state.r[0] * next.r[0] + state.r[1] * next.r[1] + state.r[2] * next.r[2]) / (Math.hypot(...state.r) * Math.hypot(...next.r));
+        turned += Math.acos(Math.min(1, Math.max(-1, cos)));
+        state = next;
+        points.push({ t: t + i * OTHER_STEP, r: state.r, v: state.v });
+        if (height(state.r) <= OTHER_AIR) {
+          lands = true;
+          break;
+        }
+        if (turned >= 2 * Math.PI) break;
+      }
+    }
+    return { curve: points.length > 1 ? curveOf(points) : null, lands };
   }
 
   /** Where the line ahead, as last sampled, has instant `t` in the scene's frame (the curve it was cut from): for the path test. */
@@ -1834,7 +2297,15 @@ export class FlightPath {
     // the line flown: only from far out, where the whole flight is seen (from near the vehicle a line behind it is read as
     // the path, whatever it is drawn in), coming in as the eye goes out
     const k = Math.min(1, Math.max(0, (toShip - FLOWN_NEAR) / (FLOWN_FAR - FLOWN_NEAR)));
-    const away = radius === null ? 1 : k * k * (3 - 2 * k);
+    const away = radius === null || this.mapped ? 1 : k * k * (3 - 2 * k);
+    const outline = (this.limbMesh.material as THREE.ShaderMaterial).uniforms;
+    outline.uCore!.value = FLOWN_CORE * ratio;
+    (outline.uColour!.value as THREE.Color).copy(limbColour).multiplyScalar(exposure);
+    for (const o of this.others.values()) {
+      const own = (o.mesh.material as THREE.ShaderMaterial).uniforms;
+      own.uCore!.value = FLOWN_CORE * ratio;
+      (own.uColour!.value as THREE.Color).copy(other).multiplyScalar(exposure);
+    }
     flown.uOpacity!.value = this.flownAsAhead ? u.uOpacity!.value : FLOWN_OPACITY * away;
     this.drawn.flownOpacity = this.flownAsAhead ? 1 : away;
     this.flownKey(away > 0 && this.flownMesh.visible);
@@ -1863,7 +2334,8 @@ export class FlightPath {
     const seg = u.uShipSeg!.value as THREE.Vector4;
     let clear: Clear = { ax: 0, ay: 0, bx: 0, by: 0, r: 0 };
     u.uShipW!.value = 0;
-    if (vessel && !aboard) {
+    // (on the map the vehicle is a point with a marker on it: nothing is kept off its outline)
+    if (vessel && !aboard && !this.mapped) {
       const a = project(this.w.copy(ship).addScaledVector(this.axis2, vessel.half), this.w);
       const ax = a ? a.x : Number.NaN;
       const ay = a ? a.y : Number.NaN;
@@ -1908,7 +2380,7 @@ export class FlightPath {
     const eyeAt = eye.toArray();
     const width = this.charWidth || 7;
     const pxPerRad = this.uniforms.uPxPerRad!.value as number;
-    for (const m of this.marks) {
+    for (const m of this.every()) {
       if (m.t <= now) continue;
       const scene = m.at;
       // behind the Earth? (laid on its place all the same, dimmed: it is in view, the Earth is in front of it)
@@ -1961,11 +2433,14 @@ export class FlightPath {
     this.laidCurrent = this.panelsRead > 0;
     this.laid = new Map(out.marks.map((o) => [o.id, o]));
     this.chipsLaid = new Map(out.chips.map((c) => [c.id, c]));
-    for (const m of this.marks) {
+    for (const m of this.every()) {
       const o = this.laid.get(m.id);
       const at = where.get(m.id);
       const glyph = Boolean(o?.glyph && at);
-      m.el.classList.toggle('gone', !glyph);
+      // (the map's own markers are places: the vehicle's and another body's glyph is drawn wherever it is in view, and
+      // its name where the layout has room for it)
+      const place = m.kind === 'craft' || m.kind === 'other';
+      m.el.classList.toggle('gone', place ? !at : !glyph);
       m.label = glyph && at && o?.box ? { x: rect.left + o.box.x0, y: rect.top + o.box.y0 } : null;
       // (one going is moved on as it fades, while it has a place)
       if (at) {
@@ -2000,7 +2475,7 @@ export class FlightPath {
       this.laidCurrent = false;
       return false;
     }
-    for (const m of this.marks) {
+    for (const m of this.every()) {
       const w = m.words;
       const ahead = m.t > this.now;
       const label = ahead && m.label !== null;
@@ -2021,7 +2496,7 @@ export class FlightPath {
     const dt = Math.min(0.1, Math.max(0, (t - this.chipsAt) / 1000));
     this.chipsAt = t;
     const on = !this.marksEl.hidden;
-    for (const m of this.marks) {
+    for (const m of this.every()) {
       const c = m.chip;
       const w = m.words;
       const ahead = on && m.t > this.now;
@@ -2064,6 +2539,7 @@ export class FlightPath {
 
   /** What a marker says: its name, its figure, and how long until it. */
   private words(m: Mark, now: number): string {
+    if (m.kind === 'craft' || m.kind === 'other') return `<b>${esc(m.figure)}</b>`;
     return `<b>${KINDS[m.kind][0]}</b>${m.figure ? ` ${m.figure}` : ''} <em>${clock(m.t - now)}</em>`;
   }
 
@@ -2077,7 +2553,8 @@ export class FlightPath {
       const el = this.readout.querySelector<HTMLElement>(`[data-path-row=${id}]`)!;
       if (el.hidden === on) el.hidden = !on;
     };
-    const choosing = this.on && this.choosing();
+    const on = this.on || this.mapped;
+    const choosing = on && this.choosing();
     row('kind', choosing);
     for (const b of this.readout.querySelectorAll<HTMLElement>('[data-path=guided], [data-path=coast]'))
       b.setAttribute('aria-pressed', String((b.dataset.path === 'guided') === this.guided));
@@ -2086,7 +2563,7 @@ export class FlightPath {
     const own = !this.ballistic ? (this.source.pathAs ?? null) : null;
     set(
       'as',
-      !this.on
+      !on
         ? 'off'
         : stale
           ? 'working…'
@@ -2108,7 +2585,7 @@ export class FlightPath {
     );
     // (said in full where the pointer rests: the line has room for a word or two)
     const as = this.readout.querySelector<HTMLElement>('[data-path-cell=as]')!;
-    as.title = !this.on
+    as.title = !on
       ? ''
       : stale
         ? 'The display is waiting for an updated path and has received none in the last 1.5 seconds'
@@ -2125,8 +2602,8 @@ export class FlightPath {
                 : sequencer
                   ? 'What happens from here if the pilot does nothing more: the sequencer sets off each event at the record’s time, and the parachutes come out at their heights'
                   : 'The sequencer is off (B): nothing happens by itself, no retrofire and no parachute, so the path falls as it is';
-    row('apogee', this.on);
-    row('end', this.on);
+    row('apogee', on);
+    row('end', on);
     if (!result || result.outcome === 'none') {
       set('apogee', '–');
       set('endName', 'Down');
@@ -2140,7 +2617,7 @@ export class FlightPath {
     if (result.outcome === 'orbit' && result.orbit) {
       set('endName', 'Orbit');
       set('end', `${(result.orbit.period / 60).toFixed(1)} min${result.perigee ? ` · Pe ${km(result.perigee.altitude)} km` : ''}`);
-      end.title = `Once round in this time, lowest at this height. Drawn ${this.frame === 'orbit' ? 'in the frame that does not turn' : 'over the turning Earth'} (O)`;
+      end.title = `Once round in this time, lowest at this height. Drawn ${this.mapped ? 'on the map as it lies among the stars' : this.frame === 'orbit' ? 'in the frame that does not turn (O)' : 'over the turning Earth (O)'}`;
     } else if (result.impact) {
       set('endName', result.chute ? 'Down' : 'Impact');
       set('end', `${km(result.impact.range)} km · ${clock(result.impact.t - now)}`);

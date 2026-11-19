@@ -7,6 +7,11 @@ function pausedDisplay(jobTime, jobPlan) {
   const view = Object.create(FlightPath.prototype);
   Object.assign(view, {
     scope: { frame: () => 1 },
+    // (not the map's view: its own markers and lines are none)
+    source: { active: false },
+    mapped: false,
+    craftMark: null,
+    others: new Map(),
     sample: { t: 12 },
     wantedAt: null,
     want: () => ({ key: '12|manual', plan: 'manual' }),

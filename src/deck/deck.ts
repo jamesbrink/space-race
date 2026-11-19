@@ -312,6 +312,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         <div class="cockpit-keys" hidden>
           <div><h4>Show</h4><p>
             <button data-do="path" class="switch" aria-pressed="true" title="The predicted path: where it goes from here if nothing more is done, its apogee, what happens on the way and where it comes down (${capsOf('path.show').join(' ')})">${kbd('path.show')}Path</button>
+            <button data-press="${KEYS['map.show'].slots[0]}" data-map class="switch" aria-pressed="false" title="The map: the whole path from far out, the way it came and what else flies, the Earth turning under it; again for the view it was taken from (${capsOf('map.show').join(' ')})">${kbd('map.show')}Map</button>
             <button data-do="navball" class="switch" aria-pressed="true" title="The navball: attitude against the horizon, prograde and retrograde (${capsOf('navball.show').join(' ')})">${kbd('navball.show')}Navball</button>
             <button data-press="${KEYS['cut.toggle'].slots[0]}" data-skin class="switch" aria-pressed="true" title="The vehicle's skin: off, to see what is inside it and how little room there is, and out of it all round; on, as it flew (${capsOf('cut.toggle').join(' ')})">${kbd('cut.toggle')}Skin</button>
             <button data-press="${KEYS['navball.frame'].slots[0]}" title="The navball's markers and speed: over the turning Earth, or in the frame that does not turn; and a path that goes round, drawn in the same frame (${capsOf('navball.frame').join(' ')})">${kbd('navball.frame')}Surface · orbit</button>
