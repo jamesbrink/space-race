@@ -8,7 +8,7 @@
 //   places       the front page, Freedom 7's gallery, its launch site, a section there, Fly; Back, Back, Forward,
 //                Back, Back, Back: each lands on the place before, the last on the front page
 //   phone ways   at 390 and 820 wide: the top line's one way on, Freedom 7's gallery to its launch site to Fly and back, each
-//                a step; a way Apollo 16 lacks is there, dimmed, and a tap says why in the notes
+//                a step; Gemini IV's Fly, not flown yet, is there, dimmed, and a tap says why in the notes
 //   old link     #pad lands on Freedom 7's site and Back leaves it at once (it is no step of its own)
 //   second craft Gemini X's gallery-only Agena can be linked and switched to, and Back restores it from the site
 //   crew gallery Gemini XII's suited crew can be linked, selected, and restored from the launch site
@@ -171,17 +171,18 @@ async function phoneWays(page) {
   const home = await arrive(page, 'gallery', MR3);
   check(home.kept && home.length === back.length + 1, `the site to the gallery: a step, and no reload (${home.hash})`);
   // a place the flight lacks: there, dimmed, and a tap says why
-  await page.goto(`${url}#usa/apollo/apollo-16/gallery`);
-  await arrive(page, 'gallery', 'usa/apollo/apollo-16');
-  const lacking = '#gallery .title .ways [data-way=site][aria-disabled=true]';
-  inLine(await box(lacking), 'Apollo 16: the way to a site not built');
-  check(/not built/i.test((await box(lacking))?.text ?? ''), 'and it says why');
+  const GT4 = 'usa/gemini/gt-4';
+  await page.goto(`${url}#${GT4}/site/vehicle`);
+  await arrive(page, 'site', GT4);
+  const lacking = '#ui .title .ways [data-way=fly][aria-disabled=true]';
+  inLine(await box(lacking), 'Gemini IV: the way to a flight not flown yet');
+  check(/no trajectory/i.test((await box(lacking))?.text ?? ''), 'and it says why');
   // (Playwright waits on aria-disabled as on disabled; a finger does not)
   await page.locator(`${lacking}:visible`).click({ force: true });
   await page.waitForTimeout(300);
-  const said = await page.evaluate(() => document.querySelector('#gallery .notes')?.textContent ?? '');
-  check(/not built/i.test(said), `a tap on it says why in the notes (${said.trim().slice(0, 60)})`);
-  check((await state(page)).on === 'gallery', 'and goes nowhere');
+  const said = await page.evaluate(() => document.querySelector('#ui .notes')?.textContent ?? '');
+  check(/no trajectory/i.test(said), `a tap on it says why in the notes (${said.trim().slice(0, 60)})`);
+  check((await state(page)).on === 'site', 'and goes nowhere');
 }
 await scenario('phone ways', phoneWays, [390, 844]);
 await scenario('phone ways', phoneWays, [820, 1180]);
