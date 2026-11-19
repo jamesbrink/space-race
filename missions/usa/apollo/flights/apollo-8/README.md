@@ -25,3 +25,5 @@ This flight opens in the Gallery and appears to scale in the Lineup. Its seats, 
 ## Launch site
 
 At [Pad 39A](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-1. At liftoff the computed Sun was at azimuth 121.4° and elevation 6.8°. The Moon was below the horizon at azimuth 110.8° and elevation −17.5°.
+
+The site opens at the start of that boarding window. At T−56 min 23 s, launch control reported the white room moving into its 12° standby position. [NASA launch-day commentary](https://www.nasa.gov/wp-content/uploads/2026/01/as08-pao.pdf)

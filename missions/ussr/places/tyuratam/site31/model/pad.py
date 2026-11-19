@@ -1,16 +1,14 @@
-"""Pad 31/6 for Soyuz 3 and 4. Static launch-day exhibit; dimensions and appearance in site-31.md."""
+"""Pad 31/6 for Soyuz 3 and 4. Launch-day exhibit; dimensions and appearance in site-31.md."""
 
 import math
 import sys
 from pathlib import Path
 
-from mathutils import Quaternion
-
 root = next(path for path in Path(__file__).resolve().parents if (path / "tools/blender").is_dir())
 sys.path.insert(0, str(root / "tools/blender"))
 sys.path.insert(0, str(root / "missions/ussr/places/tyuratam"))
 from site1 import launch_system  # noqa: E402
-from site1.site import TURN, Parts, materials  # noqa: E402
+from site1.site import Parts, materials  # noqa: E402
 from site1.soyuz_access import build_towers  # noqa: E402
 from sitelib import box, fine, handrail  # noqa: E402
 from srlib import run  # noqa: E402
@@ -67,17 +65,8 @@ def build():
             metal.tube(corner(i, high), corner((i + 1) % 4, high), 0.048, 6)
     metal.tube((-21, -22, 30.96), (-21, -22, 33.7), 0.08, 8)
     launch_system.build(parts)
-    group = parts.node("ServiceTrusses")
     build_towers(parts)
     parts.build()
-    # The two access structures lie clear, as in the Soyuz 4 launch photograph. The truss
-    # detailing is an assumed family likeness. Site 31's individual fittings are unresolved.
-    for name, az in (("NorthServiceTower", 45), ("SouthServiceTower", 225)):
-        parts.nodes[name][0].parent = group
-        arm = parts.nodes[name + "_Frame"][0]
-        theta = TURN + math.radians(az)
-        arm.rotation_mode = "QUATERNION"
-        arm.rotation_quaternion = Quaternion((-math.sin(theta), math.cos(theta), 0), math.radians(85))
     return "Site 31/6, October 1968 and January 1969; estimated 39.6 m deck"
 
 

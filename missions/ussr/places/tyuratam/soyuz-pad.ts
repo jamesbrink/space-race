@@ -2,7 +2,7 @@ import type { ModelDef, Part } from '../../../../src/types.ts';
 
 import { DEG, TURN } from './site-1.parts.ts';
 
-function tower(side: 'North' | 'South'): Part {
+export function soyuzTower(side: 'North' | 'South', group: string): Part {
   const node = `${side}ServiceTower`;
   const bearing = TURN + (side === 'North' ? 45 : 225) * DEG;
   return {
@@ -12,6 +12,7 @@ function tower(side: 'North' | 'South'): Part {
       'One half of each work platform reached around the upper stages.',
       'Two lattice towers carried decks up to the Soyuz shroud. The slider lowers the towers to clear the launcher. Their profile follows NASA photograph S75-32339. The motion and timing are reconstructed.',
     ),
+    group,
     moves: [
       {
         kind: 'swing',
@@ -126,7 +127,7 @@ export const soyuzPad: ModelDef = {
       'Three earth-covered bays open onto the road west of launch control.',
       'The bays survive at Site 1. The model uses the earlier surveyed dimensions and assumed fittings.',
     ),
-    tower('North'),
-    tower('South'),
+    soyuzTower('North', 'Site 1'),
+    soyuzTower('South', 'Site 1'),
   ],
 };

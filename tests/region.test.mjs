@@ -6,12 +6,15 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
+import { flights } from '../missions/index.ts';
 import { CAPE_GROUND } from '../missions/usa/places/cape-canaveral/ground.ts';
 import { LC39A, LC39B } from '../missions/usa/places/cape-canaveral/lc-39.ts';
 import { compassAt } from '../src/viewer/scenery/compass.ts';
 import { angleBetween, cross, dot, geodeticToEcef, length, unit } from '../src/world/frames.ts';
 import { angleFromMiddle, fromPlane, placeOnPlane, planeAt, surfaceDirection, toPlane } from '../src/world/region.ts';
 import { readGreyPng } from '../tools/png.mjs';
+import { framesOf } from './glb.mjs';
 
 const near = (a, b, tol, what) => assert.ok(Math.abs(a - b) <= tol, `${what}: ${a} vs ${b}`);
 
@@ -94,6 +97,32 @@ function shore(name, lat, lon, of = { meta, maps }) {
   const v = (at(i, j) * (1 - fx) + at(i + 1, j) * fx) * (1 - fy) + (at(i, j + 1) * (1 - fx) + at(i + 1, j + 1) * fx) * fy;
   return ((v - 128) * info.spread * m.metres) / 127;
 }
+
+test('the two LC-39 frames put the ocean at globe sea level and the ramp and tank feet on the graded earth', () => {
+  for (const site of [LC39A, LC39B]) {
+    const compass = compassAt(site);
+    const land = CAPE_GROUND.land({ date: '1969-05-18' }, compass);
+    assert.ok(Math.abs(site.height.value + site.grade.value + land.sea - site.seaLevel.value) < 1e-9, site.name);
+    const foot = 0.3048;
+    // In the model +X is north, +Y in Blender is west. The ground is in east/south metres.
+    const standing = (x, y) => site.grade.value + land.relief(-y * foot, -x * foot);
+    const pad = flights.find((flight) => flight.site === site).models.find((model) => model.id === 'pad');
+    const frames = framesOf(fileURLToPath(new URL(`../public/${pad.url}`, import.meta.url)));
+    const base = (name) => pad.position[1] + frames.box(name).lo[1];
+    const rampFoot = frames.box('Hardstand').lo[0] / foot;
+    for (const y of [-85, 0, 85]) assert.ok(Math.abs(standing(rampFoot, y) - base('Hardstand')) < 0.001, `${site.name} ramp`);
+    for (const [y, radius] of [
+      [1025, 33],
+      [-1025, 32.5],
+    ]) {
+      for (let leg = 0; leg < 8; leg++) {
+        const angle = (leg * Math.PI) / 4;
+        const floor = standing(1025 + 0.62 * radius * Math.cos(angle), y + 0.62 * radius * Math.sin(angle));
+        assert.ok(Math.abs(floor - base('Storage_Spheres')) < 0.001, `${site.name} tank leg ${leg}`);
+      }
+    }
+  }
+});
 
 test('the local ground at Complex 39 agrees with the regional map across the river head and the Atlantic shore', () => {
   const samples = [

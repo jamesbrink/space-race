@@ -13,3 +13,5 @@ The [spacecraft and launch vehicle](spacecraft.md) occupy two Gallery exhibits. 
 ## Launch site
 
 At [Pad 39B](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-3. At liftoff the computed Sun was at azimuth 141.3° and elevation 78.7°. The Moon was at azimuth 82.0° and elevation 58.8°.
+
+The site opens at 10:06 EDT when Stafford entered Charlie Brown. Cernan followed at 10:11 and Young at 10:16. The end of the boarding window at 11:09 is estimated ahead of the T−86 minute white-room closeout report. Launch control confirmed the 12° standby position by T−46 minutes and full retraction by T−4 min 30 s. [NASA launch-day commentary](https://www.nasa.gov/wp-content/uploads/2026/01/as10-pao.pdf)

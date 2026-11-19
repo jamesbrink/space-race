@@ -20,7 +20,7 @@ from srlib import IN, run  # noqa: E402
 def build():
     saturn_v.build(lunar_module=lunar_module.build)
     apollo_csm.build(saturn_v.CSM_OFFSET, spacecraft=104)
-    launch_escape.build(saturn_v.CSM_OFFSET, saturn_v.HEIGHT)
+    launch_escape.build(saturn_v.CSM_OFFSET, saturn_v.HEIGHT, boardable=True)
     # These stay behind opaque skins in both Lineup configurations. Gallery keeps them for inspection.
     for part in (
         "InstrumentUnitEquipment",

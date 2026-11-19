@@ -1,10 +1,11 @@
-import { lc39Crew } from '../../crew/lc39.ts';
-import { LC39B, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
-import { snoopyModel, snoopyPort, snoopyStackParts, snoopyViews } from './snoopy.ts';
-import { probePort, cm, sm, lift, doors, rocket, part, escapeParts, nodes, specification } from '../../vehicles/stack-gallery.ts';
 import type { Flight, Part } from '../../../../../src/types.ts';
+import { LC39B, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
+import { lc39Crew } from '../../crew/lc39.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
+import { boardingHatches } from '../../vehicles/hatch.ts';
 import { APOLLO10_THRUST } from '../../vehicles/propulsion.ts';
+import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
+import { snoopyModel, snoopyPort, snoopyStackParts, snoopyViews } from './snoopy.ts';
 
 const inch = 0.0254;
 const lb = 0.45359237;
@@ -321,6 +322,8 @@ const launcher = [
     'Each outboard engine hung from a thrust post under a half-cone fin fairing. Together the F-1s produced about 7.7 million pounds of thrust at liftoff.',
   ),
 ];
+const boarding: [number, number] = [-9780, -6000];
+
 export const flight: Flight = {
   id: 'usa/apollo/apollo-10',
   nation: 'USA',
@@ -332,6 +335,7 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-505',
   launch: '1969-05-18T16:49:00Z',
   launchSite: 'Launch Complex 39B, Kennedy Space Center',
+  opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39B,
   crew: ['Thomas P. Stafford', 'John W. Young', 'Eugene A. Cernan'],
   summary:
@@ -419,9 +423,9 @@ export const flight: Flight = {
       dockingPorts: [charlieBrownPort, snoopyPort],
       ...blockIICabin(3871),
       seats: [
-        { node: 'Seat_Commander', figure: 'crew', label: 'Stafford’s left couch', from: 'SideHatch', open: [-9000, -6000] },
-        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Young’s centre couch', from: 'SideHatch', open: [-9000, -6000] },
-        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Cernan’s right couch', from: 'SideHatch', open: [-9000, -6000] },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Stafford’s left couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Young’s centre couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Cernan’s right couch', from: 'SideHatch', open: boarding },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -459,10 +463,18 @@ export const flight: Flight = {
         { id: 'antenna', label: 'S-band antenna', nodes: ['HighGainAntenna'], from: [-0.75, -0.5, 0.6] },
         { id: 'f1', label: 'F-1 cluster', nodes: ['FirstStageEngines'], from: [-0.62, 0.08, 0.78] },
       ],
-      parts: [...command, ...service, ...snoopyStackParts, ...escapeParts, ...launcher],
+      parts: boardingHatches([...command, ...service, ...snoopyStackParts, ...escapeParts, ...launcher], boarding),
     },
     snoopyModel,
-    mobileLauncher(3),
+    mobileLauncher(3, {
+      ingress: boarding[0],
+      parkedBy: -2760,
+      pao: 'Apollo 10 launch-day PAO commentary, crew insertion and prelaunch countdown.',
+      intertankClear: -20,
+      forwardRetract: -16.2,
+      terminalSource:
+        'AS-505 flight evaluation §3.6.1: 10 s to safe angle plus 3.8 s before arm 2. T−30 s first release per Apollo 10 press kit, Mobile Launcher.',
+    }),
     ...lc39Crew(['Stafford', 'Young', 'Cernan'], true),
   ],
 };

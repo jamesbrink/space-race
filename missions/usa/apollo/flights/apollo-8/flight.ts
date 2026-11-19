@@ -1,8 +1,9 @@
-import { lc39Crew } from '../../crew/lc39.ts';
-import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
 import type { Measure } from '../../../../../src/measure.ts';
 import type { Flight, Move, Part } from '../../../../../src/types.ts';
+import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
+import { lc39Crew } from '../../crew/lc39.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
+import { boardingHatches } from '../../vehicles/hatch.ts';
 import { CSM103_THRUST, SA503_THRUST } from '../../vehicles/propulsion.ts';
 
 const IN = 0.0254;
@@ -422,6 +423,8 @@ const spec = (label: string, value: number, note: string, group = 'Launch vehicl
   note,
 });
 
+const boarding: [number, number] = [-10380, -8220];
+
 export const flight: Flight = {
   id: 'usa/apollo/apollo-8',
   nation: 'USA',
@@ -433,6 +436,7 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-503',
   launch: '1968-12-21T12:51:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
+  opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39A,
   crew: ['Frank Borman', 'James A. Lovell Jr.', 'William A. Anders'],
   summary:
@@ -651,9 +655,9 @@ export const flight: Flight = {
       ...cabin,
       // PAO launch transcript, tape 10: first entry at 04:58 EST, hatch closed at 05:34.
       seats: [
-        { node: 'Seat_Commander', figure: 'crew', label: 'Borman’s left couch', from: 'SideHatch', open: [-10380, -8220] },
-        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Lovell’s centre couch', from: 'SideHatch', open: [-10380, -8220] },
-        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Anders’s right couch', from: 'SideHatch', open: [-10380, -8220] },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Borman’s left couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Lovell’s centre couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Anders’s right couch', from: 'SideHatch', open: boarding },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip · rounded flight envelope',
       slider: ['Assembled', 'Taken apart'],
@@ -676,9 +680,16 @@ export const flight: Flight = {
         { id: 'lta', label: 'Lunar test article', nodes: ['LunarTestArticle'] },
         { id: 'f1', label: 'F-1 cluster', nodes: ['FirstStageEngines'], from: [-0.62, 0.08, 0.78] },
       ],
-      parts,
+      parts: boardingHatches(parts, boarding),
     },
-    mobileLauncher(1),
+    mobileLauncher(1, {
+      ingress: boarding[0],
+      parkedBy: -3383,
+      pao: 'Apollo 8 launch-day PAO commentary, crew insertion and prelaunch countdown.',
+      intertankClear: -18.9,
+      forwardRetract: -16.2,
+      terminalSource: 'AS-503 launch vehicle evaluation, §3.6: 11.1 s to safe angle, then 2.69 s to the arm 2 command at T−16.2 s.',
+    }),
     ...lc39Crew(['Borman', 'Lovell', 'Anders'], false),
   ],
 };
