@@ -67,11 +67,17 @@ const DEG = Math.PI / 180;
 /** The Julian date of 1858 November 17.0 UT, from which a modified Julian date counts. */
 const MJD0 = 2_400_000.5;
 
-/** The UT date (YYYY-MM-DD) and the hours into it of a Julian date (UT). */
+/**
+ * The UT date (YYYY-MM-DD) and the hours into it of a Julian date (UT). An instant that is not a number, or is beyond
+ * any date, is on no day (an empty date, which no table holds): what asks is told the day is not held, as for any other
+ * day outside the table, and nothing is thrown here.
+ */
 function dayOf(jdUT: number): { date: string; hours: number } {
   const mjd = jdUT - MJD0;
   const day = Math.floor(mjd);
-  const date = new Date(Date.UTC(1858, 10, 17) + day * 86_400_000).toISOString().slice(0, 10);
+  const ms = Date.UTC(1858, 10, 17) + day * 86_400_000;
+  if (!Number.isFinite(ms) || Math.abs(ms) > 8.64e15) return { date: '', hours: 0 };
+  const date = new Date(ms).toISOString().slice(0, 10);
   return { date, hours: (mjd - day) * 24 };
 }
 

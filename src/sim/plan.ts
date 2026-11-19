@@ -606,6 +606,19 @@ export function flownByHand(plan: FlightPlan | undefined): boolean {
 
 export function problems(plan: FlightPlan): string[] {
   const out: string[] = [];
+  // (a figure that is not a number is a fault in the data, wherever it is: a simulator handed one flies nowhere, and says
+  // so far from the cause. An instant that never comes is the largest safe integer or Infinity, and is a number.)
+  const seen = new Set<object>();
+  const weigh = (x: unknown, at: string): void => {
+    if (!x || typeof x !== 'object' || seen.has(x)) return;
+    seen.add(x);
+    if ('confidence' in x && 'value' in x && 'source' in x) {
+      if (typeof x.value !== 'number' || Number.isNaN(x.value)) out.push(`${at} is not a number: ${String(x.value)}`);
+      return;
+    }
+    for (const [key, child] of Object.entries(x)) weigh(child, Array.isArray(x) ? `${at}[${key}]` : `${at}.${key}`);
+  };
+  weigh({ craft: plan.craft, events: plan.events, attitude: plan.attitude, checks: plan.checks, record: plan.record }, 'plan');
   const n = names(plan);
   const unique = (kind: string, ids: string[]) => {
     const seen = new Set<string>();
