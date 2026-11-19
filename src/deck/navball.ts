@@ -193,7 +193,7 @@ const MARKS = {
     ),
   ],
   target: [
-    'Guidance: where the tilt programme, with your trim, wants the nose',
+    'Flight director: where the record’s guidance points the nose now (with your trim while it flies): put the nose on it to fly the mission as intended',
     SVG('<path d="M5 9V5h4M15 5h4v4M19 15v4h-4M9 19H5v-4"/><path d="M12 9v6M9 12h6"/>'),
   ],
 } as const;

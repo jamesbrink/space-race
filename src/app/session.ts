@@ -24,7 +24,6 @@ import { goHome } from './home.ts';
 import { holds } from './stake.ts';
 import '../ui/navball.css';
 import { Navball } from '../deck/navball.ts';
-import { programmeAxis } from '../sim/predict.ts';
 import { Sound } from '../sound/index.ts';
 import type { Flight, SitedFlight } from '../types.ts';
 import { TimeBar } from '../ui/timebar.ts';
@@ -316,9 +315,8 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   // its other instruments: the navball on the flight deck's top edge, and the predicted path drawn in the scene
   const deck = document.querySelector<HTMLElement>('#ui .cockpit')!;
   const navball = new Navball(deck, cockpit, deck.querySelector<HTMLElement>('[data-do=navball]'));
-  // (guidance's own aim is shown while it has something to steer with: the booster, burning)
-  navball.target = (s) =>
-    cockpit.craft && cockpit.steering.guidance && s.powered ? programmeAxis(cockpit.craft, s.t, cockpit.steering.trim) : null;
+  // (the flight director: where the record's guidance points the nose while it has something to steer with, whether it flies or not)
+  navball.target = (s) => cockpit.director(s);
   const path = new FlightPath(
     document.querySelector<HTMLElement>('#ui')!,
     navball.aside,

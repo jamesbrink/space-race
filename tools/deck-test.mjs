@@ -3,7 +3,7 @@
 // every key shown a button that does what the key does, nothing in the control block hidden, overlapping or (on touch)
 // under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, Vostok 1 taken over in
 // the ascent with real keys: turned by W and staged by Space, and the throttle on a ballistic flight and one into orbit.
-//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving|touch|apollo-escape|apollo-escape-replay|throttle for one section; SR_FLIGHTS=gatv-5003,atda for some flights)
+//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving|touch|apollo-escape|apollo-escape-replay|throttle|by-hand for one section; SR_FLIGHTS=gatv-5003,atda for some flights)
 import { launch, open, url as urlOf } from './browser.mjs';
 
 const url = urlOf(process.argv.slice(2));
@@ -45,14 +45,28 @@ const fail = (where, what) => {
   console.log(`  FAIL ${where}: ${what}`);
 };
 const browser = await launch();
-/** The deck's page of `id` at this size, flown: a page of its own, which counts only what it throws. */
-const fly = (id, w, h, touch, console = []) =>
-  open(browser, `${url}#${id}/fly`, {
+/** Throw both switches on, on the pad: the flight as flown (the deck is taken by hand: deck.ts `START`). */
+const asFlown = (page) =>
+  page.evaluate(() => {
+    for (const which of ['guidance', 'sequence']) {
+      const b = document.querySelector(`#ui > .cockpit [data-do=${which}]`);
+      if (b?.getAttribute('aria-pressed') === 'false') b.click();
+    }
+  });
+/**
+ * The deck's page of `id` at this size, flown: a page of its own, which counts only what it throws. It is taken by hand;
+ * unless `byHand`, both switches are thrown on as it opens, for the sections that watch it as flown and take it over.
+ */
+const fly = async (id, w, h, touch, console = [], byHand = false) => {
+  const opened = await open(browser, `${url}#${id}/fly`, {
     context: { viewport: { width: w, height: h }, hasTouch: touch, isMobile: w < 600 },
     console,
     wait: () => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active,
     timeout: 120000,
   });
+  if (!byHand) await asFlown(opened.page);
+  return opened;
+};
 
 /** Each panel's box and the deck's order, as the page has them. */
 const layout = (page) =>
@@ -364,6 +378,7 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
         id,
         { timeout: 120000 },
       );
+      await asFlown(page);
       await page.waitForTimeout(500);
     };
     // the clock run on to `t` a few seconds a frame, as the deck flies it (it steps no more than five seconds a frame)
@@ -949,6 +964,7 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
         wait: () => window.sr && document.querySelector('.loading.done') && window.sr.cockpit.active,
         timeout: 120000,
       });
+      await asFlown(page);
       trap(page);
       await handFly(page, id);
       await stop(page);
@@ -1081,12 +1097,12 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'touch') {
       await next.tap();
       await page.waitForFunction((previous) => document.querySelector('[data-cell=next]').textContent !== previous, action);
       await page.locator('.cockpit [data-do=keys]').tap();
-      await page.getByRole('button', { name: 'Restart as flown', exact: true }).tap();
+      await page.getByRole('button', { name: 'Restart', exact: true }).tap();
       await page.locator('.deck-ask [data-ask=leave]').tap();
       await page.waitForFunction(() => window.sr.clock.t <= 0 && document.querySelector('[data-cell=next]').textContent === 'Ignition');
-      await modesRead('true', 'Auto');
+      await modesRead('false', 'Manual'); // (started again by hand, as every flight is)
       if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
-      console.log(`  ${where}: tapped Ignition, took the steering and events over, tapped ${action}, and restarted as flown`);
+      console.log(`  ${where}: tapped Ignition, took the steering and events over, tapped ${action}, and restarted by hand`);
     } finally {
       await context.close();
     }
@@ -1095,6 +1111,7 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'touch') {
 if (!process.env.SR_ONLY || process.env.SR_ONLY === 'apollo-escape') {
   const where = 'Apollo 7 tower jettison';
   const { page, context, errors } = await open(browser, `${url}#usa/apollo/apollo-7/fly`, { timeout: 120_000 });
+  await asFlown(page);
   try {
     await page.evaluate(() => {
       window.sr.clock.pause();
@@ -1309,6 +1326,43 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'throttle') {
     if (cut.lever !== 'Cut') fail(where, `Cut reads "${cut.lever}"`);
     if (cut.burning ? cut.burning.some(Boolean) : cut.throttle !== 0) fail(where, `Cut left an engine burning: ${JSON.stringify(cut)}`);
     console.log(`  ${where}: ${pad.lever} on the pad, ${low.lever} two notches down (${held}), then ${cut.lever}: ${cut.what}`);
+    if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+    await ctx.close();
+  }
+}
+// Taken by hand (deck.ts `START`): every entry to Fly has guidance and the sequencer off; the navball's flight director
+// shows the record's attitude on the pad and going up; the next step is offered with the record's time; and a flight left
+// on its pad untouched keeps nothing.
+if (!process.env.SR_ONLY || process.env.SR_ONLY === 'by-hand') {
+  for (const id of ['usa/mercury/mr-3-freedom-7', 'ussr/vostok/vostok-1']) {
+    const where = `${id} by hand`;
+    const { page, errors, context: ctx } = await fly(id, 1280, 800, false, [], true);
+    const read = () =>
+      page.evaluate(() => ({
+        guidance: document.querySelector('#ui > .cockpit [data-do=guidance]').getAttribute('aria-pressed'),
+        sequence: document.querySelector('#ui > .cockpit [data-do=sequence]').getAttribute('aria-pressed'),
+        prompt: document.querySelector('[data-cell=prompt]')?.textContent ?? '',
+        director: !document.querySelector('.navball [data-mark=target]')?.hidden,
+        warns: window.sr.cockpit.warning,
+        stakes: window.sr.cockpit.stakes,
+      }));
+    const pad = await read();
+    if (pad.guidance !== 'false' || pad.sequence !== 'false')
+      fail(where, `on the pad G is ${pad.guidance} and B ${pad.sequence}: not by hand`);
+    if (!/by hand/.test(pad.prompt)) fail(where, `the pad does not say it is by hand: "${pad.prompt}"`);
+    if (!pad.director) fail(where, 'no flight director on the navball on the pad');
+    if (pad.stakes || pad.warns) fail(where, 'a flight standing untouched on its pad is at stake');
+    await page.keyboard.press('Space');
+    for (let t = 0; t <= 20; t += 4) {
+      await page.evaluate((x) => window.sr.clock.seek(x), t);
+      await page.waitForTimeout(80);
+    }
+    await page.waitForTimeout(300);
+    const up = await read();
+    if (!up.director) fail(where, 'no flight director going up');
+    if (!/Next: .* at T\+/.test(up.prompt)) fail(where, `no next step with the record's time: "${up.prompt}"`);
+    if (!up.stakes) fail(where, 'flown by hand, the flight is not at stake');
+    console.log(`  ${where}: G and B off on the pad ("${pad.prompt}"), going up "${up.prompt}"`);
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     await ctx.close();
   }
