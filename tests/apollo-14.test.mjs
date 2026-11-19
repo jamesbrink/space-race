@@ -2,19 +2,19 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { antaresStackParts } from '../missions/usa/apollo/flights/apollo-14/antares.ts';
 import { flight } from '../missions/usa/apollo/flights/apollo-14/flight.ts';
-import { lacks } from '../src/app/address.ts';
+import { lacks, openingFor } from '../src/app/address.ts';
 import { assertAdapterClearance } from './apollo-adapter-clearance.mjs';
-import { framesOf } from './glb.mjs';
+import { framesOf, materialsUnder } from './glb.mjs';
 
 const [stack, lander] = flight.models;
 
 test('Apollo 14 opens Kitty Hawk and Antares with their flown stations', () => {
   assert.equal(lacks(flight, 'gallery'), null);
-  assert.ok(lacks(flight, 'site'));
+  assert.equal(lacks(flight, 'site'), null);
   assert.ok(lacks(flight, 'fly'));
   assert.deepEqual(
     flight.models.map((model) => model.id),
-    ['vehicle', 'antares'],
+    ['vehicle', 'antares', 'pad', 'crew', 'pilot', 'lmp'],
   );
   assert.deepEqual(
     stack.seats.map((seat) => seat.label),
@@ -24,6 +24,35 @@ test('Apollo 14 opens Kitty Hawk and Antares with their flown stations', () => {
     lander.seats.map((seat) => seat.label.split('’')[0]),
     ['Shepard', 'Mitchell'],
   );
+});
+
+test('ML-2 carries Kitty Hawk through the weather hold at Pad A', () => {
+  const pad = flight.models.find((model) => model.id === 'pad');
+  assert.equal(pad.name, 'Mobile launcher 2');
+  assert.equal(flight.weather.observed.at, flight.launch);
+  assert.match(pad.url, /pad-a-1971-01\.glb$/);
+  assert.deepEqual(flight.site.zone, { name: 'EST', utcOffset: -5 });
+  assert.deepEqual(openingFor(flight, { fly: false, named: '', clockAt: 0, running: false }), {
+    at: -43200,
+    model: 'pad',
+    view: 'launcher',
+  });
+  const event = (words) => pad.sequence.find((key) => key.event.includes(words));
+  assert.equal(event('leaves the hatch').at, -5602);
+  assert.equal(event('12° standby').at, -5535);
+  assert.equal(event('retracts from standby').at, -300);
+  assert.equal(event('First vehicle motion').at, 0.2);
+  const cover = stack.parts.find((part) => part.node === 'BoostCover').clocked;
+  assert.equal(cover.at(-1).to, -7802);
+  assert.deepEqual(
+    stack.seats.map((seat) => flight.models.find((model) => model.id === seat.figure).name),
+    ['Shepard', 'Roosa', 'Mitchell'],
+  );
+  const commander = flight.models.find((model) => model.id === 'crew');
+  for (const suffix of ['.glb', '.lod1.glb', '.lod2.glb']) {
+    const suit = new URL(`../public/${commander.url.replace('.glb', suffix)}`, import.meta.url);
+    for (const limb of ['Arms', 'Legs']) assert.ok(materialsUnder(suit, limb).includes('a7l-commander-red'));
+  }
 });
 
 for (const level of ['', '.lod1', '.lod2']) {

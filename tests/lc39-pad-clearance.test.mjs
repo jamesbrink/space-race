@@ -141,6 +141,22 @@ for (const [flight, serial, firstMotion] of flights) {
         assert.ok(visor.to >= carrier.to && visor.to - carrier.from <= 4, mast);
       }
     }
+    if (serial === 509) {
+      // AS-509 §3.6.1 times each mast from its own umbilical plate separation to the retracted position.
+      const moves = pad.parts.find((part) => part.node === 'Tail_Service_Masts').clocked;
+      for (const [mast, seconds] of [
+        ['1_2', 2.168],
+        ['3_2', 2.496],
+        ['3_4', 2.131],
+      ]) {
+        const carrier = moves.find((move) => move.node === `Tail_Carrier_${mast}`);
+        const boom = moves.find((move) => move.node === `Tail_Boom_${mast}`);
+        const visor = moves.find((move) => move.node === `Tail_Visor_${mast}`);
+        assert.equal(carrier.from, firstMotion);
+        assert.ok(Math.abs(boom.to - carrier.from - seconds) < 1e-6, mast);
+        assert.ok(visor.from >= boom.to, mast);
+      }
+    }
     for (const level of ['', '.lod1', '.lod2']) {
       const { gltf } = await readGlb(file(pad, level));
       const root = hierarchy(gltf);
