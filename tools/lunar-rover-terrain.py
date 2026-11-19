@@ -38,14 +38,23 @@ def interpolate(data, x, y, fallback):
     return np.where(valid, (1 - fy) * (a * (1 - fx) + b * fx) + fy * (c * (1 - fx) + d * fx), fallback)
 
 
-def bake(name, site, altimeter):
-    product = f"NAC_DTM_APOLLO{site['mission']}"
-    url = f"https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/SDP/NAC_DTM/APOLLO{site['mission']}/{product}.TIF"
+def read_stereo(area):
+    product = f"NAC_DTM_{area}"
+    url = f"https://pds.lroc.im-ldi.com/data/LRO-L-LROC-5-RDR-V1.0/LROLRC_2001/DATA/SDP/NAC_DTM/{area}/{product}.TIF"
     with tifffile.TiffFile(source(CACHE / "apollo-dtm" / f"{product}.TIF", url)) as tif:
         geo = tif.geotiff_metadata
         stereo = tif.asarray()
     sx, sy, _ = geo["ModelPixelScale"]
     _, _, _, left, top, _ = geo["ModelTiepoint"]
+    def sample(latitude, longitude, fallback):
+        easting = RADIUS * (longitude - np.radians(geo["ProjCenterLongGeoKey"])) * np.cos(np.radians(geo["ProjStdParallel1GeoKey"]))
+        return interpolate(stereo, (easting - left) / sx - 0.5, (top - RADIUS * latitude) / sy - 0.5, fallback)
+
+    return sample
+
+
+def bake(name, site, altimeter):
+    products = [read_stereo(area) for area in site.get("stereo", [f"APOLLO{site['mission']}"])]
     lat, lon = np.radians(site["landing"])
     up = np.array([np.cos(lat) * np.cos(lon), np.cos(lat) * np.sin(lon), np.sin(lat)])
     east = np.array([-np.sin(lon), np.cos(lon), 0])
@@ -61,8 +70,9 @@ def bake(name, site, altimeter):
         longitude = np.arctan2(unit[..., 1], unit[..., 0])
         h, w = altimeter.shape
         broad = 0.5 * interpolate(altimeter, (longitude / (2 * np.pi) + 0.5) * w - 0.5, (0.5 - latitude / np.pi) * h - 0.5, np.nan) - 10_000
-        easting = RADIUS * (longitude - np.radians(geo["ProjCenterLongGeoKey"])) * np.cos(np.radians(geo["ProjStdParallel1GeoKey"]))
-        height = interpolate(stereo, (easting - left) / sx - 0.5, (top - RADIUS * latitude) / sy - 0.5, broad)
+        height = broad
+        for sample in products:
+            height = sample(latitude, longitude, height)
         # Project the relief onto the local vertical, retaining the curvature of the horizon.
         local = (RADIUS + height) * (unit @ up) - RADIUS
         if step == CONFIG["spacing"][0]:

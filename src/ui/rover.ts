@@ -1,3 +1,4 @@
+import { ROVER_SITES } from '../world/lunar-terrain.ts';
 import {
   ACESFilmicToneMapping,
   Color,
@@ -98,7 +99,7 @@ export class RoverDrive {
       <div class="rover-hands" hidden>${angles.map((label, i) => `<button data-rover-pedal="${i}" aria-label="${label}"><b aria-hidden="true">${padKeys[i]}</b><span>${label}</span></button>`).join('')}</div>
       <p class="rover-keys" hidden>${kbd('rover.drive')} steer &amp; drive · Drag to look · ${kbd('rover.brake')} brake · ${kbd('page.cel')} look · ${kbd('rover.camera')} view · ${kbd('rover.leave')} Gallery</p>`;
     this.root.querySelector('strong')!.textContent = model.galleryCraft ?? model.name;
-    this.root.querySelector('.rover-location')!.textContent = config.site === 'hadley' ? 'Hadley–Apennine' : 'Descartes Highlands';
+    this.root.querySelector('.rover-location')!.textContent = ROVER_SITES[config.site].label;
     this.status = this.root.querySelector('.rover-message')!;
     this.speed = this.root.querySelector('[data-speed]')!;
     this.travelled = this.root.querySelector('[data-distance]')!;
