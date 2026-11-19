@@ -34,6 +34,10 @@ use super::timing::MarchClock;
 /// What the targets hold: light in the engine's units, already exposed, and distances.
 pub const TARGET: TextureFormat = TextureFormat::Rgba16Float;
 
+/// The most texels the card may read along the long way of a footprint: the far cover is read along a ray low over
+/// the field, kilometres long and a pixel wide (`clouds.wesl` `far_cover`). Reads at a given level ignore it.
+const ANISOTROPY: u16 = 16;
+
 /// The view the clouds are marched for.
 #[derive(Component, ExtractComponent, Debug, Clone, Copy, Default)]
 #[extract_app(RenderApp)]
@@ -95,6 +99,7 @@ fn smooth(device: &RenderDevice, address: AddressMode) -> Sampler {
         mag_filter: FilterMode::Linear,
         min_filter: FilterMode::Linear,
         mipmap_filter: MipmapFilterMode::Linear,
+        anisotropy_clamp: ANISOTROPY,
         ..default()
     })
 }

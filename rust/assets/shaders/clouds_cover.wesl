@@ -122,6 +122,8 @@ struct Column {
     top: f32,
     // how far gone its cloud is, 0 new to 1 old
     age: f32,
+    // that turret's radius, m
+    radius: f32,
 }
 
 // The column at a place. `texel` is the sheet read there (`sheet_texel`); `spread` the spread there (`spread_for`
@@ -131,6 +133,7 @@ fn column(texel: vec4<f32>, spread: f32, cell: f32, depth: f32, clock: f32) -> C
     col.within = 1.0 - texel.r / max(spread, 1.0e-3);
     col.open = max(texel.a - WIDEST * max(spread - OPEN_AT, 0.0) - 0.01, 0.0) * cell;
     let radius = texel.g * spread * cell;
+    col.radius = radius;
     // The wider a turret the taller, up to the layer's depth. Each swells and sinks a little in its own time.
     let phase = fract(texel.g * 977.0);
     let breath = (0.9 + 0.1 * sin(clock / 160.0 + phase * TAU)) * (0.75 + 0.25 * phase);
@@ -158,24 +161,83 @@ fn shade(col: Column) -> f32 {
     return SHADE_MOST * smoothstep(SHADOW_EDGE.x, SHADOW_EDGE.y, col.within) * smoothstep(0.0, 120.0, col.top);
 }
 
-// How much of the Sun a place `height` m up has lost to the cumulus: what the field says of the columns its
-// sunbeam came down through low in the layer (SHADOW_UP), if its turret stands that high. The
-// shadows on the ground (height 0) and the shafts in the air are both this. `en` is the place in the cumulus'
-// drifting frame; `sun` the way to the Sun as (east, north, up); `layer` the cumulus' base and depth, m; `laid`
-// the spread before it is gathered (`spread_for` of the cover there); `wind` their drift, m/s; `cell` the metres
-// to a cell; `clock` the flight's clock, s.
+// The ground's shadows are read through the layer at this many heights, evenly, each where the sunbeam to the place
+// crosses it: a tall turret shades where its top stands, not only its base, and a shadow is as dark as the cloud
+// along the beam is thick.
+const SHADOW_READS: i32 = 4;
+// How much light a metre of cumulus takes out of the Sun's beam, as its shadow on the ground has it: far less than
+// the 0.075 of its top (clouds.wesl EXTINCTION), since what scatters forward out of the cloud still comes down
+// under it, and a scrap's shadow is only a dimming. Estimated, by eye against photographs of cumulus shadows on flat
+// land.
+const SHADOW_EXTINCTION: f32 = 0.008;
+// The most of the Sun the ground's shadow takes: the rest is the light a fair-weather cumulus lets through and its
+// sunlit sides throw down round it, so that with the sky's light a shadow is a little more than half as bright as
+// the sunlit ground beside it, and never black. Estimated, by eye against photographs.
+const GROUND_SHADE_MOST: f32 = 0.5;
+// How dark a whole cloud's shadow is on the whole, against GROUND_SHADE_MOST: what a pixel that holds many shadows
+// darkens by for each part of it that is under cloud. Estimated, from the reads through a cloud of middling height.
+const SHADOW_MEAN: f32 = 0.8;
+// Where the shadows give way to their mean, in how much of a cell of the field one pixel of the ground covers: from
+// the first the shadows blur with the pixel, by the second the ground is darkened by the share of it under cloud and
+// no single shadow is drawn, so that from high up the land is not peppered with dots. Chosen by eye.
+const SHADOW_FAR: vec2<f32> = vec2<f32>(0.04, 0.35);
+// How soft a shadow's edge is either way, m: this much for every metre the cloud stands above the place (the Sun's
+// disc is 0.009 of that; the rest is the cloud's own ragged, thinning edge), and at least the second. Estimated.
+const SHADOW_SOFT: vec2<f32> = vec2<f32>(0.045, 20.0);
+// The lumps of a shadow's outline: two sizes of them, m, and how far they push it in or out, m. Estimated, as the
+// knobs of a cumulus' side are a hundred metres or two across.
+const SHADOW_LUMPS: vec3<f32> = vec3<f32>(160.0, 60.0, 110.0);
+
+// How much of the Sun a place `height` m up (the ground) has lost to the cumulus: the cloud along its sunbeam,
+// read at SHADOW_READS heights through the layer, each softened by how far above the place it is. `en` is the place
+// in the cumulus' drifting frame; `sun` the way to the Sun as (east, north, up); `layer` the cumulus' base and
+// depth, m; `laid` the spread before it is gathered (`spread_for` of the cover there); `wind` their drift, m/s;
+// `cell` the metres to a cell; `clock` the flight's clock, s. The shafts in the air are `shadow_from`, read once.
 fn sun_shadow(sheet: texture_2d<f32>, smp: sampler, en: vec2<f32>, height: f32, sun: vec3<f32>, layer: vec2<f32>,
     laid: f32, wind: vec2<f32>, cell: f32, clock: f32) -> f32 {
+    // (how much ground one pixel covers, m: read first, before anything differs from pixel to pixel)
+    let footprint = max(length(dpdx(en)), length(dpdy(en)));
     if sun.z < 0.05 || height > layer.x + layer.y {
         return 0.0;
     }
     let along = along_wind(wind);
-    // (where the sunbeam crosses SHADOW_UP of the way up the layer, or the place itself if it is higher)
-    let up = max(layer.y * SHADOW_UP, height - layer.x);
-    let there = en + sun.xy * (max(layer.x + up - height, 0.0) / sun.z);
-    let spread = laid * gather(on_sheet(there, along, cell));
-    let second = second_laying(there / cell);
-    return shadow_from(sheet, smp, there, up, spread, second, along, layer.y, cell, clock);
+    // (the gathering and the layings change over kilometres: once, where the beam is halfway through the layer)
+    let middle = en + sun.xy * (max(layer.x + 0.5 * layer.y - height, 0.0) / sun.z);
+    let spread = laid * gather(on_sheet(middle, along, cell));
+    // Far off, the share of the ground under cloud (field.rs GROWS: the cover for a spread), darkened as a whole.
+    let k = spread * (1.0 - EDGE);
+    let mean = GROUND_SHADE_MOST * SHADOW_MEAN * saturate(GROWS_A * k + GROWS_B * k * k);
+    let far = smoothstep(SHADOW_FAR.x, SHADOW_FAR.y, footprint / cell);
+    if far >= 1.0 {
+        return mean;
+    }
+    let second = second_laying(middle / cell);
+    let rise = layer.y / f32(SHADOW_READS);
+    var depth = 0.0;
+    for (var i = 0; i < SHADOW_READS; i++) {
+        let up = (f32(i) + 0.5) * rise;
+        let above = layer.x + up - height;
+        if above <= 0.0 {
+            continue;
+        }
+        let there = en + sun.xy * (above / sun.z);
+        let col = column(sheet_texel(sheet, smp, there, along, cell, second), spread, cell, layer.y, clock);
+        if col.within <= -0.5 || up >= col.top {
+            continue;
+        }
+        // (the dome narrows toward its top, and the cloud seen stands inside the field's outline: clouds.wesl
+        // `cumulus`, and SHADOW_EDGE)
+        let lifted = up / col.top;
+        let breadth = pow(max(1.0 - lifted * lifted, 0.0), 0.4) * (1.0 - 0.5 * (SHADOW_EDGE.x + SHADOW_EDGE.y));
+        // (a cloud's outline is knobbed, not a turret's circle: pushed in and out by its own lumps)
+        // (and as soft as the pixel is wide, the lumps going as they become finer than it)
+        let lumps = (noise2(there / SHADOW_LUMPS.x) - 0.5) + 0.5 * (noise2(there / SHADOW_LUMPS.y + 17.0) - 0.5);
+        let lumped = lumps * SHADOW_LUMPS.z * (1.0 - smoothstep(0.5, 2.0, footprint / SHADOW_LUMPS.y));
+        let inward = (breadth - (1.0 - col.within)) * col.radius + lumped;
+        let soft = max(SHADOW_SOFT.x * above + SHADOW_SOFT.y, footprint);
+        depth += smoothstep(-soft, soft, inward) * SHADOW_EXTINCTION * rise / sun.z;
+    }
+    return mix(GROUND_SHADE_MOST * (1.0 - exp(-depth)), mean, far);
 }
 
 // The same, from the place `there` where the sunbeam crosses the layer `up` m above its base, with the spread there

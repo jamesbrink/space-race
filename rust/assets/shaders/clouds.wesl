@@ -43,9 +43,13 @@ const EXTINCTION: f32 = 0.075;
 // A deck's cloudlets are thin: the Sun comes through them.
 const DECK_EXTINCTION: f32 = 0.009;
 // Past this many levels of the cloudlets' coarser copies under a pixel the deck is read once, not marched; and the
-// share of the way through it its lens of cloud fills, on the whole. Chosen by eye.
+// share of the way through it its lens of cloud fills, on the whole (a lens `c` thick at its middle, flatter below,
+// fills about 0.56 sqrt(c) of the depth at its middle's thickness: 0.37 for a bank's 0.45). Derived from `deck`.
 const DECK_FAR: f32 = 3.0;
-const DECK_FILL: f32 = 0.2;
+const DECK_FILL: f32 = 0.37;
+// Added to where the deck is read once rather than marched, for comparing the two: -20 reads it once everywhere,
+// 99 marches it everywhere. Leave it at 0.
+const DECK_SWITCH_DEBUG: f32 = 0.0;
 // The shape noise repeats over this far, and the detail over this, m; and the side of one of its voxels.
 const SHAPE_TILE: f32 = 1200.0;
 const DETAIL_TILE: f32 = 260.0;
@@ -59,6 +63,13 @@ const UPDRAUGHT: f32 = 0.9;
 const LEAN: f32 = 0.035;
 // The most steps a ray takes through the cumulus, and through the deck.
 const MARCH_STEPS: i32 = 128;
+// How much longer than at first the strides are once the steps are all but spent (they lengthen with the square of
+// the share spent). Chosen so that a ray low over the field from 1.5 km reaches the far cover.
+const HURRY: f32 = 3.0;
+// Inside a turret's outline but clear of its cloud (above its dome, or beside it in a gap the noise has cut), the
+// stride, in short strides: the march goes back to the last clear place when it meets cloud, so this only risks
+// stepping over cloud thinner than itself. Chosen by eye.
+const ABOVE_STRIDE: f32 = 4.0;
 // Readings toward the Sun from each step in cloud.
 const LIGHT_STEPS: i32 = 3;
 // The mean density of a cumulus' body, against the extinction at its top: what the rest of the way to the Sun
@@ -66,11 +77,15 @@ const LIGHT_STEPS: i32 = 3;
 const REST_DENSITY: f32 = 0.5;
 // Beyond this, m, two readings toward the Sun do.
 const LIGHT_NEAR: f32 = 6000.0;
-// Beyond this, m, the fraying of a cloud's edge is too fine to see, and is left out.
+// Beyond this, m, the fraying of a cloud's edge is too fine to see, and its mean is taken instead; it fades to that
+// over the last third of the way, so no cloud changes as it crosses the line.
 const FINE_NEAR: f32 = 10000.0;
+// The detail noise's mean (clouds/volume.rs, its green channel): what eats into an edge where it is not read.
+const DETAIL_MEAN: f32 = 0.5;
 const DECK_STEPS: i32 = 12;
-// No cloud is marched beyond this, m.
-const REACH: f32 = 700000.0;
+// Nothing is looked for beyond this, m: past the farthest ground the eye can see from any height a flight reaches
+// (the horizon from 1,000 km is 3,700 km off), so it cuts nothing that can be seen. A f16 holds it in km.
+const REACH: f32 = 2.0e7;
 // The light of the scattering orders that are not marched, as a gain on those that are: with it the sunlit side
 // of a thick cloud is about as bright as white paint in the same Sun, which is what a cumulus is. Estimated.
 const DEEPER_ORDERS: f32 = 2.6;
@@ -184,7 +199,8 @@ struct Slow {
     at: f32,
 }
 
-// Read again only every this many metres along a ray. The gathering changes over about 20 km, the layings over 50.
+// Read again only every this many metres along a ray, and wherever the march meets a cloud. The gathering changes
+// over about 20 km, the layings over 50.
 const SLOW_EVERY: f32 = 1500.0;
 
 fn slow_at(en: vec2<f32>, t: f32) -> Slow {
@@ -208,8 +224,9 @@ struct Cloud {
 }
 
 // How dense the cumulus is at a place `z` metres above its base. `coarse` is how many levels down the noise's
-// coarser copies to read (far off, or on the way to the Sun); the detail is left out when `fine` is not set.
-fn cumulus(col: Column, en: vec2<f32>, z: f32, coarse: f32, fine: bool) -> Cloud {
+// coarser copies to read (far off, or on the way to the Sun); `fine` is how much of the detail is read, 0 to 1: where
+// it is not, its mean eats into the edge instead, so a cloud is as big without it as with it.
+fn cumulus(col: Column, en: vec2<f32>, z: f32, coarse: f32, fine: f32) -> Cloud {
     var cloud = Cloud(0.0, 0.0, 0.0);
     if col.within <= 0.0 || z <= 0.0 || z >= col.top {
         return cloud;
@@ -238,13 +255,17 @@ fn cumulus(col: Column, en: vec2<f32>, z: f32, coarse: f32, fine: bool) -> Cloud
     let cut = (1.0 - shape.r) * reach;
     var d = saturate((saturate(body * 2.0) - cut) / (1.0 - cut));
     cloud.deep = d;
-    if fine && d > 0.0 {
+    if d > 0.0 {
         // The edges fray: finer billows eat into what is thin, pushed about so that no edge is stamped, rising
         // faster than the shape. Near the base and in an old cloud they are wisps, higher up they are knobs.
-        let pushed = p + vec3(shape.b - 0.5, 0.0, shape.a - 0.5) * 90.0 - vec3(0.0, clock * UPDRAUGHT * 0.8, 0.0);
-        // (the detail is finer than the shape: its own coarser copy for the same footprint)
-        let billows = textureSampleLevel(volume, repeating, pushed / DETAIL_TILE, max(coarse - 1.0 + DETAIL_FINER, 0.0)).g;
         let knobbed = saturate(lifted * 3.0 - col.age * 0.5);
+        var billows = DETAIL_MEAN;
+        if fine > 0.0 {
+            let pushed = p + vec3(shape.b - 0.5, 0.0, shape.a - 0.5) * 90.0 - vec3(0.0, clock * UPDRAUGHT * 0.8, 0.0);
+            // (the detail is finer than the shape: its own coarser copy for the same footprint)
+            let read = textureSampleLevel(volume, repeating, pushed / DETAIL_TILE, max(coarse - 1.0 + DETAIL_FINER, 0.0)).g;
+            billows = mix(DETAIL_MEAN, read, fine);
+        }
         let eat = mix(billows, 1.0 - billows, knobbed) * mix(0.42, 0.38, knobbed);
         d = saturate((d - eat) / (1.0 - eat));
     }
@@ -306,7 +327,7 @@ fn cumulus_toward_sun(en: vec2<f32>, z: f32, slow: Slow, coarse: f32, jitter: f3
     var depth = 0.0;
     var gone = 0.0;
     // (a cloud far off is a few pixels a knob: two readings, longer, do)
-    let few = far > LIGHT_NEAR;
+    let few = far > LIGHT_NEAR * (0.75 + 0.5 * jitter);
     var stride = select(20.0, 80.0, few);
     for (var i = 0; i < select(LIGHT_STEPS, 2, few); i++) {
         let at = gone + (0.15 + 0.7 * jitter) * stride;
@@ -314,7 +335,7 @@ fn cumulus_toward_sun(en: vec2<f32>, z: f32, slow: Slow, coarse: f32, jitter: f3
         let up = z + rise * at;
         // (the nearest reading with the detail in it: that is what shades one knob with the next)
         let col = column_at(there - lean(up), slow);
-        depth += cumulus(col, there, up, coarse + select(1.0, 0.0, i < 1), i < 1 && !few).thick * stride;
+        depth += cumulus(col, there, up, coarse + select(1.0, 0.0, i < 1), select(0.0, 1.0, i < 1 && !few)).thick * stride;
         gone += stride;
         stride *= 4.5;  // (20, 90 and 400 m: through the whole of a big cloud toward the Sun)
     }
@@ -381,7 +402,13 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end
         let wobble = 0.7 + 0.6 * stagger(jitter, i);
         // (never so long that a cloud seen from far above is stepped over, nor longer than a tenth of a cloud
         // until a pixel is)
-        let short_stride = min(min(max(0.004 * t, 8.0), max((end - start) / 12.0, 8.0)), max(0.1 * layer.w, t * 0.0007));
+        // (and longer as the steps run out: a ray low through the layer, from above it or from the ground, crosses
+        // tens of kilometres of the field, and must reach the far cover where the march hands over, not be cut short
+        // where a cloud is still many pixels across)
+        let spent = f32(i) / f32(MARCH_STEPS);
+        let hurry = 1.0 + HURRY * spent * spent;
+        let short_stride = min(min(max(0.004 * t, 8.0), max((end - start) / 12.0, 8.0)), max(0.1 * layer.w, t * 0.0007))
+            * hurry;
         let height = height_at(h, mu, t);
         let z = height - layer.y;
         let en = frame.eye_over.xy + level * t;
@@ -390,10 +417,11 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end
         }
         let col = column_at(en - lean(z), slow);
         var cloud = Cloud(0.0, 0.0, 0.0);
-        // (far off, the noise is read from a coarser copy: as coarse as the stride, or as one of the march's pixels)
-        let coarse = max(log2(max(short_stride * 0.5, t * pixel * frame.day.z) / (SHAPE_TILE / VOXELS)) + 1.0, 0.0);
+        // (far off, the noise is read from a coarser copy, as coarse as one of the march's pixels there: never as the
+        // stride, which changes with where the eye is and how far the ray has to go, and with it the cloud's size)
+        let coarse = max(log2(t * pixel * frame.day.z / (SHAPE_TILE / VOXELS)) + 1.0, 0.0);
         if col.within > 0.0 {
-            cloud = cumulus(col, en, z, coarse, t < FINE_NEAR);
+            cloud = cumulus(col, en, z, coarse, 1.0 - smoothstep(0.67 * FINE_NEAR, FINE_NEAR, t));
         }
         if cloud.thick <= 0.0 {
             if short_left > 0 {
@@ -405,13 +433,16 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end
             // (outside every outline: as far as the field says is clear, and never less than a few short strides)
             // (less what the lean of the tops can bring nearer as the ray climbs or falls through the layer)
             let open = col.open - leaning;
-            let long_stride = select(short_stride * 2.5, max(open / slope, short_stride * 3.0), col.within <= 0.0);
+            let long_stride = select(short_stride * ABOVE_STRIDE, max(open / slope, short_stride * 3.0), col.within <= 0.0);
             t += long_stride * wobble;
             continue;
         }
         if short_left == 0 {
             short_left = 6;
             t = clear_at + short_stride * stagger(jitter, i + 3);
+            // (and the spread read again where the cloud is: read where the ray happened to be, a cloud would be
+            // wider or narrower as the eye moved)
+            slow = slow_at(en, t);
             continue;
         }
         short_left = 3;
@@ -437,6 +468,9 @@ fn march_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end
         seen = add_seen(seen, glow, 1.0 - exp(-cloud.thick * stride), t);
     }
     marched_to = min(t, end);
+    if t < end && seen.through > 0.0 {
+        debug_short = 1.0;
+    }
     return seen;
 }
 
@@ -452,20 +486,38 @@ const SHEET_TEXELS: f32 = 1024.0;
 // the clouds). Chosen by eye: a cloud is then a few pixels across and has no more shape to
 // show than its outline.
 const FAR_AT: f32 = 0.03;
-// The far cover is read this many levels coarser than the pixel: a field of small cumulus seen from high up is a
-// soft white veil with the clumps and streets in it, as photographs from orbit show it, not a scatter of specks.
-// Chosen by eye.
-const FAR_SOFT: f32 = 3.0;
+// The far cover is read this many levels coarser than the march's pixel across the ray: a field of small cumulus
+// seen from high up is a soft white veil with the clumps and streets in it, as photographs from orbit show it, not a
+// scatter of specks. Chosen by eye.
+const FAR_SOFT: f32 = 1.0;
+// The cover as the far reading has it, against the cloud the march draws over the same ground: the cover's outlines
+// are the field's, cut back by EDGE, and the marched cloud stands wider than that once its sides and the lean of its
+// top are seen from the side. Measured by eye where the two meet, the march brought nearer (DEBUG_SPLIT).
+const FAR_FILL: f32 = 2.0;
+// The share of the layer's depth, from its base, the far reading takes the cloud to fill: most cumulus of a fair day
+// are heaps of a third or half the layer's depth, and few stand as high as it. Estimated.
+const FAR_DEPTH: f32 = 0.5;
 
-// How much of the sky the cumulus cover about a place, as seen by a pixel `footprint` metres across.
-fn far_cover(en: vec2<f32>, footprint: f32) -> f32 {
+// How much of the sky the cumulus cover about a place, as the stretch of a ray `along` (metres east and north, the
+// way the ray goes over the ground and as far as the reading stands for) sees it, `across` metres wide: the mean
+// over that stretch, read from the cover's coarser copies with the card's own anisotropic filtering. A ray low over
+// the field crosses kilometres of it in one pixel, and it is the mean along that way that says how often it meets a
+// cloud; across it the clumps and gaps stay.
+fn far_cover(en: vec2<f32>, along: vec2<f32>, across: f32) -> f32 {
     let cell = frame.lay.y;
     let k = spread_at(en) * (1.0 - EDGE);
-    let on = on_sheet(en, along_wind(frame.wind.xy), cell);
-    let level = log2(max(footprint * SHEET_TEXELS / (cell * CELLS), 1.0)) + FAR_SOFT;
+    let wind = along_wind(frame.wind.xy);
+    let on = on_sheet(en, wind, cell);
+    // (both ways on the sheet, in the texture's units)
+    let way = on_sheet(along, wind, cell * CELLS);
+    let wide = length(way);
+    let turned = select(vec2(1.0, 0.0), vec2(-way.y, way.x) / max(wide, 1.0e-9), wide > 1.0e-9);
+    let side = turned * (across * exp2(FAR_SOFT) / (cell * CELLS));
+    let long = select(vec2(-side.y, side.x), way, wide > length(side));
     let second = second_laying(en / cell);
-    let c = mix(textureSampleLevel(cover, repeating, on / CELLS, level),
-        textureSampleLevel(cover, repeating, mirrored(on) / CELLS, level), second);
+    let mirror = vec2(1.0, -1.0);
+    let c = mix(textureSampleGrad(cover, repeating, on / CELLS, long, side),
+        textureSampleGrad(cover, repeating, mirrored(on) / CELLS, long * mirror, side * mirror), second);
     let s = COVER_SPREADS;
     var got = c.r * k / s.x;
     if k > s.z {
@@ -475,34 +527,67 @@ fn far_cover(en: vec2<f32>, footprint: f32) -> f32 {
     } else if k > s.x {
         got = mix(c.r, c.g, (k - s.x) / (s.y - s.x));
     }
-    return saturate(got);
+    return saturate(got * FAR_FILL);
 }
 
-// The cumulus from far off, between `start` and `end` along the ray: the cover read once, where the ray is
-// halfway through the layer, at the coarseness of the pixel's footprint on it (longer the more slanting the ray).
-// A ray down through the layer meets cloud as often as the cover says; a ray along it crosses a cloud's breadth at
-// a time, and meets many. Lit as a cloud's sunlit top from above, its shaded base from below and its shadowed side
-// from the side away from the Sun. Estimated, and matched by eye to the march where the two meet.
-fn far_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, start: f32, end: f32, pixel: f32) -> Seen {
+// Readings of the cover along the part of a ray beyond the march, each a little further along at each pixel and
+// frame: so a long way through the layer, low over the horizon, keeps the clumps and gaps it passes, and the
+// temporal filter gathers them. Chosen for what it costs.
+const FAR_READS: i32 = 5;
+// How much cloud lies between a far cloud's face and the Sun, as an optical depth, for each face as the eye sees it:
+// its top, its side on the eye's side with the Sun behind the eye, that side with the Sun ahead of the eye, and its
+// base. Estimated, and matched by eye to what the march gives the same clouds where the two meet.
+const FAR_SHADE: vec4<f32> = vec4<f32>(0.6, 0.9, 4.0, 7.0);
+
+// The light of the cumulus far off, as a ray going this way sees it: the faces it sees of a cloud in the shares
+// their areas take as seen along it (a cumulus is `layer.w` across and `layer.z` high), each lit as the march lights
+// that face of a near cloud. Read once for the ray.
+fn far_glow(ray: vec3<f32>, mu: f32) -> vec3<f32> {
     let layer = frame.cumulus;
-    let level = vec2(dot(ray, frame.east.xyz), dot(ray, frame.north.xyz));
     let cosine = dot(ray, frame.sun.xyz);
     let sun_high = max(dot(frame.sun.xyz, frame.up.xyz), 0.0);
-    let steep = abs(mu);
-    // (what the ray sees of a cloud: its top from above, its base from below, its side between; on the side away
-    // from the Sun the side is in its own shadow)
-    let from_below = smoothstep(-0.2, 0.2, mu);
-    let shaded = mix(0.6, 7.0, from_below) + 4.0 * max(cosine, 0.0) * (1.0 - steep);
-    let sunlit = scattered(shaded, cosine, 1.0, 0.0);
-    let sky = frame.skylight.xyz * mix(0.95, 0.45, from_below);
-    let ground = frame.sunlight.xyz * (GROUND_ALBEDO / PI) * sun_high * from_below;
-    let glow = frame.sunlight.xyz * sunlit * DEEPER_ORDERS + sky + ground;
-    let t = 0.5 * (start + end);
-    let footprint = t * pixel / sqrt(max(steep, 0.05));
-    let c = far_cover(frame.eye_over.xy + level * t, footprint);
-    let chord = max(mix(0.5 * layer.w, layer.z, steep), 1.0);
-    let stopped = 1.0 - pow(1.0 - min(c, 0.98), max((end - start) / chord, 1.0));
-    return add_seen(seen_in, glow, stopped, t);
+    let breadth = layer.w / max(layer.z, 1.0);
+    let base = max(mu, 0.0) * breadth;
+    let top = max(-mu, 0.0) * breadth;
+    let side = sqrt(max(1.0 - mu * mu, 0.0));
+    let whole = base + top + side;
+    let toward = smoothstep(-0.5, 0.8, cosine);
+    let lit_top = scattered(FAR_SHADE.x, cosine, 1.0, 0.0);
+    let lit_side = scattered(mix(FAR_SHADE.y, FAR_SHADE.z, toward), cosine, 0.9, 0.25 * toward);
+    let lit_base = scattered(FAR_SHADE.w, cosine, 1.0, 0.0);
+    let sunlit = (lit_top * top + lit_side * side + lit_base * base) / whole;
+    let sky = frame.skylight.xyz * (0.95 * top + 0.7 * side + 0.45 * base) / whole;
+    let ground = frame.sunlight.xyz * (GROUND_ALBEDO / PI) * sun_high * (0.3 * side + base) / whole;
+    return frame.sunlight.xyz * sunlit * DEEPER_ORDERS + sky + ground;
+}
+
+// The cumulus from far off, between `start` and `end` along the ray: the cover read at FAR_READS places along the
+// way, each at the coarseness of the pixel's footprint there and standing for its share of the way. A ray down
+// through the layer meets cloud as often as the cover says; a ray along it crosses a cloud's breadth at a time, and
+// meets many, which is how a field closes into a band toward the horizon.
+fn far_cumulus(seen_in: Seen, ray: vec3<f32>, mu: f32, start: f32, end: f32, pixel: f32, jitter: f32) -> Seen {
+    let layer = frame.cumulus;
+    let level = vec2(dot(ray, frame.east.xyz), dot(ray, frame.north.xyz));
+    let glow = far_glow(ray, mu);
+    let chord = max(mix(0.5 * layer.w, layer.z, abs(mu)), 1.0);
+    // (the readings are spread evenly in the distance's logarithm: the near part of a long way is the more of the
+    // picture)
+    let ratio = end / max(start, 1.0);
+    var seen = seen_in;
+    var before = start;
+    for (var i = 0; i < FAR_READS; i++) {
+        if seen.through <= 0.0 {
+            break;
+        }
+        let next = start * pow(ratio, f32(i + 1) / f32(FAR_READS));
+        let t = start * pow(ratio, (f32(i) + stagger(jitter, i + 11)) / f32(FAR_READS));
+        let c = far_cover(frame.eye_over.xy + level * t, level * (next - before), t * pixel * frame.day.z);
+        let stopped = 1.0 - pow(1.0 - min(c, 0.98), max((next - before) / chord, 0.0));
+        debug_far += seen.through * stopped;
+        seen = add_seen(seen, glow, stopped, t);
+        before = next;
+    }
+    return seen;
 }
 
 // The cumulus along the ray: marched near, and read as a cover from where a cloud is a few pixels across (a little
@@ -518,15 +603,20 @@ fn see_cumulus(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, pixel
     if slab.end <= 0.0 || end <= start {
         return seen_in;
     }
-    let split = frame.lay.y * FAR_AT / pixel * (0.8 + 0.4 * jitter);
+    let split = frame.lay.y * FAR_AT * DEBUG_SPLIT / pixel * (0.6 + 0.8 * jitter);
     var seen = seen_in;
     var onward = max(start, split);
     if start < split {
         seen = march_cumulus(seen, ray, h, mu, start, min(end, split), pixel, jitter);
         onward = marched_to;
     }
-    if end > onward && seen.through > 0.0 {
-        seen = far_cumulus(seen, ray, h, mu, onward, end, pixel);
+    // (far off, only the lower part of the layer, where most of the cloud stands: a ray down through the whole of it
+    // would take every cloud for a column as deep as the layer, and draw each as a long streak)
+    let low = inside(h, mu, layer.y, layer.y + layer.z * FAR_DEPTH);
+    let far_start = max(onward, low.start);
+    let far_end = min(end, low.end);
+    if low.end > 0.0 && far_end > far_start && seen.through > 0.0 {
+        seen = far_cumulus(seen, ray, mu, far_start, far_end, pixel, jitter);
     }
     return seen;
 }
@@ -629,12 +719,18 @@ fn march_deck(seen_in: Seen, ray: vec3<f32>, h: f32, mu: f32, limit: f32, pixel:
         return seen;
     }
     let far = start * pixel * 1.5 / sqrt(max(abs(mu), 0.05));
-    if log2(far / (frame.lay.w / 512.0)) + 1.0 > DECK_FAR {
+    // (as coarse as the march would read the deck where the ray meets it)
+    let far_level = log2(far / (frame.lay.w / 512.0)) + 1.0;
+    // (a little nearer or further at each pixel and frame, so that as the eye comes up to the deck the change from the
+    // one to the other is a cross-fade, never a line that sweeps across it)
+    if far_level > DECK_FAR + DECK_SWITCH_DEBUG + 1.5 * (jitter - 0.5) {
         let middle = 0.5 * (start + end);
         let en = frame.eye_over.zw + level * middle;
-        let banks_coarse = max(DECK_FAR - log2(9.0), 0.0);
-        let bank = saturate(bank_over(en, push, banks_coarse + 1.0) / (0.2 + 0.05 * banks_coarse)) * deck_share(en);
-        let sheet = deck(en, layer.y + 0.425 * layer.z, bank, DECK_FAR + 1.0);
+        // (the banks and the cloudlets read as the march reads them there, so the two agree where they meet)
+        let coarse = max(far_level, DECK_FAR);
+        let banks_coarse = max(coarse - log2(9.0), 0.0);
+        let bank = saturate(bank_over(en, push, banks_coarse) / (0.1 + 0.05 * banks_coarse)) * deck_share(en);
+        let sheet = deck(en, layer.y + 0.425 * layer.z, bank, coarse);
         let sunlit = scattered(sheet.shade, cosine, 1.0, 0.5);
         let glow = frame.sunlight.xyz * sunlit * DEEPER_ORDERS + frame.skylight.xyz * 0.85;
         return add_seen(seen, glow, 1.0 - exp(-sheet.thick * DECK_FILL * (end - start)), middle);
@@ -712,14 +808,15 @@ fn in_shadow(en: vec2<f32>, height: f32, slow: Slow) -> f32 {
 // takes out of a ray at the ground. Estimated. With the day's haze it puts how far one can see at the ground near
 // 35 km (and nearer 9 km just under the bases), past the 16 km the station could report; it is what makes the light under and round the clouds
 // a thing that can be seen, as it is on a humid morning by the sea.
-const HUMID: f32 = 1.0e-4;
+const HUMID: f32 = 1.5e-5;
 // That at the ground and just under the bases, as a share of HUMID: wetted aerosol swells with the humidity, which
 // is highest under the bases. Estimated.
-const HUMID_SWELL: vec2<f32> = vec2<f32>(0.5, 3.0);
+const HUMID_SWELL: vec2<f32> = vec2<f32>(0.5, 2.0);
 // The haze throws its light forward: two lobes, a narrow one that makes the glare round the Sun and a broad one
-// that makes the sky round it pale. Estimated, as aerosol phase functions near the sea are measured (asymmetry
-// about 0.7 overall).
-const HAZE_LOBES: vec3<f32> = vec3<f32>(0.88, 0.45, 0.6);
+// that makes the sky round it pale, and the share of the broad one. Estimated, as aerosol phase functions near the
+// sea are measured (asymmetry about 0.6 overall); the narrow lobe's share held down so that the glare round the Sun
+// stays under the print's white and the Sun's disc stands out of it in the Film look.
+const HAZE_LOBES: vec3<f32> = vec3<f32>(0.85, 0.45, 0.8);
 // Beyond this, m, the haze is not asked whether it is in a cloud's shadow: a shaft so far off is a few pixels
 // across and lost in the haze before it. Chosen for what it costs.
 const SHAFT_REACH: f32 = 12000.0;
@@ -819,6 +916,15 @@ fn haze(ray: vec3<f32>, h: f32, mu: f32, limit: f32, range: f32, through: f32, j
     return out;
 }
 
+// What is drawn, for finding faults: 0 the picture; 1 the march's cloud red and the far cover's blue, by their
+// brightness, with no haze; 2 the cloud with no haze; 3 red where the march ran out of steps. Leave it at 0.
+const DEBUG_VIEW: i32 = 0;
+var<private> debug_far: f32;
+var<private> debug_short: f32;
+// Where the march gives way to the far cover, against where it should: below 1 it does so nearer, so the two can
+// be compared side by side. Leave it at 1.
+const DEBUG_SPLIT: f32 = 1.0;
+
 // Off, nothing is marched and the clouds and haze are gone: for measuring what they cost. Leave it on.
 const MARCH: bool = true;
 // How many times the march is done over, for measuring what one costs. Leave it at 1.
@@ -907,9 +1013,17 @@ fn fragment(in: FullscreenVertexOutput) -> Marched {
     }
     // And the day's haze, in front of the cloud and behind it.
     var hazed = Hazed(vec3(0.0), 1.0, 1.0);
-    if (MEASURE_SKIP & 4) == 0 { hazed = haze(ray, h, mu, limit, range, seen.through, jitter); }
+    if DEBUG_VIEW == 1 {
+        let lum = dot(light, vec3(0.2126, 0.7152, 0.0722));
+        let far_share = saturate(debug_far / max(1.0 - seen.through, 1.0e-4));
+        light = mix(vec3(1.0, 0.25, 0.2), vec3(0.2, 0.35, 1.0), far_share) * lum;
+    }
+    if (MEASURE_SKIP & 4) == 0 && DEBUG_VIEW == 0 { hazed = haze(ray, h, mu, limit, range, seen.through, jitter); }
     var out: Marched;
     out.cloud = finite(vec4(light * view.exposure, 1.0 - seen.through));
+    if DEBUG_VIEW == 3 && debug_short > 0.0 {
+        out.cloud = vec4(1.0e3 * view.exposure, 0.0, 0.0, 1.0);
+    }
     out.haze = finite(vec4(hazed.light * view.exposure, hazed.cloud));
     out.reach = finite(vec4(range / 1000.0, limit / 1000.0, hazed.behind, 0.0));
     // (the whole march again, for measuring: its cost is then the frame's change over the repeats)

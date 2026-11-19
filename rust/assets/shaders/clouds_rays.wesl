@@ -36,7 +36,7 @@ const STRENGTH: f32 = 5.0;
 const EDGE_GAIN: f32 = 1.0;
 const SHADOW_GAIN: f32 = 0.08;
 // Where a march's ray went no further than this, km, it met something solid (clouds.wesl REACH less a little).
-const OPEN_SKY: f32 = 699.0;
+const OPEN_SKY: f32 = 19990.0;
 // Switch: off, there are no rays (for measuring what they cost, and for comparing). Leave it on.
 const RAYS: bool = true;
 // A cloud's light, against white paint in the Sun, from which on it counts as a blazing edge, and wholly. By eye.

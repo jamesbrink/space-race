@@ -16,13 +16,16 @@ import bevy_pbr::prepass::utils::prepass_depth;
 @group(constants::MATERIAL_BIND_GROUP) @binding(2) var reach_marched: texture_2d<f32>;
 @group(constants::MATERIAL_BIND_GROUP) @binding(3) var rays_marched: texture_2d<f32>;
 
-// No cloud is marched beyond this, km (clouds.wesl REACH).
-const REACH_KM: f32 = 700.0;
+// Nothing is looked for beyond this, km (clouds.wesl REACH).
+const REACH_KM: f32 = 20000.0;
 // How sharply a ray that went a different way from this pixel's is passed over: the weight falls by e for every
 // this-many-th part of the way it differs. Chosen so that a gantry 30 m off is not mixed with the sky behind it.
 const KEEN: f32 = 6.0;
-// The tent the march's rays are weighed by, in the march's pixels from this one.
-const TENT: f32 = 1.5;
+// How widely the march's rays are weighed, in the march's pixels: a bell this wide (its standard deviation) over the
+// four by four round this pixel. Narrower, the pixel a ray went through this frame stands out from those between,
+// and as the temporal filter keeps more of the newest frames than of the older ones a lattice of the march's pixels
+// shows in soft, thin cloud. Chosen by eye.
+const SPREAD: f32 = 0.8;
 
 // Which of the `every` x `every` pixels under one of the march's this frame's ray goes through: each in turn, so
 // that over every^2 frames every pixel of the frame has had a ray of its own. clouds.wesl and clouds_lay.wesl have
@@ -82,10 +85,10 @@ fn fragment(
     let every = i32(round(view.viewport.z / f32(size.x)));
     // Where this pixel falls among the march's rays, in the march's pixels.
     let among = (floor(in.position.xy) - vec2<f32>(picked(globals.frame_count, every))) / f32(every);
-    // The march's rays round this pixel, three by three, weighed by a tent 1.5 of the march's pixels wide (wider
-    // than their spacing, so that no square of them shows) and by how near what each met is to what is here.
+    // The march's rays round this pixel, four by four, weighed by a bell (SPREAD) and by how near what each met is to
+    // what is here.
+    let corner = vec2<i32>(floor(among)) - vec2(1);
     let nearest = vec2<i32>(round(among));
-    let off = among - round(among);
     var sum = vec4(0.0);
     var haze = vec4(0.0);
     var rays = vec3(0.0);
@@ -93,17 +96,17 @@ fn fragment(
     var weight = 0.0;
     var best = nearest;
     var best_miss = 1.0e9;
-    for (var k = 0; k < 9; k++) {
-        let side = vec2(k % 3 - 1, k / 3 - 1);
-        let at = clamp(nearest + side, vec2(0), size - 1);
+    for (var k = 0; k < 16; k++) {
+        let ray = corner + vec2(k % 4, k / 4);
+        let at = clamp(ray, vec2(0), size - 1);
         let reach = textureLoad(reach_marched, at, 0);
         let miss = abs(log((reach.y + 0.002) / (limit + 0.002)));
-        let tent = max(vec2(TENT) - abs(vec2<f32>(side) - off), vec2(0.0));
-        if miss < best_miss || (miss == best_miss && side.x == 0 && side.y == 0) {
+        let apart = vec2<f32>(ray) - among;
+        if miss < best_miss || (miss == best_miss && all(ray == nearest)) {
             best_miss = miss;
             best = at;
         }
-        let w = tent.x * tent.y * exp(-miss * KEEN) + 1.0e-6;
+        let w = exp(-dot(apart, apart) / (2.0 * SPREAD * SPREAD) - miss * KEEN) + 1.0e-6;
         sum += textureLoad(cloud_marched, at, 0) * w;
         haze += textureLoad(haze_marched, at, 0) * w;
         rays += textureLoad(rays_marched, at, 0).rgb * w;
