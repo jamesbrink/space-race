@@ -55,6 +55,22 @@ the clock alone would drift from what the hardware did, the guidance closes the 
 - **A separation is an impulse** (staged.ts `partedOff`, forces.ts `keptShare`): the spacecraft leaves with its share of
   the speed its joint pushes the two apart at, along the long axis, on the record's run as on a flight flown by hand.
 
+- **A manoeuvre made on another craft is solved on the two as they are** (sim/pursuit.ts). The target is a craft of its
+  own (`FlightPlan.target`: a stage the spacecraft let go, flown on from the parting with its side of the joint's push,
+  by gravity and the air on its own mass and drag area: orbital.ts `targetFrom`, staged.ts `targetOf`). Nothing the
+  spacecraft does moves it, and no observation of the record's is written into it. A burn made on it says what it was for
+  (`Action.ignite.toward`, plan.ts `Pursuit`): `reach`, the target at a stated place from the craft at a stated instant
+  and in its plane (a corrective combination, a terminal phase); `coelliptic`, an orbit of the target's shape; `station`,
+  braked to rest at a stated place by the record's end of the braking and held there. As the burn lights, guidance solves
+  its line and its length from the state the run is in, by flying it ahead on the run's own forces (`flyOrbit`'s
+  `flyAhead`) until it does that; a braking's thrust is commanded step by step from the range and its rate, within what
+  the engine gives. The firing pushes as hard as the record's did and ends when it has given what was solved
+  (`OrbitFlown.burns`, `BurnFlown`). The record's impulse, and the ranges it has, are checks (`<event>.velocity`,
+  `<name>.range`: `CheckWhen` `reading: 'range'`), and tools/residuals.mjs prints both. Without the target (the coast
+  flown alone from the published orbit; a flight flown by hand that never let the stage go) a burn is the record's
+  impulse along the record's attitude. Apollo 7's rendezvous with its S-IVB is flown so. The predicted path
+  (fliers.ts `spacecraft`) does not yet solve these burns: it shows the record's.
+
 What a run misses the record by is its finding. A flight that comes out badly wrong wants its guidance or its data put
 right; a fix written into the state is not one.
 
@@ -1247,6 +1263,15 @@ read gives enough of to fly (issue #10).
   the stage through `Stage.overlay`, which builds its shaders in `Stage.warm`.
 
 ## Orbital docking
+
+**Not yet under the one-state rule.** The docking deck's chapters (sim/approach.ts, transfer.ts, rendezvous.ts,
+flyby.ts) begin from navigation fixes in the mission reports, and some then place a craft from an observation
+(`startTransfer`'s radar range, `startRendezvous`'s line of sight, `startVisit`'s optical range, `startTether`'s
+extended strap). Gemini VIII to XII and Apollo 9 have no flight from the pad (no `Flight.plan`), so there is no state
+of their own for a chapter to begin from, and their targets' launches are separate flights. What they need is each
+flight's ascent and coast as a plan, its target named as a craft (`FlightPlan.target`, from the target's own run), and
+the record's manoeuvres given their purposes (`Pursuit`), as Apollo 7's are: then a chapter is a place in that one run.
+Until then what follows describes chapters that start at the record.
 
 The terminal approaches start around a navigation fix from the flight report. Each spacecraft has an independent inertial state, body attitude and principal moments. The capture calculation evaluates velocity at the moving port, including its rotational velocity. Capture draws the rings together and corrects their relative attitude while preserving total linear and angular momentum. At hard dock, forces and torques act about the coupled centre, with the rotated inertia tensors and parallel-axis terms of both vehicles. The throttle remains with the firing body. Opening the joint preserves both outgoing states. Translation provides separation.
 

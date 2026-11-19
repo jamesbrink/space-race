@@ -3,6 +3,8 @@
 // push and nothing else: docs/agents/simulator.md, "One state, changed only by what pushes it"). A record is what a run is
 // compared with, never what it is put on, so these are the run's findings; src/sim/misses.ts holds each check's reason.
 //
+// Under each flight: the tracking it has, the manoeuvres of its coast as flown, and how far its target was where the record says.
+//
 //   node tools/residuals.mjs [flight id part] [--json]
 import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -81,6 +83,15 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root }).s
         : null,
     ends: whole.coast.samples.at(-1).phase,
     fixes,
+    // the coast's manoeuvres as flown (guidance's own where it solved one on the flight's target: sim/pursuit.ts), each
+    // against the record's impulse where a check holds it, and the target's range at the instants the record has one
+    burns: (whole.coast.burns ?? []).map((b) => ({
+      ...b,
+      record: plan.checks.find((c) => c.id === `${b.lit}.velocity`)?.value ?? (b.solved ? null : b.velocity),
+    })),
+    ranges: plan.checks
+      .filter((c) => c.when && 'reading' in c.when && c.when.reading === 'range')
+      .map((c) => ({ label: c.label, at: c.when.at, flown: whole.coast.results[c.id], record: c.value })),
   });
 }
 if (json) console.log(JSON.stringify(rows));
@@ -100,6 +111,14 @@ else {
     for (const x of r.fixes)
       console.log(
         `| &nbsp; tracking at ${x.t.toFixed(1)} s | | | | up ${(x.up / 1000).toFixed(1)}, along ${(x.along / 1000).toFixed(1)}, across ${(x.across / 1000).toFixed(1)} km | | ${x.speed.toFixed(1)} m/s |`,
+      );
+    for (const b of r.burns)
+      console.log(
+        `| &nbsp; ${b.lit} at ${b.on.toFixed(1)} s, ${b.solved ? 'solved on the target' : 'as recorded'} | | | | ${b.velocity.toFixed(2)} m/s in ${(b.off - b.on).toFixed(1)} s${b.solved && b.record !== null ? ` (record ${b.record.toFixed(2)} m/s)` : ''} | | |`,
+      );
+    for (const x of r.ranges)
+      console.log(
+        `| &nbsp; ${x.label}, ${x.at.toFixed(0)} s | | | | target at ${(x.flown / 1000).toFixed(3)} km (record ${(x.record / 1000).toFixed(3)}) | | |`,
       );
   }
 }
