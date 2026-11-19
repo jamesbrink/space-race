@@ -110,7 +110,11 @@ export function nextStep(flight: Flight, here: 'gallery' | 'site', go: (to: Plac
     const says = why ? why.replace(/^[^:]*:\s*/, '').replace(/^./, (c) => c.toUpperCase()) : name;
     return `<button class="way-on" data-way="${to}"${why ? ' aria-disabled="true"' : ''} title="${esc(why ?? PLACE_SAYS[to])}">${icon(to)}<span>${esc(says)}</span>${why ? '' : '<i aria-hidden="true">›</i>'}</button>`;
   };
-  nav.innerHTML = here === 'gallery' ? on('site', 'Go to the launch site') : `${back('gallery')}${back('site')}${on('fly', 'Launch')}`;
+  // (from the gallery the way is to the site; a flight kept by hand can be taken up from here too, and only then is that way there)
+  nav.innerHTML =
+    here === 'gallery'
+      ? `${on('site', 'Go to the launch site')}${lacks(flight, 'fly') ? '' : on('fly', 'Resume').replace('data-way=', 'data-kept-only data-way=')}`
+      : `${back('gallery')}${back('site')}${on('fly', 'Launch')}`;
   nav.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-way]');
     if (b && b.getAttribute('aria-disabled') !== 'true') go(b.dataset.way as Place);
@@ -185,6 +189,7 @@ export function markKept(at: string | null, end: () => void, phase = 'In flight'
 function paintKept(nav: Element): void {
   nav.querySelector('.kept-mark')?.remove();
   const fly = nav.querySelector<HTMLElement>('[data-place=fly], [data-way=fly]');
+  if (fly?.hasAttribute('data-kept-only')) fly.hidden = keptMark === null;
   fly?.classList.toggle('kept', keptMark !== null);
   // (the way to a kept flight says what it now does)
   const says = fly?.matches('[data-way]') ? fly.querySelector('span') : null;
