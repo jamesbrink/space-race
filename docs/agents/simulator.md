@@ -132,7 +132,7 @@ with its models (app/session.ts) and a kept flight is stamped with them (deck/ta
 
 `tests/sitecontact.test.mjs` flies **every flight as flown, by the live simulator, through its own site** for its
 first 30 s and holds that it touches nothing: a flight that strikes its site has a shape's fault or the model's, and
-the test names the piece and the hull. Three were found and settled so:
+the test names the piece and the hull. Four were found and settled so:
 
 - Gemini 3 struck the umbilical tower's top line a second after liftoff. The model's fault, in an estimate: the lines
   were given 2.4 to 3.6 s to fall where the record has only that they let go at liftoff; a line let go with a
@@ -144,6 +144,10 @@ the test names the piece and the hull. Three were found and settled so:
   way than the other is a row of spheres.
 - Mercury-Atlas's booster engines stand in the launcher at liftoff and Apollo 7's instrument unit against service arm
   3: neither is a strike. What a sphere starts in is not met, and each rises clear (the arms swing away in the data).
+- Each Gemini target's Atlas struck Complex 14's umbilical boom 1.9 s up. The model's fault: the boom was part of
+  its tower and stood still with its tip beside the Agena, 3 ft from the axis, where the Atlas, 5 ft in radius, comes
+  up. It is its own node now and is drawn back in the first second (gemini/vehicles/target-pad.ts, lc-14.md:
+  estimated, nothing read says how it went).
 
 It also holds, on sites made for it: a drift into a tower at liftoff strikes it and ends with no sphere in it; a
 blow takes the motion into the surface and keeps the motion along it; ten kilometres in one tick does not pass a
@@ -175,7 +179,7 @@ Simplified, and to be kept in mind by whoever uses it:
   (`SolidPiece.cell`): 16,000 boxes for what is near but deeper (a stand's legs under its deck fit; Site 1's flame
   pit does not, and is 4 m in its depths), 4,000 for what is further out (Complex 34's roads 2 m, its blockhouse 1 m,
   a service structure parked far from its pad 1 m, Complex 39's hardstand beyond 50 m 0.5 m). The 50 m, the 6 m and
-  the budgets are ours, chosen for the files' size (27 MB in 84 files for the 42 flights there are; unbounded, over
+  the budgets are ours, chosen for the files' size (28 MB in 84 files for the 42 flights there are; unbounded, over
   250 MB).
 - A closed volume is a shell: nothing is inside it.
 - Before liftoff nothing is right: the simulator does not fly then, and no pose before it is kept.
