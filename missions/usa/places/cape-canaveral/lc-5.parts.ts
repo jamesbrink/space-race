@@ -497,8 +497,10 @@ export function lc5Parts(day: PadDay): Part[] {
       node: 'GroundEquipment',
       name: 'Ground equipment',
       ...day.words.GroundEquipment,
-      // what is taken off the pad before the structure leaves: the day's
+      // what is taken off the pad before the structure leaves: the day's; each named, with its ends, for the readout and
+      // the hand that works it (`CLEARED`: those of them the day moves)
       moves: day.cleared,
+      functions: CLEARED.filter((fn) => fn.nodes.every((n) => day.cleared.some((m) => m.node === n))),
       // (the two huts' doors stay shut: what they held is not recorded, so no inside is offered: ground_equipment.py)
       actions: [doorAction('trailer-door', 'GroundEquipment_TrailerDoor', -100)],
       explode: [0, 0, 0],
@@ -520,6 +522,27 @@ export function lc5Parts(day: PadDay): Part[] {
     },
   ];
 }
+
+/**
+ * What a day's `cleared` moves are as things done, each named with its ends (types/model.ts Part `functions`): the readout
+ * says "towed away" where it said "the end". A day has those whose nodes it all moves: Freedom 7's no transfer van.
+ */
+const CLEARED: NonNullable<Part['functions']> = [
+  { nodes: ['GroundEquipment_Shower'], name: 'Emergency shower', ends: ['where it stood', 'moved clear'] },
+  { nodes: ['GroundEquipment_Case'], name: 'Packing case', ends: ['where it stood', 'wheeled off'] },
+  {
+    nodes: ['GroundEquipment_TrailerSteps', 'GroundEquipment_Tractor', 'GroundEquipment_Trailer'],
+    name: 'Spare parts trailer',
+    ends: ['on the pad', 'towed away'],
+  },
+  {
+    nodes: ['GroundEquipment_TransferVanSteps', 'GroundEquipment_VanTractor', 'GroundEquipment_TransferVan'],
+    name: 'Transfer van',
+    ends: ['at the structure', 'towed away'],
+  },
+  { nodes: ['GroundEquipment_Hut1', 'GroundEquipment_Tow1'], name: 'First hut', ends: ['on the pad', 'dragged off'] },
+  { nodes: ['GroundEquipment_Hut2', 'GroundEquipment_Tow2'], name: 'Second hut', ends: ['on the pad', 'dragged off'] },
+];
 
 /**
  * The trailer NASA SP-No 1 taken away behind its tractor, north off the pad past the cherry picker, between two
