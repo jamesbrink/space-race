@@ -52,6 +52,29 @@ const LAND_DETAIL: bool = true;
 // looking: past it nothing the near ground draws is more than a pixel across.
 const FAR: vec2<f32> = vec2(0.4, 0.7);
 const SEA_DETAIL: bool = true;
+// The designed ground near the site and the photograph's land beyond it, seen from 10 km up over the same ground
+// (`--reference`, the clouds left out, the air's own light taken away), came to (0.072, 0.112, 0.042) and
+// (0.049, 0.072, 0.012) with the photograph brightened as it was (doubled, its colour pressed 1.35 times): the
+// designed ground half as bright again and far bluer. Measured at two places 32 and 63 km west of the site. They meet
+// halfway: the photograph is multiplied by `FAR_GAIN`, and the designed ground seen from the air by `AIR_MEET`, set so
+// that measured again the two agree: (0.061, 0.090, 0.021) against (0.060, 0.089, 0.018), after correcting twice by
+// the root of what was left on each side. Derived from those measurements. `FAR_MOST` holds the
+// brightest land (a desert's, far off) to a pale sand's albedo: estimated.
+const FAR_GAIN: vec3<f32> = vec3(2.21, 2.48, 1.08);
+const AIR_MEET: vec3<f32> = vec3(0.87, 0.83, 0.36);
+const FAR_MOST: f32 = 0.6;
+// The mean colour of the land round the Cape in the region's colour map (Blue Marble, May; linear): measured over
+// 45 by 90 km of it west of the site. Where the photograph is darker or paler, or another hue, than this, so is the
+// designed ground seen from the air, by `AIR_TONE` of the square root of the ratio, held within `TINT`. From the
+// eye height `ALOFT` (m) it comes in. All but the mean are estimated, by looking.
+const CAPE_LAND: vec3<f32> = vec3(0.0525, 0.0629, 0.0174);
+const AIR_TONE: f32 = 0.85;
+const TINT: vec2<f32> = vec2(0.6, 1.6);
+const ALOFT: vec2<f32> = vec2(150.0, 1500.0);
+// How far round a point of the photograph its mean is taken, in texels (450 m), and how strongly the point's own
+// difference from that mean is drawn. Estimated, by looking.
+const AROUND: f32 = 4.0;
+const LOCAL_GAIN: f32 = 1.3;
 // The ground a pixel covers (m, as a square) over which the surf's breakers, drawn one by one, give way to the share
 // of the pixel their band whitens (sea.wesl `surf_far`). Chosen so that nothing within a few kilometres of the eye
 // at the pad or on the chase changes: there a pixel covers a few metres.
@@ -82,6 +105,25 @@ fn on_plane(plane: Plane, d: vec3<f32>) -> vec3<f32> {
     let inside = select(0.0, smoothstep(0.0, max(plane.scale.y, 1.0e-6), edge), q.z > 0.5);
     // (its rows run north to south)
     return vec3(saturate(vec2((p.x - b.x) / (b.y - b.x), (b.w - p.y) / (b.w - b.z))), inside);
+}
+
+// What the designed ground is multiplied by when seen from the air (`aloft` 1): the photograph's tones at the size
+// of its texels. The Cape's marsh, flatwoods, hammocks, scrub and burns are darker, paler, greener or browner than
+// what is round them, and so is the ground over them: by the ratio of the photograph (`photo`, at `uv` on the
+// region's map) to its mean over the few kilometres round it, and by the square root of that mean's to the Cape's.
+// Near the ground the palette's own.
+fn from_air(photo: vec3<f32>, uv: vec2<f32>, aloft: f32) -> vec3<f32> {
+    if aloft <= 0.0 {
+        return vec3(1.0);
+    }
+    let d = AROUND / vec2<f32>(textureDimensions(region_colour_map));
+    let around = 0.25 * (textureSampleLevel(region_colour_map, shore_sampler, uv + vec2(d.x, 0.0), 0.0).rgb
+        + textureSampleLevel(region_colour_map, shore_sampler, uv - vec2(d.x, 0.0), 0.0).rgb
+        + textureSampleLevel(region_colour_map, shore_sampler, uv + vec2(0.0, d.y), 0.0).rgb
+        + textureSampleLevel(region_colour_map, shore_sampler, uv - vec2(0.0, d.y), 0.0).rgb);
+    let here = pow(photo / max(around, vec3(1.0e-4)), vec3(LOCAL_GAIN));
+    let tint = clamp(here * sqrt(around / CAPE_LAND), vec3(TINT.x), vec3(TINT.y));
+    return mix(vec3(1.0), AIR_MEET * mix(vec3(1.0), tint, AIR_TONE), aloft);
 }
 
 // The height of the solid surface toward an Earth-fixed direction, m: the region's map where it reaches, the
@@ -246,10 +288,11 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
         let region_w = on_region.z * earth.region.scale.z;
         let finer = textureSampleLevel(region_colour_map, shore_sampler, on_region.xy, 0.0).rgb;
         var far_land = mix(marble, finer, region_w);
-        // (the map is a photograph's tones, and the site's ground is drawn lighter and clearer than a photograph
-        // (ground.ts PALETTE): the map is brought toward it, so the land does not change its look as the eye
-        // climbs. By how much is estimated.)
-        far_land = max(mix(vec3(dot(far_land, vec3(0.2126, 0.7152, 0.0722))), far_land, 1.35) * 2.0, vec3(0.0));
+        let photo = far_land;
+        // (the map is a photograph's tones, and the site's ground is drawn lighter than a photograph (ground.ts
+        // PALETTE): the two meet halfway, measured (`FAR_GAIN`, `AIR_MEET`), so the land keeps one tone as the eye
+        // climbs and from the designed ground near the site to the photograph's beyond it)
+        far_land = min(far_land * FAR_GAIN, vec3(FAR_MOST));
         // (closer than the map's texels, what grows is still not smooth: mottled, the more for being green)
         let green = saturate((far_land.g - max(far_land.r, far_land.b)) * 12.0 + 0.3);
         let close = 1.0 - smoothstep(120.0, 500.0, seen);
@@ -300,6 +343,7 @@ fn fragment(in: VertexOutput, @builtin(front_facing) is_front: bool) -> Fragment
                 soil.rough = mix(soil.rough, distant.rough, far);
                 soil.sky = mix(soil.sky, distant.sky, far);
             }
+            soil.colour *= from_air(photo, on_region.xy, smoothstep(ALOFT.x, ALOFT.y, height) * region_w);
             colour = mix(colour, soil.colour, own);
             slope = mix(slope, soil.slope, own);
             rough = mix(rough, soil.rough, own);
