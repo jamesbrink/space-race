@@ -505,6 +505,52 @@ function cullEmptyGlassPass(mesh: THREE.Mesh): void {
   };
 }
 
+// The row's small, single-sided textured markings can face entirely away from the eye.
+// Cache their triangle planes on the static joined mesh. Test in its local frame so a
+// rotated or mirrored stand follows the same front-face rule as the renderer.
+const markingPlanes = new WeakMap<THREE.Mesh, THREE.Plane[]>();
+const markingEye = new THREE.Vector3();
+
+function registerMarking(mesh: THREE.Mesh): void {
+  const material = mesh.material as THREE.MeshStandardMaterial;
+  const geometry = mesh.geometry;
+  const vertices = geometry.getAttribute('position');
+  const index = geometry.index;
+  const count = index?.count ?? vertices.count;
+  if (
+    !material.isMeshStandardMaterial ||
+    !material.map ||
+    material.side !== THREE.FrontSide ||
+    material.wireframe ||
+    material.displacementMap ||
+    material.onBeforeCompile !== THREE.Material.prototype.onBeforeCompile ||
+    count > 384
+  )
+    return;
+  const planes: THREE.Plane[] = [];
+  const triangle = new THREE.Triangle();
+  for (let i = 0; i < count; i += 3) {
+    triangle.a.fromBufferAttribute(vertices, index?.getX(i) ?? i);
+    triangle.b.fromBufferAttribute(vertices, index?.getX(i + 1) ?? i + 1);
+    triangle.c.fromBufferAttribute(vertices, index?.getX(i + 2) ?? i + 2);
+    if (triangle.getArea() > 0) planes.push(triangle.getPlane(new THREE.Plane()));
+  }
+  if (planes.length) markingPlanes.set(mesh, planes);
+}
+
+/** Only markings the GPU would back-face-cull in their entirety for this perspective eye. */
+export function backFacingMarkings(root: THREE.Object3D, eye: THREE.Vector3): THREE.Mesh[] {
+  const hidden: THREE.Mesh[] = [];
+  root.traverseVisible((object) => {
+    const mesh = object as THREE.Mesh;
+    const planes = markingPlanes.get(mesh);
+    if (!planes || (mesh.material as THREE.Material).side !== THREE.FrontSide) return;
+    mesh.worldToLocal(markingEye.copy(eye));
+    if (planes.every((plane) => plane.distanceToPoint(markingEye) < -1e-5)) hidden.push(mesh);
+  });
+  return hidden;
+}
+
 /**
  * A vehicle's own drawing of a joined level: a mesh for each piece, sharing the piece's geometry (and an own piece's
  * pictures) with every other vehicle that has the same level, each in a material of its own (so that a vehicle's
@@ -525,6 +571,7 @@ export function drawn(joined: Joined): THREE.Group {
       // (an own piece's material is copied too: the copy shares its pictures, which are the shelf's to let go)
       object = new THREE.Mesh(piece.geometry, piece.paints ? paintMaterial(piece.paints) : piece.material!.clone());
       cullEmptyGlassPass(object as THREE.Mesh);
+      if (!piece.paints) registerMarking(object as THREE.Mesh);
       object.position.copy(piece.at);
       object.scale.setScalar(piece.scale);
     }

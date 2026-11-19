@@ -15,6 +15,7 @@ import type { Tone } from '../../viewer/studio.ts';
 import { type Tier, tier } from '../../viewer/tier.ts';
 import type { LineupRow } from '../address.ts';
 import { Hall } from './hall.ts';
+import { backFacingMarkings } from './merge.ts';
 import { allot, craftNodes, type Entry, layOutRow } from './row.ts';
 import { Shelf } from './shelf.ts';
 import { dress, fitTo, floorPlates, Stand, scaleFigures, showFigures, showPlates } from './stand.ts';
@@ -825,7 +826,14 @@ export class LineupScene {
     showPlates(this.plates, this.stands, this.camera, this.frustum);
     this.ink.range(this.camera);
     this.renderer.info.reset();
-    this.composer.render();
+    const hidden = backFacingMarkings(this.rowGroup, this.camera.position);
+    for (const marking of hidden) marking.visible = false;
+    try {
+      this.composer.render();
+    } finally {
+      // Shadows are cast from the light; picking and bounds also use the full model.
+      for (const marking of hidden) marking.visible = true;
+    }
     if (this.composer.readBuffer !== this.frameTarget) this.composer.swapBuffers(); // (the ink pass changed them over: see the constructor)
     this.drawnFrames++;
     this.host.drawn();
