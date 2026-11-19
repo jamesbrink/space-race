@@ -743,7 +743,7 @@ JavaScript heap and 125 MB of decoded pictures.
     texel (R8), a quarter of the depth's.
 - **The front page holds its own picture and nothing of a flight** (app/front/scene.ts: the Earth's three cubes, the Moon's
   maps and mesh, the canvas), where it had been Freedom 7's launch site behind a veil. `pnpm test:front` holds it
-  to 90 MiB as a phone, and the most at any moment while a flight's gallery arrives over it to 350: the picture is let go only when the flight is there to be seen, so for those
+  to 90 MiB as a phone (74 with the Moon's apron and blocks; 71 before them), and the most at any moment while a flight's gallery arrives over it to 350: the picture is let go only when the flight is there to be seen, so for those
   seconds the page holds both. A context that has been
   let go is counted as holding nothing (mem.ts), which is what losing it means.
 - **The Lineup holds every vehicle, coarsest first** (app/lineup/scene.ts; gallery.md, "The Lineup"). Every level is
@@ -1040,32 +1040,60 @@ terms:
   only turns; the Earth is placed by where it is from the eye and the Moon's ground by the eye's place over it, so a
   float never holds 370,000 km and a metre together. The Earth's own arithmetic (where a pixel's ray meets its air
   and its sea) is done in the Earth's frame, where every number is a few thousand kilometres.
-- **No fixed near plane.** The Moon's ground is the only thing with depth: the near plane is half the camera's
-  height over the highest ground, the far one past the Earth. The Earth is drawn without depth, before the Moon,
+- **No fixed near plane.** The Moon's ground and the blocks on it are the only things with depth: the near plane is
+  0.4 of the least distance from the camera to any ground, which the Moon's bake works out along the path from the
+  altimeter's heights (`site.clear` in moon.json: 16 m at the start; the bake fails if the path meets the ground), the
+  far one past the Earth. The Earth is drawn without depth, before the Moon,
   which is in front of it wherever both are; the stars before both, on a camera of their own (heavens.ts).
-- **Drawn only when the picture changes.** Every frame while the camera is on its way (five minutes); settled, when
+- **Drawn only when the picture changes.** Every frame while the camera is on its way (six minutes and a third); settled, when
   the Earth has turned a quarter of a drawn pixel at its middle (two to five frames a second at a minute of the
   world a second), when a map is coming in, when the window changes or the Earth is being eased to another place in the
   picture. A still picture (less motion) is drawn once.
 - **A lower level of detail is a rebuild.** The Earth is the globe's own maps baked small, never the globe's full
   maps (`pnpm front:earth`); the Moon's relief is baked at three sizes and each is faded in over the coarser
-  from its edge (`pnpm front:moon`). Both bakes follow from view.ts's figures (the instant, the limb the camera
-  looks across) and tests/front.test.mjs fails until they are run again after those change.
+  from its edge (`pnpm front:moon`). Both bakes follow from view.ts's figures (the instant, the place the camera
+  starts from) and tests/front.test.mjs fails until they are run again after those change.
 - **A change of level fades.** A map that arrives comes up over 1.2 s; the canvas fades up when the first whole
   picture is drawn and out as a flight's fades in over it; the Moon's cast shadows, worked out for the Sun as it
   stood at the instant, are let go as the Sun moves on (gone by 8 degrees, sixteen hours of the world).
+- **Near the ground it is placed from the ground.** Within 30 km of where the camera starts the Moon is a mesh of its
+  own (the apron: viewer/moon.ts), its heights the altimeter's read whole in doubles (moonsite.ts: `moon.site.bin`,
+  made smooth between its points) and its vertices, the blocks and the eye all given from the site's ground, not from
+  the Moon's centre: from 40 m a float measured from the centre is a quarter of a metre out, and the relief maps'
+  bytes are 52 m a step. The sphere is not drawn where the apron is, and the apron's outer rings take the sphere's
+  heights, so the two meet; both are shaded by one function of the place, so where they overlap neither shows.
+- **Below the altimeter the ground is made, and fades by its size on the screen** (moonground.ts). On the finest
+  map's ground each pixel works out the craters under 2 km (thirteen octaves, one crater to a hashed cell: slope, the
+  shadow in the bowl from the bowl's shape and the Sun's height, the part the near rim hides from the eye) and the
+  soil's grain. An octave is drawn in full where its craters are a few pixels tall and not at all under about one,
+  with a smooth step between (a shadow goes sooner than its crater), so nothing pops as the camera rises and nothing
+  shimmers at the horizon; from far only the altimeter's ground is left. It is fixed to the ground and hashed from
+  whole numbers: the same every frame and every visit. A lighter machine leaves out the two finest octaves.
+- **The blocks are real shapes with real shadows** (moonrocks.ts): up to 14,000 instanced blocks (4,000 on the lighter
+  tier, and none under 0.85 m) at four levels of detail chosen once, by each block's size over its distance from the
+  site (the camera only ever goes away from them, so a level is never changed on show). A shadow is the block's own
+  mesh laid on the ground's plane along the Sun's rays and multiplied over what is under it, pulled toward the eye by
+  a polygon offset so it does not fight the ground. They are drawn while the camera is under 2.5 km: above that every
+  one is below the frame, which looks at the horizon, so their going is not seen.
 - **One exposure for both worlds**, as a photograph has: the Sun's light is the figure the globe is lit by above the
   air, the Moon's ground is scaled to the Moon's albedo and dimmed by its phase, and the exposure is set by the
   cloud. So the Moon is asphalt beside the Earth, as it is. Nothing is made larger or brighter to fill the frame:
   the lens is a stated one (500 mm on 70 mm film, 6.3 degrees) and the Earth is a third of the frame across.
 - **What is simplified** is listed in earth.ts and viewer/moon.ts (the Moon is a body of its own, `MoonBody`, which
   the front page shows): the cloud is a reanalysis's and has no detail under a quarter of a degree; the night side has
-  no lights; nothing on the Moon is finer than 481 m, and only the finest
-  map casts shadows; the mid part of the path (10,000 to 20,000 km out) is drawn from the 3.7 km map and is soft.
+  no lights; nothing on the Moon finer than 481 m is the Moon's own (the craters, grain and blocks are made:
+  `estimated`), the made craters are light and shadow with no depth (they lift no horizon and shadow neither each
+  other nor a block), a block's shadow falls on the ground only, and only the finest map casts the altimeter's
+  shadows; from 100 to 1,000 km up the ground is the altimeter's alone and is soft (its 481 m texel is a few pixels);
+  the mid part of the path (10,000 to 20,000 km out) is drawn from the 3.7 km map and is soft. The stars are the naked
+  eye's (to magnitude 6.6, a dozen in the lens's six degrees, drawn faint): a film exposed for this ground has none.
 - **A lost context there is not the page's end**: the picture is taken away and the list of flights stays, over
   black. No word is put up (lost.ts's is a stage's).
 
-What a frame costs, `pnpm test:front` says each run (its triangles are in two draw calls). What it holds: "Memory", above.
+What a frame costs, `pnpm test:front` says each run (2.9 M triangles in eleven draw calls while the blocks are in sight,
+2.1 M in three after; on the lighter tier 1.0 M and 0.5 M). Measured when the made ground went in (an Apple laptop
+under other load, so roughly): 1440x900 at 1, 2.0 ms a frame before and 2.5 to 4.6 at the start after, 1.8 settled;
+as a phone 0.7 before and 1.3 to 1.8 at the start. What it holds: "Memory", above.
 `pnpm bench` does not measure it (its harness turns a `Stage` over by hand). It has not been run on a real phone.
 
 ## Texture units

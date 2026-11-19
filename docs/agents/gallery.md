@@ -128,13 +128,23 @@ it, which the menu and the programmes narrow; arrows, Enter and Escape work it: 
 renderer of its own that share nothing with a flight's stages (rendering.md, "The front page's picture"; what the
 picture is of, world.md).
 
-- **Left alone, this is the show, and nothing else starts.** No flight is picked for the visitor. The camera goes
-  out along its path for five minutes and settles; the Earth goes on turning. After half a minute without a touch
+- **Left alone, this is the show, and nothing else starts.** No flight is picked for the visitor. The picture opens
+  40 m over a plain on the Moon's south-western limb, the blocks on it and their shadows in sight and the Earth half
+  risen over a horizon six kilometres off; the camera is already rising, goes straight up (the Earth rises as the
+  horizon falls), draws back from half a kilometre up, and goes out along its path for six minutes and a third
+  (`PATH.seconds`) to settle 100,000 km behind the Moon; the Earth goes on turning. After half a minute without a touch
   (`IDLE_TITLE`) the words fade away and the Earth is eased to the middle of a picture that is all its own; the first
   movement, key or touch brings them back and eases it aside again. A browser driven by a script is not left alone
   and its picture is held still until told where to be (`sr.front.seek`), unless the address has `?demo`.
-- **Less motion** (the system's setting): one still picture, the Earth risen over a level horizon 80 seconds along
-  the path, the clock stopped at the instant; nothing is drawn twice.
+- **What of the Moon is real and what is made.** The place is found, not chosen by eye (view.ts `SITE`; `pnpm front:moon
+  -- --find-site` lists the places that would do), and its ground down to 481 m is the laser altimeter's. Everything
+  finer is made by rule and is `estimated`: the craters under two kilometres (as many of each size as the Moon's old
+  ground has: Trask's equilibrium law), the soil's grain, and the blocks (Surveyor 1's and 7's counts; the largest a
+  crater throws by Bart and Melosh's rule), all fixed to the ground from hashed whole numbers and a fixed seed, so
+  they are the same on every visit (viewer/moonground.ts, moonrocks.ts; rendering.md, "The front page's picture").
+  No crater or block there is one of the Moon's, and the page claims none.
+- **Less motion** (the system's setting): one still picture, the Earth risen over a level horizon 105 seconds along
+  the path (from 30 km: the craters under it have their shadows), the clock stopped at the instant; nothing is drawn twice.
 - **Going into a flight** names it in the address at once, as a step in the history (so a refresh lands there, and
   Back comes out to the front page again), takes the words away and
   brings that flight's page up *under* the picture, which goes on moving while the flight arrives. The flight's
