@@ -10,6 +10,14 @@ In the **Lineup**, compare SA-511 and SA-510 at the same scale. Switch to spacec
 
 ![Gallery views of SA-511, Casper, Orion, the auxiliary propulsion module, yaw actuator and ultraviolet camera](../../../../../docs/readme/apollo-16.webp)
 
+## Lunar rover · LRV-2
+
+Open the [rover in the Gallery](https://jamesbrink.online/space-race/#usa/apollo/apollo-16/gallery/rover) to inspect the stiffened seat belts, dust covers and portable magnetometer. Choose **Drive rover** to join Young and Duke beside Orion in the Descartes Highlands. Use WASD or the arrow keys to drive, Space to brake, C to switch between the driver’s seat and the chase camera, and Escape to park. On a touchscreen the controls accept steering and acceleration together.
+
+The terrain follows LROC stereo elevations near the lander and LOLA altimetry beyond the stereo coverage. Sunlight is set to the start of the second excursion. The initial parking point, 12 m east of the lander, is estimated. Each wheel follows the surveyed ground. The driving model approximates steering and braking and omits soil deformation and wheel slip. [Rover hardware, sources and reconstruction limits](../../vehicles/lunar-rovers.md)
+
+![LRV-2, with detail of the wheel and control console](../../../../../docs/readme/apollo-16-rover.webp)
+
 ## Hardware notes
 
 - [SA-511 and its spacecraft adapter](../../vehicles/sa-511.md)

@@ -13,7 +13,7 @@ test('Apollo 15 exhibits Endeavour and Falcon with their flown crew stations', (
   assert.ok(lacks(flight, 'fly'));
   assert.deepEqual(
     flight.models.map((model) => model.id),
-    ['vehicle', 'falcon', 'pad', 'crew', 'pilot', 'lmp'],
+    ['vehicle', 'falcon', 'pad', 'crew', 'pilot', 'lmp', 'rover'],
   );
   assert.deepEqual(
     stack.seats.map((seat) => seat.label),
@@ -26,7 +26,8 @@ test('Apollo 15 exhibits Endeavour and Falcon with their flown crew stations', (
 });
 
 test('ML-3 serves SA-510 from the boarding call through first motion', () => {
-  const [, , pad, ...crew] = flight.models;
+  const pad = flight.models.find((model) => model.id === 'pad');
+  const crew = flight.models.filter((model) => model.walker);
   assert.equal(pad.name, 'Mobile launcher 3');
   assert.match(pad.url, /pad-a-1971-07\.glb$/);
   assert.equal(flight.weather.observed.at, flight.launch);

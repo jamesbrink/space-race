@@ -605,6 +605,8 @@ export interface MechanismDef {
 export interface ModelDef {
   /** A separate gallery configuration of hardware that has another model at the launch site. */
   galleryOnly?: boolean;
+  /** The deployed lunar rover's surface, and its seated EVA crew shown while driving. */
+  lunarRover?: { site: 'hadley' | 'descartes'; riders?: string };
   /** The complete spacecraft stands inside an opaque fairing on the assembled launch vehicle. */
   enclosedSpacecraft?: boolean;
   /**

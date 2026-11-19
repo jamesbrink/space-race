@@ -10,6 +10,14 @@ In the **Lineup**, compare SA-510 with Apollo 14’s SA-509 at the same scale. S
 
 ![Apollo 15 in the Gallery](../../../../../docs/readme/apollo-15.webp)
 
+## Lunar rover · LRV-1
+
+Open the [rover in the Gallery](https://jamesbrink.online/space-race/#usa/apollo/apollo-15/gallery/rover) to inspect the wire-mesh wheels, webbed seats and aft geology pallet. Choose **Drive rover** to join Scott and Irwin beside Falcon at Hadley–Apennine. Use WASD or the arrow keys to drive, Space to brake, C to switch between the driver’s seat and the chase camera, and Escape to park. On a touchscreen the controls accept steering and acceleration together.
+
+The terrain follows LROC stereo elevations near the lander and LOLA altimetry beyond the stereo coverage. Sunlight is set to the start of the second excursion. The initial parking point, 12 m east of the lander, is estimated. Each wheel follows the surveyed ground. The driving model approximates steering and braking and omits soil deformation and wheel slip. [Rover hardware, sources and reconstruction limits](../../vehicles/lunar-rovers.md)
+
+![LRV-1, with detail of the wheel and control console](../../../../../docs/readme/apollo-15-rover.webp)
+
 ## Hardware notes
 
 - [SA-510 and SLA-19](../../vehicles/sa-510.md)
