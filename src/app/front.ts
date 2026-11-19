@@ -80,7 +80,12 @@ function compose(): void {
   else if (w > h) {
     const mark = document.querySelector('.title-mark')?.getBoundingClientRect();
     // (beside the mark if there is room between it and the window's edge; else as far right as it goes)
-    const x = Math.min(w - radius - 14, Math.max((mark?.right ?? w * 0.75) + radius + 18, w * 0.72));
+    // (between the menu and the missions, where they leave room; else as far right as it goes, behind the missions' glass)
+    const list = document.querySelector('.title-select')?.getBoundingClientRect();
+    const x =
+      list && list.left - (mark?.right ?? 0) > radius
+        ? Math.max(((mark?.right ?? 0) + list.left) / 2, (mark?.right ?? 0) + radius + 8) // (clear of the mark first)
+        : Math.min(w - radius - 14, Math.max((mark?.right ?? w * 0.75) + radius + 18, w * 0.72));
     scene.aim = [(x - w / 2) / (w / 2), 0.32];
   } else scene.aim = [0.3, 1 - (radius + 0.05 * h) / (h / 2)]; // (just under the top: title.css keeps the top two fifths clear)
 }
