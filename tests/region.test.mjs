@@ -124,6 +124,20 @@ test('the two LC-39 frames put the ocean at globe sea level and the ramp and tan
   }
 });
 
+test('Pad A retains its graded terrain and sea datum on a launch date with daylight saving time', () => {
+  const july = { ...LC39A, zone: { name: 'EDT', utcOffset: -4 } };
+  const day = { date: '1969-07-16' };
+  const reference = CAPE_GROUND.land(day, compassAt(LC39A));
+  const summer = CAPE_GROUND.land(day, compassAt(july));
+  assert.equal(summer.sea, reference.sea);
+  for (const p of [
+    [0, 0],
+    [-39, 17],
+    [312, -312],
+  ])
+    assert.equal(summer.relief(...p), reference.relief(...p));
+});
+
 test('the local ground at Complex 39 agrees with the regional map across the river head and the Atlantic shore', () => {
   const samples = [
     [28.612, -80.605, true], // north of 39A, beyond the river head and outside the graded pad

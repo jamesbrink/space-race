@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import type { SiteDef } from '../../../../src/types.ts';
 import { smoothstep } from '../../../../src/util/math.ts';
 import { breeze, type Day } from '../../../../src/viewer/day.ts';
 import { fbm2 } from '../../../../src/viewer/field.ts';
@@ -104,17 +103,18 @@ const LC39_GROUND: PadGround = {
   ways: [],
   sunk: [],
 };
-const OWN = new Map<SiteDef, PadGround>([
-  [LC14, LC14_GROUND],
-  [LC19, LC19_GROUND],
-  [LC34, LC34_GROUND],
-  [LC39A, LC39_GROUND],
-  [LC39B, LC39_GROUND],
+// A pad keeps its terrain when a summer flight changes its civil time.
+const OWN = new Map<string, PadGround>([
+  [LC14.name, LC14_GROUND],
+  [LC19.name, LC19_GROUND],
+  [LC34.name, LC34_GROUND],
+  [LC39A.name, LC39_GROUND],
+  [LC39B.name, LC39_GROUND],
 ]);
 
 /** The origin pad's own ground laid on `compass` (metres, x east and z south of it), or null where it has none. */
 function ownGround(compass: Compass) {
-  const own = OWN.get(compass.origin);
+  const own = OWN.get(compass.origin.name);
   if (!own) return null;
   const turn = compass.frame(compass.origin).turn;
   const COS = Math.cos(turn);
@@ -473,7 +473,7 @@ function landSpec(compass: Compass, date: string): LandSpec {
   const { COAST, RIVER, RIVER_WEST, INDIAN, HARBOR_WEST, HARBOR_EAST, HARBOUR } = shoresAt(compass);
   const own = ownGround(compass);
   // At Complex 39 the ground grade and the sea share the hardstand's MSL datum.
-  const is39 = compass.origin === LC39A || compass.origin === LC39B;
+  const is39 = OWN.get(compass.origin.name) === LC39_GROUND;
   const sea = is39 ? compass.origin.seaLevel.value - compass.origin.height.value - compass.origin.grade.value : CAPE_GRADE_SEA;
   const CLEARINGS = [...clearingsAt(compass, date), ...(own?.clear ?? [])];
   const PAVED = [...pavedAt(compass, date), ...(own?.kept ?? [])];
