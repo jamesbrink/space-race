@@ -89,6 +89,22 @@ export interface Craft {
   lands?: Lands;
   /** What leaves, each flown on as a body of its own in the scene (sim/shed.ts), by the `Flight.flies.drops[].on` that lets it go. */
   sheds?: ShedBody[];
+  /** What its stages let out after their engines have stopped (`VentDef`). */
+  vents?: VentDef[];
+}
+
+/**
+ * What a stage lets out once its engine has stopped, while it is still joined to what flies on: boil-off through its
+ * vents, propellant dumped through its engine. A force along the stack's long axis toward the nose, N against seconds
+ * from liftoff (nothing outside the curve), flown by every run of the ascent alike (staged.ts `stackOf`: the batch run,
+ * the live vehicle, the path under guidance) along the attitude then held. What it lets out is not taken off the mass.
+ */
+export interface VentDef {
+  id: string;
+  label: string;
+  /** The stage it is on, by its body's id. */
+  body: string;
+  thrust: Curve;
 }
 
 /** What a flight's crew came down in, and on what, in the words of the flight's own data (`Craft.lands`). */

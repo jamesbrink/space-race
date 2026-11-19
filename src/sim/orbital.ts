@@ -551,6 +551,8 @@ export interface BurnFlown {
   velocity: number;
   line?: Vec3;
   solved: boolean;
+  /** The propellant it drew, kg, where its engine has a tank: what its own impulse cost, not the record's. */
+  fuel?: number;
 }
 
 export interface OrbitFlown {
@@ -846,7 +848,14 @@ export interface Move {
    */
   toward?: Pursuit;
   most?: number;
+  /** For an engine that draws on a tank: the ship's mass as it lights, kg, and its exhaust's speed, m/s (what an impulse costs: `fuelFor`). */
+  burnMass?: number;
+  exhaust?: number;
 }
+
+/** The propellant an impulse of `velocity` m/s costs a manoeuvre, kg, by the rocket equation; nothing for an engine with no tank. */
+export const fuelFor = (m: Pick<Move, 'burnMass' | 'exhaust'>, velocity: number): number | undefined =>
+  m.burnMass && m.exhaust ? m.burnMass * -Math.expm1(-velocity / m.exhaust) : undefined;
 
 /** Capacity of the propulsion system carried into the coast. */
 function coastTank(plan: FlightPlan, engine: EngineDef): number {
@@ -911,7 +920,7 @@ export function movesOf(plan: FlightPlan): Move[] {
           off,
           accel,
           aim: hold.hold,
-          ...(fuel === undefined ? {} : { fuel }),
+          ...(fuel === undefined ? {} : { fuel, burnMass, exhaust: G0 * engine.isp!.vacuum.value }),
           ...(a.toward ? { toward: a.toward, most: (engine.count * engine.thrust.vacuum.value) / burnMass } : {}),
         });
       }
@@ -1023,12 +1032,21 @@ export interface Ship {
 }
 const ships = new WeakMap<FlightPlan, Ship>();
 
-/** Propellant and starts left in an orbital engine at this instant. */
-export function coastEngineState(plan: FlightPlan, id: string, at: number): { starts: number; kg: number } {
+/**
+ * Propellant and starts left in an orbital engine at this instant. `flown`: a run's own account of its burns
+ * (`OrbitFlown.burns`), where one it solved on the flight's target drew what its own impulse cost and burned as long as
+ * it burned; without it, the plan's.
+ */
+export function coastEngineState(plan: FlightPlan, id: string, at: number, flown?: readonly BurnFlown[]): { starts: number; kg: number } {
   const engine = plan.craft[0]!.engines.find((e) => e.id === id);
   if (!engine) return { starts: 0, kg: 0 };
   const ship = shipOf(plan);
-  const burns = ship.moves.filter((m) => m.engine === id && m.on <= at);
+  const burns = ship.moves
+    .filter((m) => m.engine === id && m.on <= at)
+    .map((m) => {
+      const own = flown?.find((b) => b.lit === m.lit && b.solved);
+      return own ? { ...m, off: own.off, ...(own.fuel === undefined ? {} : { fuel: own.fuel }) } : m;
+    });
   const deorbit = Boolean(engine.flown && ship.on <= at);
   const used = burns.reduce((sum, m) => sum + (m.fuel ?? 0) * Math.min(1, (at - m.on) / (m.off - m.on)), 0);
   const final = deorbit ? ship.fuel * Math.min(1, (at - ship.on) / (ship.off - ship.on)) : 0;
@@ -1377,12 +1395,21 @@ export function flyOrbit(
             return dv && { line: unit(dv), length: length(dv) / size };
           })();
     if (!solved) {
-      burns.push(record);
+      burns.push({ ...record, ...(m.fuel === undefined ? {} : { fuel: m.fuel }) });
       return;
     }
     lines[i] = scale(solved.line, sense);
     endAt(m, t + solved.length);
-    burns.push({ ...record, off: m.off, velocity: size * solved.length, line: solved.line, solved: true });
+    const given = size * solved.length;
+    const drawn = fuelFor(m, given);
+    burns.push({
+      ...record,
+      off: m.off,
+      velocity: given,
+      line: solved.line,
+      solved: true,
+      ...(drawn === undefined ? {} : { fuel: drawn }),
+    });
   };
   /** The instants the checks ask how far the target is at: a step ends on each, and nothing else is done there. */
   const ranges = plan.checks.flatMap((c) => (c.of === 'orbit' && c.when && 'reading' in c.when && c.when.reading === 'range' ? [c] : []));

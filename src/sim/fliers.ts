@@ -820,6 +820,8 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       const airspeed = length(wind);
       let thrust = 0;
       for (let i = 0; i < stages.length; i++) if (v.burning(cur, i, since)) thrust += stack.thrust(i, at, air.pressure);
+      // (the last stage, stopped and still on: what it lets out, as staged.ts `ascend` and the live vehicle have it)
+      if (cur.stages[last]!.gone > since && stopped(last, since) !== null) thrust += stack.vent(at);
       const mass = v.mass(cur, at);
       let f: Vec3 = thrust > 0 ? scale(axisAt(p, u, at), thrust / mass) : [0, 0, 0];
       if (airspeed > 0)

@@ -71,6 +71,17 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   impulse along the record's attitude. Apollo 7's rendezvous with its S-IVB is flown so. The predicted path
   (fliers.ts `spacecraft`) does not yet solve these burns: it shows the record's.
 
+- **What a stopped stage lets out is a force, and its attitude is the law's** (`Craft.vents`, plan.ts `VentDef`;
+  staged.ts `stackOf` `vent`, `lawOf` `attachedAt`). A stage still joined after its engine has stopped (an S-IVB in orbit
+  with the spacecraft on it) pushes the stack along its long axis by its vents' curves, N against seconds from liftoff,
+  in all three integrators of the ascent: `ascend`'s `forces`, the live vehicle's `accel` (stagedlive.ts) and the path
+  under guidance (fliers.ts `guided`). The axis it pushes along is the attitude programme the record gives for the
+  attached vehicle (`Guidance.attached`), which is part of the law's `axisAt` and no longer drawn onto the samples
+  afterwards: level along the motion, pitched as the programme says, and from its freeze held among the stars (worked
+  from the stack's turning rate, so the law keeps no memory and every run has the same axis). Apollo 7's vent and oxygen
+  dump are the velocities the flight evaluation's platform measured, as forces.
+- **A solved burn draws what it gave** (`BurnFlown.fuel`, orbital.ts `fuelFor`; `coastEngineState` takes a run's burns).
+
 What a run misses the record by is its finding. A flight that comes out badly wrong wants its guidance or its data put
 right; a fix written into the state is not one.
 

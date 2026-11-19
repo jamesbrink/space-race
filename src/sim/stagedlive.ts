@@ -436,6 +436,9 @@ export function stagedVehicle(
     stages.forEach((_, i) => {
       thrust += pushOf(s, i, at, here.air.pressure, as);
     });
+    // (the last stage, stopped and still on: what it lets out pushes the stack along its axis, as staged.ts `ascend` has it)
+    const top = s.stages[last]!;
+    if (top.gone > as && Number.isFinite(top.from) && as >= stop(s, last)) thrust += stack.vent(at);
     const dragArea = stack.dragArea(gone, here.mach);
     let f = scale(axis, thrust);
     f = add(f, airDrag(here.wind, here.airspeed, here.air.density, dragArea));
