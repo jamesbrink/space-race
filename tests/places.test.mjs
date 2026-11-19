@@ -1,13 +1,14 @@
 // The places' pads and what is laid round them (missions/<nation>/places/<place>/): pure, no page.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
+import { flights } from '../missions/index.ts';
 import { LC5 } from '../missions/usa/places/cape-canaveral/lc-5.ts';
 import { LC14 } from '../missions/usa/places/cape-canaveral/lc-14.ts';
 import { LC19 } from '../missions/usa/places/cape-canaveral/lc-19.ts';
 import { COMPLEXES, neighboursOn, ownFrame } from '../missions/usa/places/cape-canaveral/scenery.ts';
-import { flights } from '../missions/index.ts';
 import { standsInSite1, TYURATAM_GROUND } from '../missions/ussr/places/tyuratam/ground.ts';
 import { SITE1 } from '../missions/ussr/places/tyuratam/site-1.ts';
+import { SITE31 } from '../missions/ussr/places/tyuratam/site-31.ts';
 import { SEASONS, seasonOf, steppeCelGround, steppeFlora, steppeGround } from '../missions/ussr/places/tyuratam/steppe.ts';
 import { compassAt } from '../src/viewer/scenery/compass.ts';
 
@@ -218,7 +219,7 @@ test('the Cape: Complex 5 seen from Complex 14 stands in its own frame, at its o
   assert.ok(Math.abs(Math.hypot(at.x, at.z) - 6230) < 100, `${Math.hypot(at.x, at.z)}`);
 });
 
-test('the steppe: every flight from Tyuratam stands in its own season, and only the thaw has snow', () => {
+test('the steppe: every flight from Tyuratam stands in its own season, with snow on the dates it was observed', () => {
   const want = {
     'ussr/vostok/vostok-1': 'spring',
     'ussr/vostok/vostok-2': 'summer',
@@ -228,6 +229,8 @@ test('the steppe: every flight from Tyuratam stands in its own season, and only 
     'ussr/vostok/vostok-6': 'summer',
     'ussr/voskhod/voskhod-1': 'autumn',
     'ussr/voskhod/voskhod-2': 'thaw',
+    'ussr/soyuz/soyuz-4': 'winter',
+    'ussr/soyuz/soyuz-16': 'winter',
   };
   for (const [id, name] of Object.entries(want)) {
     const f = flights.find((f) => f.id === id);
@@ -241,6 +244,8 @@ test('the steppe: every flight from Tyuratam stands in its own season, and only 
     assert.equal(glsl.includes('snowField'), Boolean(s.snow), s.name);
     assert.equal(glsl.includes('soaked'), Boolean(s.wet), s.name);
   }
+  assert.ok(seasonOf('1969-01-14').snow.cover > 0.8, 'thick snow over the Soyuz 4 launch area');
+  assert.equal(seasonOf('1974-12-02').snow, undefined, 'the Soyuz 16 date has its own ground evidence');
   const thaw = SEASONS.find((s) => s.name === 'thaw');
   assert.ok(thaw.snow.cover > 0 && thaw.snow.cover < 0.5, 'old snow in patches over well under half the ground');
   // nothing of the spring is up in March; in October nothing of it is left
@@ -249,4 +254,17 @@ test('the steppe: every flight from Tyuratam stands in its own season, and only 
     for (const gone of ['tulip', 'rhubarb']) assert.ok(!up(date).includes(gone), `${gone} on ${date}`);
   assert.ok(!up('1965-03-18').includes('meadow-grass'));
   assert.ok(up('1961-04-12').includes('tulip'));
+});
+
+test('Site 31 cuts the excavation into the steppe and keeps the surrounding land', () => {
+  const local = TYURATAM_GROUND.land(APRIL, compassAt(SITE31));
+  const regional = TYURATAM_GROUND.land(APRIL, compassAt({ ...SITE31 }));
+  const a = (SITE31.bearingX.value * Math.PI) / 180;
+  const along = (d) => [d * Math.sin(a), -d * Math.cos(a)];
+  assert.ok(local.relief(...along(48)) < -25);
+  assert.equal(local.relief(...along(-50)), 0);
+  for (const distance of [200, 500, 1300]) {
+    const at = along(distance);
+    assert.equal(local.relief(...at), regional.relief(...at));
+  }
 });

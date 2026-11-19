@@ -18,7 +18,7 @@ def paint(name, rgb, **kwargs):
     return bpy.data.materials.get(name) or material(name, rgb, **kwargs)
 
 
-def garment(who):
+def garment(who, *, ev=False):
     body = fl.B
     cloth = paint("suit-beta-cloth", (0.88, 0.87, 0.81), roughness=0.9)
     dark = paint("apollo-suit-rubber", (0.04, 0.045, 0.05), roughness=0.8)
@@ -68,7 +68,12 @@ def garment(who):
     trunk_node = fl.group("Torso")
     fl.emit(trunk, "Torso_BetaCloth", cloth, trunk_node)
     # Disconnects let cabin air into the garment and carry expired air back to the suit circuit.
-    for az, z, connector in [(-0.58, body.waist_z + 10, outlets), (0.51, body.waist_z + 10, inlets), (0.63, body.waist_z + 19, ports)]:
+    connections = [(-0.58, 10, outlets), (0.51, 10, inlets), (0.63, 19, ports)]
+    if ev:
+        # Extra chest connections on the EV garment. The PLSS backpack stayed off for launch.
+        connections += [(-0.62, 20, outlets), (0.55, 0.5, inlets), (-0.47, 0.5, ports)]
+    for az, height, connector in connections:
+        z = body.waist_z + height
         d, theta = z - body.torso_z0, az - math.pi / 2
         m = frame(torso.at(d, theta), torso.normal(d, theta))
         connector.lathe([(0, -0.2), (3.1, -0.2), (3.2, 0.7), (2.4, 1.2), (2.4, 2.5), (1.9, 2.7), (1.6, 2.3)], 24, matrix=m)
@@ -109,19 +114,19 @@ def garment(who):
         fl.emit(mesh, "Boots_" + label, mat, boot_node)
 
 
-def fit(who):
-    body = fl.man().scaled(stature=MEN[who], heel=2.8, breadth=1.0, girth=1.0, bulk=(0.9, 0.8, 0.6))
+def fit(who, stature=None):
+    body = fl.man().scaled(stature=MEN[who] if stature is None else stature, heel=2.8, breadth=1.0, girth=1.0, bulk=(0.9, 0.8, 0.6))
     x, y, z, _, _ = body.leg[-1]
     body.leg[-1] = (x, y, z, 3.5, 3.8)
     fl.use(body)
 
 
-def standing(who):
-    fit(who)
+def standing(who, *, stature=None, ev=False):
+    fit(who, stature)
     fl.start()
-    garment(who)
+    garment(who, ev=ev)
     fl.rig_standing()
-    return f"{who}, intravehicular A7L pressure garment"
+    return f"{who}, {'EV' if ev else 'IV'} A7L pressure garment"
 
 
 def seated(parent, base):

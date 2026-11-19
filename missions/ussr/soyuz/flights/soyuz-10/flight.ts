@@ -1,5 +1,19 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
-import { CRAFT, descent, iglaMoves, orbital, service, soyuzGallery, soyuzGallerySpecs, wingMoves } from '../../vehicles/gallery.ts';
+import { TAIL, TURN } from '../../../places/tyuratam/site-1.parts.ts';
+import { SITE1 } from '../../../places/tyuratam/site-1.ts';
+import { soyuzPad } from '../../../places/tyuratam/soyuz-pad.ts';
+import { soyuzWalker } from '../../crew/walkout.ts';
+import {
+  CRAFT,
+  descent,
+  iglaMoves,
+  onSoyuzPad,
+  orbital,
+  service,
+  soyuzGallery,
+  soyuzGallerySpecs,
+  wingMoves,
+} from '../../vehicles/gallery.ts';
 
 const HARDWARE = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.7';
 const FLIGHT_LOG = 'Igor Afanasyev and Dmitry Vorontsov, The First Soyuz Spacecraft, “Soyuz 10: Failure of the First Expedition”';
@@ -179,6 +193,10 @@ const fairing = vehicle.parts.find((part) => part.node === 'Fairing')!;
 fairing.detail =
   'The shroud enclosed the 7K-OKS and its folded solar wings during ascent. The exhibit slides the two halves apart to reveal the spacecraft. The model assumes the early 11A511 profile and reconstructs the seams and fittings.';
 
+vehicle.seats![0]!.figure = 'crew';
+vehicle.seats![1]!.figure = 'researcher';
+vehicle.seats![2]!.figure = 'engineer';
+
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-10',
   nation: 'USSR',
@@ -189,6 +207,8 @@ export const flight: Flight = {
   spacecraft: 'Soyuz 7K-OKS No. 31 · 11F615A8',
   launchVehicle: 'Soyuz 11A511 · Kh15000-025',
   launch,
+  site: SITE1,
+  opens: { at: -7200, model: 'pad', view: 'towers' },
   launchSite: 'Tyuratam (Baikonur), Site 1',
   crew: ['Vladimir A. Shatalov', 'Aleksey S. Yeliseyev', 'Nikolay N. Rukavishnikov'],
   summary:
@@ -282,5 +302,11 @@ export const flight: Flight = {
     },
   ],
   motors: [],
-  models: [vehicle],
+  models: [
+    onSoyuzPad(vehicle, TURN, TAIL),
+    soyuzPad,
+    soyuzWalker('crew', 'Vladimir Shatalov', 'models/ussr/soyuz/soyuz-10/crew.glb', 'flight', [-23, 0, 8]),
+    soyuzWalker('engineer', 'Aleksey Yeliseyev', 'models/ussr/soyuz/soyuz-10/engineer.glb', 'flight', [-26, 0, 5]),
+    soyuzWalker('researcher', 'Nikolay Rukavishnikov', 'models/ussr/soyuz/soyuz-10/researcher.glb', 'flight', [-26, 0, 11]),
+  ],
 };

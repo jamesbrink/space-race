@@ -110,7 +110,7 @@ export const STEPPE = {
  * does, and which plants stand. Each season says what it rests on (site-1.md, "The ground and what grows": the seasons).
  */
 export interface SteppeSeason {
-  name: 'thaw' | 'spring' | 'summer' | 'autumn';
+  name: 'thaw' | 'spring' | 'summer' | 'autumn' | 'winter';
   /** From this day of the year (month and day, 'MM-DD') until the next season's. */
   from: string;
   /** The sward's two tones, where it is thick and where it is thin (`STEPPE.herbGreen`, `herbDry` in the spring). */
@@ -130,6 +130,19 @@ export interface SteppeSeason {
   source: string;
 }
 
+const DORMANT: SteppeSeason['species'] = {
+  // nothing of the spring is up: the ephemerals and the tulips are below ground, the dead tufts lie flat
+  'meadow-grass': { share: 0 },
+  tulip: { share: 0 },
+  rhubarb: { share: 0 },
+  sedge: { colours: [0x9d927e, 0xaea38e] },
+  // the shrubs dormant: the wormwood's felt grey, the biyurgun and the saltworts dry grey-brown
+  wormwood: { colours: [0x8e9083, 0xa8a99b] },
+  biyurgun: { colours: [0x6c6858, 0x817b68] },
+  teresken: { colours: [0x9a978a, 0xb2ae9f] },
+  saltwort: { colours: [0x857a68, 0x9a8f7b] },
+};
+
 export const SEASONS: SteppeSeason[] = [
   {
     // the end of the winter: old snow going in patches, mud, the plants dormant (THAW). From the snow's usual last days
@@ -139,18 +152,7 @@ export const SEASONS: SteppeSeason[] = [
     // last year's sward, flattened and grey under the snow
     herbGreen: srgb(0x9a8f7e),
     herbDry: srgb(0x948a80),
-    species: {
-      // nothing of the spring is up: the ephemerals and the tulips are below ground, the dead tufts lie flat
-      'meadow-grass': { share: 0 },
-      tulip: { share: 0 },
-      rhubarb: { share: 0 },
-      sedge: { colours: [0x9d927e, 0xaea38e] },
-      // the shrubs dormant: the wormwood's felt grey, the biyurgun and the saltworts dry grey-brown
-      wormwood: { colours: [0x8e9083, 0xa8a99b] },
-      biyurgun: { colours: [0x6c6858, 0x817b68] },
-      teresken: { colours: [0x9a978a, 0xb2ae9f] },
-      saltwort: { colours: [0x857a68, 0x9a8f7b] },
-    },
+    species: DORMANT,
     snow: { cover: 0.3, colour: srgb(0xd6d3cb) },
     wet: 0.6,
     confidence: 'estimated',
@@ -209,15 +211,28 @@ export const SEASONS: SteppeSeason[] = [
     confidence: 'estimated',
     source: AUTUMN,
   },
+  {
+    name: 'winter',
+    from: '12-01',
+    herbGreen: srgb(0x9a8f7e),
+    herbDry: srgb(0x948a80),
+    species: DORMANT,
+    confidence: 'estimated',
+    source:
+      'Dormant plants assumed from the March thaw. Dzhusaly and Aralsk reported dry ground on 2 December 1974 (NOAA ISD, IA1), taken for the Soyuz 16 scene.',
+  },
 ];
 
-/**
- * The season on a date ('1961-08-06'): the last whose `from` has come that year (before the first, the last of the year
- * before). Four are drawn: the thaw (Voskhod 2, March), the spring (Vostok 1, April), the summer (Vostok 2 to 6, June and
- * August) and the autumn (Voskhod 1, October). The deep winter has no flight yet and is not its own: from December to
- * February a day takes the autumn's ground, which is wrong for it.
- */
+/** Dated reports of lying snow take precedence over the seasonal ground. */
 export function seasonOf(date: string): SteppeSeason {
+  if (date.slice(0, 10) === '1969-01-14') {
+    return {
+      ...SEASONS.find((s) => s.name === 'winter')!,
+      snow: { cover: 0.95, colour: srgb(0xe6e8e8) },
+      source:
+        'Siddiqi, Challenge to Apollo, p. 670, records eyewitnesses describing thick snow over the Soyuz 4 launch area. The coverage and tint are estimated.',
+    };
+  }
   const day = date.slice(5, 10);
   const sorted = [...SEASONS].sort((a, b) => a.from.localeCompare(b.from));
   return [...sorted].reverse().find((x) => x.from <= day) ?? sorted[sorted.length - 1]!;

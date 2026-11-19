@@ -43,7 +43,7 @@ at Salyut 6. The uncrewed Soyuz T-1 had already docked with the station during t
 
 Open the Soyuz-U fairing, deploy the solar wings and spread the spacecraft modules with the
 slider. Open the descent cabin and take either cosmonaut’s couch, or inspect the Neptun
-console on its own. Launch site and Fly are pending. [Spacecraft record](spacecraft.md)
+console on its own. The flight deck is pending. [Spacecraft record](spacecraft.md)
 
 ![Soyuz T-2 with its solar arrays deployed](../../../../../docs/readme/soyuz-t-2/orbital-configuration.jpg)
 
@@ -54,3 +54,9 @@ console on its own. Launch site and Fly are pending. [Spacecraft record](spacecr
 [Neptun console](../../../../../docs/readme/soyuz-t-2/console.jpg) ·
 [Combined propulsion system](../../../../../docs/readme/soyuz-t-2/propulsion.jpg) ·
 [Separated spacecraft modules](../../../../../docs/readme/soyuz-t-2/separation.jpg)
+
+## Launch site
+
+The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky uses the flight date and the place’s estimated weather. [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
+
+Walk as Malyshev or Aksyonov in the Sokol KV-2. Its paired chest closures and central regulator distinguish it from the earlier Sokol-K. Each walk starts on the rail apron facing the launcher. The starting positions, footwear and garment details are reconstructed.

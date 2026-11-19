@@ -1,5 +1,9 @@
 import type { Flight, Move, Part } from '../../../../../src/types.ts';
-import { CRAFT, descent, moduleTravel, orbital, service, soyuzGallery, soyuzGallerySpecs } from '../../vehicles/gallery.ts';
+import { TAIL, TURN } from '../../../places/tyuratam/site-1.parts.ts';
+import { SITE1 } from '../../../places/tyuratam/site-1.ts';
+import { soyuzPad } from '../../../places/tyuratam/soyuz-pad.ts';
+import { soyuzWalker } from '../../crew/walkout.ts';
+import { CRAFT, descent, moduleTravel, onSoyuzPad, orbital, service, soyuzGallery, soyuzGallerySpecs } from '../../vehicles/gallery.ts';
 
 const HERITAGE = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.12';
 const CATALOG = 'Czech Academy of Sciences Space Catalogue, 1980-045A.';
@@ -222,6 +226,9 @@ const upper = vehicle.parts.find((part) => part.node === 'BlockI')!;
 upper.detail =
   'Block I carried the four-chamber RD-0110 and continued the climb after the core separated. The model reconstructs the stage outline and internal stations from shared Soyuz hardware.';
 
+vehicle.seats![0]!.figure = 'crew';
+vehicle.seats![1]!.figure = 'engineer';
+
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-t-2',
   nation: 'USSR',
@@ -232,6 +239,8 @@ export const flight: Flight = {
   spacecraft: 'Soyuz 7K-ST No. 7L · 11F732',
   launchVehicle: 'Soyuz-U 11A511U · Zh15000-196',
   launch,
+  site: SITE1,
+  opens: { at: -7200, model: 'pad', view: 'towers' },
   launchSite: 'Tyuratam (Baikonur), Site 1',
   crew: ['Yuri V. Malyshev', 'Vladimir V. Aksyonov'],
   summary:
@@ -292,5 +301,10 @@ export const flight: Flight = {
     },
   ],
   motors: [],
-  models: [vehicle],
+  models: [
+    onSoyuzPad(vehicle, TURN, TAIL),
+    soyuzPad,
+    soyuzWalker('crew', 'Yuri Malyshev', 'models/ussr/soyuz/soyuz-t-2/crew.glb', 'sokol-kv2', [-23, 0, 8]),
+    soyuzWalker('engineer', 'Vladimir Aksyonov', 'models/ussr/soyuz/soyuz-t-2/engineer.glb', 'sokol-kv2', [-26, 0, 5]),
+  ],
 };

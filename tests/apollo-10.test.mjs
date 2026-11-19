@@ -6,7 +6,9 @@ import { framesOf } from './glb.mjs';
 
 for (const suffix of ['', '.lod1', '.lod2']) {
   test(`Snoopy and its docking hardware in both exhibits at ${suffix || 'full detail'}`, () => {
-    for (const model of flight.models) {
+    for (const id of ['vehicle', 'snoopy']) {
+      const model = flight.models.find((m) => m.id === id);
+      assert.ok(model, id);
       const path = new URL('../public/' + model.url.replace('.glb', suffix + '.glb'), import.meta.url);
       const frames = framesOf(fileURLToPath(path));
       if (!suffix) {

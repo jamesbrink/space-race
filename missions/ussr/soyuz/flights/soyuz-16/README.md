@@ -49,8 +49,7 @@ would meet the following July. [NASA, *Soviet Rehearsal for Apollo-Soyuz*](https
 
 The slider opens the Soyuz-U fairing, unfolds the solar arrays, releases the Apollo simulator ring
 and spreads the three modules for inspection. Look into the descent capsule to see both suited
-cosmonauts and take either couch to look at the reconstructed controls. The Launch site and Fly
-are pending. [Spacecraft record](spacecraft.md)
+cosmonauts and take either couch to look at the reconstructed controls. The flight deck is pending. [Spacecraft record](spacecraft.md)
 
 ![Soyuz 16 with its solar arrays deployed and the Apollo simulator ring still attached](../../../../../docs/readme/soyuz-16/orbital-configuration.jpg)
 
@@ -61,3 +60,9 @@ are pending. [Spacecraft record](spacecraft.md)
 [Descent cabin](../../../../../docs/readme/soyuz-16/descent-cabin.jpg) ·
 [Sirius controls from Filipchenko's couch](../../../../../docs/readme/soyuz-16/sirius.jpg) ·
 [Separated spacecraft modules](../../../../../docs/readme/soyuz-16/separation.jpg)
+
+## Launch site
+
+The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky uses the flight date and the place’s estimated weather. [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
+
+Walk as Filipchenko or Rukavishnikov in their Sokol-K pressure garments. Each walk starts on the rail apron facing the launcher. The starting positions, footwear and garment details are reconstructed.

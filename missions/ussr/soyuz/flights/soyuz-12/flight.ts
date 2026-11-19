@@ -1,5 +1,19 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
-import { CRAFT, descent, iglaMoves, moduleTravel, orbital, service, soyuzGallery, soyuzGallerySpecs } from '../../vehicles/gallery.ts';
+import { TAIL, TURN } from '../../../places/tyuratam/site-1.parts.ts';
+import { SITE1 } from '../../../places/tyuratam/site-1.ts';
+import { soyuzPad } from '../../../places/tyuratam/soyuz-pad.ts';
+import { soyuzWalker } from '../../crew/walkout.ts';
+import {
+  CRAFT,
+  descent,
+  iglaMoves,
+  moduleTravel,
+  onSoyuzPad,
+  orbital,
+  service,
+  soyuzGallery,
+  soyuzGallerySpecs,
+} from '../../vehicles/gallery.ts';
 
 const HARDWARE = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.8';
 const INSERTION = 'Nauka i zhizn, “Flights Continue,” 1973, reported initial orbit.';
@@ -213,6 +227,9 @@ const tower = vehicle.parts.find((part) => part.node === 'EscapeTower')!;
 tower.detail =
   'The escape tower could pull the descent capsule and orbital module clear together. For Soyuz 12 the lower casing was omitted. The gallery reconstructs the exposed supports and the narrower outline from a period drawing.';
 
+vehicle.seats![0]!.figure = 'crew';
+vehicle.seats![1]!.figure = 'engineer';
+
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-12',
   nation: 'USSR',
@@ -223,6 +240,8 @@ export const flight: Flight = {
   spacecraft: 'Soyuz 7K-T No. 37 · 11F615A8',
   launchVehicle: 'Soyuz 11A511 · S15000-026',
   launch,
+  site: SITE1,
+  opens: { at: -7200, model: 'pad', view: 'towers' },
   launchSite: 'Tyuratam (Baikonur), Site 1',
   crew: ['Vasily G. Lazarev', 'Oleg G. Makarov'],
   summary:
@@ -283,5 +302,10 @@ export const flight: Flight = {
     },
   ],
   motors: [],
-  models: [vehicle],
+  models: [
+    onSoyuzPad(vehicle, TURN, TAIL),
+    soyuzPad,
+    soyuzWalker('crew', 'Vasily Lazarev', 'models/ussr/soyuz/soyuz-12/crew.glb', 'sokol-k', [-23, 0, 8]),
+    soyuzWalker('engineer', 'Oleg Makarov', 'models/ussr/soyuz/soyuz-12/engineer.glb', 'sokol-k', [-26, 0, 5]),
+  ],
 };

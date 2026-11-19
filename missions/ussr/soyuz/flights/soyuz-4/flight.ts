@@ -1,5 +1,18 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
-import { CRAFT, descent, iglaMoves, orbital, service, soyuzGallery, soyuzGallerySpecs, wingMoves } from '../../vehicles/gallery.ts';
+import { TAIL, TURN } from '../../../places/tyuratam/site-1.parts.ts';
+import { SITE31, site31Pad } from '../../../places/tyuratam/site-31.ts';
+import { soyuzWalker } from '../../crew/walkout.ts';
+import {
+  CRAFT,
+  descent,
+  iglaMoves,
+  onSoyuzPad,
+  orbital,
+  service,
+  soyuzGallery,
+  soyuzGallerySpecs,
+  wingMoves,
+} from '../../vehicles/gallery.ts';
 
 const SIDDIQI = 'Asif A. Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
 const RECORD = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.3.3';
@@ -162,6 +175,9 @@ vehicle.views.push({
   isolate: true,
 });
 
+const crew = soyuzWalker('crew', 'Vladimir A. Shatalov', 'models/ussr/soyuz/soyuz-4/crew.glb', 'flight', [-48, 0, 3.5], 1.7);
+vehicle.seats![0]!.figure = crew.id;
+
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-4',
   nation: 'USSR',
@@ -173,6 +189,7 @@ export const flight: Flight = {
   launchVehicle: 'Soyuz 11A511 · Ya15000-012',
   launch,
   launchSite: 'Tyuratam (Baikonur), Site 31',
+  site: SITE31,
   crew: ['Vladimir A. Shatalov'],
   summary: 'Shatalov launched alone and docked with Soyuz 5. Khrunov and Yeliseyev crossed by spacewalk and returned to Earth with him.',
   facts: [
@@ -215,5 +232,5 @@ export const flight: Flight = {
     { group: 'Flight', label: 'Crew at landing', value: 3, unit: 'people', confidence: 'documented', note: RECORD },
   ],
   motors: [],
-  models: [vehicle],
+  models: [onSoyuzPad(vehicle, TURN, TAIL), site31Pad, crew],
 };

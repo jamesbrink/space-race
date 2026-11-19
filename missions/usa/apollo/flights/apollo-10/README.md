@@ -9,3 +9,7 @@ At Pad 39B the wind was 19 knots from 142° true, measured 60 feet above ground.
 The [spacecraft and launch vehicle](spacecraft.md) occupy two Gallery exhibits. On the launch stack, open the adapter to inspect the folded lunar module, or select the command module to see the couches, panel and docking probe. On the separate Snoopy exhibit, open the cutaway to inspect its cabin and batteries. Move the assembly slider to leave the legs and descent engine behind and follow the ascent stage that returned to Charlie Brown. The exhibit uses inspection movements. The mission timeline uses the elapsed times in table 3-I of the flight report. [NASA mission overview](https://www.nasa.gov/mission/apollo-10/)
 
 [Snoopy’s hardware notes](../../vehicles/lm-4.md) identify the flight photographs, battery arrangement and uncertainties in the deployed dimensions.
+
+## Launch site
+
+At [Pad 39B](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-3. At liftoff the computed Sun was at azimuth 141.3° and elevation 78.7°. The Moon was at azimuth 82.0° and elevation 58.8°.

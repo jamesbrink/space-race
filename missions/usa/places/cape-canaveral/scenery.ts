@@ -38,7 +38,9 @@ import { LC5 } from './lc-5.ts';
  * The Atlantic shore, south to north, as [latitude, longitude]: today's surf line from
  * OpenStreetMap, thinned. Not 1961's exactly: the Cape's point has moved and the port has grown.
  * South of the port, where the ground drawn round the pad hands over to the globe, it is the
- * globe's own shore (tools/globe-region.mjs, the same coastline) read every 0.01 degrees.
+ * globe's own shore (tools/globe-region.mjs, the same coastline) read every 0.01 degrees. From
+ * 28.57 north past Complex 39 the points sample the zero crossing of the same Cape near map
+ * (public/globe/cape-canaveral.json, © OpenStreetMap contributors, 39 m per texel).
  */
 const ATLANTIC: [number, number][] = [
   [28.32, -80.60725],
@@ -72,13 +74,34 @@ const ATLANTIC: [number, number][] = [
   [28.514, -80.55463],
   [28.5364, -80.56298],
   [28.56548, -80.56832],
+  [28.57, -80.56959],
+  [28.58, -80.573],
+  [28.585, -80.57462],
+  [28.59, -80.57807],
+  [28.6, -80.58687],
+  [28.61, -80.59582],
+  [28.62, -80.60467],
+  [28.63, -80.61322],
+  [28.64, -80.62064],
+  [28.65, -80.62763],
+  [28.66, -80.63459],
+  [28.67, -80.64172],
+  [28.68, -80.64909],
+  [28.69, -80.65732],
+  [28.7, -80.66472],
+  [28.71, -80.67301],
+  [28.72, -80.68119],
+  [28.73, -80.68916],
+  [28.74, -80.69697],
 ];
 /**
  * The Banana River's east shore, the same way and rougher. South of 28.42 it is read from
  * OpenStreetMap's Indian River Lagoon (relation 1204544) every 1.2 to 1.8 km: the main channel's
  * edge, past today's causeways (not there in 1961, and not drawn); from 28.40 to 28.4225, round the
  * made land west of the port's harbour (HARBOUR, below), it is the globe's shore every 0.0025 degrees. North of 28.52 it is
- * the globe's shore every 0.0025 to 0.01 degrees, as the Atlantic's south of the port.
+ * the globe's shore every 0.0025 to 0.01 degrees, as the Atlantic's south of the port. Beyond
+ * 28.575 the single strip follows the eastern channel through the marsh to its head south of
+ * 39A. Its islands, branching creeks and detached ponds are omitted from the local terrain.
  */
 const BANANA_RIVER: [number, number][] = [
   [28.32573, -80.61846],
@@ -111,6 +134,21 @@ const BANANA_RIVER: [number, number][] = [
   [28.5375, -80.59266],
   [28.545, -80.59164],
   [28.555, -80.58974],
+  [28.56, -80.5902],
+  [28.565, -80.58723],
+  [28.575, -80.58683],
+  [28.5775, -80.5934],
+  [28.5825, -80.59336],
+  [28.585, -80.59591],
+  [28.5875, -80.5976],
+  [28.59, -80.59984],
+  [28.5925, -80.60069],
+  [28.595, -80.59929],
+  [28.5975, -80.59788],
+  [28.6, -80.59473],
+  [28.6025, -80.59793],
+  [28.605, -80.59787],
+  [28.6064, -80.59816],
 ];
 /**
  * Its west shore, Merritt Island's east: from the same relation, the far edge of the river's
@@ -154,6 +192,21 @@ const BANANA_RIVER_WEST: [number, number][] = [
   [28.55, -80.61091],
   [28.555, -80.60904],
   [28.56, -80.60739],
+  [28.565, -80.60682],
+  [28.5725, -80.60683],
+  [28.575, -80.60325],
+  [28.5775, -80.60307],
+  [28.5825, -80.60179],
+  [28.585, -80.59934],
+  [28.5875, -80.60187],
+  [28.59, -80.60374],
+  [28.5925, -80.60748],
+  [28.595, -80.60685],
+  [28.5975, -80.6025],
+  [28.6, -80.60277],
+  [28.6025, -80.60249],
+  [28.605, -80.59979],
+  [28.6064, -80.59868],
 ];
 /**
  * The Indian River's east shore, Merritt Island's west, where it comes within reach: only in the
