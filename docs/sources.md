@@ -1777,3 +1777,10 @@ Figure 7.1-2 shows the height and arrangement of the access platforms beside Soy
 - [Apollo 11 image library](https://www.nasa.gov/wp-content/uploads/static/history/alsj/a11/images11.html), 69-HC-620, AS11-36-5388/5389, AS11-37-5443, AS11-40-5900 and AS11-44-6574. [NASA SP-214](https://www.nasa.gov/wp-content/uploads/static/history/alsj/a11/as11psr.pdf), photographic summary and surface experiments.
 
 - For the Apollo 11 launch site, the [NASA mission overview](https://www.nasa.gov/missions/apollo/apollo-11/apollo-11-mission-overview/) identifies Pad 39A and mobile launcher 1. The [launch-day transcript](https://apollojournals.org/afj/ap11fj/01launch.html) records crew ingress, hatch closure and arm 9 retraction. The [AS-506 Flight Evaluation Report](https://www.ibiblio.org/apollo/Documents/lvfea-AS506-Apollo11.pdf), §§3.6.1–3 and table 4-1, reports first motion and ground equipment performance. Appendix A and table A-1 give the observed launch weather. The [NOAA IGRA Cape Kennedy sounding](https://www.ncei.noaa.gov/pub/data/igra/data/data-por/USM00074794-data.txt.zip) supplies the cloud-base wind.
+
+### Apollo 12 · AS-507, Yankee Clipper and Intrepid
+
+- [Apollo 12 Mission Report, MSC-01855](https://www.nasa.gov/wp-content/uploads/2025/11/a12-missionreport.pdf), mission sequence, appendix A configuration changes and surface experiments.
+- [Saturn V Launch Vehicle Flight Evaluation Report AS-507](https://www.nasa.gov/wp-content/uploads/static/history/afj/ap12fj/pdf/a12-saturn-v-fer.pdf), §2, stage and adapter identities, ignition mass and flight events.
+- [Saturn V Flight Manual SA-507](https://www.apollojournals.org/afj/ap12fj/pdf/a12_sa507-flightmanual.pdf), §§IV–VII. Stage structure, interstage equipment and differences from SA-506.
+- [Apollo 12 Press Kit](https://science.nasa.gov/wp-content/uploads/2023/09/Apollo_12.pdf), spacecraft, Saturn V, photographic equipment and lunar surface experiments. [Apollo 12 photographic record](https://apollojournals.org/alsj/a12/images12.html), photographs of Intrepid, the deployment of the experiments and the surface traverse.
