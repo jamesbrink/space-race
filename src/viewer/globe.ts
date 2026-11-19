@@ -301,6 +301,12 @@ const glintGlsl = () => /* glsl */ `
 /** How far the air's density falls by e, metres: for `chapman` and `transmission`. */
 const SCALE = 8_000;
 /**
+ * The eye's heights over the ground under it between which the air seen from above comes in, metres. Its ball is 300 m
+ * at the least and the tallest thing at any site (Complex 39's tower and crane) stands about 140 m: from 450 m up
+ * nothing on the ground reaches into the ball, so nothing is cut at its radius (globe.ts `attend`). Ours.
+ */
+const AIR_CLEAR = [450, 900] as const;
+/**
  * The air seen from above: the limb's layered glow, the blue over the globe, the pale haze toward the horizon,
  * the red where the Sun is setting under it. Drawn on a ball round the eye (so nothing nearer than it is hazed:
  * the vehicle the eye is following) and worked out along each ray through the air by atmosphere.ts: Rayleigh's
@@ -1043,6 +1049,22 @@ export class Globe {
     return most;
   }
 
+  /**
+   * How high the eye is over the ground under it, metres: over a place's own ground (a hole) its height over that
+   * ground, elsewhere over the sea.
+   */
+  private clearance(eye: THREE.Vector3): number {
+    let over = this.altitude(eye);
+    for (const hole of this.holes) {
+      if (hole.half <= 0) continue;
+      const m = hole.frame.elements;
+      const x = m[0]! * eye.x + m[4]! * eye.y + m[8]! * eye.z + m[12]!,
+        z = m[2]! * eye.x + m[6]! * eye.y + m[10]! * eye.z + m[14]!;
+      if (Math.max(Math.abs(x), Math.abs(z)) <= hole.half) over = Math.min(over, eye.y - hole.ground);
+    }
+    return over;
+  }
+
   /** Straight up from the sea under the eye, in the scene's frame. */
   up(eye: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
     const n = this.eyed(eye).normal;
@@ -1099,8 +1121,14 @@ export class Globe {
       this.uniforms.uGlobeAbove!.value = this.thin;
       changed = true;
     }
-    // the air: a ball round the eye, inside the far plane and outside whatever is being followed
-    const thin = this.thin > 0.01;
+    // The air: a ball round the eye, inside the far plane and outside whatever is being followed. What lies inside the
+    // ball has none of its light and what lies beyond has the whole ray's, so where the ground or a structure reaches
+    // into the ball the light steps at its radius. Low over the ground it is left out (it has little to add there: the
+    // sky and the fog are the air) and comes in with the eye's height over the ground under it (`AIR_CLEAR`), from
+    // where nothing on the ground can reach into it: at Site 1, 100 m above the sea, it was drawn at a weight of 0.015
+    // on the pad and stepped one or two levels of 255 in a ring 300 m out (Voskhod 2's hazy day, `pnpm test:frozen`).
+    const weight = this.thin * THREE.MathUtils.smoothstep(this.clearance(eye), AIR_CLEAR[0], AIR_CLEAR[1]);
+    const thin = weight > 0;
     if (thin !== this.air.visible) {
       this.air.visible = thin;
       changed = true;
@@ -1114,8 +1142,8 @@ export class Globe {
       u.uCentre!.value.set(centre[0] - eye.x, centre[1] - eye.y, centre[2] - eye.z);
       u.uRadius!.value = sphere;
       u.uAlt!.value = height;
-      if (u.uWeight!.value !== this.thin) changed = true;
-      u.uWeight!.value = this.thin;
+      if (u.uWeight!.value !== weight) changed = true;
+      u.uWeight!.value = weight;
       this.air.position.copy(eye);
       this.air.scale.setScalar(THREE.MathUtils.clamp(0.1 * height, 300, 30_000));
     }
