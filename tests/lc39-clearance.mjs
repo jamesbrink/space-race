@@ -3,6 +3,7 @@ import { flight as apollo11 } from '../missions/usa/apollo/flights/apollo-11/fli
 import { flight as apollo12 } from '../missions/usa/apollo/flights/apollo-12/flight.ts';
 import { flight as apollo13 } from '../missions/usa/apollo/flights/apollo-13/flight.ts';
 import { flight as apollo14 } from '../missions/usa/apollo/flights/apollo-14/flight.ts';
+import { flight as apollo15 } from '../missions/usa/apollo/flights/apollo-15/flight.ts';
 
 // First vehicle motion relative to range zero, from each AS-50x evaluation's event table.
 export const flights = [
@@ -10,6 +11,7 @@ export const flights = [
   [apollo12, 507, 0.25],
   [apollo13, 508, 0.3],
   [apollo14, 509, 0.2],
+  [apollo15, 510, 0.3],
 ];
 
 /** Sample every timed sweep, including hatch and ground-equipment movements independent of the pad slider. */

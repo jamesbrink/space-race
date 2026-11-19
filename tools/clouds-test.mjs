@@ -45,6 +45,7 @@ const FLIGHTS = [
   'usa/apollo/apollo-12',
   'usa/apollo/apollo-13',
   'usa/apollo/apollo-14',
+  'usa/apollo/apollo-15',
 ].filter((f) => !only || f === only);
 const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */
