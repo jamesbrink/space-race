@@ -425,3 +425,18 @@ test('Apollo 7 keeps its launch weather and bakes a different map from the Atlan
   assert.equal(at.deck, 1);
   assert.doesNotMatch(weatherGlsl(dayOf(mr3)), /tRecovery/);
 });
+
+test('SA-510 stands under the thin cirrus observed at range zero, with clear air beneath it', async () => {
+  const flight = await load('usa/apollo/flights/apollo-15/flight.ts');
+  assert.equal(flight.weather.observed.at, flight.launch);
+  const day = dayOf(flight);
+  assert.equal(day.cumulus, null);
+  assert.equal(day.deck.cover, 0);
+  assert.equal(day.high.veil, false);
+  assert.equal(day.high.cover, 0.7);
+  assert.equal(day.high.height, 7620);
+  assert.equal(day.visibility, 16000);
+  assert.equal(day.wind.speed, 5.1);
+  assert.equal(flight.weather.wind.from.value, 156);
+  assert.equal(day.map, 'cape-canaveral.1971-07-26');
+});

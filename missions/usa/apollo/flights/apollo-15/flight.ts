@@ -1,4 +1,7 @@
 import type { Flight } from '../../../../../src/types.ts';
+import { LC39A_EDT, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
+import { lc39Crew } from '../../crew/lc39.ts';
+import { WEATHER } from './weather.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
@@ -26,6 +29,9 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-510',
   launch: '1971-07-26T13:34:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
+  site: LC39A_EDT,
+  opens: { at: ingress, model: 'pad', view: 'launcher' },
+  weather: WEATHER,
   crew: ['David R. Scott', 'Alfred M. Worden', 'James B. Irwin'],
   summary:
     'Scott and Irwin unfolded a rover from Falcon and drove along Hadley Rille and the Apennine Front. In lunar orbit Worden photographed their landing region from Endeavour. On the way home he climbed outside to collect the film.',
@@ -100,15 +106,15 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Apollo 15 · Saturn V',
       url: 'models/usa/apollo/apollo-15/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       dockingPorts: [endeavourPort, falconPort],
       ...cabin,
       cabin: { ...cabin.cabin, within: [...cabin.cabin.within, 'WaterDispenser'] },
       seats: [
-        { node: 'Seat_Commander', label: 'Scott’s left couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_CommandModulePilot', label: 'Worden’s centre couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_LunarModulePilot', label: 'Irwin’s right couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Scott’s left couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Worden’s centre couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Irwin’s right couch', from: 'SideHatch', open: boarding },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -127,5 +133,36 @@ export const flight: Flight = {
       }),
     },
     falconModel,
+    mobileLauncher(3, {
+      holdDowns: 'as-510',
+      ingress,
+      parkCommand: -3180,
+      parkedBy: -3150,
+      pao: 'Kennedy Launch Control, 26 July 1971. At T−53:00 arm 9 was commanded to standby. The 30-second travel is estimated. Launch Control reported full retraction beginning near T−5.',
+      intertankClear: -17,
+      forwardRetract: -16.2,
+      firstMotion: 0.3,
+      terminalSource:
+        'Saturn V Flight Manual SA-510, figure 8-20 (nominal terminal sequence). AS-510 Flight Evaluation Report, tables 2-1 and 2-2 and §3.6.1 (first motion and mast strokes).',
+    }),
+    ...lc39Crew(['Scott', 'Worden', 'Irwin'], true, [
+      {
+        url: 'models/usa/apollo/apollo-15/crew.glb',
+        scale: 'Scott · 6 ft · A7LB EV',
+        torso: 'The commander’s garment has six chest connectors, a side-entry closure and a flexible waist for sitting on the rover.',
+      },
+      {
+        url: 'models/usa/apollo/apollo-15/pilot.glb',
+        scale: 'Worden · 5 ft 10½ in · A7LB CMP',
+        torso:
+          'Worden’s rear-entry garment has three chest connectors. He wore it outside Endeavour to retrieve film on the return flight.',
+      },
+      {
+        url: 'models/usa/apollo/apollo-15/lmp.glb',
+        scale: 'Irwin · 5 ft 8 in · A7LB EV',
+        torso:
+          'The lunar module pilot’s garment has six chest connectors, a side-entry closure and a flexible waist for sitting on the rover.',
+      },
+    ]),
   ],
 };

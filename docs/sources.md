@@ -1820,3 +1820,9 @@ Figure 7.1-2 shows the height and arrangement of the access platforms beside Soy
 - [Saturn V Flight Manual SA-510](https://www.apollojournals.org/afj/ap15fj/pdf/as15-sa510-flight-manual.pdf), §IV and figure 4-20, gives the two occupied fairings, motor cant and nominal average thrust per retrorocket.
 - [Apollo 15 Mission Report Supplement 4, Descent Propulsion System Final Flight Evaluation](https://ntrs.nasa.gov/citations/19730023018), pp. 9–10, reports the descent engine’s reconstructed thrust at 33 seconds, normalized to the reference inlet pressures.
 - Kennedy photographs of the flight rover, [KSC-71PC-345](https://www.apollojournals.org/alsj/a15/ap15-KSC-71PC-345.jpg) and [KSC-71P-206](https://www.apollojournals.org/alsj/a15/ap15-KSC-71P-206.jpg), show the wheel mesh, fenders and folded chassis before launch.
+
+### Apollo 15 launch preparations
+
+- [Kennedy Launch Control countdown, 26 July 1971](https://www.apollojournals.org/afj/ap15fj/01launch_to_earth_orbit.html). Boarding order, boost cover closeout, arm 9 standby call and observed final withdrawal near T−5.
+- [AS-510 flight evaluation, MPR-SAT-FE-71-2](https://ntrs.nasa.gov/citations/19730025086). Section 3.6 records ground equipment performance, the ECS changeover and the tail service mast strokes. Appendix A gives launch-day cloud, visibility and wind observations.
+- [NASA launch-day suiting photograph](https://www.nasa.gov/image-article/apollo-15-crew-suits-up/) and the Smithsonian’s flown garments for [Scott](https://www.si.edu/object/pressure-suit-a7-lb-scott-apollo-15-flown%3Anasm_A19740189000), [Worden](https://www.si.edu/object/pressure-suit-a7-lb-worden-apollo-15-flown%3Anasm_A19730059000) and [Irwin](https://www.si.edu/object/nasm_A19740132000). Garment configurations, ring finishes, identification bands and chest fittings.

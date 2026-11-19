@@ -141,14 +141,14 @@ for (const [flight, serial, firstMotion] of flights) {
         assert.ok(visor.to >= carrier.to && visor.to - carrier.from <= 4, mast);
       }
     }
-    if (serial === 509) {
-      // AS-509 §3.6.1 times each mast from its own umbilical plate separation to the retracted position.
+    // Both flight evaluations (§3.6.1) time each mast from plate separation to full retraction.
+    const mastStrokes = {
+      509: { '1_2': 2.168, '3_2': 2.496, '3_4': 2.131 },
+      510: { '1_2': 2.307, '3_2': 2.151, '3_4': 2.688 },
+    }[serial];
+    if (mastStrokes) {
       const moves = pad.parts.find((part) => part.node === 'Tail_Service_Masts').clocked;
-      for (const [mast, seconds] of [
-        ['1_2', 2.168],
-        ['3_2', 2.496],
-        ['3_4', 2.131],
-      ]) {
+      for (const [mast, seconds] of Object.entries(mastStrokes)) {
         const carrier = moves.find((move) => move.node === `Tail_Carrier_${mast}`);
         const boom = moves.find((move) => move.node === `Tail_Boom_${mast}`);
         const visor = moves.find((move) => move.node === `Tail_Visor_${mast}`);
