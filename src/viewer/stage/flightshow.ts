@@ -22,7 +22,7 @@ import type { Staged } from '../lod.ts';
 import type { Looks } from '../look.ts';
 import { jointKey } from '../onfoot/gait.ts';
 import { absolute } from '../origin.ts';
-import { lightFires, Plume, plumeExit } from '../plume.ts';
+import { lightFires, Plume, plumeExit, plumeLength } from '../plume.ts';
 import type { LineState, Recovery } from '../recovery.ts';
 import { Swimmer } from '../swimmer.ts';
 import { TRAIL_STEP, Trail } from '../trail.ts';
@@ -1288,9 +1288,9 @@ export class FlightShow {
       const b = new THREE.Box3().setFromObject(node);
       return s.group.worldToLocal(new THREE.Vector3((b.min.x + b.max.x) / 2, b.min.y, (b.min.z + b.max.z) / 2));
     };
-    // the pressure each engine's gas leaves its nozzle at, atmospheres, by the plan's engine (sim/plan.ts `Nozzle`) or the
-    // fire's own nozzle; an engine whose plan gives none is drawn matched to the air at the sea, widening only as the air thins
-    // below that
+    // the pressure each engine's gas leaves its nozzle at, atmospheres, and its fire's length, by the plan's engine (sim/plan.ts
+    // `Nozzle`; plume.ts `plumeLength`) or the fire's own nozzle; an engine whose plan gives none is drawn matched to the air at
+    // the sea, widening only as the air thins below that, at the A-7's length
     const engines = flight.plan?.craft[0]?.engines ?? [];
     const hang = (
       node: THREE.Object3D,
@@ -1311,7 +1311,7 @@ export class FlightShow {
         .invert()
         .multiply(fromGroup)
         .multiply(mount ?? new THREE.Matrix4().makeTranslation(at));
-      const plume = new Plume(radius, plumeExit(nozzle), cluster, light, kindOf(burns));
+      const plume = new Plume(radius, plumeExit(nozzle), cluster, light, kindOf(burns), plumeLength(nozzle?.nozzle));
       plume.mesh.matrixAutoUpdate = false;
       plume.mesh.matrix.copy(new THREE.Matrix4().copy(root.matrixWorld).invert().multiply(owner.matrixWorld).multiply(offset));
       root.add(plume.mesh);

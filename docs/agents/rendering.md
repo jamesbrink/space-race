@@ -302,8 +302,15 @@ pressure the gas leaves at, each a Measure in the data with its source; or the f
 its chambers are flown as part of another engine, as the Atlas's verniers are with its sustainer). The Redstone's A-7,
 the R-7's engines, the Mercury-Atlas's MA-2 (booster, sustainer, verniers) and the Gemini-Titan's LR87 and LR91 have
 one. Where none is recorded (solid motors, the Gemini's thrusters, Apollo 7's engines for now) the fire uses a neutral
-exit matched to sea-level air (`plumeExit`); `tests/exhaust.test.mjs` lists those and fails on a
+exit matched to sea-level air (`plumeExit`) and the A-7's length; `tests/exhaust.test.mjs` lists those and fails on a
 new one. The flight dynamics read none of it.
+
+**The fire's length is one rule for every engine** (`plumeLength`): as many times its own supersonic core as the
+A-7's fire was on film. The core is NASA SP-8072's fit (Figure 11), x/d = 3.45 (1 + 0.38 M)^2, M the jet's Mach number
+expanded from its chamber to sea-level air (gamma 1.2, estimated); the one judged figure is the A-7's 38 exit radii
+(`LENGTH`, estimated, from film), which Freedom 7's fire keeps to the bit. A harder chamber blows a longer core: an
+RD-107 at 5.85 MPa is drawn 46 radii, the Titan's first stage 45, the Atlas's boosters 43. An engine with no chamber
+pressure on record is drawn at the A-7's.
 
 **A fire looks as what it burns** (`viewer/flames.ts`, `flies.fires[].burns`, `flies.burns`). The shape is the air's and
 the nozzle's (the pressure the engine's gas leaves at, `EngineDef.nozzle` in its plan, read by the fire's engine id: under

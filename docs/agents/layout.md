@@ -267,7 +267,7 @@ src/
   viewer/eye.ts                       the eye by night: what the lamps in view add, adapted to over the eye's own times
   viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
   viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
-  viewer/plume.ts                     the engine's fire as data: its place, how hard it burns, the shape the air lets it take, its light on the pad
+  viewer/plume.ts                     the engine's fire as data: its place, how hard it burns, the shape the air lets it take (its nozzle's exit, its core's length), its light on the pad
   viewer/flames.ts                    what a fire looks like by what it burns: its colours, its light, how much it hides (each with its source); and a gas jet by what it is (`GASES`)
   viewer/fires.ts                     which fires burn when and how hard, an engine's chambers found in its geometry, the jet's edge and where a cluster's jets merge; how hard a jet that is not a fire blows, and its shape (pure: tests/fires.test.mjs)
   viewer/trail.ts                     the smoke it leaves as data: the trail along the path flown (steam low down, a contrail in the cold), the cloud over the pad at liftoff
