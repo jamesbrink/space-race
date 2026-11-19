@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { BESIDE, CORNERS, drawn, join, PAINTS, paintMaterial, paintOf } from '../src/app/lineup/merge.ts';
 import { keyOf } from '../src/app/lineup/shelf.ts';
 import { floorPlates, showPlates } from '../src/app/lineup/stand.ts';
+import { Looks } from '../src/viewer/look.ts';
 
 test('the shared plate draw keeps each visible stand’s scale, tint and back-to-front order', () => {
   const camera = new THREE.PerspectiveCamera(60, 1, 0.1, 100);
@@ -325,4 +326,69 @@ test('a Lineup window skips only an empty transparency pass', () => {
   }
   window.onBeforeRender(null, null, new THREE.OrthographicCamera(), window.geometry, window.material);
   assert.equal(window.material.forceSinglePass, false);
+});
+
+test('small Lineup panes draw backs then fronts in one ordered mesh in both looks', () => {
+  // Try the same two oppositely wound panes disjoint, overlapping and partly behind the near plane.
+  for (const [separation, z, indexed] of [
+    [3, -3, true],
+    [0.1, -3, false],
+    [0, -0.3, true],
+  ]) {
+    const root = new THREE.Group();
+    const material = new THREE.MeshPhysicalMaterial({ name: 'glass', transparent: true, side: THREE.DoubleSide, depthWrite: false });
+    for (const sign of [1, -1]) {
+      const mesh = new THREE.Mesh(indexed ? new THREE.PlaneGeometry() : new THREE.PlaneGeometry().toNonIndexed(), material);
+      mesh.position.set(sign * separation, 0, z + sign * 0.05);
+      mesh.rotation.y = sign === 1 ? 0.7 : Math.PI - 0.8;
+      if (!indexed) mesh.scale.x = -1;
+      root.add(mesh);
+    }
+    const original = triangles(root);
+    const made = drawn(join(root, null));
+    const [pane] = made.children;
+    assert.equal(made.children.length, 1);
+    assert.equal(pane.material.side, THREE.FrontSide);
+    assert.equal(material.side, THREE.DoubleSide, 'the source keeps its own material');
+    const submitted = triangles(made);
+    assert.equal(submitted.length, 2 * original.length);
+    const geometry = pane.geometry;
+    const normal = geometry.getAttribute('normal');
+    for (const [i, triangle] of original.entries()) {
+      for (const [offset, sign] of [
+        [0, -1],
+        [original.length, 1],
+      ]) {
+        const face = submitted[i + offset];
+        assert.ok(face.centre.distanceTo(triangle.centre) < 1e-6);
+        assert.ok(sign * face.facing.dot(triangle.facing) > 0.99999, 'winding');
+        const lighting = new THREE.Vector3().fromBufferAttribute(normal, geometry.index.getX(3 * (i + offset)));
+        assert.ok(sign * lighting.dot(triangle.facing) > 0.99999, 'lighting normal');
+      }
+    }
+    for (const eye of [new THREE.Vector3(0, 0, 5), new THREE.Vector3(0, 0, -5)]) {
+      const visible = (tri) => tri.facing.dot(eye.clone().sub(tri.centre)) > 0;
+      const expected = [...original.filter((tri) => !visible(tri)), ...original.filter(visible)];
+      const drawn = submitted.filter(visible);
+      assert.equal(drawn.length, expected.length);
+      drawn.forEach((tri, i) => assert.ok(tri.centre.distanceTo(expected[i].centre) < 1e-6, 'original back-then-front order'));
+    }
+    const looks = new Looks();
+    looks.add(made);
+    looks.set('cel');
+    assert.equal(pane.material.side, THREE.FrontSide);
+    assert.ok(pane.material.isMeshToonMaterial);
+    looks.remove(made);
+  }
+});
+
+test('Lineup glass with an active draw range keeps it', () => {
+  const root = new THREE.Group();
+  const geometry = new THREE.PlaneGeometry();
+  geometry.setDrawRange(3, 3);
+  const material = new THREE.MeshPhysicalMaterial({ name: 'glass', transparent: true, side: THREE.DoubleSide, depthWrite: false });
+  root.add(new THREE.Mesh(geometry, material));
+  const [pane] = drawn(join(root, null)).children;
+  assert.deepEqual(pane.geometry.drawRange, { start: 3, count: 3 });
+  assert.equal(pane.geometry.index.count, 6);
 });
