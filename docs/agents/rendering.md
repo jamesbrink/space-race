@@ -1096,14 +1096,17 @@ terms:
   shadow in the bowl from the bowl's shape and the Sun's height, the part the near rim hides from the eye) and the
   soil's grain. An octave is drawn in full where its craters are a few pixels tall and not at all under about one,
   with a smooth step between (a shadow goes sooner than its crater), so nothing pops as the camera rises and nothing
-  shimmers at the horizon; from far only the altimeter's ground is left. It is fixed to the ground and hashed from
+  shimmers at the horizon; the grain is drawn by how squarely the ground is seen and not at all along itself, where it
+  was streaks across the picture; from far only the altimeter's ground is left. It is fixed to the ground and hashed from
   whole numbers: the same every frame and every visit. A lighter machine leaves out the two finest octaves.
-- **The blocks are real shapes with real shadows** (moonrocks.ts): up to 14,000 instanced blocks (4,000 on the lighter
-  tier, and none under 0.85 m) at four levels of detail chosen once, by each block's size over its distance from the
-  site (the camera only ever goes away from them, so a level is never changed on show). A shadow is the block's own
-  mesh laid on the ground's plane along the Sun's rays and multiplied over what is under it, pulled toward the eye by
-  a polygon offset so it does not fight the ground. They are drawn while the camera is under 2.5 km: above that every
-  one is below the frame, which looks at the horizon, so their going is not seen.
+- **The blocks are real shapes with real shadows** (moonrocks.ts): up to 26,000 instanced blocks from 0.3 m up (4,000
+  on the lighter tier, from 0.7 m) at four levels of detail chosen once, by each block's size over its distance from
+  the site (the camera only ever goes away from them, so a level is never changed on show). A shadow is the block's
+  own mesh laid on the ground's plane along the Sun's rays and multiplied over what is under it, after the ground and
+  before the blocks. It is brought a 250th of the way toward the eye in the vertex shader, which moves it nowhere in
+  the picture and clear of the ground in depth: on a polygon offset alone a long shadow seen along the ground was a
+  row of dashes. They are drawn while the camera is under 2.5 km: above that every one is below the frame, which
+  looks at the horizon, so their going is not seen.
 - **One exposure for both worlds**, as a photograph has: the Sun's light is the figure the globe is lit by above the
   air, the Moon's ground is scaled to the Moon's albedo and dimmed by its phase, and the exposure is set by the
   cloud. So the Moon is asphalt beside the Earth, as it is. Nothing is made larger or brighter to fill the frame:
@@ -1114,15 +1117,19 @@ terms:
   `estimated`), the made craters are light and shadow with no depth (they lift no horizon and shadow neither each
   other nor a block), a block's shadow falls on the ground only, and only the finest map casts the altimeter's
   shadows; from 100 to 1,000 km up the ground is the altimeter's alone and is soft (its 481 m texel is a few pixels);
-  the mid part of the path (10,000 to 20,000 km out) is drawn from the 3.7 km map and is soft. The stars are the naked
-  eye's (to magnitude 6.6, a dozen in the lens's six degrees, drawn faint): a film exposed for this ground has none.
+  the mid part of the path (10,000 to 20,000 km out) is drawn from the 3.7 km map and is soft. The stars are the bright
+  table's 518 to magnitude 4.5, as they were: through six degrees of lens none is in the picture until the camera has
+  settled, when one of magnitude 3.9 is (measured: no lit pixel in the sky at 0, 60 or 200 s), so the sky is black, as a
+  film exposed for this ground has it. Fetching the whole catalogue for a dozen faint points was weighed and left.
 - **A lost context there is not the page's end**: the picture is taken away and the list of flights stays, over
   black. No word is put up (lost.ts's is a stage's).
 
-What a frame costs, `pnpm test:front` says each run (2.9 M triangles in eleven draw calls while the blocks are in sight,
-2.1 M in three after; on the lighter tier 1.0 M and 0.5 M). Measured when the made ground went in (an Apple laptop
-under other load, so roughly): 1440x900 at 1, 2.0 ms a frame before and 2.5 to 4.6 at the start after, 1.8 settled;
-as a phone 0.7 before and 1.3 to 1.8 at the start. What it holds: "Memory", above.
+What a frame costs, `pnpm test:front` says each run (3.6 M triangles in eleven draw calls while the blocks are in sight,
+2.1 M in three after; on the lighter tier 1.3 M and 0.5 M). Measured before and after the made ground went in, the same
+way on the same Apple laptop within minutes (the least of five runs of 40 frames, twice; the machine under other load,
+so roughly): 1440x900 at 1, 1.2 to 1.5 ms a frame at the start before and 2.1 to 2.2 after, 0.9 to 1.3 settled before
+and 1.1 to 1.4 after; as a phone (390x844 at 3, lighter tier) 0.6 to 1.3 at the start before and 1.2 to 1.4 after, 0.7
+settled before and 0.7 to 1.1 after. What it holds: "Memory", above.
 `pnpm bench` does not measure it (its harness turns a `Stage` over by hand). It has not been run on a real phone.
 
 ## Texture units

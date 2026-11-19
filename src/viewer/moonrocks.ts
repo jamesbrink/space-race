@@ -12,7 +12,7 @@ import type { SiteGround } from './moonsite.ts';
  * each size:
  *
  * - **Everywhere**, the soil's own scatter: Surveyor 1's count on its mare plain (`BLOCKS.plain`).
- * - **Round the freshest of the made craters** (moonground.ts: those under a sixteenth of the way to worn away),
+ * - **Round the freshest of the made craters** (moonground.ts: those under a tenth of the way to worn away),
  *   the blocks each threw out: thickest at the rim and gone by two and a half radii, sized up to what a crater of
  *   its size throws (`BLOCKS.largest`), as many at the rim as Surveyor 7 counted on Tycho's (`BLOCKS.rim`), less
  *   by the crater's age.
@@ -39,11 +39,11 @@ export const BLOCKS = {
     source:
       'E. M. Shoemaker and E. C. Morris (1970), "Physical characteristics of the lunar regolith determined from Surveyor television observations", Radio Science 5: Surveyor 1, N = 3e5 D^-2.11 per 100 m^2 (D in mm), as remembered, not read again',
   },
-  /** And on the rim of a fresh crater: Surveyor 7's count on Tycho's, 7.9e5 D^-1.80 per 100 m^2 with D in mm, of which a third is taken (few craters are Tycho). */
+  /** And on the rim of a fresh crater: Surveyor 7's count on Tycho's, 7.9e5 D^-1.80 per 100 m^2 with D in mm, taken whole at the rim of the freshest made craters and less by their age. */
   rim: {
-    value: [0.031 / 3, 1.8],
+    value: [0.031, 1.8],
     confidence: 'estimated',
-    source: 'Shoemaker and Morris (1970): Surveyor 7, N = 7.9e5 D^-1.80 per 100 m^2 (D in mm), as remembered; the third is chosen',
+    source: 'Shoemaker and Morris (1970): Surveyor 7, N = 7.9e5 D^-1.80 per 100 m^2 (D in mm), as remembered',
   },
   /** The largest block a crater throws out: `k` D^(2/3) metres, D in metres. */
   largest: {
@@ -55,11 +55,11 @@ export const BLOCKS = {
 } as const;
 
 /** How fresh a made crater must be to have blocks round it (its age, 0 to 1). */
-const FRESH = 0.0625;
+const FRESH = 0.1;
 /** The ground that holds blocks: from and to, metres from the site; half the wedge's breadth, radians. */
 const FIELD = { from: 90, to: 6000, half: (13 * Math.PI) / 180 };
-/** The smallest block kept at a distance: 0.5 m, and 6 parts in 10,000 of the distance (five pixels through the lens from the start). */
-const least = (r: number, lighter: boolean): number => Math.max(0.5, 6e-4 * r) * (lighter ? 1.7 : 1);
+/** The smallest block kept at a distance: 0.3 m, and 3.5 parts in 10,000 of the distance (three pixels through the lens from the start: gravel, of which there is far the most). */
+const least = (r: number, lighter: boolean): number => Math.max(0.3, 3.5e-4 * r) * (lighter ? 2.4 : 1);
 /** The levels of detail: a block this many parts of its distance across or more has this many triangles (an icosahedron's faces, each cut `detail` + 1 ways a side). */
 const LEVELS = [
   { above: 6e-3, detail: 7 },
@@ -68,7 +68,7 @@ const LEVELS = [
   { above: 0, detail: 0 },
 ] as const;
 /** How dark a block's shadow leaves what is under it, as a share of what is drawn there (on the screen's own scale, not light's): about a hundredth of the light. */
-const SHADE = 0.13;
+const SHADE = 0.07;
 
 /** A seeded run of numbers from 0 to 1 (mulberry32). */
 function seeded(seed: number): () => number {
@@ -109,7 +109,7 @@ function scatter(toward: number, lighter: boolean): Block[] {
       // (they thin out over the last quarter of the way, so that the field has no edge to be seen)
       if (next() < (r - 0.75 * FIELD.to) / (0.25 * FIELD.to)) continue;
       const a = toward + (2 * next() - 1) * FIELD.half;
-      blocks.push({ x: r * Math.cos(a), y: r * Math.sin(a), size: Math.min(4, smallest * (1 - next()) ** (-1 / b)) });
+      blocks.push({ x: r * Math.cos(a), y: r * Math.sin(a), size: Math.min(9, smallest * (1 - next()) ** (-1 / b)) });
     }
   }
   // what the freshest craters threw out
@@ -128,13 +128,13 @@ function scatter(toward: number, lighter: boolean): Block[] {
         const biggest = BLOCKS.largest.value * c.diameter ** (2 / 3) * fresh;
         const smallest = Math.max(least(Math.hypot(c.x, c.y), lighter), biggest / 14);
         if (smallest >= biggest) continue;
-        // as many as its rim's count over the ground they fall on (thickest at the rim: about seven radii squared), no more than 900
-        const count = Math.min(900, Math.floor(6.9 * radius * radius * kr * fresh * smallest ** -br + next()));
+        // as many as its rim's count over the ground they fall on (thickest at the rim: about four radii squared), no more than 1,500
+        const count = Math.min(1500, Math.floor(4.1 * radius * radius * kr * fresh * smallest ** -br + next()));
         for (let n = 0; n < count; n++) {
-          // (how far out: thickest at the rim, a bell half a radius wide, by rejection)
+          // (how far out: thickest at the rim, a bell a third of a radius wide, by rejection)
           let s = 0;
           do s = 0.7 + 1.8 * next();
-          while (next() > Math.exp(-((s - 1.05) ** 2) / 0.35));
+          while (next() > Math.exp(-((s - 1.05) ** 2) / 0.12));
           const a = 2 * Math.PI * next();
           const [x, y] = [c.x + s * radius * Math.cos(a), c.y + s * radius * Math.sin(a)];
           const size = Math.min(biggest, smallest * (1 - next()) ** (-1 / br));
@@ -145,7 +145,7 @@ function scatter(toward: number, lighter: boolean): Block[] {
   }
   // (the biggest first, so that if there are too many it is the least that go)
   blocks.sort((p, q) => q.size - p.size);
-  blocks.length = Math.min(blocks.length, lighter ? 4000 : 14_000);
+  blocks.length = Math.min(blocks.length, lighter ? 4000 : 26_000);
   return blocks;
 }
 
@@ -210,7 +210,10 @@ const SHADOW_VERTEX = /* glsl */ `
     vec3 p = (instanceMatrix * vec4(position, 1.0)).xyz;
     // along the Sun's rays to the ground's plane
     p -= uSun * (dot(p - seat, seatUp) / max(dot(uSun, seatUp), 0.05));
-    gl_Position = projectionMatrix * vec4(mat3(viewMatrix) * (p - uEyeSite), 1.0);
+    // and a two-hundred-and-fiftieth of the way toward the eye: it stays where it is in the picture and comes clear of
+    // the ground's own depth, which seen along itself differs from this plane's by more than a depth buffer forgives
+    // (a shadow that fought the ground was a row of dashes)
+    gl_Position = projectionMatrix * vec4(mat3(viewMatrix) * ((p - uEyeSite) * 0.996), 1.0);
   }`;
 
 const SHADOW_FRAGMENT = /* glsl */ `
@@ -247,16 +250,17 @@ export class MoonRocks {
       uniforms: { uEyeSite: uniforms.uEyeSite, uSun: uniforms.uSun },
       vertexShader: SHADOW_VERTEX,
       fragmentShader: SHADOW_FRAGMENT,
-      transparent: true,
+      // (not `transparent`: it is drawn with the solid things, after the ground and before the blocks, which then
+      // stand over it; brought toward the eye as it is, it would otherwise darken the foot of its own block)
       depthWrite: false,
       blending: THREE.CustomBlending,
       blendEquation: THREE.AddEquation,
       blendSrc: THREE.ZeroFactor,
       blendDst: THREE.SrcColorFactor,
-      // (on the ground, not in it: pulled toward the eye by a little more than the ground's own depth can differ)
+      // (on the ground, not in it: the vertex shader brings it toward the eye; this is for what is left)
       polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -8,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -2,
     });
     const next = seeded(42);
     const levels = LEVELS.map(() => [] as Block[]);
@@ -289,7 +293,7 @@ export class MoonRocks {
         p.set(...site.point(b.x, b.y));
         seat.set([p.x, p.y, p.z], i * 3);
         seatUp.set([n.x, n.y, n.z], i * 3);
-        tone[i] = 0.8 + 0.45 * next();
+        tone[i] = 0.62 + 0.85 * next() ** 1.5;
         p.addScaledVector(n, s.z * (0.1 + 0.3 * next()));
         rocks.setMatrixAt(i, m.compose(p, q, s));
       }
