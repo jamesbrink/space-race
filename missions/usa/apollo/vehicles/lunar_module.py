@@ -7,6 +7,7 @@ from mathutils import Matrix, Vector
 import apollo_docking
 import lm5_equipment
 import lm6_equipment
+import lm7_equipment
 import lm_cabin
 import lm_propulsion
 import lm_systems
@@ -147,7 +148,7 @@ def descent(parent, foil, amber, dark, alloy, spacecraft):
         for side in blanket.data.polygons:
             ring, facet = divmod(side.index, 8)
             side.material_index = 1 if facet in (0, 6) and ring in (1, 2) else 2 if (ring + facet) % 3 else 0
-    if spacecraft == 6:
+    if spacecraft >= 6:
         # AS12-46-6777: a dark upper band above the copper and gold blankets.
         for side in blanket.data.polygons:
             ring, facet = divmod(side.index, 8)
@@ -321,7 +322,7 @@ def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
             # The inboard lip covers the knee while the outboard edge clears the
             # fixed SLA panels during extraction, before the leg unfolds.
             profile = [(-10, 3), (-6, 5), (1, 4), (4, 1)]
-            if spacecraft == 6:
+            if spacecraft >= 6:
                 profile = profile[:3]  # MSC-01855 A.2: part of the deployment-truss shield was removed.
             shell(strut, [[(x, y, z) for x, z in profile] for y in (-7, 7)])
         foot = (TREAD - KNEE, 0, 2 - KNEE_Z)
@@ -329,7 +330,7 @@ def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
         tube(strut, (0, 0, 0), joint, 3.7)
         piston.tube(at(joint), at(foot), 2.5 * IN, caps=False)
         for side in (-1, 1):
-            tube(piston if spacecraft == 6 else strut, (-10, side * 22, -28), joint, 1.65)
+            tube(piston if spacecraft >= 6 else strut, (-10, side * 22, -28), joint, 1.65)
             tube(piston, (-2, side * 3, -5), (-10, side * 22, -28), 1.15)
         pad.lathe(prof([(0, -2), (10, -2), (PAD_RADIUS, 2.1), (PAD_RADIUS, 3.4), (10, 0.5), (2, 1), (0, 2)]), 40, matrix=Matrix.Translation(at(foot)))
         pad.build(f"LM3_Footpad_{i}", gold if spacecraft >= 5 else metal, hinge)["diameter_in"] = 2 * PAD_RADIUS
@@ -526,7 +527,7 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
 
 
 def build(iu_top=0, *, deployed=False, spacecraft=3):
-    if spacecraft not in (3, 4, 5, 6):
+    if spacecraft not in (3, 4, 5, 6, 7):
         raise ValueError(f"Unsupported lunar module LM-{spacecraft}")
     foil = material("lm3-blanket-gold", (0.64, 0.29, 0.042), metallic=0.68, roughness=0.43)
     amber = material("lm3-copper-blanket", (0.41, 0.132, 0.029), metallic=0.50, roughness=0.52)
@@ -571,7 +572,13 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
         else:
             parts["LMFuelCask"] = group("LMFuelCask")
             parts["LMHammocks"] = group("LMHammocks")
-            lm6_equipment.build(parts, silver, amber, dark, white, ivory)
+            if spacecraft == 6:
+                lm6_equipment.build(parts, silver, amber, dark, white, ivory)
+            else:
+                lm7_equipment.build(parts, silver, amber, dark, white, ivory)
+                if deployed:
+                    parts["LMMailbox"] = group("LMMailbox")
+                    lm7_equipment.mailbox(parts["LMMailbox"], silver, dark, ivory)
     for root in parts.values():
         if not deployed:
             root["lineup_enclosed"] = True
@@ -579,7 +586,7 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
     descent(parts["LMDescent"], foil, amber, dark, silver, spacecraft)
     landing_gear(parts["LMLandingGear"], foil, silver, dark, deployed, spacecraft)
     cabin(parts["LMAscent"], parts["LMEquipment"], parts["LMPorch"], white, white, dark, glass, silver, foil, deployed, spacecraft)
-    apollo_docking.lunar(parts["LMDockingPort"], silver, dark)
+    apollo_docking.lunar(parts["LMDockingPort"], silver, dark, drogue_installed=not (spacecraft == 7 and deployed))
     lm_propulsion.engine(parts["LMDescentEngine"], False, silver, dark, white, amber)
     lm_propulsion.engine(parts["LMAscentEngine"], True, silver, dark, white, amber)
     lm_propulsion.tanks(parts["LMDPSTanks"], parts["LMAPSTanks"], parts["LMDescentStructure"], silver, ox, fuel, amber)

@@ -127,7 +127,7 @@ def command(parent, base, alloy, dark):
         tooth.build(f"CM104_ProbeHeadTooth_{i}", dark, hook)
 
 
-def lunar(parent, alloy, dark):
+def lunar(parent, alloy, dark, *, drogue_installed=True):
     frame = station("SpiderDockingFrame", parent, LM_PLANE)
     surface(
         "LM3_DockingRing",
@@ -135,6 +135,9 @@ def lunar(parent, alloy, dark):
         alloy,
         frame,
     )
+
+    if not drogue_installed:
+        return
 
     # Fig. A-13. One-inch sandwich wall measured normal to the conical guide.
     def face(z):
