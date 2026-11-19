@@ -2,6 +2,7 @@ import type { Flight } from '../../../../../src/types.ts';
 import { LC39A_EDT, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
 import { lc39Crew } from '../../crew/lc39.ts';
 import { WEATHER } from './weather.ts';
+import { roverModel } from '../../vehicles/rover-gallery.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
@@ -164,5 +165,6 @@ export const flight: Flight = {
           'The lunar module pilot’s garment has six chest connectors, a side-entry closure and a flexible waist for sitting on the rover.',
       },
     ]),
+    roverModel(15),
   ],
 };

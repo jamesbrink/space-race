@@ -2,6 +2,7 @@ import type { Flight } from '../../../../../src/types.ts';
 import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
 import { launchCrew } from './crew.ts';
 import { WEATHER } from './weather.ts';
+import { roverModel } from '../../vehicles/rover-gallery.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
@@ -154,5 +155,6 @@ export const flight: Flight = {
         'SA-510 flight manual, figure 8-20, nominal ML-3 arm sequence assumed for SA-511. AS-511 Flight Evaluation Report, table 2-2 and §3.5.1, first motion and individual mast strokes.',
     }),
     ...launchCrew,
+    roverModel(16),
   ],
 };

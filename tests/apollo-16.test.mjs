@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { orionStackParts } from '../missions/usa/apollo/flights/apollo-16/orion.ts';
 import { flight } from '../missions/usa/apollo/flights/apollo-16/flight.ts';
+import { orionStackParts } from '../missions/usa/apollo/flights/apollo-16/orion.ts';
 import { lacks, openingFor } from '../src/app/address.ts';
 import { assertAdapterClearance, assertEnclosureClearance } from './apollo-adapter-clearance.mjs';
 import { framesOf, materialsUnder } from './glb.mjs';
@@ -13,7 +13,7 @@ test('Apollo 16 opens Casper and Orion with the five flown crew stations', () =>
   assert.ok(lacks(flight, 'fly'));
   assert.deepEqual(
     flight.models.map((model) => model.id),
-    ['vehicle', 'orion', 'pad', 'crew', 'pilot', 'lmp'],
+    ['vehicle', 'orion', 'pad', 'crew', 'pilot', 'lmp', 'rover'],
   );
   assert.deepEqual(
     stack.seats.map((seat) => seat.label),
@@ -28,7 +28,8 @@ test('Apollo 16 opens Casper and Orion with the five flown crew stations', () =>
 });
 
 test('the crew can board Casper on ML-3 before arm 9 parks and retracts', () => {
-  const [, , pad, ...crew] = flight.models;
+  const pad = flight.models.find((model) => model.id === 'pad');
+  const crew = flight.models.filter((model) => model.walker);
   assert.equal(pad.name, 'Mobile launcher 3');
   assert.match(pad.url, /pad-a-1972-04\.glb$/);
   assert.deepEqual(flight.site.zone, { name: 'EST', utcOffset: -5 });

@@ -241,12 +241,12 @@ def dress_harness(who, index, chest):
         bpy.data.objects[f"CM_Couch{label}_{index}"].location += chest * shift
 
 
-def commander_bands():
+def commander_bands(prefix=""):
     stripe = paint("a7l-commander-red", (0.58, 0.035, 0.025), roughness=0.9)
     # The garment UV's second coordinate is the station along each limb in metres.
     # Colour existing rows of cloth so the bands bend with the sleeves and trousers.
     for name, station in (("Arms_Sleeves", 0.32), ("Legs_Trousers", 0.30 + 0.50)):
-        mesh = bpy.data.objects[name].data
+        mesh = bpy.data.objects[prefix + name].data
         mesh.materials.append(stripe)
         uv = mesh.uv_layers.active.data
         for face in mesh.polygons:

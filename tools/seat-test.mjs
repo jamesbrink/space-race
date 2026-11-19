@@ -71,11 +71,11 @@ const state = () => {
   const eye = cam.position;
   const craft = st.seats.exhibited();
   const seatEye = craft?.seat ? [craft.seat.elements[12], craft.seat.elements[13], craft.seat.elements[14]] : null;
-  // inside the cabin: within the box round what the cabin calls indoors (or, with no cabin, round the seat's part)
+  // A closed cabin defines its interior. An open vehicle's seat eyes can sit above its seat back within the vehicle's envelope.
   const THREEBox = cam.position.constructor; // (a Vector3: the box is made by hand)
   const lo = [Infinity, Infinity, Infinity];
   const hi = [-Infinity, -Infinity, -Infinity];
-  const names = def.cabin?.within ?? [st.partOf(def.seats[g.seat ?? 0].node)];
+  const names = def.cabin?.within ?? def.parts.map((part) => part.node);
   for (const n of names) {
     staged.full.getObjectByName(n)?.traverse((o) => {
       if (!o.isMesh) return;
@@ -125,7 +125,7 @@ function seated(s, flight, n, how) {
   if (s.rig !== 'onboard' || s.seat !== n) return fail(`${tag}: rig ${s.rig}, seat ${s.seat}`);
   if (!s.seatEye || far(s.eye, s.seatEye) > 2e-3)
     fail(`${tag}: the eye is ${s.seatEye ? far(s.eye, s.seatEye).toFixed(3) : '?'} m from the seat's eyes`);
-  if (!s.inside) fail(`${tag}: the eye is not inside the cabin`);
+  if (!s.inside) fail(`${tag}: the eye is outside its vehicle or cabin`);
   if (!s.full) fail(`${tag}: the model is not at full detail`);
   if (s.interiorHidden) fail(`${tag}: ${s.interiorHidden} of the inside's meshes are not drawn`);
   s.seats.forEach((x, i) => {
@@ -262,7 +262,7 @@ for (const flight of flights) {
     // stage's own handler for a click on a thing of the cabin) and, for one that switches something, by its button in the
     // bar; its lever goes over and stays, and what it switches follows (the lamps lit, out or coloured; the globe's mode)
     const switches = await page.evaluate(() =>
-      window.sr.gallery.stage.cabin.switches.map((sw) => ({
+      (window.sr.gallery.stage.cabin?.switches ?? []).map((sw) => ({
         name: sw.title ?? sw.name,
         n: sw.says.length,
         sets: sw.sets ?? null,
@@ -428,7 +428,7 @@ for (const flight of flights) {
     await close();
   }
   // --- cut open, close: the Sun's shadow inside the cabin is as fine as the view (rendering.md, "Shadows reach as far as the place does") ---
-  {
+  if (flight.cabin) {
     const { page, errors, close } = await open(flight.route, 1280, 800);
     // (the panels away, so the view is framed in the whole window, as on the shots compared)
     await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
