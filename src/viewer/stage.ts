@@ -2200,26 +2200,35 @@ export class Stage {
   }
 
   /**
-   * What is solid to the walker: every model but the one walked as, the place round the pad, the setting's scenery.
-   * Asked every frame, and the same list is given until one of them is another object (a level of detail changed,
-   * another figure is walked as, the setting changed).
+   * What is solid to the walker: every model but the one walked as, the place round the pad, the setting's scenery,
+   * and whatever the flown vehicle has let go that is still drawn (a spent stage lying on the pad is walked round and
+   * driven round like anything else: its nodes are out of their model while it is loose, FlightShow `debris`; a figure
+   * that came down on a parachute is a person, and people are not solid). Asked every frame, and the same list is
+   * given until one of them is another object (a level of detail changed, another figure is walked as, the setting
+   * changed, a piece left or was taken back).
    */
   private solidRoots(): THREE.Object3D[] {
     const kept = this.solidsKept;
     const scenery = this.setting.scenery;
+    const drops = this.show.ascent?.drops.length ?? 0;
+    let loose = 0;
     let same = kept.walked === this.onFoot.walked && kept.surroundings === this.surroundings && kept.scenery === scenery;
     same &&= kept.count === scenery.length && kept.shown.length === this.staged.length;
     for (let i = 0; same && i < kept.shown.length; i++) same = kept.shown[i] === this.staged[i]!.shown;
+    for (const d of this.debris) if (d.drop < drops && d.holder.visible) same &&= kept.loose[loose++] === d.holder;
+    same &&= loose === kept.loose.length;
     if (!same) {
       kept.walked = this.onFoot.walked;
       kept.surroundings = this.surroundings;
       kept.scenery = scenery;
       kept.count = scenery.length;
       kept.shown = this.staged.map((s) => s.shown);
+      kept.loose = this.debris.filter((d) => d.drop < drops && d.holder.visible).map((d) => d.holder);
       kept.roots = [
         ...kept.shown.filter((_, i) => i !== this.onFoot.walked), // every model but the one you are
         ...(this.surroundings ? [this.surroundings] : []),
         ...scenery,
+        ...kept.loose,
       ];
     }
     return kept.roots;
@@ -2274,6 +2283,7 @@ export class Stage {
     scenery: null as THREE.Object3D[] | null,
     count: 0,
     shown: [] as THREE.Object3D[],
+    loose: [] as THREE.Object3D[],
     roots: [] as THREE.Object3D[],
   };
 
