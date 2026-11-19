@@ -26,7 +26,7 @@ const FLIGHT = 'usa/mercury/mr-3-freedom-7';
 /**
  * Accounted GPU memory as a phone, MiB (src/app/mem.ts; rendering.md, "Memory"): the front page by itself, and the most
  * at any moment while a flight's gallery arrives over it (the picture is let go only when the flight is there to
- * be seen). Measured when set: 71 and 257 (the gallery alone, after: 186).
+ * be seen). Measured when the Moon's apron and blocks went in: 74 and 255 (71 before them).
  */
 export const BUDGET = { front: 90, entering: 350 };
 
@@ -89,7 +89,7 @@ await scenario('moves', async () => {
   const b = await page.evaluate(() => ({ t: window.sr.front.t, h: window.sr.front.eye.height, ...window.sr.front.stats() }));
   check(
     b.t > a.t + 1.5 && b.h > a.h,
-    `the camera is on its way out (${a.t.toFixed(1)} s to ${b.t.toFixed(1)} s, ${(a.h / 1000).toFixed(1)} km to ${(b.h / 1000).toFixed(1)} km)`,
+    `the camera is on its way out (${a.t.toFixed(1)} s to ${b.t.toFixed(1)} s, ${a.h.toFixed(1)} m to ${b.h.toFixed(1)} m over the Moon’s mean sphere)`,
   );
   check(b.drawn > 0.8 * b.fps, `and every frame is drawn while it is (${b.drawn.toFixed(0)} of ${b.fps.toFixed(0)} a second)`);
   // settled: the camera has stopped, the Earth still turns
@@ -101,10 +101,12 @@ await scenario('moves', async () => {
     c.drawn > 0.4 && c.drawn < 0.5 * c.fps,
     `settled, it draws only as the Earth turns (${c.drawn.toFixed(1)} of ${c.fps.toFixed(0)} a second)`,
   );
+  const seconds = await page.evaluate(() => window.sr.path.seconds);
   for (const [t, what] of [
-    [0, 'at the start'],
-    [150, 'half way'],
-    [305, 'settled'],
+    [0, 'at the start, 40 m over the ground'],
+    [70, 'a kilometre up'],
+    [seconds / 2, 'half way'],
+    [seconds + 5, 'settled'],
   ]) {
     const ms = await page.evaluate((t) => {
       window.sr.front.seek(t);
