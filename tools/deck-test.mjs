@@ -822,7 +822,8 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
       await page.keyboard.press('KeyN');
       await page.waitForTimeout(600);
       r = await read(page);
-      if (r.asking || r.t > 1 || /Not the record|Hands only|leaned/.test(r.mode) || r.stored?.includes(id))
+      // (a new flight stands by hand, deck.ts `START`: its mode line is no sign of the old run)
+      if (r.asking || r.t > 1 || r.stored?.includes(id))
         fail(at, `N, then Start over: asking ${r.asking}, t ${r.t}, "${r.mode}", stored ${r.stored}`);
       // the mark beside Fly asks, and throws it away
       await handFly(page, id);
@@ -852,7 +853,7 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'leaving') {
       await page.click('.cockpit-kept [data-do=again]');
       await page.waitForTimeout(500);
       r = await read(page);
-      if (r.asking || r.card || r.t > 1 || /Not the record|Hands only|leaned/.test(r.mode) || r.stored?.includes(id))
+      if (r.asking || r.card || r.t > 1 || r.stored?.includes(id))
         fail(at, `Start over: asking ${r.asking}, card ${r.card}, t ${r.t}, "${r.mode}", stored ${r.stored}`);
       if (r.warns) fail(at, 'after Start over, nothing is flown by hand and the browser still asks');
       console.log(
