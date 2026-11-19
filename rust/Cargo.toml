@@ -1,0 +1,69 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "apps/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97.1"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+sr-measure = { path = "crates/sr-measure" }
+sr-world = { path = "crates/sr-world" }
+sr-sim = { path = "crates/sr-sim" }
+sr-missions = { path = "crates/sr-missions" }
+sr-render = { path = "crates/sr-render" }
+sr-game = { path = "crates/sr-game" }
+
+bevy = "0.20.1"
+avian3d = { version = "0.8", default-features = false, features = ["3d", "f64", "parry-f64", "parallel"] }
+
+# The rules every crate inherits (`[lints] workspace = true`). A lint is switched off only with its reason beside it.
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"
+unused_must_use = "deny"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+dbg_macro = "deny"
+todo = "deny"
+unimplemented = "deny"
+print_stdout = "deny"
+cognitive_complexity = "warn"
+# Bevy systems take their parameters by value and have as many as they need.
+needless_pass_by_value = "allow"
+too_many_arguments = "allow"
+type_complexity = "allow"
+# The simulation is in f64 and the picture in f32: narrowing at that boundary is the design, done in `origin`.
+cast_possible_truncation = "allow"
+cast_precision_loss = "allow"
+cast_sign_loss = "allow"
+cast_possible_wrap = "allow"
+# A crate is named for what it holds, and so are the things in it.
+module_name_repetitions = "allow"
+# Figures are written as published (350_787.0 N), not regrouped.
+unreadable_literal = "allow"
+inconsistent_digit_grouping = "allow"
+# Mathematics is written in its own letters (x, y, z, t), and a pair of them may differ by one.
+many_single_char_names = "allow"
+similar_names = "allow"
+# Tables of physical constants compare against exact published values.
+float_cmp = "allow"
+
+# Debug builds: our code quick to compile, the engine fast enough to look at.
+[profile.dev]
+opt-level = 1
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+lto = "thin"
+codegen-units = 16

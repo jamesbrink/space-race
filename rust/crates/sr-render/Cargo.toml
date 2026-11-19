@@ -1,0 +1,15 @@
+[package]
+name = "sr-render"
+description = "The picture: sky, clouds, the Earth, materials, the plume and the grade, as Bevy plugins."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sr-world.workspace = true
+bevy.workspace = true
+
+[lints]
+workspace = true

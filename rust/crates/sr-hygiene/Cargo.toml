@@ -1,0 +1,11 @@
+[package]
+name = "sr-hygiene"
+description = "Tests that hold the workspace's shape: file length, which crate may depend on which."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lints]
+workspace = true

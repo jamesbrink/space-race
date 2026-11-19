@@ -1,0 +1,13 @@
+#!/bin/sh
+# Holds a commit that touches rust/ to the workspace's rules: formatted, no clippy warning, no god file,
+# no crate depending the wrong way. Commits that do not touch rust/ pass straight through.
+# Enable once per clone: git config core.hooksPath .githooks   (the Nix devshell does it for you)
+set -e
+
+git diff --cached --name-only --diff-filter=ACMR | grep -q '^rust/' || exit 0
+
+cd "$(git rev-parse --show-toplevel)/rust"
+echo "pre-commit: rust/ is staged; checking format, clippy and the workspace's shape"
+cargo fmt --all --check
+cargo clippy --workspace --all-targets --quiet -- -D warnings
+cargo test --quiet -p sr-hygiene

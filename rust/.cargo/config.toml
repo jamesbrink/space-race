@@ -1,0 +1,7 @@
+# On a Mac, link with the system's compiler driver. Inside the Nix devshell `cc` is Nix's gcc wrapper, which
+# does not know where the system's libiconv is and fails the link.
+[target.aarch64-apple-darwin]
+linker = "/usr/bin/cc"
+
+[target.x86_64-apple-darwin]
+linker = "/usr/bin/cc"

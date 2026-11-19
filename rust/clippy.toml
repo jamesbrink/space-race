@@ -1,0 +1,7 @@
+# A function longer than this is doing more than one thing.
+too-many-lines-threshold = 60
+cognitive-complexity-threshold = 15
+# Tests may unwrap: a failed unwrap there is the test failing.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true
+allow-panic-in-tests = true
