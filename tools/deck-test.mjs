@@ -3,7 +3,7 @@
 // every key shown a button that does what the key does, nothing in the control block hidden, overlapping or (on touch)
 // under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, Vostok 1 taken over in
 // the ascent with real keys: turned by W and staged by Space, and the throttle on a ballistic flight and one into orbit.
-//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving|touch|apollo-escape|apollo-escape-replay|throttle for one section)
+//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving|touch|apollo-escape|apollo-escape-replay|throttle for one section; SR_FLIGHTS=gatv-5003,atda for some flights)
 import { launch, open, url as urlOf } from './browser.mjs';
 
 const url = urlOf(process.argv.slice(2));
@@ -77,6 +77,8 @@ const layout = (page) =>
 for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
   const seen = {};
   for (const [id, steps] of Object.entries(FLIGHTS)) {
+    // (SR_FLIGHTS=a,b: only the flights whose ids hold one of these)
+    if (process.env.SR_FLIGHTS && !process.env.SR_FLIGHTS.split(',').some((part) => id.includes(part))) continue;
     const where = `${id} at ${w}`;
     const { page, errors, context: ctx } = await fly(id, w, h, touch);
     await page.waitForTimeout(800);
