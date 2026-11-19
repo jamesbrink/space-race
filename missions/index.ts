@@ -3,6 +3,7 @@ import { flight as apollo7 } from './usa/apollo/flights/apollo-7/flight.ts';
 import { flight as apollo8 } from './usa/apollo/flights/apollo-8/flight.ts';
 import { flight as apollo9 } from './usa/apollo/flights/apollo-9/flight.ts';
 import { flight as apollo11 } from './usa/apollo/flights/apollo-11/flight.ts';
+import { flight as apollo15 } from './usa/apollo/flights/apollo-15/flight.ts';
 import { flight as apollo14 } from './usa/apollo/flights/apollo-14/flight.ts';
 import { flight as apollo13 } from './usa/apollo/flights/apollo-13/flight.ts';
 import { flight as apollo12 } from './usa/apollo/flights/apollo-12/flight.ts';
@@ -94,6 +95,7 @@ export const flights: Flight[] = [
   apollo13,
   apollo14,
   soyuz10,
+  apollo15,
   soyuz12,
   soyuz16,
   soyuzT2,

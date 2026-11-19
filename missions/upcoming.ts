@@ -84,7 +84,6 @@ export const upcoming: Upcoming[] = [
     line: 'Georgy Dobrovolsky · Vladislav Volkov · Viktor Patsayev',
     launch: '1971-06-06',
   },
-  { id: 'usa/apollo/apollo-15', nation: 'USA', name: 'Apollo 15', line: 'David Scott · Alfred Worden · James Irwin', launch: '1971-07-26' },
   { id: 'usa/apollo/apollo-16', nation: 'USA', name: 'Apollo 16', line: 'John Young · Ken Mattingly · Charles Duke', launch: '1972-04-16' },
   {
     id: 'usa/apollo/apollo-17',

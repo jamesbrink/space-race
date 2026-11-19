@@ -1,4 +1,4 @@
-// Check the adapter and payload in their actual exported frames throughout the Gallery slider.
+// Check the enclosure and payload in their actual exported frames throughout the Gallery slider.
 import assert from 'node:assert/strict';
 import { BufferAttribute, BufferGeometry, Matrix4 } from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
@@ -6,7 +6,11 @@ import { Exploder } from '../src/viewer/explode.ts';
 import { readGlb } from '../tools/glb-geometry.mjs';
 import { hierarchy } from './glb.mjs';
 
-export async function assertAdapterClearance(stack, payloadNodes, level = '') {
+export function assertAdapterClearance(stack, payloadNodes, level = '') {
+  return assertEnclosureClearance(stack, ['SpacecraftAdapter'], payloadNodes, level);
+}
+
+export async function assertEnclosureClearance(stack, enclosureNodes, payloadNodes, level) {
   const { gltf, triangles } = await readGlb(new URL(`../public/${stack.url.replace('.glb', level + '.glb')}`, import.meta.url));
   const root = hierarchy(gltf);
   const motion = new Exploder(root, stack.parts);
@@ -29,7 +33,7 @@ export async function assertAdapterClearance(stack, payloadNodes, level = '') {
     }
     return list;
   }
-  const walls = pieces(['SpacecraftAdapter']);
+  const walls = pieces(enclosureNodes);
   const payload = pieces(payloadNodes);
   assert.ok(walls.length && payload.length);
   const local = new Matrix4();
