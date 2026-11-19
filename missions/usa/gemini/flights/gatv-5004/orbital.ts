@@ -34,6 +34,10 @@ const record = targetRecord(
     fell: {
       lost: {
         at: doc(120.63, `"loss of B2 pitch control at 120.63 seconds" (${R}, section 1)`),
+        until: doc(
+          150,
+          `"Good stability was regained in all channels by 150 seconds" (${R}, section 2): the sustainer and verniers had control again`,
+        ),
         tilt: {
           points: [
             [120.63, 67],

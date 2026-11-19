@@ -86,8 +86,10 @@ export interface Guidance {
    * Control lost, as the record has it: from `at`, s, the axis is where the vehicle turned, its tilt in the launch plane
    * from the launch vertical (as the turn's: toward downrange, past 180 back over the top), degrees against seconds, in
    * place of the law; flat beyond its last point. The law's own unknowns are then the planned flight's (`FlightPlan.planned`).
+   * Until `until` the vehicle is out of anyone's control: a live vehicle follows it whatever the hands or the guidance switch
+   * (sim/stagedlive.ts `stagedPilot`); after, a hand may steer it again.
    */
-  lost?: { at: Measure; tilt: import('../types.ts').Curve };
+  lost?: { at: Measure; tilt: import('../types.ts').Curve; until?: Measure };
   vertical: Measure;
   kick: Measure;
   turn: Measure;

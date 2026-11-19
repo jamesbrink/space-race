@@ -206,6 +206,11 @@ export interface EngineDef {
   nozzle?: Nozzle;
   /** What it burns, for its fire's look (viewer/flames.ts). */
   burns?: Burns;
+  /**
+   * A failure the record has: lit, it shuts down so long after, s, whoever lit it and whatever is asked (a hard start). The
+   * record's run flies the record's own cut; a live vehicle cuts it this long after its own lighting (sim/stagedlive.ts).
+   */
+  fails?: { after: Measure };
   /** The impulse its integrator shuts it down at, m/s, where the record gives one (a braking engine). */
   deltaV?: Measure;
   /** The impulse the record says it gave, m/s: what the record's run applies evenly between its lighting and its cut. */

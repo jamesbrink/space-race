@@ -104,7 +104,12 @@ export interface LaunchFigures {
    * prediction, its source), and the Atlas's loss of control (`Guidance.lost`) where it lost it. Its `insertion` is then the
    * planned one, flown by nothing but the law's solution (`FlightPlan.planned`).
    */
-  fell?: { impact?: { latitude: number; longitude: number; tolerance: number; source: string }; lost?: Guidance['lost'] };
+  fell?: {
+    impact?: { latitude: number; longitude: number; tolerance: number; source: string };
+    lost?: Guidance['lost'];
+    /** The engine's failure: shut down so long after its start, s, whoever starts it (plan.ts `EngineDef.fails`). */
+    shutdown?: { after: number; source: string };
+  };
 }
 
 /** The record a target's plan is written from (`targetPlan`): each figure a Measure. */
@@ -128,6 +133,7 @@ export interface TargetRecord {
       /** The record's instant of its cutoff; and the space-fixed speed it is cut at, m/s, where it is (then the instant is a check). */
       cutoff: Measure;
       speed?: Measure;
+      fails?: { after: Measure };
     };
     /** The nose shroud over the docking adapter, where it was thrown off. */
     shroud?: { mass: Measure; at: Measure };
@@ -365,6 +371,7 @@ export function targetRecord(f: LaunchFigures, payload: 'agena' | 'atda'): Targe
               ignition: doc(t.ignition!, `the main engine's start (${times})`),
               cutoff: doc(t.cutoff!, `the main engine's cutoff (${times})`),
               ...(t.speed ? { speed: doc(t.speed.value * FT, t.speed.source) } : {}),
+              ...(f.fell?.shutdown ? { fails: { after: doc(f.fell.shutdown.after, f.fell.shutdown.source) } } : {}),
             },
           }
         : {}),
@@ -723,6 +730,7 @@ export function targetPlan(o: TargetRecord): FlightPlan {
             kind: 'liquid' as const,
             starts: p.engine.starts,
             burns: 'amine-nitric' as const,
+            ...(p.engine.fails ? { fails: p.engine.fails } : {}),
           },
         ]
       : []),

@@ -52,6 +52,7 @@ import {
   airOf,
   atCutoff,
   flowOf,
+  guidanceOf,
   integral,
   lawOf,
   type Mode,
@@ -517,12 +518,26 @@ export function stagedVehicle(
     return { craft, parted };
   };
 
+  /** Each stage whose engine fails as the record has it (plan.ts `EngineDef.fails`), how long after its lighting, and what is said of it. */
+  const failing = stages.flatMap((st, i) =>
+    st.engine.fails
+      ? [
+          {
+            i,
+            after: st.engine.fails.after.value,
+            words: `${cap(called(i))}’s ${name(st.engine.label)} shut down ${st.engine.fails.after.value} s after it lit, as it did on the day (${st.engine.fails.after.source})`,
+          },
+        ]
+      : [],
+  );
   /** What the controls set off at this instant: the hands' steps, then the plan's events, each through the machine. */
   const command = (state: StagedState, c: StagedControls): StagedState => {
     const s: StagedState = leaned({ ...state, controls: c }, c.lever);
     if (s.parted || s.landed || s.broke) return s;
     const loose = s.stages.some((st) => Number.isFinite(st.loose) && !Number.isFinite(st.gone));
-    if (!c.steps?.length && !c.events?.length && !loose) return s;
+    // (an engine that fails as the record has it, plan.ts `EngineDef.fails`: shut down so long after it lit, whoever lit it)
+    const failed = failing.filter((f) => burning(s, f.i) && s.t >= s.stages[f.i]!.from + f.after);
+    if (!c.steps?.length && !c.events?.length && !loose && !failed.length) return s;
     let craft = s.craft;
     const said = [...s.said];
     const doing = (k: Step): void => {
@@ -593,6 +608,10 @@ export function stagedVehicle(
       }
     };
     for (const k of c.steps ?? []) doing(k);
+    for (const f of failed) {
+      craft = act(plan, craft, { cut: ids[f.i]!.engine }, s.t, s.held).state;
+      said.push({ t: s.t, title: 'Shut down', text: f.words });
+    }
     for (const id of c.events ?? []) {
       const e = plan.events.find((x) => x.id === id);
       if (!e || craft.fired[id] !== undefined) continue;
@@ -947,8 +966,12 @@ export function stagedPilot(
   // that cut, the spacecraft's parting, then follows)
   const onOrbit = sequenceOf(v.plan).stages.flatMap((k, i) => (k.orbit ? [i] : []));
   const stopped = (s: StagedState) => onOrbit.some((i) => Number.isFinite(s.stages[i]!.from) && !v.burning(s, i));
+  // (control lost, which no switch or hand undoes: orbital.ts `Guidance.lost`, until it was regained; an engine that fails
+  // is the vehicle's own, `command`)
+  const lost = guidanceOf(v.plan).lost;
   return (s) => {
     const steps: Step[] = [...(options.steps?.() ?? [])];
+    const adrift = Boolean(lost?.until) && s.t >= lost!.at.value && s.t < lost!.until!.value;
     // each event of the record's sequence that has not happened, as it comes due (craft.ts `due`): at its instant, or a
     // stage cut on its velocity when its integrator (or the space-fixed speed) reaches the setting. Time and speed alone set them off.
     const events = options.sequence
@@ -968,8 +991,8 @@ export function stagedPilot(
           (e) => inSequence.has(e.id),
         ).map((e) => e.id)
       : [];
-    const hands = options.hands?.() ?? { pitch: 0, yaw: 0, roll: 0 };
-    if (!options.guidance) return { ...hands, steps, events };
+    const hands = adrift ? { pitch: 0, yaw: 0, roll: 0 } : (options.hands?.() ?? { pitch: 0, yaw: 0, roll: 0 });
+    if (!options.guidance && !adrift) return { ...hands, steps, events };
     if (options.prescribed) {
       // as staged.ts flies it: the part of the law fixed for the tick, thetaTurn from the instant the tangent took over
       const mode = law.modeAt(s.t);
@@ -980,7 +1003,7 @@ export function stagedPilot(
     // the law's axis now, leaned by the hands' trim
     const here = air(s, s.t);
     if (law.modeAt(s.t) === 'tangent' && memo.thetaTurn === null) memo.thetaTurn = law.thetaAt(s, s.t, here.ground);
-    const trim = options.trim ?? { pitch: 0, yaw: 0 };
+    const trim = adrift ? { pitch: 0, yaw: 0 } : (options.trim ?? { pitch: 0, yaw: 0 });
     const aim = (st: State, at: number): Vec3 => {
       const mode: Mode = law.modeAt(at);
       let target = law.axisAt(
