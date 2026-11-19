@@ -1,10 +1,13 @@
 import type { Flight } from '../../../../../src/types.ts';
+import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
+import { lc39Crew } from '../../crew/lc39.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
 import { aquariusModel, aquariusPort, aquariusStackParts, aquariusStackViews } from './aquarius.ts';
 import { odysseyCommand, odysseyPort, odysseyService, odysseyViews } from './odyssey.ts';
 import { APOLLO13_THRUST, impactRadioView, launcher } from './sa508.ts';
+import { WEATHER } from './weather.ts';
 
 const elapsed = (h: number, m: number, s: number) => h * 3600 + m * 60 + s;
 const lb = 0.45359237;
@@ -12,6 +15,8 @@ const report = 'Apollo 13 Mission Report MSC-02680, table 3-I';
 const masses = 'MSC-02680, appendix A, table A-I; postflight reconstruction at transposition and docking';
 // Launch Control logged Lovell aboard at 11:32 EST. The T−2:12:23 report authorizes closing the hatch.
 const boarding: [number, number] = [-elapsed(2, 41, 0), -elapsed(2, 12, 23)];
+// The closeout crew had the hatch open during the T−3:30 hold. The endpoint is a bound.
+const closeout = { openBy: -elapsed(3, 30, 0), coverClosedBy: -elapsed(1, 29, 57) };
 const cabin = blockIICabin(3871);
 
 export const flight: Flight = {
@@ -25,6 +30,9 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-508',
   launch: '1970-04-11T19:13:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
+  opens: { at: boarding[0], model: 'pad', view: 'launcher' },
+  site: LC39A,
+  weather: WEATHER,
   crew: ['James A. Lovell Jr.', 'John L. Swigert Jr.', 'Fred W. Haise Jr.'],
   summary:
     'When an oxygen tank failed in Odyssey, all three men took shelter in Aquarius. They used the lunar module’s descent engine to turn the docked spacecraft back toward Earth. They returned to Earth in Odyssey, splashing down in the Pacific on 17 April.',
@@ -38,7 +46,10 @@ export const flight: Flight = {
     { t: -elapsed(2, 35, 0), event: 'Haise boards the right couch' },
     { t: -elapsed(2, 29, 0), event: 'Swigert takes the centre couch' },
     { t: boarding[1], event: 'Closeout crew receives clearance to close the hatch' },
-    { t: 0.65, event: 'Liftoff from Pad 39A' },
+    { t: closeout.coverClosedBy, event: 'Launch Control reports the boost protective cover closed' },
+    { t: 0.3, event: 'First motion of SA-508 on mobile launcher 3' },
+    { t: 0.61, event: 'IU umbilical disconnect starts time base 1' },
+    { t: 0.65, event: 'Liftoff reference in the spacecraft mission report' },
     { t: elapsed(0, 3, 21), event: 'Launch escape tower jettison' },
     { t: 330.65, event: 'S-II centre engine cuts off early during longitudinal oscillations' },
     { t: elapsed(0, 12, 30), event: 'S-IVB cuts off in Earth parking orbit' },
@@ -93,15 +104,15 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Apollo 13 · Saturn V',
       url: 'models/usa/apollo/apollo-13/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       dockingPorts: [odysseyPort, aquariusPort],
       ...cabin,
       cabin: { ...cabin.cabin, within: [...cabin.cabin.within, 'WaterDispenser'] },
       seats: [
-        { node: 'Seat_Commander', label: 'Lovell’s left couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_CommandModulePilot', label: 'Swigert’s centre couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_LunarModulePilot', label: 'Haise’s right couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Lovell’s left couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Swigert’s centre couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Haise’s right couch', from: 'SideHatch', open: boarding },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -114,8 +125,25 @@ export const flight: Flight = {
         impactRadioView,
         { id: 'f1', label: 'F-1 cluster', nodes: ['FirstStageEngines'], from: [-0.62, 0.08, 0.78] },
       ],
-      parts: boardingHatches([...odysseyCommand, ...odysseyService, ...aquariusStackParts, ...escapeParts, ...launcher], boarding),
+      parts: boardingHatches(
+        [...odysseyCommand, ...odysseyService, ...aquariusStackParts, ...escapeParts, ...launcher],
+        boarding,
+        closeout,
+      ),
     },
     aquariusModel,
+    mobileLauncher(3, {
+      holdDowns: 'as-508',
+      ingress: boarding[0],
+      parkCommand: -elapsed(0, 43, 0),
+      parkedBy: -elapsed(0, 42, 31),
+      pao: 'Kennedy Launch Control, 11 April 1970. Arm 9 moved at T−43:00, was reported about 10 ft away by T−42:31, and retracted from standby at T−5 minutes.',
+      intertankClear: -17,
+      forwardRetract: -16.2,
+      firstMotion: 0.3,
+      terminalSource:
+        'Saturn V Flight Manual SA-508, §VIII, figure 8-20 (nominal strokes); AS-508 Flight Evaluation Report, table 2-2 and §3.6.1 (first motion and panel indications).',
+    }),
+    ...lc39Crew(['Lovell', 'Swigert', 'Haise'], true),
   ],
 };

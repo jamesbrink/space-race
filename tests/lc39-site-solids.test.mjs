@@ -8,7 +8,7 @@ import { BoxTree, decodeSolids, poseAt } from '../src/sim/solids.ts';
 import { Exploder } from '../src/viewer/explode.ts';
 import { RADIUS } from '../src/viewer/onfoot/walk.ts';
 import { sliderAt } from '../src/world/sequence.ts';
-import { hierarchy } from './glb.mjs';
+import { framesOf, hierarchy } from './glb.mjs';
 import { countdownSamples, flights } from './lc39-clearance.mjs';
 
 const base = new URL('../public/', import.meta.url);
@@ -75,7 +75,7 @@ function collisionPieces(model, solid) {
   };
 }
 
-function intersect(a, b) {
+function intersect(a, b, allowed) {
   if (!a.siteBounds.intersectsBox(b.siteBounds)) return false;
   // Query the larger piece's tree with the fewer boxes from its neighbour.
   const [probe, target] = a.piece.boxes.length <= b.piece.boxes.length ? [a, b] : [b, a];
@@ -91,13 +91,18 @@ function intersect(a, b) {
     const radius = oriented.halfSize.length();
     if (target.bounds.distanceToPoint(oriented.center) > radius) continue;
     for (const j of target.tree.touching(oriented.center.toArray(), radius + 1e-8)) {
-      if (oriented.intersectsBox3(boxAt(target.piece.boxes, 6 * j, candidate))) return true;
+      if (!oriented.intersectsBox3(boxAt(target.piece.boxes, 6 * j, candidate))) continue;
+      if (!allowed) return true;
+      // Bound the contact in site coordinates. Only the steel adjacent to a designed
+      // vehicle interface can share a baked voxel with the rocket.
+      const contact = box.clone().applyMatrix4(probe.matrix).intersect(candidate.clone().applyMatrix4(target.matrix));
+      if (!allowed.some((area) => area.containsBox(contact))) return true;
     }
   }
   return false;
 }
 
-for (const [flight] of flights) {
+for (const [flight, serial] of flights) {
   const pad = flight.models.find((model) => model.id === 'pad');
   const stack = flight.models.find((model) => model.id === 'vehicle');
   const solidsOf = (model) => decodeSolids(readFileSync(new URL(`models/${flight.id}/${model.id}.solid.bin`, base)));
@@ -107,11 +112,16 @@ for (const [flight] of flights) {
     const [opens, shuts] = stack.seats[0].open;
     const from = [4, 99.8, 0];
     const to = [1.15, 99.8, 0];
-    for (const t of [opens - 30, opens, (opens + shuts) / 2, shuts, shuts + 30]) {
-      const world = new SiteWorld(poses.map((pose) => pose(t)));
-      const hit = world.sweep(from, to, RADIUS, t);
-      if (t < opens || t > shuts) assert.equal(hit?.node, 'Boost_Hatch_Pivot', `outer leaf at ${t}`);
-      else assert.ok(world.clear(from, to, RADIUS, t), `blocked by ${hit?.node} at ${t}`);
+    const doors = (node) => stack.parts.flatMap((p) => p.clocked ?? []).filter((m) => m.node === node);
+    const [coverOpens, coverCloses] = doors('Boost_Hatch_Pivot');
+    const [hatchOpens, hatchCloses] = doors('Side_Hatch_Pivot');
+    const hitAt = (t) => new SiteWorld(poses.map((pose) => pose(t))).sweep(from, to, RADIUS, t)?.node;
+    assert.equal(hitAt(coverOpens.from - 1), 'Boost_Hatch_Pivot');
+    assert.equal(hitAt(coverCloses.to + 1), 'Boost_Hatch_Pivot');
+    for (const t of [hatchOpens.to, opens, (opens + shuts) / 2, shuts]) assert.equal(hitAt(t), undefined, `boarding passage at ${t}`);
+    if (hatchCloses.to < coverCloses.from) {
+      // The closeout crew could work on the cover after shutting the pressure hatch.
+      assert.equal(hitAt((hatchCloses.to + coverCloses.from) / 2), 'Side_Hatch_Pivot');
     }
   });
 
@@ -140,15 +150,45 @@ for (const [flight] of flights) {
       pad.parts.flatMap((p) => (p.clocked ?? []).filter((m) => /^(Holddown_Link_|Tail_Carrier_)/.test(m.node)).map((m) => [m.node, m.to])),
     );
     assert.equal(releaseEnds.size, 7);
-    const rocketAt = collisionPieces(stack, solidsOf(stack));
+    const stackSolid = solidsOf(stack);
+    const rocketAt = collisionPieces(stack, stackSolid);
+    const vehicle = framesOf(new URL(stack.url, base));
+    // Stage surfaces angled across a bake cell can occupy a little more space than the mesh.
+    const lugs = Array.from({ length: 4 }, (_, i) => {
+      const { lo, hi } = vehicle.box(`SIC${serial}_BearingLug_${i + 1}`);
+      return new Box3(new Vector3(...lo), new Vector3(...hi)).expandByScalar(stackSolid.cell);
+    });
+    const soles = lugs.map((lug) => {
+      const plane = lug.min.y + stackSolid.cell;
+      const area = lug.clone();
+      // Allow 2 mm for the independent compressed meshes and baked box bounds.
+      area.min.y = plane - 0.002;
+      area.max.y = plane + 0.002;
+      return area;
+    });
+    const allowed = new Map([['Holddown_Arms', soles]]);
+    for (const [i, lug] of lugs.entries()) allowed.set(`Holddown_Link_${i + 1}`, [lug]);
+    // The carrier translates into the tip of its swinging boom. Limit the contact
+    // allowance to its local withdrawal stroke until the plate has pulled away.
+    for (const p of siteAt(-1)) {
+      if (p.piece.node.startsWith('Tail_Carrier_')) allowed.set(p.piece.node, [p.siteBounds.clone()]);
+    }
+    for (const [node, stop] of releaseEnds) {
+      if (!node.startsWith('Tail_Carrier_')) continue;
+      const carrier = [...siteAt(stop)].find((piece) => piece.piece.node === node);
+      allowed.get(node)[0].union(carrier.siteBounds).expandByScalar(stackSolid.cell);
+    }
     for (const t of countdownSamples(stack, pad, 128)) {
       const rocket = [...rocketAt(t)];
       for (const structure of siteAt(t)) {
         for (const body of rocket) {
           const node = structure.piece.node;
-          if (body.piece.node === 'SaturnFirstStage' && (node === 'Holddown_Arms' || t < (releaseEnds.get(node) ?? -Infinity))) continue;
+          const mating = body.piece.node === 'SaturnFirstStage' && (node === 'Holddown_Arms' || t < (releaseEnds.get(node) ?? -Infinity));
           // An unchanged pair has the same clearance it had at the previous sample.
-          if ((structure.moved || body.moved || t === releaseEnds.get(node)) && intersect(structure, body)) {
+          if (
+            (structure.moved || body.moved || t === releaseEnds.get(node)) &&
+            intersect(structure, body, mating ? allowed.get(node) : undefined)
+          ) {
             assert.fail(`${structure.piece.node} touches ${body.piece.node} at T${t.toFixed(3)}`);
           }
         }

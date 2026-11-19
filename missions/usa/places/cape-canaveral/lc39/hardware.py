@@ -297,7 +297,44 @@ def quench_valve(parts):
         beam(parts("Service_Arm_2", "deck/quench_brackets"), (x, 1.8, z + 0.58), (x, y, level - 0.08), 0.17)
 
 
-def build(pad, *, detailed=False, arm2_quench=False):
+def intertank_carrier(parts):
+    """SA-508 Flight Manual, figs. 4-13 and 8-8. Ground-side routing and carrier dimensions estimated."""
+    z = DECK + 68
+    parent = "Service_Arm_1"
+    name = "Intertank_LOX_Carrier"
+    parts.node(name, parent, (22, 0, z + 2.5))
+    # The two six-inch stage lines terminate at the intertank. The pipe jackets,
+    # collars and mounting are reconstructed on the ground side of that interface.
+    pipes = parts(parent, "steel/fill_and_drain", True)
+    fittings = parts(name, "deck", True)
+    frame = parts(name, "steel")
+    for y in (-0.78, 0.78):
+        pipes.tube(P(24.4, y, z + 2.4), P(53.2, y, z + 2.4), 0.35 * FT)
+        for x in (30, 42, 51):
+            pipes.tube(P(x, y, z + 2.4), P(x + 0.26, y, z + 2.4), 0.43 * FT)
+        fittings.tube(P(19.45, y, z + 2.4), P(24.5, y, z + 2.4), 0.31 * FT)
+        for x in (19.50, 20.12, 24.15):
+            fittings.tube(P(x, y, z + 2.4), P(x + 0.20, y, z + 2.4), 0.49 * FT)
+        # The parallel links carry the plate. Keep the nose behind the truss tip.
+        for x in (20.6, 23.1):
+            beam(frame, (x, y, z + 0.56), (x + 0.64, y, z + 1.95), 0.22)
+        beam(frame, (20.50, y, z + 0.65), (23.28, y, z + 0.65), 0.20)
+        beam(frame, (21.05, y, z + 1.89), (23.90, y, z + 1.89), 0.23)
+    # A common carrier frame holds both couplings between its upper and lower rails.
+    for height in (1.81, 2.99):
+        box(frame, (19.81, -1.43, z + height - 0.07), (20.08, 1.43, z + height + 0.07))
+    for y in (-1.36, 0, 1.36):
+        box(frame, (19.82, y - 0.07, z + 1.88), (20.07, y + 0.07, z + 2.92))
+    for x in (21.24, 23.74):
+        fittings.tube(P(x, -0.98, z + 1.94), P(x, 0.98, z + 1.94), 0.15 * FT)
+    for y in (-0.78, 0.78):
+        beam(frame, (19.96, y, z + 1.81), (21.24, y, z + 1.94), 0.20)
+    for x in (30, 42, 51):
+        for y in (-0.78, 0.78):
+            beam(parts(parent, "deck/pipe_support"), (x + 0.12, y, z + 0.48), (x + 0.12, y, z + 2.11), 0.19)
+
+
+def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False):
     use(FT)
     parts = Parts(
         {
@@ -323,5 +360,7 @@ def build(pad, *, detailed=False, arm2_quench=False):
     arms(parts, detailed)
     if arm2_quench:
         quench_valve(parts)
+    if intertank_lox:
+        intertank_carrier(parts)
     parts.build()
     return "Mobile launcher: 160 by 135 ft base, 445 ft to crane on pad pedestals"
