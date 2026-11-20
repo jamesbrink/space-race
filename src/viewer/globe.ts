@@ -34,6 +34,7 @@ import {
   swellGlsl,
   swellHoleFrame,
 } from './swell.ts';
+import { plumbIn } from './camera/maths.ts';
 import { vec3 } from './glsl.ts';
 import type { Beyond } from './land.ts';
 import { later } from './later.ts';
@@ -1068,9 +1069,8 @@ export class Globe {
 
   /** Straight up from the sea under the eye, in the scene's frame. */
   up(eye: THREE.Vector3, out: THREE.Vector3): THREE.Vector3 {
-    const n = this.eyed(eye).normal;
-    const [ex, ey, ez] = this.axes;
-    return out.set(dot(ex, n), dot(ey, n), dot(ez, n));
+    // (at the Earth's centre, where a view of the whole Earth turns, there is none: camera/maths.ts `plumbIn`)
+    return plumbIn(this.eyed(eye).normal, this.axes, out);
   }
 
   /** How far off the furthest part of the globe in view is: its horizon, metres; 0 while it is not drawn. */
