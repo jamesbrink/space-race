@@ -14,6 +14,7 @@ import {
   soyuzGallery,
   soyuzGallerySpecs,
 } from '../../vehicles/gallery.ts';
+import { WEATHER } from './weather.ts';
 
 const HARDWARE = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.8';
 const INSERTION = 'Nauka i zhizn, “Flights Continue,” 1973, reported initial orbit.';
@@ -241,6 +242,7 @@ export const flight: Flight = {
   launchVehicle: 'Soyuz 11A511 · S15000-026',
   launch,
   site: SITE1,
+  weather: WEATHER,
   opens: { at: -7200, model: 'pad', view: 'towers' },
   launchSite: 'Tyuratam (Baikonur), Site 1',
   crew: ['Vasily G. Lazarev', 'Oleg G. Makarov'],

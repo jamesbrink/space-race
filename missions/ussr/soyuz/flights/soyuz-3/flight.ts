@@ -13,6 +13,7 @@ import {
   soyuzGallerySpecs,
   wingMoves,
 } from '../../vehicles/gallery.ts';
+import { WEATHER } from './weather.ts';
 
 const TASS = 'TASS communiqué, Pravda no. 301 (27 October 1968), p. 1 (preliminary orbit)';
 const SIDDIQI = 'Asif A. Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
@@ -170,6 +171,7 @@ export const flight: Flight = {
   opens: { at: -7200, model: 'pad', view: 'platform' },
   launchSite: 'Tyuratam (Baikonur), Site 31',
   site: SITE31,
+  weather: WEATHER,
   crew: ['Georgiy T. Beregovoy'],
   summary:
     'The first crewed Soyuz after the loss of Soyuz 1. Georgiy Beregovoy approached the uncrewed Soyuz 2 but did not dock. He returned safely after nearly four days in orbit.',

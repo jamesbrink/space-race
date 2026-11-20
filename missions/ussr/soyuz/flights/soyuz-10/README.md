@@ -58,6 +58,6 @@ inspection. The flight deck is pending.
 
 ## Launch site
 
-The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky uses the flight date and the place’s estimated weather. The geometric Sun at liftoff was 61.2° true, 9.5° below the horizon. The Moon was at 88.8° true, elevation +3.0° (DE440). [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
+The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky is the day's: after the rain of the scrubbed night before, the stations either side were clear at the hour; Kazalinsk had 3 m/s from the south-west at 00:00 UTC ([weather.ts](weather.ts); NOAA ISD; Kamanin's diary). ERA5 supplies the surrounding hours and the air aloft. The geometric Sun at liftoff was 61.2° true, 9.5° below the horizon. The Moon was at 88.8° true, elevation +3.0° (DE440). [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
 
 Walk as Shatalov, Yeliseyev or Rukavishnikov in unpressurized flight clothing. Each standing figure uses the same cut and colour as his seated counterpart. Each walk starts on the rail apron facing the launcher. The starting positions, footwear and garment details are reconstructed.

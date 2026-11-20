@@ -53,6 +53,6 @@ publication. [TASS communiqué, NASA translation ST-PR-10595, p. 1](https://ntrs
 
 ## Launch site
 
-The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky uses the flight date and the place’s estimated weather. [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
+The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky is the day's: no report from the range has been read, and Kazalinsk, 97 km west, had the whole sky under altocumulus and a near calm at 00:00 UTC, 35 minutes before the night launch ([weather.ts](weather.ts); NOAA ISD); ERA5 supplies the surrounding hours and the air aloft. [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
 
 Walk as Komarov in the light flight clothing reconstructed for the cabin. The model uses his existing standing figure. Each walk starts on the rail apron facing the launcher. The starting positions, footwear and garment details are reconstructed.

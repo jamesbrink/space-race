@@ -4,6 +4,7 @@ import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { soyuzPad } from '../../../places/tyuratam/soyuz-pad.ts';
 import { soyuzWalker } from '../../crew/walkout.ts';
 import { CRAFT, descent, moduleTravel, onSoyuzPad, orbital, service, soyuzGallery, soyuzGallerySpecs } from '../../vehicles/gallery.ts';
+import { WEATHER } from './weather.ts';
 
 const HARDWARE = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.9';
 const CATALOG = 'Czech Academy of Sciences Space Catalogue, 1974-096A.';
@@ -251,6 +252,7 @@ export const flight: Flight = {
   launchVehicle: 'Soyuz-U 11A511U · K 15000-014',
   launch,
   site: SITE1,
+  weather: WEATHER,
   opens: { at: -7200, model: 'pad', view: 'towers' },
   launchSite: 'Tyuratam (Baikonur), Site 1',
   crew: ['Anatoliy V. Filipchenko', 'Nikolay N. Rukavishnikov'],

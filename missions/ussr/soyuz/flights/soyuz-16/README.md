@@ -63,6 +63,6 @@ cosmonauts and take either couch to look at the reconstructed controls. The flig
 
 ## Launch site
 
-The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky uses the flight date and the place’s estimated weather. [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
+The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky is the day's: clear and hard, −13 °C, with 13 m/s from the east-north-east at Dzhusaly, 74 km south-east, at 09:00 UTC ([weather.ts](weather.ts); NOAA ISD). ERA5 supplies the surrounding hours and the air aloft. [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
 
 Walk as Filipchenko or Rukavishnikov in their Sokol-K pressure garments. Each walk starts on the rail apron facing the launcher. The starting positions, footwear and garment details are reconstructed.

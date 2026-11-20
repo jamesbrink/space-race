@@ -42,6 +42,9 @@ const FLIGHTS = [
   'ussr/vostok/vostok-1',
   'usa/mercury/ma-6-friendship-7',
   'usa/apollo/apollo-7',
+  'usa/apollo/apollo-8',
+  'usa/apollo/apollo-9',
+  'usa/apollo/apollo-10',
   'usa/apollo/apollo-12',
   'usa/apollo/apollo-13',
   'usa/apollo/apollo-14',
@@ -50,6 +53,10 @@ const FLIGHTS = [
   'usa/apollo/apollo-17',
   'usa/skylab/skylab-2',
   'usa/skylab/skylab-3',
+  'ussr/soyuz/soyuz-1',
+  'ussr/soyuz/soyuz-3',
+  'ussr/soyuz/soyuz-4',
+  'ussr/soyuz/soyuz-12',
 ].filter((f) => !only || f === only);
 const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */

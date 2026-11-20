@@ -14,6 +14,7 @@ import {
   soyuzGallerySpecs,
   wingMoves,
 } from '../../vehicles/gallery.ts';
+import { WEATHER } from './weather.ts';
 
 const HARDWARE = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.7';
 const FLIGHT_LOG = 'Igor Afanasyev and Dmitry Vorontsov, The First Soyuz Spacecraft, “Soyuz 10: Failure of the First Expedition”';
@@ -208,6 +209,7 @@ export const flight: Flight = {
   launchVehicle: 'Soyuz 11A511 · Kh15000-025',
   launch,
   site: SITE1,
+  weather: WEATHER,
   opens: { at: -7200, model: 'pad', view: 'towers' },
   launchSite: 'Tyuratam (Baikonur), Site 1',
   crew: ['Vladimir A. Shatalov', 'Aleksey S. Yeliseyev', 'Nikolay N. Rukavishnikov'],

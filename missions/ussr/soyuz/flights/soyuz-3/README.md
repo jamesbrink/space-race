@@ -48,7 +48,7 @@ The Gallery uses studio light.
 
 ## Launch site
 
-The launcher stands over [Site 31’s excavated pad](../../../places/tyuratam/site-31.md). The site opens at an estimated two hours before launch. The crew lift reaches the boarding platform while the towers stand around the rocket. The towers fold clear before liftoff. At liftoff the Sun was at azimuth 198.2° true and elevation +29.7°. The Moon was at 139.1° and +2.6°. The viewing conditions use the place’s estimated sky.
+The launcher stands over [Site 31’s excavated pad](../../../places/tyuratam/site-31.md). The site opens at an estimated two hours before launch. The crew lift reaches the boarding platform while the towers stand around the rocket. The towers fold clear before liftoff. At liftoff the Sun was at azimuth 198.2° true and elevation +29.7°. The Moon was at 139.1° and +2.6°. The sky is the day's: no report from the range on the 26th has been read; Kazalinsk, 115 km west, had five oktas of stratocumulus at about 800 m and 7 m/s from the north-west at 09:00 UTC ([weather.ts](weather.ts); NOAA ISD). ERA5 supplies the surrounding hours and the air aloft.
 
 ![Soyuz 3 with both solar arrays deployed and the spacecraft modules still joined](../../../../../docs/readme/soyuz-3/orbital-configuration.jpg)
 

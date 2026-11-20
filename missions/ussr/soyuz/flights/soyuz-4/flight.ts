@@ -13,6 +13,7 @@ import {
   soyuzGallerySpecs,
   wingMoves,
 } from '../../vehicles/gallery.ts';
+import { WEATHER } from './weather.ts';
 
 const SIDDIQI = 'Asif A. Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
 const RECORD = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.3.3';
@@ -191,6 +192,7 @@ export const flight: Flight = {
   opens: { at: -7200, model: 'pad', view: 'platform' },
   launchSite: 'Tyuratam (Baikonur), Site 31',
   site: SITE31,
+  weather: WEATHER,
   crew: ['Vladimir A. Shatalov'],
   summary: 'Shatalov launched alone and docked with Soyuz 5. Khrunov and Yeliseyev crossed by spacewalk and returned to Earth with him.',
   facts: [
