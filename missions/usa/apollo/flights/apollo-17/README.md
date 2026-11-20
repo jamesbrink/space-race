@@ -24,6 +24,35 @@ Choose **Drive rover** to take the wheel. WASD or the arrow keys drive and steer
 
 The driving surface uses a 2 m stereo strip around Challenger and the 5 m Taurus–Littrow mosaic across the valley. Beyond the stereo coverage, the horizon follows LOLA altimetry. The lander location comes from LROC and its west-facing orientation is estimated from the lunar window panoramas. The positions of individual stones and the ground beneath the footpads are reconstructed. The wheels follow the modeled surface with articulated suspension. Soil slip and tire deformation are simplified. [LROC terrain products](https://data.lroc.im-ldi.com/lroc/view_rdr/NAC_DTM_APOLLO17) · [LROC landing coordinates](https://lroc.im-ldi.com/data/support/downloads/2016_LROC_Coordinates_of_Human_Features.pdf)
 
+## Fly
+
+Fly takes the flight deck at the pad: SA-512 under your hands from ignition through the translunar injection, launched
+when it was, in the dark at 00:33 EST, 2 hours 40 minutes late after the terminal countdown sequencer stopped the count at
+T−30 seconds, and rolled onto the azimuth that moved it to, 91.5° east of north rather than the planned 72°. On entry
+guidance (G) and the sequencer (B) are off and Hold is on: you light, steer, cut and stage each of the three stages, drop
+the S-II's aft interstage and the escape tower, make the parking orbit and light the S-IVB again for the injection. With G
+and B on, the record's ascent (its S-IC programme, its guidance's closed loop, its events at their times, the S-IC's four
+cut by their fuel depletion sensors, the S-II burning to its oxygen's depletion) makes the parking orbit and the
+injection. The run, and how it compares with the record, is in [mission.md](mission.md), from MSFC's flight evaluation of
+SA-512 (MPR-SAT-FE-73-1).
+
+The flight ends with the injection: the stack, whole, coasts on toward the Moon, which pulls on it. Challenger rides in
+the adapter with LRV-3 folded on its descent stage, its mass in the lunar module's; the rover is driven only at
+Taurus–Littrow (above), not in flight. The transposition and docking and what came after are not flown.
+
+## What is not flown or is simplified
+
+- Nothing after the S-IVB's second cutoff: the transposition and docking, Challenger drawn out of the adapter, the S-IVB
+  sent to strike the Moon, the landing at Taurus–Littrow and the return. The stack coasts on whole.
+- The hold itself is not flown: the run starts at the liftoff it delayed.
+- The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV. The tower's jettison instant is
+  estimated from the air-to-ground, the flight evaluation having no figure for it.
+- The S-IC flies a pitch programme traced off the evaluation's Fig. 9-5 and held from the tilt's arrest; it is let go
+  34 m/s slow, the F-1s' cutoff decay not flown. The S-II burns to the run's own depletion 2.1 s early and is let go
+  86 m/s slow, and the S-IVB burns 13.9 s longer to the orbit (mission.md); the iterative guidance is a linear tangent in
+  each of its two burns; the engines' starts and cutoff transients, the tower clearance yaw and the S-IVB's boil-off in
+  orbit are not flown.
+
 ## Hardware notes
 
 - [SA-512 and SLA-21](../../vehicles/sa-512.md)

@@ -5,9 +5,12 @@ import { WEATHER } from './weather.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { roverModel } from '../../vehicles/rover-gallery.ts';
+import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
+import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
 import { americaCommand, americaPort, americaService, americaViews } from './america.ts';
 import { challengerModel, challengerPort, challengerStackParts, challengerStackViews } from './challenger.ts';
+import { orbital } from './orbital.ts';
 import { APOLLO17_THRUST, launcher, stackViews } from './sa512.ts';
 
 const elapsed = (h: number, m: number, s: number) => h * 3600 + m * 60 + s;
@@ -19,6 +22,7 @@ const masses = 'JSC-07904, table A-II, weights at transposition and docking';
 const boarding: [number, number] = [-elapsed(5, 20, 0), -elapsed(4, 25, 0)];
 const coverCloseout = -elapsed(4, 2, 0);
 const cabin = blockIICabin(3871);
+const PLAN = saturnVPlan(orbital);
 
 export const flight: Flight = {
   id: 'usa/apollo/apollo-17',
@@ -34,6 +38,8 @@ export const flight: Flight = {
   site: LC39A,
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   weather: WEATHER,
+  plan: { ...PLAN, aloft: WEATHER.aloft },
+  flies: saturnVFlies(PLAN),
   crew: ['Eugene A. Cernan', 'Ronald E. Evans', 'Harrison H. Schmitt'],
   summary:
     'Cernan and Schmitt drove through the Taurus–Littrow valley from Challenger. In lunar orbit Evans used America’s cameras, radar sounder, ultraviolet spectrometer and infrared scanner, then recovered three film cassettes on the way home.',

@@ -18,6 +18,30 @@ The terrain follows LROC stereo elevations near the lander and LOLA altimetry be
 
 ![LRV-2, with detail of the wheel and control console](../../../../../docs/readme/apollo-16-rover.webp)
 
+## Fly
+
+Fly takes the flight deck at the pad: SA-511 under your hands from ignition through the translunar injection, launched
+on time and rolled onto its 72.0° azimuth. On entry guidance (G) and the sequencer (B) are off and Hold is on: you light,
+steer, cut and stage each of the three stages, drop the S-II's aft interstage and the escape tower, make the parking orbit
+and light the S-IVB again for the injection. With G and B on, the record's ascent (its S-IC attitude, its guidance's
+closed loop, its events at their times, the S-II burning to its oxygen's depletion) makes the parking orbit and the
+injection. The run, and how it compares with the record, is in [mission.md](mission.md), from MSFC's flight evaluation of
+SA-511 (MPR-SAT-FE-72-1).
+
+The flight ends with the injection: the stack, whole, coasts on toward the Moon, which pulls on it. The second lunar rover
+rides folded in Orion's descent stage, its mass in Orion's: it is not driven in flight, only in its gallery.
+
+## What is not flown or is simplified
+
+- Nothing after the S-IVB's second cutoff: Casper's turnaround and docking, Orion drawn out of the adapter, the S-IVB sent
+  to strike the Moon, the landing at Descartes, the rover's three traverses and the return. The stack coasts on whole.
+- The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV.
+- The S-IC flies a pitch programme traced off the evaluation's Fig. 9-12 and comes to its separation 38 m/s slow, most of
+  it the F-1s' thrust decay, which is not flown. The S-II burns to the run's own depletion 2.9 s early and the S-IVB 13.1
+  s longer to the same orbit (mission.md); the push of the S-IC's eight retromotors is read off a figure; the iterative
+  guidance is a linear tangent in each of its two burns; the engines' starts and cutoff transients, the tower clearance
+  yaw and the S-IVB's boil-off in orbit are not flown.
+
 ## Hardware notes
 
 - [SA-511 and its spacecraft adapter](../../vehicles/sa-511.md)

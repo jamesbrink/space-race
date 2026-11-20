@@ -10,7 +10,8 @@ const [stack, lander] = flight.models;
 test('Apollo 15 exhibits Endeavour and Falcon with their flown crew stations', () => {
   assert.equal(lacks(flight, 'gallery'), null);
   assert.equal(lacks(flight, 'site'), null);
-  assert.ok(lacks(flight, 'fly'));
+  // (flown from the pad through the translunar injection: missions/usa/apollo/vehicles/saturn-v-plan.ts)
+  assert.equal(lacks(flight, 'fly'), null);
   assert.deepEqual(
     flight.models.map((model) => model.id),
     ['vehicle', 'falcon', 'pad', 'crew', 'pilot', 'lmp', 'rover'],

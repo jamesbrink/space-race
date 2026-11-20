@@ -5,9 +5,12 @@ import { WEATHER } from './weather.ts';
 import { roverModel } from '../../vehicles/rover-gallery.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
+import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
+import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
 import { orionModel, orionPort, orionStackParts, orionStackViews } from './orion.ts';
 import { casperCommand, casperPort, casperService, casperViews } from './casper.ts';
+import { orbital } from './orbital.ts';
 import { APOLLO16_THRUST, stackViews, launcher } from './sa511.ts';
 
 const elapsed = (h: number, m: number, s: number) => h * 3600 + m * 60 + s;
@@ -20,6 +23,7 @@ const masses = 'Apollo 16 Mission Report MSC-07230, appendix A, table A-IV, tran
 const boarding: [number, number] = [-elapsed(2, 40, 0), -elapsed(1, 45, 0)];
 const coverCloseout = -elapsed(1, 20, 0);
 const cabin = blockIICabin(3871);
+const PLAN = saturnVPlan(orbital);
 
 export const flight: Flight = {
   id: 'usa/apollo/apollo-16',
@@ -35,6 +39,8 @@ export const flight: Flight = {
   site: LC39A,
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   weather: WEATHER,
+  plan: { ...PLAN, aloft: WEATHER.aloft },
+  flies: saturnVFlies(PLAN),
   crew: ['John W. Young', 'Thomas K. Mattingly II', 'Charles M. Duke Jr.'],
   summary:
     'Young and Duke took Orion to the Descartes highlands after a six-hour landing delay. Mattingly mapped the Moon from Casper and climbed outside on the way home to recover the film.',

@@ -2,7 +2,9 @@
  * What a Saturn V flight's run carries off the pad and what it sheds on the way (types.ts `Flight.flies`), by the nodes
  * saturn_v.py and launch_escape.py name: the S-IC with its engines, the S-II's aft interstage, the escape tower and its
  * boost cover, the S-II with its engines and the S-IVB's interstage, each let go by its plan's joint
- * (saturn-v-plan.ts); and each engine's fire, under its own bell, burning while the run has its plan's engine burn.
+ * (saturn-v-plan.ts), with what a stage carried as a node of its own (the S-IC's retrorocket fairings, the S-II centre
+ * engine's pogo accumulator: absent on a model whose vehicle had none); and each engine's fire, under its own bell,
+ * burning while the run has its plan's engine burn.
  */
 import type { Flight } from '../../../../src/types.ts';
 import type { FlightPlan } from '../../../../src/sim/plan.ts';
@@ -22,10 +24,21 @@ export function saturnVFlies(plan: FlightPlan, model = 'vehicle'): NonNullable<F
   return {
     model,
     drops: [
-      drop('sic-separation', ['SaturnFirstStage', 'FirstStageEngines', 'FirstStageTankStructure']),
+      drop('sic-separation', [
+        'SaturnFirstStage',
+        'FirstStageEngines',
+        'FirstStageTankStructure',
+        ...['A', 'B', 'C', 'D'].map((fin) => `FirstStageRetros${fin}`),
+      ]),
       drop('sii-skirt', ['LowerInterstage']),
       drop('les-jettison', ['LaunchEscape', 'BoostCover']),
-      drop('sii-separation', ['SaturnSecondStage', 'SecondStageEngines', 'SecondStageTankStructure', 'SaturnInterstage']),
+      drop('sii-separation', [
+        'SaturnSecondStage',
+        'SecondStageEngines',
+        'SecondStageTankStructure',
+        'SaturnInterstage',
+        'PogoAccumulator',
+      ]),
     ],
     fires: [
       // (saturn_v.py: the fifth of each cluster is its centre)
