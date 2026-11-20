@@ -24,6 +24,7 @@ import pressure_vessel
 import service_tanks
 import side_hatch
 import skylab_csm_equipment
+import skylab_s201
 import sm110_equipment
 import sm112_equipment
 import sm113_equipment
@@ -105,12 +106,12 @@ def bell(name, origin, direction, length, radius, mat, parent):
 
 def build(offset=0, *, spacecraft=101):
     """Build top-level part nodes, translated together by offset inches."""
-    if spacecraft not in (101, 103, 104, 106, 107, 108, 109, 110, 112, 113, 114, 116, 117):
+    if spacecraft not in (101, 103, 104, 106, 107, 108, 109, 110, 112, 113, 114, 116, 117, 118):
         raise ValueError(f"Unmodelled CSM-{spacecraft}")
     sim_bay = spacecraft in (112, 113, 114)
-    skylab = spacecraft in (116, 117)
+    skylab = spacecraft in (116, 117, 118)
     later = spacecraft != 101
-    probe_installed = spacecraft in (104, 106, 107, 108, 109, 110, 112, 113, 114, 116, 117)
+    probe_installed = spacecraft in (104, 106, 107, 108, 109, 110, 112, 113, 114, 116, 117, 118)
     white = material("apollo-radiator-white", (0.82, 0.84, 0.80), roughness=0.65)
     silver = material("apollo-aluminium", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33)
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
@@ -203,7 +204,7 @@ def build(offset=0, *, spacecraft=101):
         mesh = MeshBuilder()
         mesh.box((13 * IN, 12 * IN, 15 * IN), frame(centre, out))
         quad = groups["ReactionControl"]
-        if spacecraft == 117:
+        if spacecraft in (117, 118):
             # SOH fig. 2.4-2: A and C on -Z/+Z, B and D on +Y/-Y.
             quad = group(f"RCS_Quad{'ABCD'[i]}", quad)
         mesh.build(f"RCS_Block_{i}", white, quad)
@@ -228,7 +229,7 @@ def build(offset=0, *, spacecraft=101):
         void,
         docking_ring=probe_installed,
     )
-    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft in (106, 107, 108, 109, 110, 112, 113, 114, 116, 117))
+    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft in (106, 107, 108, 109, 110, 112, 113, 114, 116, 117, 118))
     forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=later, hatch_setback=10 if probe_installed else 0)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     window_glazing.build(groups["CabinWindows"], CM_BASE, hatch_parent=hatch_leaf)
@@ -244,7 +245,7 @@ def build(offset=0, *, spacecraft=101):
         forward_compartment.recovery_loop(groups["RecoveryLoop"], CM_BASE)
         groups["TelemetryPower"] = group("TelemetryPower")
         console_equipment.telemetry_power(groups["TelemetryPower"], CM_BASE)
-    if spacecraft in (107, 108, 109, 110, 112, 113, 114, 116, 117):
+    if spacecraft in (107, 108, 109, 110, 112, 113, 114, 116, 117, 118):
         groups["WaterDispenser"] = group("WaterDispenser")
         cabin_bays.water_dispenser(groups["WaterDispenser"], CM_BASE, spacecraft)
     unitized_couch.build(groups["CrewCouches"], CM_BASE, foldable=later)
@@ -284,12 +285,17 @@ def build(offset=0, *, spacecraft=101):
         if spacecraft == 116:
             groups["ParasolCanister"] = group("ParasolCanister")
             skylab_csm_equipment.parasol(groups["ParasolCanister"], CM_BASE)
-        else:
+        elif spacecraft == 117:
             groups["CircadianExperiment"] = group("CircadianExperiment")
             skylab_csm_equipment.circadian(groups["CircadianExperiment"], SPS_EXIT_XA)
             for name in ("BackupParasol", "RateGyroPackages"):
                 groups[name] = group(name)
             skylab_csm_equipment.second_visit_stowage(groups, CM_BASE)
+        else:
+            for name in ("ExtendedVisitFood", "CometBracketCase", "ExperimentStowage", "S201Camera"):
+                groups[name] = group(name)
+            skylab_csm_equipment.third_visit_stowage(groups, CM_BASE)
+            skylab_s201.build(groups["S201Camera"], CM_BASE)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN

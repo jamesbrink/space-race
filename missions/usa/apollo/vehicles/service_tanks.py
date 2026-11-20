@@ -294,6 +294,7 @@ def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_rad
     _markings(parent, radius, forward)
     barrel, ecs, inner, rim, fairing, eps = (MeshBuilder() for _ in range(6))
     door = MeshBuilder()
+    battery_patch = MeshBuilder()
     for a, b in zip(ANGLES, ANGLES[1:]):
         deg = (a + b) / 2
         angle = (math.radians(a), math.radians(b))
@@ -326,7 +327,14 @@ def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_rad
                     door.add(points, [(0, 1, 2, 3) if edge == 15 else (3, 2, 1, 0)])
         else:
             for lo, hi, paint in ((aft, ecs_bottom, barrel), (ecs_bottom, ecs_top, ecs if has_ecs else barrel), (ecs_top, forward, barrel)):
-                sector(paint, [(radius, lo), (radius, hi)])
+                if spacecraft == 118 and 15 < deg < 30 and hi == forward:
+                    # JSC-08963 fig. 6-1: coated region at the forward, quad-A
+                    # corner of bay I. Edges scaled from the side elevation.
+                    edge = forward - 68
+                    sector(paint, [(radius, lo), (radius, edge)])
+                    sector(battery_patch, [(radius, edge), (radius, hi)])
+                else:
+                    sector(paint, [(radius, lo), (radius, hi)])
             sector(inner, [(radius - 1, forward), (radius - 1, aft)])
         sector(rim, [(radius - 1, aft), (radius, aft)])
         sector(rim, [(radius, forward), (radius - 1, forward)])
@@ -340,6 +348,10 @@ def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_rad
         sector(fairing, [(radius, forward), (fairing_radius, forward)])
         sector(fairing, [(fairing_radius, fairing_top), (shield_radius, fairing_top)])
         sector(fairing, [(fairing_radius - 0.5, fairing_top), (fairing_radius - 0.5, forward)])
+    if spacecraft == 118:
+        finish = material("skylab118-battery-compartment-coating", (0.84, 0.85, 0.78), roughness=0.71)
+        panel = battery_patch.build("SM118_BatteryCompartmentCoating", finish, parent)
+        panel.data.normals_split_custom_set_from_vertices([Vector((v.co.x, v.co.y, 0)).normalized() for v in panel.data.vertices])
     if sim_door is not None:
         skin = door.build(f"SM{spacecraft}_SIMJettisonPanel", silver, sim_door)
         mark_shells([skin.name])

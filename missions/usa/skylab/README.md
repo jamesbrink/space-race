@@ -5,3 +5,5 @@ The workshop and its crews made separate launches. A two-stage Saturn V put the 
 [Skylab 2](flights/skylab-2/README.md) brings CSM-116 and SA-206 to the Gallery and Lineup. Take a couch in the command module, find the workshop parasol packed below the seats, or open the service module to inspect its batteries and additional thruster propellant.
 
 [Skylab 3](flights/skylab-3/README.md) adds CSM-117 and SA-207. Inspect the circadian experiment in the service module and the X-ray detector carried by the instrument unit. Compare the two Saturn IBs side by side in the Lineup, then switch to the spacecraft row to inspect CSM-117 on its own. At Pad 39B, follow the crew up to the white room or watch the five service arms withdraw through the launch countdown.
+
+[Skylab 4](flights/skylab-4/README.md) completes the three visiting crews. Open CSM-118 to find the extra food and comet-observation equipment packed for the final expedition. On SA-208, inspect the replacement fins and the repair at the base of the first stage. Both the assembled Saturn IB and its spacecraft can be compared with the two earlier flights in the Lineup.

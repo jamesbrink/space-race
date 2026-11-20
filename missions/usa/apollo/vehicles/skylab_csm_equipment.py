@@ -96,7 +96,8 @@ def build(groups, origin_xa, cm_base, spacecraft):
     radius, length = 12.64 / 2, 38.819
     rack = MeshBuilder()
     fittings = MeshBuilder()
-    locations = [(43, -7), (43, 7), (55.5, -19.5), (55.5, -6.5), (55.5, 6.5), (55.5, 19.5), (68, -13), (68, 0), (68, 13)]
+    middle, outer, pitch = (56.8, 68.2, 12.7) if spacecraft == 118 else (55.5, 68, 13)
+    locations = [(43, -7), (43, 7)] + [(middle, pitch * i) for i in (-1.5, -0.5, 0.5, 1.5)] + [(outer, pitch * i) for i in (-1, 0, 1)]
     for i, (r, t) in enumerate(locations):
         tank = "Oxidizer" if i < 5 else "Fuel"
         name = f"SM{spacecraft}_PSM_{tank}{i + 1 if i < 5 else i - 4}"
@@ -109,7 +110,7 @@ def build(groups, origin_xa, cm_base, spacecraft):
         _ball(f"SM{spacecraft}_PSM_Helium{i}", 12.37, centre, alloy, vessels)
         fittings.tube(station(r, t, 932.4) * IN, station(r, t, 937.4) * IN, 2.5 * IN, segs=24)
         fittings.tube(centre * IN, station(r, t, 949.5) * IN, 0.82 * IN, segs=10)
-    for r, width in ((43, 26), (55.5, 50), (68, 37)):
+    for r, width in ((43, 26), (middle, 50), (outer, 37)):
         for xa in (890, 932.5):
             box(rack, r, 0, xa, (3.4, width, 1.0))
     for t in (-11.5, 11.5):
@@ -120,16 +121,38 @@ def build(groups, origin_xa, cm_base, spacecraft):
     rack.build(f"SM{spacecraft}_PSM_Cradle", frame, vessels)
     fittings.build(f"SM{spacecraft}_PSM_HeliumNecks", frame, vessels)
 
-    # Silver-zinc cases and binding posts are representative, below the PSM on their carrier.
+    # On 118 the battery compartment was under the coated forward corner
+    # of bay I (JSC-08963 fig. 6-1); internal rack stations are estimated.
+    if spacecraft == 118:
+        for child in vessels.children:
+            child.location.z -= 46 * IN
+    # Pack envelopes and terminal details are common to the three ferries.
     cases, covers, terminals, bushings = (MeshBuilder() for _ in range(4))
-    for r, t in ((42, 0), (61, -12), (61, 12)):
-        box(cases, r, t, 860, (17, 21, 27))
-        box(covers, r, t, 874.1, (17.3, 21.3, 0.9))
+    for i, (r, t) in enumerate(((42, 0), (61, -12), (61, 12))):
+        pose = Matrix.Translation(station(r, t, 860) * IN) @ SECTOR
+        if spacecraft == 118:
+            angle = Matrix.Rotation(math.radians(34), 4, "Z")
+            centre = angle @ Vector((62, 0, 936 + 22 * i - origin_xa))
+            pose = Matrix.Translation(centre * IN) @ angle @ Matrix.Rotation(math.pi / 2, 4, "X")
+
+        def point(x, y, z):
+            if spacecraft != 118:
+                return station(r + x, t + y, 860 + z) * IN
+            return pose @ (Vector((x, y, z)) * IN)
+
+        def plate(mesh, x, y, z, dims):
+            if spacecraft != 118:
+                box(mesh, r + x, t + y, 860 + z, dims)
+                return
+            mesh.box(Vector(dims) * IN, pose @ Matrix.Translation(Vector((x, y, z)) * IN))
+
+        plate(cases, 0, 0, 0, (17, 21, 27))
+        plate(covers, 0, 0, 14.1, (17.3, 21.3, 0.9))
         for side in (-1, 1):
-            x = r + 4.3 * side
-            bushings.tube(station(x, t + 6.5, 874.7) * IN, station(x, t + 6.5, 875.5) * IN, 0.94 * IN, segs=16)
-            terminals.tube(station(x, t + 6.5, 875.5) * IN, station(x, t + 6.5, 876.4) * IN, 0.50 * IN, segs=16)
-            box(covers, r, t + side * 9.1, 846.1, (18.3, 1.15, 0.65))
+            x = 4.3 * side
+            bushings.tube(point(x, 6.5, 14.7), point(x, 6.5, 15.5), 0.94 * IN, segs=16)
+            terminals.tube(point(x, 6.5, 15.5), point(x, 6.5, 16.4), 0.50 * IN, segs=16)
+            plate(covers, 0, side * 9.1, -13.9, (18.3, 1.15, 0.65))
     cases.build(f"SM{spacecraft}_DescentBatteryCases", gold, batteries, smooth=False)
     covers.build(f"SM{spacecraft}_DescentBatteryCoversAndFeet", frame, batteries, smooth=False)
     bushings.build(f"SM{spacecraft}_DescentBatteryBushings", insulator, batteries)
@@ -253,27 +276,53 @@ def second_visit_stowage(groups, cm_base):
     straps = material("skylab117-cargo-straps", (0.37, 0.35, 0.29), roughness=0.85)
     metal = material("skylab117-cargo-buckles", (0.57, 0.59, 0.56), metallic=0.72)
 
-    def package(node, tag, x, y, z, width, length, height):
-        pos = Vector((x, y, cm_base + z))
-        body, bands, buckles = MeshBuilder(), MeshBuilder(), MeshBuilder()
-        # Chamfer the corners of the covered case. The drawing shows external
-        # transit packages; enclosure and belt cross-sections are estimated.
-        w, h = width / 2, height / 2
-        cut = 0.65
-        outline = [(-w + cut, -h), (-w, -h + cut), (-w, h - cut), (-w + cut, h), (w - cut, h), (w, h - cut), (w, -h + cut), (w - cut, -h)]
-        verts = [(pos + Vector((u, v, a))) * IN for v in (-length / 2, length / 2) for u, a in outline]
-        n = len(outline)
-        faces = [(j, (j + 1) % n, n + (j + 1) % n, n + j) for j in range(n)]
-        body.add(verts, [*faces, tuple(reversed(range(n))), tuple(range(n, 2 * n))])
-        for v in (-length * 0.30, length * 0.30):
-            outer = [(u + math.copysign(0.085, u), a + math.copysign(0.085, a)) for u, a in outline]
-            belt = [(pos + Vector((u, b, a))) * IN for b in (v - 0.48, v + 0.48) for u, a in outer]
-            bands.add(belt, faces)
-            buckles.box(Vector((1.05, 1.4, 0.24)) * IN, Matrix.Translation((pos + Vector((0.65, v, h + 0.21))) * IN))
-        body.build("CM117_" + tag, fabric, groups[node], smooth=False)
-        bands.build("CM117_" + tag + "Straps", straps, groups[node], smooth=False)
-        buckles.build("CM117_" + tag + "Buckles", metal, groups[node], smooth=False)
+    def package(node, tag, *dimensions):
+        _cargo_case(groups[node], "CM117_" + tag, cm_base, (fabric, straps, metal), *dimensions)
 
     package("BackupParasol", "SpareParasol", 10, 0, 22.5, 7.7, 51.5, 7.8)
     package("RateGyroPackages", "GyroPackage1", 22, -10.0, 22.0, 10.7, 15.7, 7.4)
     package("RateGyroPackages", "GyroPackage2", 22, 9.2, 22.0, 10.5, 13.1, 7.3)
+
+
+def _cargo_case(parent, tag, cm_base, finishes, x, y, z, width, length, height):
+    fabric, straps, metal = finishes
+    pos = Vector((x, y, cm_base + z))
+    body, bands, buckles = MeshBuilder(), MeshBuilder(), MeshBuilder()
+    # Chamfer the corners of the covered case. The drawing shows external
+    # transit packages; enclosure and belt cross-sections are estimated.
+    w, h = width / 2, height / 2
+    cut = 0.65
+    outline = [(-w + cut, -h), (-w, -h + cut), (-w, h - cut), (-w + cut, h), (w - cut, h), (w, h - cut), (w, -h + cut), (w - cut, -h)]
+    verts = [(pos + Vector((u, v, a))) * IN for v in (-length / 2, length / 2) for u, a in outline]
+    n = len(outline)
+    faces = [(j, (j + 1) % n, n + (j + 1) % n, n + j) for j in range(n)]
+    body.add(verts, [*faces, tuple(reversed(range(n))), tuple(range(n, 2 * n))])
+    for v in (-length * 0.30, length * 0.30):
+        outer = [(u + math.copysign(0.085, u), a + math.copysign(0.085, a)) for u, a in outline]
+        belt = [(pos + Vector((u, b, a))) * IN for b in (v - 0.48, v + 0.48) for u, a in outer]
+        bands.add(belt, faces)
+        buckles.box(Vector((1.05, 1.4, 0.24)) * IN, Matrix.Translation((pos + Vector((0.65, v, h + 0.21))) * IN))
+    body.build(tag, fabric, parent, smooth=False)
+    bands.build(tag + "Straps", straps, parent, smooth=False)
+    buckles.build(tag + "Buckles", metal, parent, smooth=False)
+
+
+def third_visit_stowage(groups, cm_base):
+    """Covered launch cargo above the aft lockers, JSC-08963 fig. 6-4 and §6.9."""
+    if not interior():
+        return
+    food = material("skylab118-provisions-canvas", (0.75, 0.72, 0.63), roughness=0.9)
+    linen = material("skylab118-toolcase-fabric", (0.82, 0.82, 0.76), roughness=0.88)
+    straps = material("skylab118-restraints", (0.43, 0.40, 0.32), roughness=0.82)
+    hardware = material("skylab118-buckles", (0.55, 0.57, 0.56), metallic=0.74)
+    # Aft locker clearance and relative layout follow the section. Package
+    # envelopes and restraint details are estimates; the tools remained bagged.
+    for i, (x, y, w, length, h) in enumerate(((9, -17, 8.0, 13.2, 6.7), (9, 13, 8.0, 13, 6.4), (20, -9, 9.6, 12.5, 6.1)), 1):
+        _cargo_case(groups["ExtendedVisitFood"], f"CM118_FoodParcel{i}", cm_base, (food, straps, hardware), x, y, 22.2, w, length, h)
+    for node, tag, x, y, w, length, h in (
+        ("CometBracketCase", "T025BracketContainer", 9, -1, 7.7, 14.9, 5.3),
+        ("ExperimentStowage", "S054FilmBag", 20, 5, 10, 12, 6.5),
+        ("ExperimentStowage", "S193ToolKit", 21, 16, 9.2, 7.8, 5.5),
+        ("ExperimentStowage", "CoolantAccessories", 20, -20, 8.2, 7.3, 5.9),
+    ):
+        _cargo_case(groups[node], "CM118_" + tag, cm_base, (linen, straps, hardware), x, y, 22, w, length, h)
