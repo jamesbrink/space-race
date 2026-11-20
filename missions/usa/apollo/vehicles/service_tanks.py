@@ -61,7 +61,7 @@ def _ring(inside, outside, lo, hi):
     return [(outside, lo), (outside, hi), (inside, hi), (inside, lo), (outside, lo)]
 
 
-def build(parent, origin_xa):
+def build(parent, origin_xa, *, storage=True):
     if not interior():
         return
     titanium = material("apollo-sps-tank-reference", (0.45, 0.47, 0.48), metallic=0.65, roughness=0.5)
@@ -71,6 +71,8 @@ def build(parent, origin_xa):
         ("Sump", SUMP_RADIUS, SUMP_TOP_XA, SUMP_CENTRES),
         ("Storage", STORAGE_RADIUS, STORAGE_TOP_XA, STORAGE_CENTRES),
     ):
+        if kind == "Storage" and not storage:
+            continue
         for fluid, ya, za in centres:
             _lathe(f"SM_SPS_{fluid}{kind}", profile(radius, SUMP_BOTTOM_XA, top), (-za, ya, -origin_xa), titanium, parent)
             # Upper polar bosses visible in the installation photographs, P-212.
@@ -84,7 +86,8 @@ def build(parent, origin_xa):
         transfer = [(-sz, sy, z + 0.2), (-sz, sy, z - 2.5), (-sz * 0.88, sy * 1.11, z - 5), (-za * 1.65, ya, z - 5), (-za, ya, z + 0.2)]
         # Loft the elbows continuously as on Gemini's hoses. The two routes
         # leave the dome through separate fittings, on the aft side of the deck.
-        lines.loft([Vector(p) * IN for p in transfer], [(1.15 * IN, 1.15 * IN)] * len(transfer), segs=12, ref=(1, 1, 0))
+        if storage:
+            lines.loft([Vector(p) * IN for p in transfer], [(1.15 * IN, 1.15 * IN)] * len(transfer), segs=12, ref=(1, 1, 0))
         sign = 1 if ya > 0 else -1
         feed = [
             (-za + sign * 4, ya, z + 0.65),
@@ -105,11 +108,13 @@ def build(parent, origin_xa):
     lines.build("SM_SPS_TransferAndFeedLines", fittings, parent)
 
 
-def pressurant(parent, origin_xa):
+def pressurant(parent, origin_xa, *, forward_only=False):
     if not interior():
         return
     alloy = material("apollo-sps-helium-aluminium", (0.64, 0.65, 0.62), metallic=0.72, roughness=0.37)
     for label, xa in (("Aft", 916), ("Forward", 964)):
+        if forward_only and label == "Aft":
+            continue
         _ball(f"SM_Helium{label}", HELIUM_DIAMETER, (0, 0, xa - origin_xa), alloy, parent)
 
 
@@ -192,7 +197,7 @@ def odyssey_oxygen(shelf, core, origin_xa):
     probe.build("SM_OxygenTwoQuantityProbe", metal, core)
 
 
-def power(parent, origin_xa, *, separate_oxygen=False):
+def power(parent, origin_xa, *, separate_oxygen=False, two_cells=False):
     if not interior():
         return
     dewar = material("apollo-dewar-jacket", (0.52, 0.53, 0.51), metallic=0.82, roughness=0.31)
@@ -217,6 +222,8 @@ def power(parent, origin_xa, *, separate_oxygen=False):
     # The mission report (5.8.1) explicitly puts cell 2 inboard of 1 and 3.
     radius = FUEL_CELL_DIAMETER / 2
     for number, radial, across in ((1, 61, -12), (2, 39, 0), (3, 61, 12)):
+        if two_cells and number == 2:
+            continue
         if separate_oxygen:
             across = -across  # Fig. 4-4, viewed from outside SM-109: cell 3 on the left, 1 on the right.
         centre = _bay(radial, across, 943.5, origin_xa)
@@ -325,7 +332,11 @@ def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_rad
         sector(rim, [(radius, forward), (radius - 1, forward)])
         # P-64 and p.58: eight power radiators interleaved with plain panels.
         radiator = int(deg / 22.5) % 2 == 0
-        sector(eps if radiator else fairing, [(fairing_radius, forward), (fairing_radius, fairing_top)])
+        contour = [(fairing_radius, forward), (fairing_radius, fairing_top)]
+        if spacecraft == 116 and 45 < deg < 67.5:
+            # CSM-116 covered one quarter of EPS panel 4 with thermal tape (JSC-08414 fig. 7-1).
+            contour.insert(1, (fairing_radius, forward + (fairing_top - forward) / 4))
+        sector(eps if radiator else fairing, contour)
         sector(fairing, [(radius, forward), (fairing_radius, forward)])
         sector(fairing, [(fairing_radius, fairing_top), (shield_radius, fairing_top)])
         sector(fairing, [(fairing_radius - 0.5, fairing_top), (fairing_radius - 0.5, forward)])

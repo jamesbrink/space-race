@@ -174,7 +174,7 @@ def first_stage(parent, metal, warm, dark):
     finish(gas, "SIB_FuelPressurizationSpheres", metal, parent)
 
 
-def second_stage(parent, metal, warm, dark):
+def second_stage(parent, metal, warm, dark, *, spheres_per_bank=4):
     """Three dome stations, O2 baffles, helium banks and thrust cone of S-IVB-205."""
     aft, common, forward, rings, supports, equipment, cone, ribs = (MeshBuilder() for _ in range(8))
     # The production forward/aft domes include manholes and fittings. Form only the part of the
@@ -216,7 +216,7 @@ def second_stage(parent, metal, warm, dark):
     finish(supports, "SIVB_OxygenBaffleFrames", dark, parent, cut=True)
     # AP 2-1, two banks along the tunnel side. 26.9-in centre spacing is dimensioned.
     for a in (math.radians(170), math.radians(220)):
-        for row in range(4):
+        for row in range(spheres_per_bank):
             z = ds(454 + 26.9 * row)
             ball(equipment, polar(114, a, z), 12.5)
             beam(equipment, polar(124, a, z), polar(129.4, a, z), 6, 5)
@@ -233,14 +233,14 @@ def second_stage(parent, metal, warm, dark):
     finish(equipment, "SIVB_HeliumSpheres", metal, parent)
 
 
-def build(groups):
+def build(groups, *, spheres_per_bank=4):
     if not interior():
         return
     metal = material("saturn-interior-alloy", (0.63, 0.67, 0.68), 0.55, 0.47, double_sided=True)
     warm = material("saturn-tank-bulkhead", (0.60, 0.53, 0.38), 0.38, 0.55, double_sided=True)
     dark = material("saturn-thrust-frame", (0.32, 0.36, 0.38), 0.55, 0.6, double_sided=True)
     first_stage(groups["FirstStageTankStructure"], metal, warm, dark)
-    second_stage(groups["SecondStageTankStructure"], metal, warm, dark)
+    second_stage(groups["SecondStageTankStructure"], metal, warm, dark, spheres_per_bank=spheres_per_bank)
     instrument_bay(groups["InstrumentUnitEquipment"], dark, metal)
 
 

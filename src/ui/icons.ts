@@ -146,6 +146,15 @@ export const EMBLEMS: Record<string, Emblem> = {
       <path fill="#fff" d="M11.5 4h1.1l4.6 14.8h-2.5L11.3 6.6zM11.5 4h1.1L8.6 18.8H7.4z"/><path stroke="#fff" stroke-width="0.8" d="M6.6 18.8h2.9M13.8 18.8h4.2"/>
       <circle cx="10.1" cy="14.2" r="0.75" fill="#dceaff"/><circle cx="12" cy="14" r="0.75" fill="#dceaff"/><circle cx="13.9" cy="13.8" r="0.75" fill="#dceaff"/>`,
   },
+  'usa/skylab': {
+    kind: 'insignia',
+    says: 'The Skylab programme’s insignia shows the station between the Sun and the Earth, drawn here without lettering',
+    body: `<circle cx="12" cy="12" r="11.1" fill="#171617" stroke="#e9cca0" stroke-width="1.8"/>
+      <path fill="#a4d9ee" d="M5 20a26 26 0 0 1 17-11 10 10 0 0 1-17 11z"/><path fill="#679abb" d="m16 14 4-2-1 2-2 1-2 3-1-1z"/>
+      <path fill="#f9a61d" d="m6 4 .7 2.2 1.8-.7-.8 1.8 2 .8-2 .7.6 1.9-1.7-.9-.8 2.3-.7-2.3-1.9.8.8-1.9-2-.6 2.1-.8-.6-1.8 1.8.7z"/>
+      <g stroke="#aec1c9" stroke-width=".65"><path fill="#536c7b" d="m8.2 17.3 3.2-4.9 2.1-.9 1.2 1.5-1.2 2.2-3.6 3.5z"/>
+      <path fill="#7e959f" d="m9.1 10.1 2.3.6 4.4 3.4-1.6.6zM3.4 13.1l6.9-1.3 1.4.5-8.4 1.6zM14.4 11.8l6.2.6-.3.7-6.8-.8z"/></g>`,
+  },
   'ussr/vostok': {
     kind: 'ours',
     says: 'Vostok: a mark of this site’s own, drawn from the spacecraft (its sphere on its instrument module); not a patch the programme had',
