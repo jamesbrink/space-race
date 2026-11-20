@@ -151,5 +151,8 @@ test('the prediction starts from the point the simulator flies, not where the ve
   path.at3 = new Float64Array(3);
   const s = { t: 20, r: datum, centre, flies: datum, v: [0, 0, 0] };
   assert.equal(FlightPath.prototype.holds.call(path, { curve: c, result: { outcome: 'impact', kind: 'coast' } }, s), true);
-  assert.equal(FlightPath.prototype.holds.call(path, { curve: c, result: { outcome: 'impact', kind: 'coast' } }, { ...s, flies: undefined }), false);
+  assert.equal(
+    FlightPath.prototype.holds.call(path, { curve: c, result: { outcome: 'impact', kind: 'coast' } }, { ...s, flies: undefined }),
+    false,
+  );
 });
