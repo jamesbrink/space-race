@@ -48,6 +48,7 @@ const FLIGHTS = [
   'usa/apollo/apollo-15',
   'usa/apollo/apollo-16',
   'usa/apollo/apollo-17',
+  'usa/skylab/skylab-2',
 ].filter((f) => !only || f === only);
 const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */
@@ -344,11 +345,13 @@ for (const id of FLIGHTS) {
     if (day.cumulus && doing('climb')) {
       // An edge pixel can be opaque from above with clear air under the camera looking forward and up.
       // Use the top-down ray to locate a cloud, then sight its underside from the starting height of the climb.
+      // Keep the approach above the terrain for low ceilings. A 300 m run-up starts
+      // below sea level under Skylab 2’s 244 m fractocumulus.
+      const below = day.cumulus.base - Math.min(300, day.cumulus.base / 2);
       const spot = await page.evaluate(
-        async ([base, top]) => {
+        async ([base, top, below]) => {
           const T = window.cloudsTest;
           const el = 35;
-          const below = base - 300;
           for (const [x, z] of [
             [0, 0],
             [3000, 2000],
@@ -380,7 +383,7 @@ for (const id of FLIGHTS) {
           }
           return null;
         },
-        [day.cumulus.base, day.cumulus.top],
+        [day.cumulus.base, day.cumulus.top, below],
       );
       check(spot !== null, `${where}: a cumulus to climb through`);
       if (spot)
@@ -404,7 +407,7 @@ for (const id of FLIGHTS) {
               }
               return { sum, pictures };
             },
-            [spot[0], spot[1], day.cumulus.base - 300, day.cumulus.top + 300, el, SPEED, DT, TOLERANCE, Boolean(shots)],
+            [spot[0], spot[1], below, day.cumulus.top + 300, el, SPEED, DT, TOLERANCE, Boolean(shots)],
           );
           const { sum } = got;
           const fixed = sum.fixed / Math.max(sum.pairs, 1),

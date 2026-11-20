@@ -5,6 +5,7 @@ from math import cos, pi, sin
 from mathutils import Matrix
 
 from lc39.night_launch import vent_disconnect, xenon_banks  # noqa: E402
+from lc39.saturn_ib_launcher import launch_pedestal, pedestal_accessories, service_lines  # noqa: E402
 from sitelib import P, Parts, beam, box, fine, handrail, hull, lattice, obox, plate, stair_rails, stairs, truss, use  # noqa: E402
 from srlib import FT, material  # noqa: E402
 
@@ -147,11 +148,12 @@ def base(parts):
         )
 
 
-def tower(parts, crane_parked):
+def tower(parts, crane_parked, pedestal_bridge=False):
     parts.node("Umbilical_Tower")
     frame = parts("Umbilical_Tower", "red")
     for lo, hi in zip(LEVELS, [*LEVELS[1:], 380]):
-        lattice(frame, lambda i, z: (*CORNERS[i], z), [DECK + lo, DECK + hi], 1.15, 0.55, faces=(0, 1, 2) if lo == 320 else (0, 1, 2, 3))
+        open_landing = lo == 320 or (pedestal_bridge and lo == 120)
+        lattice(frame, lambda i, z: (*CORNERS[i], z), [DECK + lo, DECK + hi], 1.15, 0.55, faces=(0, 1, 2) if open_landing else (0, 1, 2, 3))
     for z in LEVELS[1:]:
         box(parts("Umbilical_Tower", "deck"), (59.3, -15.7, DECK + z + 0.58), (100.7, 15.7, DECK + z + 0.85))
         if fine():
@@ -227,7 +229,7 @@ def purge_console(parts):
         trim.tube(P(2.71, y, 1.3), P(2.71, y, 0.05), 0.135 * FT)
 
 
-def arms(parts, detailed):
+def arms(parts, detailed, skylab=False):
     # Service envelopes approximated from the Saturn V flight manual, section VIII.
     for i, (level, tip) in enumerate(
         ((68, 16.65), (132, 16.65), (150, 16.65), (175, 16.65), (215, 16.65), (245, 10.9), (276, 10.9), (304, 6.5), (320, 8)), 1
@@ -236,7 +238,11 @@ def arms(parts, detailed):
         # These tips include room for the coarse collision cells on both assets.
         if detailed:
             tip = (18.4, 18.4, 18.4, 18.4, 18.4, 12.65, 12.65, 9.8, 8)[i - 1]
-        name = f"Service_Arm_{i}"
+        if skylab and i < 5:
+            continue
+        if skylab and i == 5:
+            tip -= 68 / 12  # S-IB forward arm 1A is the extended S-IC forward arm.
+        name = "Service_Arm_1A" if skylab and i == 5 else f"Service_Arm_{i}"
         z = DECK + level
         # An outboard bearing keeps the parked truss clear of both tower columns.
         parts.node(name, origin=(55, 0, z))
@@ -256,6 +262,8 @@ def arms(parts, detailed):
             sill = 6.14 if detailed else 4.65
             # Keep the underside clear after both GLBs are quantized into collision boxes.
             thickness = 0.32 if detailed else 0.34
+            if skylab:
+                thickness = 0.30  # 6 mm relief beneath the floor for SA-206's solid cells.
             box(floor, (sill, -3, z + landing - thickness), (12, 5.9, z + landing))
             room = parts(name, "white")
             for y in (-3.1, 5.7):
@@ -498,7 +506,18 @@ def intertank_carrier(parts):
             beam(parts(parent, "deck/pipe_support"), (x + 0.12, y, z + 0.48), (x + 0.12, y, z + 2.11), 0.19)
 
 
-def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_valve=False, ecs_room=False, level200_purge=False, night_launch=False):
+def build(
+    pad,
+    *,
+    detailed=False,
+    arm2_quench=False,
+    intertank_lox=False,
+    rp1_valve=False,
+    ecs_room=False,
+    level200_purge=False,
+    night_launch=False,
+    skylab=False,
+):
     use(FT)
     parts = Parts(
         {
@@ -524,14 +543,19 @@ def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_va
     if ecs_room:
         ecs_room_front(parts)
     base(parts)
-    if detailed:
+    if skylab:
+        launch_pedestal(parts, DECK)
+        pedestal_accessories(parts, DECK)
+    elif detailed:
         articulated_holddowns(parts)
         articulated_tail_masts(parts, rp1_valve)
     else:
         holddowns(parts)
         tail_masts(parts)
-    tower(parts, detailed)
-    arms(parts, detailed)
+    tower(parts, detailed, pedestal_bridge=skylab)
+    arms(parts, detailed, skylab)
+    if skylab:
+        service_lines(parts, DECK)
     if level200_purge:
         purge_console(parts)
     if arm2_quench:

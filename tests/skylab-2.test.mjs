@@ -8,7 +8,7 @@ import { framesOf, materialsUnder } from './glb.mjs';
 const [stack] = flight.models;
 test('the Skylab 2 spacecraft plinth holds CSM-116 with its station equipment', () => {
   assert.equal(lacks(flight, 'gallery'), null);
-  assert.ok(lacks(flight, 'site'));
+  assert.equal(lacks(flight, 'site'), null);
   assert.ok(lacks(flight, 'fly'));
   const frames = framesOf(new URL(`../public/${stack.url}`, import.meta.url));
   const craft = craftNodes(headingsOf(stack), (node) => frames.box(node)?.lo[1]);
@@ -25,7 +25,7 @@ test('the Skylab 2 spacecraft plinth holds CSM-116 with its station equipment', 
 
 for (const level of ['', '.lod1', '.lod2']) {
   test(`CSM-116 retains its solar coating and Skylab antennas at ${level || 'full detail'}`, () => {
-    const url = new URL(`../public/${stack.url.replace('.glb', level + '.glb')}`, import.meta.url);
+    const url = new URL(`../public/${stack.url.replace('.glb', `${level}.glb`)}`, import.meta.url);
     const frames = framesOf(url);
     assert.ok(Math.abs(frames.box('LaunchEscape').hi[1] - 223.5 * 0.3048) < 0.02);
     // The export joins like-painted radomes. Their tips project past the skin on opposite sides.
@@ -46,3 +46,27 @@ for (const level of ['', '.lod1', '.lod2']) {
     for (const node of ['SM116_DescentBatteryCases', 'SM116_WaterTank']) assert.ok(frames.point(node));
   });
 }
+
+test('each visiting crew member can board his assigned couch in his Skylab launch garment', () => {
+  const crew = flight.models.filter((model) => model.walker);
+  assert.deepEqual(
+    crew.map((model) => model.name),
+    ['Conrad', 'Kerwin', 'Weitz'],
+  );
+  assert.deepEqual(
+    stack.seats.map((seat) => seat.figure),
+    crew.map((model) => model.id),
+  );
+  for (const person of crew) {
+    for (const suffix of ['', '.lod1', '.lod2']) {
+      const url = new URL(`../public/${person.url.replace('.glb', `${suffix}.glb`)}`, import.meta.url);
+      const suit = framesOf(url);
+      const torso = materialsUnder(url, 'Torso');
+      assert.ok(suit.point(`Torso_${person.name}`), person.name);
+      assert.ok(torso.includes('skylab-i-insignia'));
+      assert.ok(torso.includes('skylab-launch-webbing'));
+      // The red disconnects on the flown Skylab garments are grouped on the wearer's right.
+      assert.ok(suit.box('Torso_Exhaust').hi[0] < suit.box('Torso_BlueConnectors').lo[0]);
+    }
+  }
+});

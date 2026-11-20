@@ -36,8 +36,35 @@ export const LC39A = site('A', 28.6084, -80.6043, { name: 'EST', utcOffset: -5 }
 export const LC39A_EDT: SiteDef = { ...LC39A, zone: { name: 'EDT', utcOffset: -4 } };
 export const LC39B = site('B', 28.6272, -80.6208, { name: 'EDT', utcOffset: -4 });
 
-function part(node: string, name: string, summary: string, detail: string): Part {
+export function part(node: string, name: string, summary: string, detail: string): Part {
   return { node, name, summary, detail, order: 0, explode: [0, 0, 0], group: 'Launch Complex 39' };
+}
+
+export function umbilicalTower(manual: string): Part {
+  return {
+    ...part(
+      'Umbilical_Tower',
+      'Umbilical tower',
+      'Two elevators served the work platforms beside the Saturn.',
+      'The tower stood about 80 feet from the rocket, measured between their axes.',
+    ),
+    actions: [
+      {
+        id: 'crew-elevator',
+        label: 'Call the crew elevator',
+        do: {
+          kind: 'lift',
+          node: 'Tower_Lift',
+          machine: { kind: 'lift', confidence: 'estimated', source: manual + ' The tower elevator sound is approximated.' },
+          speed: (600 * FT) / 60,
+          stops: [0, 30, 60, ...Array.from({ length: 14 }, (_, i) => 80 + 20 * i)].map((level) => ({
+            name: level ? 'Level ' + level : 'Deck',
+            by: [0, level ? (level + 0.85) * FT : 0, 0],
+          })),
+        },
+      },
+    ],
+  };
 }
 
 const MANUAL = 'Saturn V Flight Manual SA-504, section VIII, figure 8-8.';
@@ -512,30 +539,7 @@ export function mobileLauncher(
         ...part('Holddown_Arms', 'Hold-down arms', 'Four arms carry the Saturn over the exhaust opening.', configuration.hold),
         ...(holdDowns ? { clocked: release } : {}),
       },
-      {
-        ...part(
-          'Umbilical_Tower',
-          'Umbilical tower',
-          'Two elevators served the work platforms beside the Saturn.',
-          'The tower stood about 80 feet from the rocket, measured between their axes.',
-        ),
-        actions: [
-          {
-            id: 'crew-elevator',
-            label: 'Call the crew elevator',
-            do: {
-              kind: 'lift',
-              node: 'Tower_Lift',
-              machine: { kind: 'lift', confidence: 'estimated', source: manual + ' The tower elevator sound is approximated.' },
-              speed: (600 * FT) / 60,
-              stops: [0, 30, 60, ...Array.from({ length: 14 }, (_, i) => 80 + 20 * i)].map((level) => ({
-                name: level ? 'Level ' + level : 'Deck',
-                by: [0, level ? (level + 0.85) * FT : 0, 0],
-              })),
-            },
-          },
-        ],
-      },
+      umbilicalTower(manual),
       part(
         'Hammerhead_Crane',
         'Hammerhead crane',

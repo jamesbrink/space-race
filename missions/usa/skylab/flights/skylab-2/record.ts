@@ -10,7 +10,15 @@ const rangeZero = Date.parse('1973-05-25T13:00:00Z');
 const utc = (time: string) => (Date.parse(time) - rangeZero) / 1000;
 
 export const timeline: Flight['timeline'] = [
+  { t: -9720, event: 'Scheduled start of crew ingress into CSM-116' },
+  { t: -88 * 60, event: 'Launch Control reports the crew aboard and preparations for cabin checks' },
+  { t: -58 * 60, event: 'White room secured and closeout crew clearing the pad' },
+  { t: -47 * 60, event: 'Crew access arm starts moving to the twelve-degree standby position' },
+  { t: -17 * 60, event: 'Two-minute scheduled hold at countdown T−15 minutes' },
+  { t: -15 * 60, event: 'Terminal count resumes' },
+  { t: -300, event: 'Final retraction of the spacecraft access arm' },
   { t: -3.1, event: 'Engine start command goes to the first stage' },
+  { t: 0.02, event: 'Launch commit releases the eight hold-downs' },
   { t: 0.19, event: 'First motion of SA-206 on Pad 39B' },
   { t: 0.53, event: 'The flight computer senses the instrument-unit umbilical disconnect' },
   { t: 60.5, event: 'SA-206 reaches Mach 1 at 7.66 km' },

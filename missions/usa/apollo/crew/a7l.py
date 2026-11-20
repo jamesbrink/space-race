@@ -43,7 +43,7 @@ def chest_patch(torso, parent, image_path):
     fl.emit(patch, "Torso_MissionEmblem", mat, parent)
 
 
-def garment(who, *, ev=False, a7lb=False, insignia=None, sleeve_emblems=None):
+def garment(who, *, ev=False, a7lb=False, insignia=None, sleeve_emblems=None, chest_layout=None):
     body = fl.B
     cloth = paint("suit-beta-cloth", (0.88, 0.87, 0.81), roughness=0.9)
     dark = paint("apollo-suit-rubber", (0.04, 0.045, 0.05), roughness=0.8)
@@ -122,6 +122,8 @@ def garment(who, *, ev=False, a7lb=False, insignia=None, sleeve_emblems=None):
     elif ev:
         # Extra chest connections on the EV garment. The PLSS backpack stayed off for launch.
         connections += [(-0.62, 20, outlets), (0.55, 0.5, inlets), (-0.47, 0.5, ports)]
+    if chest_layout is not None:
+        connections = [(az, height, inlets if blue_coupling else outlets) for az, height, blue_coupling in chest_layout]
     for az, height, connector in connections:
         z = body.waist_z + height
         d, theta = z - body.torso_z0, az - math.pi / 2
