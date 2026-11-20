@@ -113,7 +113,7 @@ export const SHIP_NODES: ShipNodes = {
 /**
  * The flight in the scene (`Flight.flies`): the stack off the pad as staged.ts flies it, and what leaves it, each flown on (the
  * record's `ascent.sheds`) or, for the cover and the heat shield, carried on its descent body. The crew stays in the descent
- * module. Every instant is the flight's own record's.
+ * module. Every instant is the flight's own record's; the ship's nodes are its model's (`ship`).
  */
 export function soyuzFlies(orbital: SoyuzRecord, chutes: ChuteDef[], ship: ShipNodes = SHIP_NODES): NonNullable<Flight['flies']> {
   const at = (id: string) => orbital.events.find((e) => e.id === id)!.at.value;
@@ -140,8 +140,9 @@ export function soyuzFlies(orbital: SoyuzRecord, chutes: ChuteDef[], ship: ShipN
       { at: orbital.stages[1]!.separation!.value, nodes: ['CoreStage', 'CoreEngine', 'Interstage'], on: 'stage:1' },
       ...AFT_SECTORS.map((piece) => ({ at: drop('aft-section'), nodes: [`AftSection_${piece}`], on: `aft-section/${piece}` })),
       { at: orbital.stages[2]!.separation!.value, nodes: ['BlockI'], on: 'stage:2' },
-      // the orbital and the instrument modules, let go together as the modules part
-      { at: orbital.entry.separation.value, nodes: ship.orbital, on: ORBITAL_MODULE },
+      // the orbital and the instrument modules, let go together as the modules part (the orbital module before the braking
+      // burn, where the record has it go in orbit)
+      { at: (orbital.modules.parted ?? orbital.entry.separation).value, nodes: ship.orbital, on: ORBITAL_MODULE },
       { at: orbital.entry.separation.value, nodes: ship.instrument, on: 'modules' },
       // the cover, shot off at the height the coast hands over at, and the heat shield, let go under the main parachute,
       // each comes down on its own body (a descent whose shield stayed on has no body for it, and the module keeps it)

@@ -52,7 +52,9 @@ missions/                             the record: one folder per nation, program
                                       vostokPlan's, with the ship's own laid on); soyuz-11a511-flown.ts, the 11A511 as flown (`stages11A511`,
                                       `ascent11A511`: its table's blocks, the escape tower, its stations); soyuz-7kok-flown.ts, the 7K-OK as
                                       flown (the main engine, the descent module's air, its parachutes and soft-landing engines, the crew
-                                      aboard); soyuz-flies.ts, what a Soyuz flight's parts do in flight)
+                                      aboard); soyuz-7koks-flown.ts, the first station ferry (7K-T Nos. 31 and 32) beyond it, and Soyuz 11's
+                                      planned descent; soyuz-7kt-flown.ts, the two-seat ferry (7K-T from No. 34); soyuz-flies.ts, what a
+                                      Soyuz flight's parts do in flight, the ship's nodes by model (`ShipNodes`))
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
     vehicles/reference/               source-derived data a vehicle module reads at build time (Apollo's: survey outlines as JSON,
                                       the DSKY's front web and panes as .json.gz), each with its source's hash, and the

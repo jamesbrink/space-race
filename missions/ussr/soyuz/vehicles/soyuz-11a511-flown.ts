@@ -95,6 +95,42 @@ export const BLOCK_I_11A511: Omit<Hardware, 'ignition'> = {
   },
 };
 
+/**
+ * The 11A511 of the 7K-T era. MPK has the vehicle uprated for the heavier ship («Стартовая масса 7КТ увеличилась до 6700 кг
+ * (масса 7КОК – 6400–6500 кг), поэтому РН «Союз» (11А511) была доработана с целью увеличения ее грузоподъемности», p. 224) and
+ * nothing read says how. Its one unknown is sized here from that documented capability, not from any flight's orbit: the
+ * vehicle as this file gives it (the 7K-OK era's) carries 6,534 kg to the type's planned insertion orbit, 204.3 by 225.0 km at
+ * 51.69° (Mishin's flight plan for the active 7K-OK, Soyuz 3's, via Zak: the one nominal insertion of the type read), flown on
+ * Soyuz 3's instants from Site 31 in the standard air, the stage cut where it reaches that orbit's period
+ * (tests/soyuz-uprating.test.mjs finds it again by bisection); MPK's 6,700 kg is 166 kg more. The 7K-OK era's vehicle is
+ * unchanged.
+ */
+export const UPRATING_7KT = {
+  /** What the uprating gave, kg of payload to that orbit. */
+  gained: derived(
+    6_700 - 6_534,
+    `MPK’s 6,700 kg for the 7K-T (${MPK.replace('the table «Основные технические характеристики РН 11А511», p. 83', 'p. 224')}) less the 6,534 kg the 7K-OK era’s vehicle as given here carries to 204.3 by 225.0 km (Mishin’s planned insertion for Soyuz 3, via Zak), by bisection on its flown ascent (tests/soyuz-uprating.test.mjs)`,
+  ),
+  /** Which figure carries it: Block I's own mass, a kilogram off it a kilogram carried. */
+  carried: estimated(
+    1,
+    `NOT FOUND how the vehicle was uprated. Taken as mass out of Block I, the last stage, where a kilogram saved is a kilogram carried: the 11A511’s own gains over the 11A57 were of that kind, the cable network lightened and the telemetry replaced by a lighter one (${MPK.replace('the table «Основные технические характеристики РН 11А511», p. 83', 'p. 82')}: «облегчена бортовая кабельная сеть систем управления (СУ) и телеметрии; телеметрическая система на боковом и центральном блоках заменена новой»). Chosen`,
+  ),
+};
+
+/** Block I of the 7K-T era: the 7K-OK era's, less the uprating's mass (`UPRATING_7KT`). */
+export const BLOCK_I_7KT: Omit<Hardware, 'ignition'> = {
+  ...BLOCK_I_11A511,
+  mass: derived(
+    BLOCK_I_11A511.mass.value - UPRATING_7KT.gained.value,
+    `${BLOCK_I_11A511.mass.source}; less the 7K-T era’s uprating, ${UPRATING_7KT.gained.value} kg (${UPRATING_7KT.gained.source}), carried as Block I’s own mass (${UPRATING_7KT.carried.source})`,
+  ),
+  dry: derived(
+    BLOCK_I_11A511.dry.value - UPRATING_7KT.gained.value,
+    `${BLOCK_I_11A511.dry.source}; less the 7K-T era’s uprating, ${UPRATING_7KT.gained.value} kg (as above)`,
+  ),
+};
+
 /** When a flight's stages were lit, cut and let go, as its own record has them. */
 export interface Staging11A511 {
   boosters: { cutoff: Measure; separation: Measure };
@@ -102,13 +138,16 @@ export interface Staging11A511 {
   third: { ignition: Measure; cutoff: Measure; separation: Measure };
 }
 
-/** The three stages of a flight on the 11A511, in order (orbital.ts `stages`); the throttles the type's readings (vostok-8k72k.ts). */
-export function stages11A511(day: Staging11A511): StageRecord[] {
+/**
+ * The three stages of a flight on the 11A511, in order (orbital.ts `stages`); the throttles the type's readings (vostok-8k72k.ts).
+ * Block I is the 7K-OK era's unless the flight's era gives its own (`BLOCK_I_7KT`).
+ */
+export function stages11A511(day: Staging11A511, blockI: Omit<Hardware, 'ignition'> = BLOCK_I_11A511): StageRecord[] {
   const { boosters, core, third } = day;
   return [
     { ...STRAP_ONS_11A511, throttle: strapOnThrottle(boosters.separation.value), cutoff: boosters.cutoff, separation: boosters.separation },
     { ...CORE_11A511, throttle: coreThrottle(core.cutoff.value), cutoff: core.cutoff, separation: core.separation },
-    { ...BLOCK_I_11A511, ignition: third.ignition, cutoff: third.cutoff, separation: third.separation, orbit: BLOCK_I_CUT },
+    { ...blockI, ignition: third.ignition, cutoff: third.cutoff, separation: third.separation, orbit: BLOCK_I_CUT },
   ];
 }
 

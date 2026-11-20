@@ -44,12 +44,32 @@ orbits from Siddiqi's mission table. The contemporary NASA chronology records th
 200 × 224 km orbit at 51.3°. [Siddiqi, *Challenge to Apollo*, appendix Table IB, p. 877](https://www.nasa.gov/wp-content/uploads/static/history/SP-4408pt2.pdf#page=378) ·
 [NASA, *Astronautics and Aeronautics, 1971*, pp. 107–108](https://www.nasa.gov/wp-content/uploads/2023/04/1971.pdf)
 
+## The flight as flown
+
+From [mission.md](mission.md). The ascent is flown on the 11A511 of the 7K-T era (the type's table with Block I 166 kg
+lighter, the uprating MPK records sized from the 7K-T's 6,700 kg, not from this flight) and on Soyuz 3's instants, none of
+this flight's own having been found: Block I is cut on the orbit at 531.3 s with 71 kg left, level at 209.6 km. The rendezvous
+and soft docking with Salyut 1 are not flown: the ship goes round alone, with the one correction whose length the record has
+(01:34 on 24 April, 17 s). The braking burn, lit at 01:59 on 25 April in the record and three minutes later in the run, timed
+for the landing place, brings the crew down in the dark on the descent module's own lift: at most **3.05 g**, on the ground
+32 s before the record's 02:40 at 3.4 m/s, **112 km across the track** from the place worked from TASS's "120 km
+north-west of Karaganda". Every miss is recorded in src/sim/misses.ts, nothing adjusted.
+
+What the run does not do:
+
+- The approach to Salyut 1, the probe caught in its cone with the collars 90 mm apart, the 5 h 30 min held there and the
+  undocking: the station is not in the plan. The correction by hand of the 23rd and Igla's firings on the approach have no
+  impulse on any record read.
+- The braking burn's length, the parting and the parachute's height are Soyuz 11's planned figures, the type's sister ship's.
+- The descent control system's rolls: the lift is held up throughout.
+- The approach and orientation thrusters and their peroxide are not separate engines.
+
 ## Gallery
 
 Inspect the 11A511 stack, the early station ferry with both solar wings open, the active probe
 and collar, or the Sirius controls from any of the three couches. The cutaway shows the crew
 together for launch. The slider illustrates deployment and separates the ship's modules for
-inspection. The flight deck is pending.
+inspection.
 [Spacecraft record](spacecraft.md)
 
 ![Soyuz 10 with its solar arrays deployed and the spacecraft modules joined](../../../../../docs/readme/soyuz-10/orbital-configuration.jpg)

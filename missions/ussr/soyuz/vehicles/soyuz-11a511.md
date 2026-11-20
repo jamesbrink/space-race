@@ -56,6 +56,29 @@ strap-ons' and the core's burns, the aft section, the split of the head block be
 table's strap-on row prints 252 s at the ground, which its own thrusts and 313 s in vacuum do not fit on one nozzle:
 257.5 s is derived.
 
+### The 7K-T era
+
+The 7K-T was heavier than the 7K-OK, and MPK has the 11A511 uprated for it: «Стартовая масса 7КТ увеличилась до 6700 кг
+(масса 7КОК – 6400–6500 кг), поэтому РН «Союз» (11А511) была доработана с целью увеличения ее грузоподъемности» (p. 224);
+p. 264 has it launching 7K-OK and 7K-T «массой до 6.6 т». How it was uprated is in nothing read.
+
+Two steps, in order:
+
+1. **The borrowed estimates first.** The vehicle as given above carries Soyuz 3's 6,575 kg to 183.5 km with 96 kg left in
+   Block I, and Soyuz 10's and 12's ships not to their orbits. No documented figure of the 11A511's own was found to replace
+   any of the 8K72K's estimates (the drag, the throttles at the end of the strap-ons' and the core's burns, the law):
+   Encyclopedia Astronautica's stage table is tertiary and disagrees with MPK's masses, and its payload, 6,450 kg to a
+   200 km orbit at 51.6°, agrees with what the vehicle as modelled carries. Nothing was changed.
+2. **The uprating, sized from the documented capability** (`UPRATING_7KT`, `BLOCK_I_7KT` in
+   [soyuz-11a511-flown.ts](soyuz-11a511-flown.ts)). The reference orbit is the type's planned insertion, 204.3 by 225.0 km
+   at 51.69° (Mishin's flight plan for the active 7K-OK, Soyuz 3's, via Zak), the one nominal insertion of the type read:
+   no 7K-T one was found. Flown on Soyuz 3's instants from Site 31 in the standard air and cut where it reaches that orbit's
+   period, the 7K-OK era's vehicle carries 6,534 kg there; MPK's 6,700 kg is **166 kg more** (derived). Which figure carries
+   it is **estimated**: Block I's own mass, the last stage, where a kilogram saved is a kilogram carried, because the 11A511's
+   gains over the 11A57 were of that kind (MPK, p. 82: the cable network lightened, the telemetry replaced). It is sized on
+   no 7K-T flight's orbit: Soyuz 10's and 12's insertion checks then hold or miss on their own. tests/soyuz-uprating.test.mjs
+   finds the 6,534 kg again and holds the 7K-T era's vehicle to 6,700 kg; Soyuz 3 flies the 7K-OK era's, unchanged.
+
 ## What the model gets wrong or leaves out
 
 - The detailed lower stack follows the earlier R-7 model. Its engines, paint and frost remain
@@ -68,3 +91,5 @@ table's strap-on row prints 252 s at the ground, which its own thrusts and 313 s
   station of the fairing hatch, access panel, join lines, tower openings, paint boundaries
   and grid dimensions are estimates. The fairing's split joints, access latches and
   attachment to the spacecraft are simplified. The internal SAS mechanisms are omitted.
+- The 7K-T era's uprating is a size on one figure (Block I's mass), not the change that was made, which is not known.
+  The tower without its shroud from Soyuz 12 on flies the earlier tower's estimated mass.

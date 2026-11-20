@@ -375,7 +375,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     orbital.ts `movesOf`, each with its impulse) and then the braking burn draw on one load; and the descent module's lift at
     its trim, held at the record's bank from its instant (`Hold.bank`); an entry the record has flown ballistic (Soyuz 1's)
     gives no bank and holds none, so its lift is never flown. A rendezvous is flown as burns (the target is not in
-    the plan). tests/plan.test.mjs holds it to the record as a Vostok's and as a Soyuz's; tests that fly a changed record fly
+    the plan). Where the record lets the orbital module go in orbit before the braking burn (`modules.parted`), it is its own
+    event at that instant and the braking burn is made without it. The 7K-T flights fly the 11A511 of their era
+    (soyuz-11a511-flown.ts `BLOCK_I_7KT`: an uprating MPK records, sized from the 7K-T's documented 6,700 kg to the type's
+    planned insertion, never from a flight's own orbit; tests/soyuz-uprating.test.mjs). tests/plan.test.mjs holds it to the record as a Vostok's and as a Soyuz's; tests that fly a changed record fly
     `soyuzPlan` of it (`'modules' in record`).
   - A stage's body, engine, tank and joint are `stage:<i>` in a Vostok's plan; a descent parachute is `<body>/<name>`.
   - `BodyDef` and `TankDef` figures are one unit's; a body of `count` units is `count` times them, as the batch flies it (a dropped stage is `count * (mass - burned)`).
