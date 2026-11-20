@@ -825,6 +825,23 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   cut 0.91 s after its start, as the record has it; GATV-5004's Atlas follows the record's pitch once control is lost
   (`Guidance.lost`: the tilt in the launch plane against time, in place of the law). The failures are the hardware's, not the sequence's: flown by hand with the guidance and the sequencer off, GATV-5002's engine still shuts down 0.91 s after whoever lights it (plan.ts `EngineDef.fails`), and GATV-5004's stack turns as the record has it until control was regained at 150 s whatever the hands do (`Guidance.lost.until`; sim/stagedlive.ts `stagedPilot`; tests/target-failures.test.mjs). What the records do not give is said
   in each flight's orbital.ts and README, not flown: 5002's breakup and pieces, 5004's turn to the north.
+- **A Saturn V leaves its orbit for the Moon** (missions/usa/apollo/vehicles/saturn-v-plan.ts, written from each flight's
+  record, `SaturnVRecord`). Its ascent is a stated law as every flight's: the S-IC's tilt programme flown open (Apollo 11's
+  read off its flight evaluation's Fig. 10-4), then the linear tangent from the instant the iterative guidance began,
+  solved for the parking orbit's cutoff, which is the law's target stage and not the last (staged.ts `targetStageOf`,
+  `Guidance.target.at`). The S-IVB is lit again in orbit as a stage of its own on the tank its first burn drew on
+  (`EngineDef.again`: one J-2, which sim/craft.ts will not light while it burns), so what it burns is worked from its own
+  lighting, and the run's crossing of the first cut reschedules what the tank has left for it. Its steering is a law of its
+  own (`Guidance.injection`, `Solved.injection`): a linear tangent in the plane of the motion from its lighting (the run's,
+  or the live vehicle's own), held out of it by a yaw, the three solved after the ascent's (`steer`) for the injection's
+  height, climb and inclination, the stack turned to it `align` seconds before the record's lighting; the stage is cut by
+  its guidance on its speed, and `Ascended.injected` is what the checks read (`injection.<field>`). In orbit the stack is
+  held by the upper stage's own attitude jets (`ThrusterSet.coasting`: they turn it with nothing burning, at their own
+  authority; stagedlive.ts `steering`), and the coast and the stack between its burns fly the Moon as a third body
+  (`FlightPlan.gravity`, core/gravity.ts `thirdOf`, added to the step and not to what an accelerometer reads). Nothing after
+  the injection is flown: the stack coasts on whole, three days, as a coast with no burn does. A start the stack comes
+  down from before its cutoff (eight degrees of pitch-over on a heavy first stage) is halved and bisected to one in the
+  air before Newton's method (`steer`); every earlier flight's start is in the air and is not touched.
 - **The descent can be given by hand** (orbital.ts `DescentHands`, staged.ts `flyOn`). Its events are the record's data:
   the modules' parting (`entry.separation`), the ejection (`ejection.altitude`), and each body's parachutes; a body other
   than the first (the entry body, which carries the pilot until the ejection and the instrument module until the modules

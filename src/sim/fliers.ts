@@ -54,7 +54,7 @@ import {
 import type { FlightPlan } from './plan.ts';
 import type { Arrival, Burn, EventKind, Flier, Sequence, Start } from './predict.ts';
 import { aboutAxis, turn } from './rigid.ts';
-import { airOf as airOfStack, lawOf, type Mode, pushAhead, type Solved, sequenceOf, stackOf, stagesOf } from './staged.ts';
+import { airOf as airOfStack, lawOf, type Mode, pushAhead, type Solved, sequenceOf, stackOf, stagesOf, targetStageOf } from './staged.ts';
 import type { StagedState, StagedVehicle, Step } from './stagedlive.ts';
 
 const SPIN: Vec3 = [0, 0, EARTH_ROTATION_RATE];
@@ -596,7 +596,8 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
   const law = lawOf(fp, site, v.frame, now.solved);
   const sky = skyOf(fp);
   const airOf = airOfStack(seaLevel, v.frame, sky);
-  const last = stages.length - 1;
+  // (the cutoff the guidance makes: the last stage's, or the orbit's where a stage is lit again after it, staged.ts `targetStageOf`)
+  const last = targetStageOf(fp);
   const trim = now.trim ?? { pitch: 0, yaw: 0 };
   // the vehicle as it stands, changed by each step as it comes (only in `arrive`)
   const cur: StagedState = {

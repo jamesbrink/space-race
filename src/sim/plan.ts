@@ -229,6 +229,12 @@ export interface EngineDef {
    * record's run flies the record's own cut; a live vehicle cuts it this long after its own lighting (sim/stagedlive.ts).
    */
   fails?: { after: Measure };
+  /**
+   * The engine whose chambers these are, lit again (an S-IVB's J-2 restarted for the translunar injection: a stage of its own
+   * on the tank it shares, so what it burns is worked from its own lighting): the two are one engine, and neither can be lit
+   * while the other burns (sim/craft.ts `act`).
+   */
+  again?: string;
   /** The impulse its integrator shuts it down at, m/s, where the record gives one (a braking engine). */
   deltaV?: Measure;
   /** The impulse the record says it gave, m/s: what the record's run applies evenly between its lighting and its cut. */
@@ -287,6 +293,12 @@ export interface ThrusterSet {
   push?: Measure;
   /** How fast a hand turns the craft with them, deg/s, where it is a rate the controller asks for. */
   rate?: Measure;
+  /**
+   * They turn a launch vehicle with no engine of its stages burning, while their body is on (an upper stage's own attitude
+   * jets: the S-IVB's auxiliary propulsion modules, which held it in its parking orbit), at their `authority`; the steering
+   * set without this flag turns it only while an engine burns (sim/stagedlive.ts, what the steering gives now).
+   */
+  coasting?: true;
 }
 
 /** A parachute: on a body, drag area added over the time it takes to fill. */
@@ -619,6 +631,12 @@ export interface PlanRecord {
   landing?: { latitude: Measure; longitude: Measure; at: Measure; near?: string; aimed?: LandingAim };
   /** How long it could stay up, days. */
   supplies?: Measure;
+  /**
+   * Where the coast is bound once the run's last burn is made, in the record's words ('the Moon'), and what the flight did
+   * next that is not flown, in a sentence: a flight flown to its injection and no further (a Saturn V's). Its end is said
+   * as on its way there, not as an orbit that decays (sim/verdict.ts `downVerdict`, deck/orbitdeck.ts).
+   */
+  bound?: { for: string; next: string };
   /** The ground the descent comes down to, m above the sea. */
   ground?: Measure;
   /** What a canopy torn by the air keeps of its drag area. */

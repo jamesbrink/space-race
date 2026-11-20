@@ -1,0 +1,307 @@
+/**
+ * A Saturn V flight's plan (sim/plan.ts), written from its record (saturn-v-record.ts `SaturnVRecord`, the flight's
+ * orbital.ts): the S-IC's five F-1s, the centre cut early; the S-II's five J-2s, its centre cut as the flight had it and the
+ * four outboard shifting their mixture ratio; the S-II's aft interstage let go at the second plane and the escape tower
+ * after it; the S-IVB's first burn to the parking orbit, cut by its guidance on the orbit reached; the coast, the stack held
+ * level by the S-IVB's own attitude jets; and the S-IVB lit again for the translunar injection, steered by a law of its
+ * own (sim/orbital.ts `Guidance.injection`) and cut by its guidance on its speed. The ascent is the stated law, as every
+ * flight's into orbit (sim/staged.ts): the S-IC's tilt programme is not in anything read, and the iterative guidance's
+ * closed loop is the law's linear tangent from the instant it began.
+ *
+ * The run ends with the S-IVB's second cutoff: the stack, whole, then coasts on toward the Moon, which pulls on it
+ * (`FlightPlan.gravity`). What the crew did next (the transposition, the lunar module drawn out, the S-IVB sent past the
+ * Moon) is not flown. Nothing here names a flight: each figure is the record's.
+ */
+import { derived, doc, estimated, type Measure } from '../../../../src/measure.ts';
+import type { ShedBody } from '../../../../src/types.ts';
+import type {
+  AttitudeDef,
+  BodyDef,
+  Craft,
+  EngineDef,
+  EventDef,
+  FlightPlan,
+  JointDef,
+  TankDef,
+  ThrusterSet,
+  Trigger,
+} from '../../../../src/sim/plan.ts';
+import { P0 } from '../../../../src/world/bodies.ts';
+import { cmAero } from './command-module-aero.ts';
+import type { F1Figures, J2Figures, MixtureShift, SaturnVRecord } from './saturn-v-record.ts';
+
+const IN = 0.0254;
+
+/**
+ * The flown model's stations, inches up from the F-1s' exits (saturn_v.py, saturn-v.md): where each piece that leaves
+ * begins and ends, for what is shed (sim/shed.ts). The model's own, so `estimated` where the model is.
+ */
+const STATIONS = {
+  firstTop: 1564 + 115,
+  collarTop: 1760 + 115,
+  secondTop: 2519 + 115,
+  taperTop: 2519 + 115 + 19 * 12,
+  thirdTop: 3222 + 115,
+  slaTop: 3222 + 115 + 36 + 28 * 12,
+  tip: 363 * 12,
+};
+const LOWER = 198 * IN;
+const MODEL = 'saturn_v.py and saturn-v.md, the model’s stations (inches above the F-1 exits)';
+
+/** An F-1 as the plan flies it: the record's sea-level thrust and impulse, and in vacuum what its exit area adds at one atmosphere. */
+function f1(id: string, label: string, count: number, f: F1Figures): EngineDef {
+  const lift = f.exitArea.value * P0;
+  const vacuum = f.thrust.value + lift;
+  const how = `the sea-level figure (${f.thrust.source}) and one atmosphere on the exit (${f.exitArea.source})`;
+  return {
+    id,
+    label,
+    body: 'sic',
+    count,
+    tanks: ['sic-propellant'],
+    kind: 'liquid',
+    thrust: { seaLevel: f.thrust, vacuum: derived(vacuum, `${how}: thrust in vacuum`) },
+    isp: { seaLevel: f.isp, vacuum: derived((f.isp.value * vacuum) / f.thrust.value, `${how}: the same flow at the vacuum thrust`) },
+    exitArea: f.exitArea,
+    starts: {
+      count: 1,
+      ground: true,
+      confidence: 'documented',
+      source: 'MSFC-MAN-503, §IV: the F-1s were started on the pad by ground equipment',
+    },
+    burns: 'kerosene-lox',
+  };
+}
+
+/** A J-2 as the plan flies it, its thrust and flow held at the record's share after a mixture-ratio shift. */
+function j2(
+  id: string,
+  label: string,
+  body: string,
+  tank: string,
+  count: number,
+  f: J2Figures,
+  shift: MixtureShift | undefined,
+  more: Partial<EngineDef> = {},
+): EngineDef {
+  return {
+    id,
+    label,
+    body,
+    count,
+    tanks: [tank],
+    kind: 'liquid',
+    thrust: { vacuum: f.thrust },
+    isp: { vacuum: f.isp },
+    ...(shift
+      ? {
+          throttle: {
+            curve: {
+              points: [
+                [0, shift.before.value],
+                [shift.at.value, shift.before.value],
+                [shift.at.value + 0.01, shift.after.value],
+              ],
+              confidence: shift.before.confidence === 'documented' ? shift.after.confidence : shift.before.confidence,
+              source: `before the shift: ${shift.before.source}; after it: ${shift.after.source}; the shift at ${shift.at.source}. Thrust and flow held at one share, the impulse unchanged`,
+            },
+          },
+        }
+      : {}),
+    starts: {
+      count: 1,
+      ground: false,
+      confidence: 'documented',
+      source: 'MSFC-MAN-503, §VI and §VII: lit in flight by the switch selector',
+    },
+    burns: 'hydrogen-lox',
+    ...more,
+  };
+}
+
+const at = (time: Measure): Trigger[] => [{ time: time.value }];
+
+/** What leaves, as a body of its own (sim/shed.ts): the model's stretch of the stack, its radius, and a shell's figures for the rest. */
+function shed(on: string, name: string, mass: Measure, from: number, to: number, radius: number, forward = false): ShedBody {
+  const a = derived(from * IN, MODEL);
+  const b = derived(to * IN, MODEL);
+  const length = (to - from) * IN;
+  return {
+    on,
+    name,
+    mass,
+    from: a,
+    to: b,
+    radius: derived(radius, MODEL),
+    centre: estimated(((from + to) / 2) * IN, `${MODEL}: half way along it`),
+    gyration: {
+      roll: estimated(radius * 0.78, 'a thin shell of its radius'),
+      across: estimated(Math.hypot(length / Math.sqrt(12), radius / Math.sqrt(2)), 'a thin shell of its radius and length'),
+    },
+    ahead: estimated(Math.PI * radius * radius, 'its disc, at 1.0'),
+    astern: estimated(Math.PI * radius * radius, 'its disc, at 1.0'),
+    side: { from: a, to: b, dragArea: estimated(2 * radius * length, 'its side, length by diameter, at 1.0') },
+    ...(forward ? { forward: true } : {}),
+  };
+}
+
+export function saturnVPlan(o: SaturnVRecord): FlightPlan {
+  const s1 = o.sic;
+  const s2 = o.sii;
+  const s3 = o.sivb;
+  const bodies: BodyDef[] = [
+    { id: 'sic', label: 'S-IC, the first stage', count: 1, mass: s1.mass, nodes: ['SaturnFirstStage'] },
+    { id: 'sii-skirt', label: 'S-II aft interstage', count: 1, mass: s2.skirt.mass, nodes: ['LowerInterstage'] },
+    { id: 'sii', label: 'S-II, the second stage', count: 1, mass: s2.mass, nodes: ['SaturnSecondStage'] },
+    { id: 'les', label: 'Launch escape tower and boost cover', count: 1, mass: o.les.mass, nodes: ['LaunchEscape'] },
+    { id: 'sivb', label: 'S-IVB, the instrument unit and the adapter', count: 1, mass: s3.mass, nodes: ['SaturnThirdStage'] },
+    ...(s3.payload ? [{ id: 'payload', label: s3.payload.label, count: 1, mass: s3.payload.mass, nodes: s3.payload.nodes }] : []),
+    {
+      id: 'sm',
+      label: 'Service module',
+      count: 1,
+      mass: derived(o.csm.mass.value - o.csm.cm.value, `${o.csm.mass.source}, less the command module (${o.csm.cm.source})`),
+      nodes: ['ServiceModule'],
+    },
+    { id: 'cm', label: 'Command module', count: 1, mass: o.csm.cm, nodes: ['CommandModule'], aero: cmAero() },
+  ];
+  const joints: JointDef[] = [
+    { id: 'sic-separation', label: 'S-IC/S-II separation', gone: ['sic'], at: s1.separation, push: s1.push },
+    { id: 'sii-skirt', label: 'S-II aft interstage jettison', gone: ['sii-skirt'], at: s2.skirt.at },
+    { id: 'les-jettison', label: 'Launch escape tower jettison', gone: ['les'], at: o.les.at },
+    { id: 'sii-separation', label: 'S-II/S-IVB separation', gone: ['sii'], at: s2.separation, push: s2.push },
+  ];
+  const engines: EngineDef[] = [
+    f1('f1-centre', 'Centre F-1', 1, s1.f1),
+    f1('f1-outboard', 'Four outboard F-1s', 4, s1.f1),
+    j2('j2-centre', 'Centre J-2', 'sii', 'sii-propellant', 1, s2.centre, s2.outboard.shift),
+    j2('j2-outboard', 'Four outboard J-2s', 'sii', 'sii-propellant', 4, s2.outboard, s2.outboard.shift),
+    j2('sivb-j2', 'S-IVB J-2', 'sivb', 'sivb-propellant', 1, s3.first, undefined),
+    j2('sivb-tli', 'S-IVB J-2 relit', 'sivb', 'sivb-propellant', 1, s3.second, s3.second.shift, {
+      again: 'sivb-j2',
+      starts: {
+        count: 1,
+        ground: false,
+        confidence: 'documented',
+        source: 'MSFC-MAN-503, §VII: the J-2 of the S-IVB restarted once in orbit, after its start tank was recharged',
+      },
+    }),
+  ];
+  const tanks: TankDef[] = [
+    { id: 'sic-propellant', label: 'S-IC RP-1 and liquid oxygen', body: 'sic', holds: 'propellant', ...s1.propellant },
+    { id: 'sii-propellant', label: 'S-II liquid hydrogen and oxygen', body: 'sii', holds: 'propellant', ...s2.propellant },
+    { id: 'sivb-propellant', label: 'S-IVB liquid hydrogen and oxygen', body: 'sivb', holds: 'propellant', ...s3.propellant },
+  ];
+  const thrusters: ThrusterSet[] = [
+    { id: 'saturn-steering', label: 'Steering', body: 'sivb', does: ['rotation'], mode: 'automatic', authority: o.ascent.steering },
+    {
+      id: 'sivb-aps',
+      label: 'S-IVB attitude jets',
+      body: 'sivb',
+      does: ['rotation'],
+      mode: 'automatic',
+      authority: s3.jets,
+      coasting: true,
+    },
+  ];
+  const sheds: ShedBody[] = [
+    shed(
+      'sic-separation',
+      'S-IC',
+      derived(s1.mass.value - s1.propellant.usable.value, `${s1.mass.source}, less its usable propellant`),
+      0,
+      STATIONS.firstTop,
+      LOWER,
+    ),
+    shed('sii-skirt', 'S-II aft interstage', s2.skirt.mass, STATIONS.firstTop, STATIONS.collarTop, LOWER),
+    {
+      ...shed('les-jettison', 'Escape tower and boost cover', o.les.mass, STATIONS.slaTop + 162, STATIONS.tip, 78 * IN, true),
+      motors: [{ name: 'Tower jettison motor', thrust: o.les.motor.thrust, burn: o.les.motor.burn }],
+    },
+    shed(
+      'sii-separation',
+      'S-II',
+      derived(s2.mass.value - s2.propellant.usable.value, `${s2.mass.source}, less its usable propellant`),
+      STATIONS.collarTop,
+      STATIONS.taperTop,
+      LOWER,
+    ),
+  ];
+  const event = (id: string, label: string, when: Measure, does: EventDef['do'], trigger: Trigger[] = at(when)): EventDef => ({
+    id,
+    label,
+    when: trigger,
+    do: does,
+    automatic: true,
+    at: when,
+    record: { id, label },
+    source: when.source,
+  });
+  const events: EventDef[] = [
+    event('liftoff', 'Liftoff', doc(0, 'range zero'), [{ ignite: 'f1-centre' }, { ignite: 'f1-outboard' }]),
+    event('sic-centre-cutoff', 'S-IC centre engine cutoff', s1.centreCut, [{ cut: 'f1-centre' }]),
+    event('sic-outboard-cutoff', 'S-IC outboard engines cutoff', s1.outboardCut, [{ cut: 'f1-outboard' }]),
+    event('sic-separation', 'S-IC/S-II separation', s1.separation, [{ separate: 'sic-separation' }]),
+    // (one step each, as the live vehicle's sequence takes them: the four, then the centre, at the one instant)
+    event('sii-ignition', 'S-II ignition: the four outboard J-2s', s2.ignition, [{ ignite: 'j2-outboard' }]),
+    event('sii-centre-ignition', 'S-II ignition: the centre J-2', s2.ignition, [{ ignite: 'j2-centre' }]),
+    event('sii-skirt', 'S-II aft interstage jettison', s2.skirt.at, [{ separate: 'sii-skirt' }]),
+    event('les-jettison', 'Launch escape tower jettison', o.les.at, [{ separate: 'les-jettison' }]),
+    event('sii-centre-cutoff', `S-II centre engine cutoff${s2.centre.why ? ` (${s2.centre.why})` : ''}`, s2.centre.cut, [
+      { cut: 'j2-centre' },
+    ]),
+    event('sii-outboard-cutoff', 'S-II outboard engines cutoff', s2.outboard.cut, [{ cut: 'j2-outboard' }]),
+    event('sii-separation', 'S-II/S-IVB separation', s2.separation, [{ separate: 'sii-separation' }]),
+    event('sivb-ignition', 'S-IVB ignition', s3.first.ignition, [{ ignite: 'sivb-j2' }]),
+    // (the guidance's own cutoff: where the orbit reached is the published one; the record's instant is a figure the run is held to)
+    event('sivb-cutoff', 'S-IVB cutoff: parking orbit', s3.first.cutoff, [{ cut: 'sivb-j2' }], [{ orbit: 'published' }]),
+    event('tli-ignition', 'S-IVB lit again: translunar injection', s3.second.ignition, [{ ignite: 'sivb-tli' }]),
+    // (cut on its speed, as its guidance cut it; the record's instant a figure)
+    event('tli-cutoff', 'S-IVB cutoff: translunar injection', s3.second.cutoff, [{ cut: 'sivb-tli' }], [{ speed: s3.second.speed.value }]),
+  ];
+  const attitude: AttitudeDef[] = [
+    {
+      id: 'steering-law',
+      label: 'Steering law',
+      hold: {
+        law: {
+          ...o.ascent.guidance,
+          injection: { engine: 'sivb-tli', align: s3.second.align, target: s3.second.target },
+        },
+      },
+      source: 'sim/staged.ts: a stated law, solved for its targets; the injection solved for its own',
+    },
+  ];
+  const craft: Craft = {
+    id: 'saturn-v',
+    label: o.label,
+    mass: o.liftoff,
+    bodies,
+    joints,
+    engines,
+    tanks,
+    thrusters,
+    chutes: [],
+    limits: [],
+    drag: o.ascent.drag,
+    rarefied: o.ascent.rarefied,
+    sheds,
+    lands: { on: 'sea', ship: 'the command module' },
+  };
+  return {
+    kind: 'orbital',
+    craft: [craft],
+    events,
+    attitude,
+    gravity: { central: 'earth', terms: ['j2', 'moon'] },
+    checks: o.checks,
+    record: {
+      orbit: o.orbit,
+      coastFixes: o.coastFixes,
+      aborts: o.aborts,
+      marks: o.marks,
+      bound: o.bound,
+      centre: o.ascent.centre,
+    },
+  };
+}

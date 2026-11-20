@@ -34,6 +34,11 @@ missions/                             the record: one folder per nation, program
                                       (`TargetRecord`, `targetRecord` from its report's figures, its flight's orbital.ts; `PLANNED_GAATV`) and the
                                       plan written from it (`targetPlan`: the Atlas SLV-3 from mercury-atlas-plan.ts `atlasPieces`, its verniers
                                       alone, the Agena's coast and ascent burn or the ATDA put in orbit by the Atlas, a failed flight's `planned`);
+                                      saturn-v-record.ts, saturn-v-plan.ts, saturn-v-flies.ts, a Saturn V flight's record (`SaturnVRecord`, its
+                                      flight's orbital.ts), the plan written from it (`saturnVPlan`: the S-IC's five F-1s, the S-II's five J-2s
+                                      with its centre cut as flown, the tower, the S-IVB's parking-orbit burn and its translunar injection on a
+                                      law of its own, the coast with the Moon) and what its model sheds and burns (`saturnVFlies`);
+                                      command-module-aero.ts, the Block II command module's trim drag (CM-107's, TN D-6725);
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,
                                       the type's specs (`SPEC`) and engines (`vostokMotors`), `along` and the azimuths;
                                       voskhod-11a57.ts, a Voskhod on its 11A57: `voskhodStack`, `voskhodParts`, `VIEW`, `SPEC`,

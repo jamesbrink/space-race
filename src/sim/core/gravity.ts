@@ -81,6 +81,37 @@ export function fieldOf(terms: readonly GravityTerm[]): (r: Vec3, t: number) => 
   return (r, t) => terms.reduce<Vec3>((sum, term) => add(sum, term.at(r, t)), [0, 0, 0]);
 }
 
+/**
+ * What a plan's gravity names (sim/plan.ts `GravityDef`) besides the Earth's own, which world/orbit.ts's step flies: the
+ * third bodies' pull summed, at a place in the flight's frame and an instant, m/s^2; null where it names none (every flight
+ * about the Earth that leaves it no further than its orbit), so nothing is added and nothing moves.
+ */
+export function thirdOf(
+  def: { central: 'earth' | 'moon'; terms: readonly ('j2' | 'moon' | 'sun')[] } | undefined,
+  frame: EarthFrame,
+): ((r: Vec3, t: number) => Vec3) | null {
+  if (!def) return null;
+  if (def.central !== 'earth') throw new Error('a flight about the Moon is not flown by the coast about the Earth');
+  const terms = [
+    ...(def.terms.includes('moon') ? [moonOnEarthFlight(frame)] : []),
+    ...(def.terms.includes('sun') ? [sunOnEarthFlight(frame)] : []),
+  ];
+  return terms.length ? fieldOf(terms) : null;
+}
+
+/** The terms a plan's gravity names, the Earth with J2 first, for the predicted path (sim/predict.ts `Ground.gravity`). */
+export function termsOf(
+  def: { central: 'earth' | 'moon'; terms: readonly ('j2' | 'moon' | 'sun')[] } | undefined,
+  frame: EarthFrame,
+): readonly GravityTerm[] {
+  if (!def) return EARTH_GRAVITY;
+  return [
+    earthJ2,
+    ...(def.terms.includes('moon') ? [moonOnEarthFlight(frame)] : []),
+    ...(def.terms.includes('sun') ? [sunOnEarthFlight(frame)] : []),
+  ];
+}
+
 /** Every flight's gravity today: the Earth with J2. */
 export const EARTH_GRAVITY: readonly GravityTerm[] = [earthJ2];
 

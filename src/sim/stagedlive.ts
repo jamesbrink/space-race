@@ -42,6 +42,7 @@ import type { EarthFrame } from '../world/earthframe.ts';
 import { add, angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { type State, step } from '../world/orbit.ts';
 import { airDrag, skyOf } from './air.ts';
+import { thirdOf } from './core/gravity.ts';
 import { sensed, trapezoid } from './apparent.ts';
 import { act, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
 import { along as alongCurve, MEAN_RADIUS, RIDING } from './fly.ts';
@@ -66,6 +67,8 @@ import {
   stagesOf,
   spentAt,
   stackOf,
+  injectionOf,
+  targetStageOf,
 } from './staged.ts';
 import { hotStage, pressed } from './staging.ts';
 import type { Curve, Measure } from '../types.ts';
@@ -181,6 +184,11 @@ export interface StagedVehicle {
   readonly up: Vec3;
   /** The angular acceleration at full throw, rad/s^2 (0 where the record gives none). */
   readonly authority: number;
+  /**
+   * What the steering gives now at full throw, rad/s^2: `authority` while an engine aboard burns; with none burning, an
+   * upper stage's own attitude jets' (`ThrusterSet.coasting`: the S-IVB's auxiliary propulsion) while it is aboard; else none.
+   */
+  steering(state: StagedState): number;
   start(): StagedState;
   tick(state: StagedState, controls: StagedControls | StagedPilot): StagedState;
   step(state: StagedState, controls: StagedControls | StagedPilot, dt: number): StagedState;
@@ -279,8 +287,15 @@ export function stagedVehicle(
   const law = lawOf(plan, site, frame, x);
   const stack = stackOf(plan);
   const air = airOf(seaLevel, frame, skyOf(plan));
-  const steering = def.thrusters.find((t) => t.authority);
+  const steering = def.thrusters.find((t) => t.authority && !t.coasting);
   const authority = authorityOverride ?? (steering?.authority?.value ?? 0) * DEG;
+  // (an upper stage's own jets, which turn the stack with nothing burning while that stage is on: ThrusterSet.coasting)
+  const jets = def.thrusters.find((t) => t.authority && t.coasting);
+  // (the Moon and the Sun where the plan names them, `FlightPlan.gravity`, as the batch run has them)
+  const pull = thirdOf(plan.gravity, frame);
+  const jetAuthority = (jets?.authority?.value ?? 0) * DEG;
+  const steeringOf = (s: StagedState, lit: boolean): number =>
+    lit ? authority : jets && !(s.craft.bodies[jets.body]! <= s.t) ? jetAuthority : 0;
   const last = stages.length - 1;
   const floor = ground ?? floorAt(site, seaLevel);
   const pad0 = geodeticToEcef(site);
@@ -605,6 +620,16 @@ export function stagedVehicle(
           return;
         }
         const r = act(plan, craft, { ignite: id.engine }, s.t, s.held);
+        const again = r.refused.find((x) => x.why === 'burning');
+        if (again) {
+          // (one engine under two of the plan's names, a first burn and its lighting again: plan.ts `EngineDef.again`)
+          said.push({
+            t: s.t,
+            title: 'Not lit',
+            text: `${cap(called(k.stage))}’s ${name(g.engine.label)} is the engine burning now: it cannot be lit again until it has been cut`,
+          });
+          return;
+        }
         if (r.refused.some((x) => x.why === 'ground')) {
           said.push({
             t: s.t,
@@ -749,10 +774,10 @@ export function stagedVehicle(
     const ticks = s.ticks + 1;
     const t = ticks * h;
     const c = s.controls;
-    // steering while anything aboard burns: the stated acceleration, as far as the controls are thrown
-    const alpha: Vec3 = lit
-      ? [authority * clamp(c.roll, -1, 1), authority * clamp(c.pitch, -1, 1), authority * clamp(c.yaw, -1, 1)]
-      : [0, 0, 0];
+    // steering while anything aboard burns (or, with nothing burning, an upper stage's own jets): the stated acceleration, as
+    // far as the controls are thrown
+    const most = steeringOf(s, lit);
+    const alpha: Vec3 = most > 0 ? [most * clamp(c.roll, -1, 1), most * clamp(c.pitch, -1, 1), most * clamp(c.yaw, -1, 1)] : [0, 0, 0];
     const gone = shape(s);
     let held = s.held;
     let r = s.r;
@@ -781,7 +806,10 @@ export function stagedVehicle(
       let at0 = s.t;
       for (const to of [...dries, t]) {
         const from = at0;
-        const next = step({ r, v }, from, to - from, (st, at) => accel(st, at, s, along(st, at), gone, from).accel);
+        const next = step({ r, v }, from, to - from, (st, at) => {
+          const a = accel(st, at, s, along(st, at), gone, from).accel;
+          return pull ? add(a, pull(st.r, at)) : a;
+        });
         r = next.r;
         v = next.v;
         at0 = to;
@@ -950,6 +978,11 @@ export function stagedVehicle(
     frame,
     plane: law.n,
     up: law.up0,
+    steering: (s) =>
+      steeringOf(
+        s,
+        stages.some((_, i) => burning(s, i)),
+      ),
     authority,
     start,
     tick,
@@ -1053,6 +1086,9 @@ export function stagedPilot(
   const law = lawOf(v.plan, site, frame, x);
   const air = airOf(seaLevel, frame, skyOf(v.plan));
   const memo = (options.memo ??= { thetaTurn: null });
+  // (a stage lit again to leave the orbit flies its own law from its lighting, as this flight lit it: staged.ts `injectionOf`)
+  const injection = injectionOf(v.plan);
+  const litOf = (s: StagedState): number | undefined => (injection ? s.stages[injection.stage]!.from : undefined);
   let last: { t: number; target: Vec3; rate: Vec3 | null } | null = null;
   const inSequence = new Set(v.sequence.map((k) => k.event));
   const index = new Map(stagesOf(v.plan).map((s, i) => [s.engine.id, i]));
@@ -1096,7 +1132,8 @@ export function stagedPilot(
       const mode = law.modeAt(s.t);
       if (mode === 'tangent' && memo.thetaTurn === null) memo.thetaTurn = law.thetaAt(s, s.t, air(s, s.t).ground);
       const theta = memo.thetaTurn ?? 0;
-      return { pitch: 0, yaw: 0, roll: 0, steps, events, prescribed: (st, at) => law.axisAt(st, at, mode, air(st, at).ground, theta) };
+      const lit = litOf(s);
+      return { pitch: 0, yaw: 0, roll: 0, steps, events, prescribed: (st, at) => law.axisAt(st, at, mode, air(st, at).ground, theta, lit) };
     }
     // the law's axis now, leaned by the hands' trim
     const here = air(s, s.t);
@@ -1111,6 +1148,7 @@ export function stagedPilot(
         mode === 'tangent' && memo.thetaTurn === null ? 'turn' : mode,
         air(st, at).ground,
         memo.thetaTurn ?? 0,
+        litOf(s),
       );
       if (trim.pitch) target = turn(aboutAxis(law.n, trim.pitch), target);
       if (trim.yaw) target = turn(aboutAxis(unit(st.r), trim.yaw), target);
@@ -1128,7 +1166,9 @@ export function stagedPilot(
     const rb = unturn(s.q, rate);
     const ab = unturn(s.q, spinUp);
     const error: Vec3 = [0, -tb[2], tb[1]];
-    const k = v.authority > 0 ? 1 / v.authority : 0;
+    // (the gain on what the steering gives now: an upper stage's own jets in orbit give far less than the engines' gimbals)
+    const most = v.steering(s) || v.authority;
+    const k = most > 0 ? 1 / most : 0;
     const w = options.omega ?? OMEGA;
     const command = (i: 1 | 2) => clamp(k * (ab[i] + w * w * error[i] + 2 * w * (rb[i] - s.w[i])), -1, 1);
     return {
@@ -1207,7 +1247,8 @@ export class StagedTally {
       const did = m.by === 'gone' ? Number.isFinite(s.stages[m.stage]!.gone) : v.burning(before, m.stage) && !v.burning(s, m.stage);
       if (did) this.at[m.id] = a;
     }
-    const last = n - 1;
+    // (the summary is at the cutoff the law aims at: the last stage's, or the orbit's where a stage is lit again after it)
+    const last = targetStageOf(v.plan);
     if (v.burning(before, last) && !v.burning(s, last)) Object.assign(sum, atCutoff(v.plan, before.t, before, v.start().r));
   }
 }

@@ -15,3 +15,27 @@ SA-506 stands on mobile launcher 1 at Pad 39A. The site opens at **06:54 EDT** o
 At T−50 minutes Launch Control ordered arm 9 to its 12° standby position. At T−5 minutes the arm began its final retraction. By T−4:48 the crew heard it was fully retracted. The launch-vehicle evaluation gives first motion at T+0.3 seconds. The spacecraft mission report lists liftoff at T+0.6 seconds. The countdown uses first motion for the five inflight service arms. [Countdown transcript](https://apollojournals.org/afj/ap11fj/01launch.html#t-0004958) · [AS-506 Flight Evaluation Report, §§3.6 and 4, table 4-1](https://www.ibiblio.org/apollo/Documents/lvfea-AS506-Apollo11.pdf) · [Pad hardware and reconstruction limits](../../../places/cape-canaveral/lc-39.md)
 
 At range zero, **09:32 EDT**, the Sun was 36.5° above the horizon at azimuth 83.5° true. The Moon was 14.7° up at 76.4°. The KSC station reported ten statute miles of visibility, one tenth cumulus at 2,400 ft, two tenths altocumulus at 15,000 ft, and nine tenths cirrostratus. The report gives no base for the high layer. Its displayed height and optical depth are estimates. The southeast pad light pole measured a 3.3 m/s wind from 175°. The weather map reconstructs the observed cover. The individual clouds and their positions are illustrative. [AS-506 Flight Evaluation Report, appendix A and table A-1](https://www.ibiblio.org/apollo/Documents/lvfea-AS506-Apollo11.pdf) · [Weather inputs and sources](weather.ts)
+
+## Fly
+
+Fly takes the flight deck at the pad: SA-506 under your hands from ignition through the translunar injection. On entry
+guidance (G) and the sequencer (B) are off and Hold is on: you light the five F-1s, steer on the outboard engines' gimbals
+(Hold keeping the attitude your keys leave), cut the centre and the four, let the S-IC go, light the S-II, drop its aft
+interstage and the escape tower, cut and stage again, light the S-IVB into the parking orbit, and light it once more for
+the injection. Each act does what the hardware would: a stage let go under thrust stays pressed on, the J-2 cannot be lit
+again while it burns, and the stack in orbit turns only as fast as the S-IVB's small attitude jets allow. With G and B on,
+the record's ascent (its S-IC programme, its guidance's closed loop, its events at their times) makes the parking orbit and
+the injection. The run, and how it compares with the record, is in [mission.md](mission.md), from MSFC's flight
+evaluation of SA-506 (MPR-SAT-FE-69-9).
+
+The flight ends with the injection: the stack, whole, coasts on toward the Moon, which pulls on it. What came next is not
+flown.
+
+## What is not flown or is simplified
+
+- Nothing after the S-IVB's second cutoff: the transposition and docking, Eagle drawn out of the adapter, the S-IVB sent
+  past the Moon, the lunar orbit, the landing and the return. The stack coasts on whole.
+- The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV (press kit, p. 78).
+- The S-IC flies flatter than the record on the record's own attitude commands (mission.md); the iterative guidance is a
+  linear tangent in each of its two burns; the engines' starts and cutoff transients, the tower clearance yaw, the S-IVB's
+  boil-off in orbit and the J-2's cutoff impulse at the injection are not flown.

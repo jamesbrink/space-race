@@ -30,7 +30,10 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
             ? ['staging-nuts', 'equipment-section-release', 'retro-section-release']
             : flight.id === 'usa/apollo/apollo-7'
               ? ['sib-separation', 'les-jettison', 'cm-sm-separation', 'forward-shield-jettison']
-              : ['booster-latch', 'retropack-straps'];
+              : // (a Saturn V's stages, its aft interstage and its tower: saturn-v-plan.ts)
+                flight.plan.craft[0].joints.some((j) => j.id === 'sii-separation')
+                ? ['sic-separation', 'sii-skirt', 'les-jettison', 'sii-separation']
+                : ['booster-latch', 'retropack-straps'];
     for (const on of ids) {
       const body = run.sheds.get(on);
       const index = flight.flies.drops.findIndex((d) => d.on === on);
@@ -154,6 +157,8 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
     });
   }
   test(`${flight.designation}: the last stage clears the outgoing spacecraft for the first minute`, () => {
+    // (a Saturn V flown to its injection and no further: the stack coasts on whole and nothing parts from it)
+    if (flight.plan.record?.bound) return;
     const run = orbitalRecord(flight);
     const at = run.samples.find((s) => !s.riding);
     const target = flight.flies.target;

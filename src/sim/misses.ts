@@ -33,6 +33,11 @@ const inUnits = (runs: Record<string, Record<string, Omit<Miss, 'absolute'>>>): 
     ]),
   );
 
+const SIC_A11 =
+  'The S-IC flies flatter than the record on the record’s own attitude commands (its flight evaluation’s Fig. 10-4, read off the page and flown open): at the centre engine’s cutoff it is lower and faster, climbing three degrees flatter. Its thrust is Fig. 5-3’s within a per cent or two and its mass the mass tables’ to a ton at each cutoff; half again or twice the drag (estimated: the Saturn V’s curve not read), tried and not flown, slows it but leaves it flatter still. Left: the figure’s first thirty seconds, where its drawn line leaves zero before the programme’s start at 13.2 s, and the control system’s following of its command, not flown (the law puts the axis on the command at once). See apollo-11/mission.md. Not adjusted';
+const SII_A11 =
+  'The S-II’s closed loop, flown as the law’s one linear tangent against the turning local level from 204 s (the iterative guidance’s own command fell near evenly in the inertial frame, Fig. 10-4), takes the stack to the record’s speeds within 20 m/s but lower, from the S-IC’s flatter start; the S-IVB’s guidance makes the orbit 4 s after the record’s cutoff. Not adjusted';
+
 const BOOSTER =
   'the powered flight ends 4 per cent too fast. It leaves the pad at only 1.19 g, so most of the thrust goes to holding it up and the speed gained is ' +
   'four times as sensitive as the thrust: one per cent in thrust, flow or liftoff weight is 3 to 4 per cent in speed (see the last test). The engine is two figures ' +
@@ -774,6 +779,22 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 5_000,
         why: 'Flown from the two records, Vostok 4 comes no nearer Vostok 3 than 203 km in its first two revolutions, where TASS has 6.5 km and the pilots about 5. The records cannot hold a check of kilometres: Vostok 3’s place a day on is its period carried round sixteen times (a hundredth of a minute is 75 km), now the one its heights give over the ellipsoid under the apsis, 88.34 min, with no traceable published period (over the mean Earth, 88.54 min, it was 1,768 km; on the untraced 88.33 min, 234 km), and Vostok 4’s place at its cutoff is the type’s reckoning (`injection.arc`, 144 km a degree). That the second launch was timed to put it beside the first is the record; where each ship was, to that precision, is in nothing read. Not adjusted',
       },
+    },
+  }),
+  'usa/apollo/apollo-11': inUnits({
+    ascent: {
+      maxQ: {
+        by: 9_246,
+        slack: 1_000,
+        why: `The greatest dynamic pressure is 44.4 kPa at 86.5 s where the record has 35.2 at 83.0: ${SIC_A11}`,
+        short: 'the S-IC flies flatter and faster',
+      },
+      'sic-centre-cutoff.speed': { by: 65.4, slack: 8, why: SIC_A11, short: 'the S-IC flies flatter and faster' },
+      'sic-centre-cutoff.altitude': { by: -3_664, slack: 500, why: SIC_A11, short: 'the S-IC flies flatter' },
+      'sic-separation.altitude': { by: -6_034, slack: 700, why: SIC_A11, short: 'the S-IC flies flatter' },
+      'sic-separation.climb': { by: -2.394, slack: 0.3, why: SIC_A11, short: 'the S-IC flies flatter' },
+      'sii-centre-cutoff.altitude': { by: -15_488, slack: 1_600, why: SII_A11, short: 'lower through the S-II' },
+      'sii-separation.altitude': { by: -7_691, slack: 800, why: SII_A11, short: 'lower through the S-II' },
     },
   }),
   'usa/apollo/apollo-7': inUnits({

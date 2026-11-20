@@ -31,6 +31,7 @@ import {
 import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
 import { ratioOf } from '../world/thermosphere.ts';
 import { airAt, airDrag } from './air.ts';
+import { thirdOf } from './core/gravity.ts';
 import { atmosphere, meanFreePath } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
 import { along } from './fly.ts';
@@ -95,6 +96,19 @@ export interface Guidance {
   vertical: Measure;
   kick: Measure;
   turn: Measure;
+  /**
+   * A stage lit again in orbit to leave it (the S-IVB's translunar injection): `engine`, the plan's engine that is that
+   * lighting (a stage of its own, on the tank it shares with the stage's first burn), which its guidance cuts as the record
+   * does (its speed). From its lighting the thrust's axis is a linear tangent of its own in the plane of the motion, held out
+   * of it by a yaw toward the orbit's pole: its three unknowns are solved (sim/staged.ts `steer`, `Solved.injection`) so
+   * that its cutoff comes at `target`'s height, climb and inclination, as the ascent's are for its orbit. `align`: how long
+   * before the record's lighting the vehicle is turned from the attitude it holds in orbit to the one the burn starts in, s.
+   */
+  injection?: {
+    engine: string;
+    align: Measure;
+    target: { altitude: Measure; over?: 'ellipsoid'; climb: Measure; inclination: Measure };
+  };
   target: {
     /** The event whose instant is the last cutoff: the record's id of it (a plan event's `record.id`, or a mark's). */
     at: string;
@@ -1230,6 +1244,13 @@ export function flyOrbit(
   const sunAt = (t: number): Vec3 => frame.fromDate(sunPosition(frame.jdTT(t)));
   const ship = shipOf(plan);
   const { on, off, parted, floor } = ship;
+  // (the Moon and the Sun where the plan names them, `FlightPlan.gravity`: a coast that leaves for the Moon. Gravity, so not
+  // in what a sample's accelerometer reads)
+  const pull = thirdOf(plan.gravity, frame);
+  const pulled =
+    (f: (s: State, at: number) => Vec3) =>
+    (s: State, at: number): Vec3 =>
+      pull ? add(f(s, at), pull(s.r, at)) : f(s, at);
   // (this run's own: a burn guidance solves ends when it has given what was solved, not at the record's instant)
   const moves = ship.moves.map((m) => ({ ...m }));
   /** The manoeuvres held on the target, by index: braking and station-keeping, their thrust commanded as they go. */
@@ -1316,10 +1337,15 @@ export function flyOrbit(
       const h = Math.min(firing ? 1 : 10, (firing ? burn.until : to) - at);
       const as = at;
       const thrust = firing ? { push: scale(burn.line, burn.accel) } : undefined;
-      x = step(x, at, h, (q, when) => {
-        const air = airOf(q, when);
-        return shipPush(plan, as, air.wind, air.altitude, null, solarAt(frame, q.r, when, air.altitude), thrust);
-      });
+      x = step(
+        x,
+        at,
+        h,
+        pulled((q, when) => {
+          const air = airOf(q, when);
+          return shipPush(plan, as, air.wind, air.altitude, null, solarAt(frame, q.r, when, air.altitude), thrust);
+        }),
+      );
       at += h;
     }
     return x;
@@ -1556,7 +1582,12 @@ export function flyOrbit(
       const burn = burns.find((b) => b.lit === moves[i]!.lit && b.solved);
       if (burn) burn.velocity += length(held(state, as, as) ?? [0, 0, 0]) * h;
     });
-    state = step(state, t, h, (s, at) => pushAs(s, at, as));
+    state = step(
+      state,
+      t,
+      h,
+      pulled((s, at) => pushAs(s, at, as)),
+    );
     t = mark !== undefined && Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
     const free = state;
     if (contacts) state = contacts.advance(last, as, free, t, rememberImpulse);
@@ -1571,7 +1602,17 @@ export function flyOrbit(
       let previous = as;
       for (const hit of impulses) {
         const at = Math.min(t, Math.max(as, hit.at));
-        const incoming = at === as ? last : at === t ? free : step(last, as, at - as, (s, when) => pushAs(s, when, as));
+        const incoming =
+          at === as
+            ? last
+            : at === t
+              ? free
+              : step(
+                  last,
+                  as,
+                  at - as,
+                  pulled((s, when) => pushAs(s, when, as)),
+                );
         dr = add(dr, scale(dv, at - previous));
         const r = add(incoming.r, dr);
         if (samples.at(-1)!.t < at) samples.push(sample({ r, v: add(incoming.v, dv) }, at, true));
@@ -1583,7 +1624,17 @@ export function flyOrbit(
     }
     while (readings.length && readings[0]!.at <= t) {
       const x = readings.shift()!;
-      read(x.at === t ? state : step(last, as, x.at - as, (s, at) => pushAs(s, at, as)), x.ids);
+      read(
+        x.at === t
+          ? state
+          : step(
+              last,
+              as,
+              x.at - as,
+              pulled((s, at) => pushAs(s, at, as)),
+            ),
+        x.ids,
+      );
     }
     arrive();
     const aimedShip = ship.landing;

@@ -27,7 +27,7 @@
  * flight to the last bit.
  */
 import type { Curve } from '../types.ts';
-import { G0, P0 } from '../world/bodies.ts';
+import { EARTH, G0, P0 } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import {
   add,
@@ -48,6 +48,7 @@ import { shortOfPublished } from '../world/meanelements.ts';
 import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
 import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { integrate, sensed } from './apparent.ts';
+import { thirdOf } from './core/gravity.ts';
 import { downOf } from './descent.ts';
 import { ALONE, along, MEAN_RADIUS, RIDING } from './fly.ts';
 import { keptShare } from './forces.ts';
@@ -95,6 +96,12 @@ export interface Solved {
   kick: number;
   rate: number;
   yaw?: number;
+  /**
+   * Where the guidance has a stage lit again in orbit to leave it (`Guidance.injection`): that burn's own linear tangent,
+   * its angle above the local level as it lights (radians), the rate its tangent falls at (1/s), and how far it is held out
+   * of the plane of the motion toward the orbit's pole (radians), solved for the injection's target (`steer`).
+   */
+  injection?: { theta: number; rate: number; yaw: number };
 }
 
 /** The flight at one instant of the ascent. */
@@ -202,6 +209,23 @@ export interface Ascended {
   plane: Vec3;
   /** The thrust's angle above the local level as the tangent law took over (`Guidance`), radians: what the law flies from there. */
   thetaTurn: number;
+  /**
+   * Where a stage lit again in orbit stopped (`Guidance.injection`): when, its height over the sea, m, space-fixed speed, m/s,
+   * climb above the geocentric level and the orbit's inclination, degrees, eccentricity, twice the orbit's energy (C3,
+   * m^2/s^2: negative, still bound to the Earth) and the mass, kg. The ascent's checks read it as `injection.<field>`.
+   */
+  injected?: {
+    at: number;
+    altitude: number;
+    speed: number;
+    climb: number;
+    inclination: number;
+    eccentricity: number;
+    energy: number;
+    mass: number;
+  };
+  /** Where it stood as the injection lit (`Resumed`), where it has one. */
+  lighting?: Resumed;
 }
 
 /** The whole flight: ascent flown, then the coast from where it left the spacecraft. */
@@ -477,8 +501,31 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
     const blend = Math.min(1, (t - begin) / (end - begin));
     return blend >= 1 ? axis : unit(add(scale(from, 1 - blend), scale(axis, blend)));
   };
-  const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 =>
+  const steady = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 =>
     g.attached && t >= g.attached.align[0].value ? attachedAt(s, t, lawAt(s, t, m, wind, thetaTurn)) : lawAt(s, t, m, wind, thetaTurn);
+  // a stage lit again in orbit to leave it (`Guidance.injection`): its own tangent from its lighting, in the plane of the motion
+  // and held out of it by its yaw; before it lights, from `align` ahead of the record's lighting, the vehicle is turned to
+  // where that law starts and held there. Its lighting is the run's (`lit`: the batch run's, the live vehicle's), else the record's
+  const injection = injectionOf(plan);
+  const injected = (s: State, since: number): Vec3 => {
+    const k = x.injection!;
+    const u = unit(s.r);
+    const h = unit(sub(s.v, scale(u, dot(s.v, u))));
+    const pole = unit(cross(s.r, s.v));
+    const theta = Math.atan(Math.tan(k.theta) - k.rate * since);
+    const inPlane = add(scale(h, Math.cos(theta)), scale(u, Math.sin(theta)));
+    return add(scale(inPlane, Math.cos(k.yaw)), scale(pole, Math.sin(k.yaw)));
+  };
+  const axisAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number, lit?: number): Vec3 => {
+    if (!injection || !x.injection) return steady(s, t, m, wind, thetaTurn);
+    const from = lit ?? injection.lit;
+    if (t >= from) return injected(s, t - from);
+    const begin = injection.lit - injection.align;
+    if (t < begin) return steady(s, t, m, wind, thetaTurn);
+    const blend = Math.min(1, (t - begin) / injection.align);
+    const was = steady(s, t, m, wind, thetaTurn);
+    return blend >= 1 ? injected(s, 0) : unit(add(scale(was, 1 - blend), scale(injected(s, 0), blend)));
+  };
   const lawAt = (s: State, t: number, m: Mode, wind: Vec3, thetaTurn: number): Vec3 => {
     // a stored programme is the first part of the law, the gyros' own: it is flown open, as it was, until the tangent takes over
     if (g.programme && m !== 'tangent') return tilted(along(g.programme, t) * DEG);
@@ -511,6 +558,32 @@ export function lawOf(plan: FlightPlan, site: Geodetic, frame: EarthFrame, x: So
     return g.programme ? theta + x.kick : theta;
   };
   return { n, pad, up0, down0, localAt, axisAt, modeAt, thetaAt, tVertical, tKicked, tTurn };
+}
+
+/**
+ * A stage the guidance lights again in orbit to leave it (orbital.ts `Guidance.injection`): its index among the stages, the
+ * record's instant of its lighting, s, and how long before that the vehicle is turned to its attitude, s. Null for a plan
+ * with none (every flight but a Saturn V's).
+ */
+export function injectionOf(plan: FlightPlan): { stage: number; lit: number; align: number } | null {
+  const g = guidanceOf(plan).injection;
+  if (!g) return null;
+  const stage = stagesOf(plan).findIndex((s) => s.engine.id === g.engine);
+  if (stage < 0) throw new Error(`the injection lights '${g.engine}', which is no stage of the plan`);
+  return { stage, lit: sequenceOf(plan).stages[stage]!.from, align: g.align.value };
+}
+
+/**
+ * The stage whose cutoff the law's target is at (`Guidance.target.at`, the record's id of the event that cuts it): the last,
+ * on every flight whose ascent ends there; an earlier one where a stage is lit again after it (the injection).
+ */
+export function targetStageOf(plan: FlightPlan): number {
+  const stages = stagesOf(plan);
+  const at = guidanceOf(plan).target.at;
+  const cutting = plan.events.find((e) => (e.record?.id === at || e.id === at) && e.do.some((a) => 'cut' in a));
+  const engine = cutting?.do.find((a) => 'cut' in a);
+  const i = engine && 'cut' in engine ? stages.findIndex((s) => s.engine.id === engine.cut) : -1;
+  return i < 0 ? stages.length - 1 : i;
 }
 
 /**
@@ -602,7 +675,8 @@ export function ascend(
   seaLevel: number,
   x: Solved,
   every = 0.5,
-  toCutoff = false,
+  toCutoff: boolean | 'injection' = false,
+  resume?: Resumed,
 ): Ascended {
   const stages = stagesOf(fp);
   const liftoff = fp.craft[0]!.mass.value;
@@ -620,6 +694,10 @@ export function ascend(
   const throttle = stack.throttle;
   const { tVertical, tKicked, tTurn } = law;
   const tEnd = seq.instant(g.target.at);
+  // the stage whose cutoff the law's target is at (the last but where one is lit again after it), and that one (`injectionOf`)
+  const cutoff = targetStageOf(fp);
+  const injection = injectionOf(fp);
+  const stopAt = toCutoff === 'injection' && injection ? injection.stage : cutoff;
   // the spacecraft parts from the last stage as it is let go: at its instant, or (where the plan lets it go so long after a
   // cut that is the guidance's) that long after the stage stops, which the run finds
   const lastOf = seq.stages[seq.stages.length - 1]!;
@@ -658,10 +736,14 @@ export function ascend(
     if (k.speed?.apparent) plan[i]!.to = Math.min(plan[i]!.to, apparentCut(i));
   });
 
-  let mode: Mode = 'vertical';
-  let thetaTurn = 0; // the thrust's angle above the local level as the tangent law takes over
+  let mode: Mode = resume?.mode ?? 'vertical';
+  let thetaTurn = resume?.thetaTurn ?? 0; // the thrust's angle above the local level as the tangent law takes over
   const airHere = airOf(seaLevel, frame, skyOf(fp));
-  const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 => law.axisAt(s, t, m, wind, thetaTurn);
+  // (the Moon and the Sun where the plan names them, `FlightPlan.gravity`: added to the step, not to what an accelerometer reads)
+  const pull = thirdOf(fp.gravity, frame);
+  const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 =>
+    law.axisAt(s, t, m, wind, thetaTurn, injection ? plan[injection.stage]!.from : undefined);
+  const pulled = (a: Vec3, s: State, at: number): Vec3 => (pull ? add(a, pull(s.r, at)) : a);
   /**
    * Every force but gravity over the mass, m/s^2, at a state at `t`, with what burns, what has left and the shape that
    * flies all as they are from instant `as` (the step's start: a step ends on every instant they change at, so within it
@@ -732,9 +814,14 @@ export function ascend(
     .filter((m) => m > 0 && m <= tPart && Number.isFinite(m))
     .sort((p, q) => p - q);
 
-  let t = 0;
-  let state: State = { r: pad, v: cross(spin, pad) };
-  const samples: AscentSample[] = [sample(state, 0)];
+  let t = resume?.t ?? 0;
+  let state: State = resume?.state ?? { r: pad, v: cross(spin, pad) };
+  if (resume) {
+    plan.splice(0, plan.length, ...resume.plan.map((p) => ({ ...p })));
+    tPart = resume.tPart;
+    marks.splice(0, marks.length, ...resume.marks);
+  }
+  const samples: AscentSample[] = [sample(state, t)];
   const at: Record<string, AscentSample> = {};
   const summary: AscentSummary = {
     maxQ: 0,
@@ -759,17 +846,35 @@ export function ascend(
   const firstOff = Math.min(...stageSep);
   const core = stages.findIndex((s) => s.body.id !== stages[0]!.body.id);
   const coreOff = core < 0 ? firstOff : plan[core]!.to;
-  let kept = 0;
+  if (resume) Object.assign(summary, resume.summary);
+  let kept = resume?.kept ?? 0;
+  let injected: Ascended['injected'];
+  let lighting: Resumed | undefined;
+  /** The state as the injection stops (`Ascended.injected`): its sample's height and climb, and the orbit it leaves on. */
+  const injectedAt = (at: number, st: State, sm: AscentSample): NonNullable<Ascended['injected']> => {
+    const el = elementsOf(st.r, st.v);
+    return {
+      at,
+      altitude: sm.altitude,
+      speed: length(st.v),
+      climb: Math.asin(dot(unit(st.r), unit(st.v))) / DEG,
+      inclination: el.i / DEG,
+      eccentricity: el.e,
+      energy: dot(st.v, st.v) - (2 * EARTH.gm.value) / length(st.r),
+      mass: sm.mass,
+    };
+  };
 
   while (t < tPart - 1e-9) {
     const mark = marks.find((m) => m > t + 1e-9) ?? tPart;
-    const coasting = tPart - tEnd > 60 && t >= plan[plan.length - 1]!.to && t >= tEnd;
+    // (coasting once past the law's target with nothing burning: every lighting is a mark, so a step never passes one)
+    const coasting = tPart - tEnd > 60 && t >= tEnd && plan.every((p) => !(t >= p.from && t < p.to));
     const interval = coasting ? Math.max(10, every) : every;
     const h = Math.min(coasting ? 10 : STEP, mark - t);
     const gone = droppedBy(t);
     const m = mode;
     const [before, t0] = [state, t];
-    state = step(state, t, h, (s, tt) => forces(s, tt, m, gone, t0).accel);
+    state = step(state, t, h, (s, tt) => pulled(forces(s, tt, m, gone, t0).accel, s, tt));
     t = Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
     // a stage cut on its velocity, when it reaches it in this step: the step is flown again to the instant it does, found by
     // the secant on the step's length (so the instant is a smooth function of the inputs, as the law's solution needs)
@@ -780,14 +885,14 @@ export function ascend(
       const at = (k: number) =>
         past(
           crossing,
-          step(before, t0, h * k, (q, tt) => forces(q, tt, m, gone, t0).accel),
+          step(before, t0, h * k, (q, tt) => pulled(forces(q, tt, m, gone, t0).accel, q, tt)),
         );
       let [k0, f0, k1, f1] = [0, past(crossing, before), 1, past(crossing, state)];
       for (let n = 0; n < 8 && Math.abs(f1) > 1e-9; n++) {
         const k2 = Math.min(1, Math.max(0, k1 - (f1 * (k1 - k0)) / (f1 - f0)));
         [k0, f0, k1, f1] = [k1, f1, k2, at(k2)];
       }
-      state = step(before, t0, h * k1, (q, tt) => forces(q, tt, m, gone, t0).accel);
+      state = step(before, t0, h * k1, (q, tt) => pulled(forces(q, tt, m, gone, t0).accel, q, tt));
       t = t0 + h * k1;
       plan[crossing]!.to = t;
       // (a tank it shares runs dry later now it has stopped: the stages that draw on it with it burn on to their own cut)
@@ -798,7 +903,9 @@ export function ascend(
           seq,
           plan.map((p, i) => (i !== crossing && t < p.to && (seq.stages[i]!.speed || p.dry) ? undefined : p.to)),
         );
-        for (const j of shares) if (j !== crossing && !seq.stages[j]!.speed && plan[j]!.to > t) plan[j] = again[j]!;
+        // (and one cut on its speed that is lit again later on the same tank, an injection, burns what this one left)
+        for (const j of shares)
+          if (j !== crossing && plan[j]!.to > t && (!seq.stages[j]!.speed || (plan[j]!.dry && plan[j]!.from > t))) plan[j] = again[j]!;
       }
     }
     // the last stage has stopped: the spacecraft is let go so long after, where the plan has it follow the stop
@@ -817,13 +924,12 @@ export function ascend(
     else if (t <= plan[plan.length - 1]!.to) summary.lastG = Math.max(summary.lastG, s.g);
     if (t === 60) summary.minuteG = s.g;
     for (const x of seq.instants) if (x.at === t) at[x.id] = s;
-    if (t === plan[plan.length - 1]!.to) {
-      Object.assign(summary, atCutoff(fp, t, state, pad));
-      if (toCutoff) {
-        tPart = t;
-        samples.push(s);
-        break;
-      }
+    if (t === plan[cutoff]!.to) Object.assign(summary, atCutoff(fp, t, state, pad));
+    if (injection && t === plan[injection.stage]!.to && Number.isFinite(plan[injection.stage]!.from)) injected = injectedAt(t, state, s);
+    if (toCutoff && t === plan[stopAt]!.to) {
+      tPart = t;
+      samples.push(s);
+      break;
     }
     // the law's own changes, at the end of a step
     if (mode === 'vertical' && t >= tVertical) mode = 'turn';
@@ -836,6 +942,9 @@ export function ascend(
       samples.push(s);
       kept = t;
     }
+    // (where it stands as the injection lights: nothing after depends on how the ascent got there but this)
+    if (injection && !lighting && t === plan[injection.stage]!.from)
+      lighting = { t, state, mode, thetaTurn, plan: plan.map((p) => ({ ...p })), summary: { ...summary }, kept, tPart, marks: [...marks] };
   }
   // (`burned` is one unit's: a stage's count multiplies it)
   // (and the last stage, as it lets the spacecraft go, takes what it weighed fuelled less what it burned)
@@ -854,7 +963,26 @@ export function ascend(
     parted: { kept: summary.massLeft, gone: lastLeft },
     plane: n,
     thetaTurn,
+    ...(injected ? { injected } : {}),
+    ...(lighting ? { lighting } : {}),
   };
+}
+
+/**
+ * An ascent as it stood at an instant (`Ascended.lighting`: as a stage lit again in orbit lights), to go on from: the state, the
+ * law's part and its angle, each stage's burn as the run has it, the summary so far, and the instants the steps end on.
+ * What the injection's law is solved from (`inject`), so that what comes before it is flown once.
+ */
+export interface Resumed {
+  t: number;
+  state: State;
+  mode: Mode;
+  thetaTurn: number;
+  plan: { from: number; to: number; dry: boolean }[];
+  summary: AscentSummary;
+  kept: number;
+  tPart: number;
+  marks: number[];
 }
 
 /**
@@ -868,6 +996,21 @@ export function ascend(
  */
 export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel = 0): Solved {
   if (plan.planned) return steer(plan.planned, site, frame, seaLevel);
+  // (the same plan, site and frame solve to the same law: kept, so a page or a test asking again does not fly it all again;
+  // a plan changed in place since is solved afresh, by what it says)
+  const key = JSON.stringify([site, seaLevel, frame.jdTT(0), frame.toInertial([1, 0, 0], 0), frame.toInertial([0, 1, 0], 1000)]);
+  const says = JSON.stringify(plan);
+  const kept = solvedFor.get(plan)?.get(key);
+  if (kept && kept.says === says) return { ...kept.x };
+  const x = solve(plan, site, frame, seaLevel);
+  if (!solvedFor.has(plan)) solvedFor.set(plan, new Map());
+  solvedFor.get(plan)!.set(key, { says, x });
+  return { ...x };
+}
+const solvedFor = new WeakMap<FlightPlan, Map<string, { says: string; x: Solved }>>();
+
+/** `steer`'s work: the law's unknowns solved by Newton's method, as it says. */
+function solve(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: number): Solved {
   const g = guidanceOf(plan);
   const radius = heightsBall(plan, site);
   const want = [radius + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
@@ -882,34 +1025,101 @@ export function steer(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLe
     const high = g.target.over ? a.samples.at(-1)!.altitude + seaLevel - g.target.altitude.value : s.cutoffAltitude + radius - want[0]!;
     return [high / 10_000, s.cutoffClimb * DEG - want[1]!, s.inclination * DEG - want[2]!];
   };
-  let x: Solved = aimed
+  const start: Solved = aimed
     ? { plane: Number.NaN, kick: g.programme ? 0 : 8 * DEG, rate: 1e-3, yaw: 0 }
     : { plane: want[2]!, kick: 8 * DEG, rate: 1e-3 };
+  // (a start the stack comes down from before its cutoff, where Newton's method from it does not converge: a heavy first
+  // stage barely faster than its weight turns over on eight degrees of pitch-over and falls. The pitch-over is halved until
+  // the cutoff is in the air, and bisected between that and the one that fell for the cutoff at the target's height, and
+  // Newton's method goes again from there. Every flight whose solve converges from the start is not touched)
+  const down = (y: Solved): number => miss(y)[0]! * 10_000 + (g.target.over ? g.target.altitude.value : want[0]! - radius);
+  const airborne = (from: Solved): Solved => {
+    let y = { ...from };
+    let fell = y.kick;
+    for (let k = 0; k < 20 && down(y) < 0; k++) [fell, y] = [y.kick, { ...y, kick: y.kick / 2 }];
+    let climbs = y.kick;
+    for (let k = 0; k < 30; k++) {
+      const mid = { ...y, kick: (fell + climbs) / 2 };
+      if (miss(mid)[0]! < 0) fell = mid.kick;
+      else climbs = mid.kick;
+    }
+    return { ...y, kick: (fell + climbs) / 2 };
+  };
   // (the angles a millionth of a radian, the rate a thousand-millionth a second)
   const eps = aimed ? [1e-6, 1e-9, 1e-6] : [1e-6, 1e-6, 1e-9];
   const angles = aimed ? [0, 2] : [0, 1];
+  /** Newton's method from `x`: the solution, or null where it does not converge. */
+  const newton = (from: Solved): Solved | null => {
+    let x = from;
+    for (let k = 0; k < 40; k++) {
+      const f = miss(x);
+      if (Math.hypot(...f) < 1e-8) return x;
+      const v = vec(x);
+      const J = v.map((_, j) => {
+        const w = [...v];
+        w[j]! += eps[j]!;
+        const fj = miss(of(w));
+        return fj.map((y, i) => (y - f[i]!) / eps[j]!);
+      }); // J[j][i] = d f_i / d x_j
+      const d = solve3(
+        [0, 1, 2].map((i) => [0, 1, 2].map((j) => J[j]![i]!)),
+        f.map((y) => -y),
+      );
+      // a damped step: never more than two degrees of any angle at once
+      const most = Math.max(...angles.map((i) => Math.abs(d[i]!) / (2 * DEG)), 1);
+      x = of(v.map((y, i) => y + d[i]! / most));
+      // (a plane inclined less than the pad's latitude does not pass over it: a step that would leave the planes that do is
+      // held at their edge, so the solve goes on from one it can fly)
+      x.plane = Math.max(x.plane, Math.abs(site.latitude) * DEG + 1e-4);
+    }
+    return null;
+  };
+  const found = newton(start) ?? newton(airborne(start));
+  if (found) return g.injection ? inject(plan, site, frame, seaLevel, found) : found;
+  throw new Error('the ascent’s steering law did not reach its target');
+}
+
+/**
+ * The injection's law solved, once the ascent's is (`Guidance.injection`): its three unknowns (the angle it lights at above
+ * the local level, its tangent's rate and its yaw out of the plane of the motion) by Newton's method on finite differences,
+ * so that the stage lit again stops at the target's height (over the sea's ellipsoid where the record's is a trajectory
+ * table's: `target.over`), climb and inclination, the stage cut as the record cuts it (its speed). From a start along the
+ * level, its tangent falling a thousandth a second, in the plane. Throws if it does not converge.
+ */
+function inject(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: number, ascent: Solved): Solved {
+  const g = guidanceOf(plan).injection!;
+  const radius = heightsBall(plan, site);
+  const want = [g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
+  const of = (v: number[]): Solved => ({ ...ascent, injection: { theta: v[0]!, rate: v[1]!, yaw: v[2]! } });
+  // (what comes before the injection lights does not turn on its law: flown once, and each try goes on from there)
+  let from: Resumed | undefined;
+  const miss = (x: Solved): number[] => {
+    const a = ascend(plan, site, frame, seaLevel, x, Infinity, 'injection', from);
+    from ??= a.lighting;
+    const s = a.injected;
+    if (!s) throw new Error('the injection never stopped: its stage is not lit, or never reaches its cut');
+    const high = g.target.over ? s.altitude + seaLevel : length(a.separation.r) - radius;
+    return [(high - want[0]!) / 10_000, s.climb * DEG - want[1]!, s.inclination * DEG - want[2]!];
+  };
+  let v = [0, 1e-3, 0];
+  const eps = [1e-6, 1e-9, 1e-6];
   for (let k = 0; k < 40; k++) {
-    const f = miss(x);
-    if (Math.hypot(...f) < 1e-8) return x;
-    const v = vec(x);
+    const f = miss(of(v));
+    if (Math.hypot(...f) < 1e-8) return of(v);
     const J = v.map((_, j) => {
       const w = [...v];
       w[j]! += eps[j]!;
       const fj = miss(of(w));
       return fj.map((y, i) => (y - f[i]!) / eps[j]!);
-    }); // J[j][i] = d f_i / d x_j
+    });
     const d = solve3(
       [0, 1, 2].map((i) => [0, 1, 2].map((j) => J[j]![i]!)),
       f.map((y) => -y),
     );
-    // a damped step: never more than two degrees of any angle at once
-    const most = Math.max(...angles.map((i) => Math.abs(d[i]!) / (2 * DEG)), 1);
-    x = of(v.map((y, i) => y + d[i]! / most));
-    // (a plane inclined less than the pad's latitude does not pass over it: a step that would leave the planes that do is
-    // held at their edge, so the solve goes on from one it can fly)
-    x.plane = Math.max(x.plane, Math.abs(site.latitude) * DEG + 1e-4);
+    const most = Math.max(Math.abs(d[0]!) / (2 * DEG), Math.abs(d[2]!) / (2 * DEG), 1);
+    v = v.map((y, i) => y + d[i]! / most);
   }
-  throw new Error('the ascent’s steering law did not reach its target');
+  throw new Error('the injection’s steering law did not reach its target');
 }
 
 /** Cramer's rule for three equations. */
@@ -1464,6 +1674,7 @@ export function held(plan: FlightPlan, whole: FlownWhole): Held[] {
   const ascent = (id: string): number => {
     const [event, field] = id.split('.');
     if (!field) return (whole.ascent.summary as unknown as Record<string, number>)[id] ?? Number.NaN;
+    if (event === 'injection') return (whole.ascent.injected as Record<string, number> | undefined)?.[field] ?? Number.NaN;
     return (whole.ascent.at[event!] as unknown as Record<string, number> | undefined)?.[field] ?? Number.NaN;
   };
   const down = (id: string): number => {

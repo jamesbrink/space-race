@@ -17,6 +17,7 @@ import { earthFrame } from '../../../../../src/world/earthframe.ts';
 import { cross, dot, ecefToGeodetic, enuAxes, scale, sub, unit } from '../../../../../src/world/frames.ts';
 import { step } from '../../../../../src/world/orbit.ts';
 
+import { TRIM, TRIM_DRAG } from '../../vehicles/command-module-aero.ts';
 import { aborts, escapeEngine } from './escape.ts';
 
 const FT = 0.3048;
@@ -28,7 +29,6 @@ const T = (hours: number, minutes: number, seconds: number) => hours * 3600 + mi
 const REPORT = 'Apollo 7 Mission Report (MSC-PA-R-68-15, December 1968)';
 const ASCENT = 'Results of the Fifth Saturn IB Launch Vehicle Test Flight (MPR-SAT-FE-68-4)';
 const ENTRY = 'Apollo 7 Entry Postflight Analysis (NASA, NTRS 19740072689)';
-const TRIM = 'Apollo Experience Report: Mission Planning for Apollo Entry (NASA TN D-6725), Table I, CM-107';
 const EVENTS = `${REPORT}, Table 2-I, actual ground elapsed time`;
 const WEIGHTS = `${REPORT}, Table A.5-I, postflight spacecraft mass properties`;
 const SEPARATION = T(2, 55, 2.4);
@@ -660,21 +660,7 @@ export const apollo7Plan: FlightPlan = {
           aero: {
             area: derived(capsuleArea, 'Apollo 7 press kit p.25, area of the 154 in heat shield disc'),
             drag: {
-              points: [
-                [0.4, 0.853],
-                [0.7, 0.98542],
-                [0.9, 1.10652],
-                [1.1, 1.1697],
-                [1.2, 1.156],
-                [1.35, 1.2788],
-                [1.65, 1.2657],
-                [2, 1.2721],
-                [2.4, 1.2412],
-                [3, 1.2167],
-                [4, 1.2148],
-                [10, 1.2246],
-                [29.5, 1.2891],
-              ],
+              points: TRIM_DRAG.map(([mach, cd]) => [mach, cd] as [number, number]),
               confidence: 'assumed',
               source: `${TRIM}: trim drag of the same Block II shape, with different mass distribution; low endpoint held below Mach 0.4`,
             },
