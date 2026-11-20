@@ -1,4 +1,4 @@
-import { doc, estimated } from '../../../../../src/measure.ts';
+import { assumed, doc, estimated } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
 import { ALOFT, HOURS } from './aloft.ts';
 
@@ -33,8 +33,8 @@ export const WEATHER: DayWeather = {
     note: 'Coded at Kazalinsk as altocumulus in layers or with altostratus: drawn as the viewer’s altocumulus deck over the whole sky.',
   },
   wind: {
-    from: doc(230, `${KAZALY}, ${HOUR}; ${ARALSK} had 050° at 5.1 m/s. At the site not measured`),
-    speed: doc(1, `${KAZALY}, ${HOUR}: 1.0 m/s, 2.1 m/s at 03:00`),
+    from: assumed(230, `${KAZALY}, ${HOUR}; ${ARALSK} had 050° at 5.1 m/s. At the site not measured`),
+    speed: assumed(1, `${KAZALY}, ${HOUR}: 1.0 m/s, 2.1 m/s at 03:00`),
   },
   visibility: estimated(25000, `Kazaly reports 20 km, its furthest mark, at every hour (${ISD}); Aralsk 23 km at ${HOUR}. 25 km taken`),
   haze: estimated(1500, 'not recorded: the dry air of the steppe, taken as the Vostoks’ and Voskhods’, to thin over 1.5 km'),
