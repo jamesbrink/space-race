@@ -286,9 +286,12 @@ rules are the screen's, the same for every path, never tuned to a flight:
   changes sign; the map taken from the chase view at every third instant (the map's view, all of the line ahead in the
   window, the path drawn with its switch off, an orbit among the stars and whole, closing on the vehicle, the vehicle's
   marker on the vehicle, a line and a marker for every other thing that flies, the Earth's outline, and the chase view
-  given back); and each flight taken over at seeded instants and flown by scripted hands, then run on to its end
-  against where the path said (one that breaks up is held to where the path had it as it broke up, and must then show
-  no path; one that stays up, to where the path has it as far ahead as it goes). It is deterministic, and is never
+  given back); the instants are the record's flight's, flown with guidance and the sequencer thrown on by the deck's own
+  G and B before the ignition (Fly is taken by hand, deck.ts `START`), and one the flight has not reached, short of
+  where it comes down, fails; and each flight taken over at seeded instants and flown by scripted hands (G and B thrown
+  off again), then run on to its end against where the path said (one that breaks up is held to where the path had it
+  as it broke up, and must then show no path; one that stays up, to where the path has it as far ahead as it goes; a
+  stage lit again in orbit is cut after its minute, as a spacecraft's burn ends by itself). It is deterministic, and is never
   made looser to pass: each instant is reached exactly (the clock put forward a deck's five seconds at a time, or a
   frame's worth of the rate asked for, never by the wall's clock; the deck flies in whole ticks, so the flight there
   is the same however it got there); every view is taken up from the far one, so what was looked at before does not
