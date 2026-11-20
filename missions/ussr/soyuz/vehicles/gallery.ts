@@ -1,4 +1,5 @@
-import type { ModelDef, Move, Part, Spec } from '../../../../src/types.ts';
+import type { Measure, ModelDef, Move, Part, Spec } from '../../../../src/types.ts';
+import { PARACHUTE_COVER } from './soyuz-flies.ts';
 
 const MHH = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357';
 export const CRAFT = 'Spacecraft';
@@ -122,6 +123,30 @@ const launcher: Part[] = [
     };
   }),
 ];
+
+/**
+ * The main parachute container's cover, a part of every ship's descent module and a node of its own in its model
+ * (soyuz_7kok.py `descent`): it goes with the module as the gallery takes the ship apart, and in flight it is shot off at
+ * the height the flight's record starts the parachute system at (`at`; soyuz-flies.ts drops it). `flew`: what followed on
+ * the day, where that was not the type's sequence.
+ */
+export function parachuteCover(at: Measure, flew = 'The drogue slowed the module until the main parachute took its place.'): Part {
+  const km = Number((at.value / 1000).toFixed(1));
+  return {
+    node: PARACHUTE_COVER,
+    name: 'Parachute container cover',
+    group: CRAFT,
+    order: 3,
+    explode: descent,
+    summary: 'The lid over the main parachute container, shot off to begin the landing.',
+    detail: `The descent module carried a main and a reserve parachute system in two containers on its shoulder, each under its own cover. Shooting off the main container’s cover let the drogue parachute out. ${flew} The lid’s oval outline, its size and its place on the hull are estimated, and the container under it is not modelled.`,
+    facts: [
+      ['Container', 'Main parachute system · ОСП'],
+      ['Shot off at', `${km} km · ${at.confidence}`],
+      ['Shape and place', 'Estimated'],
+    ],
+  };
+}
 
 export const soyuzGallerySpecs: Spec[] = [
   {
@@ -268,7 +293,7 @@ export function soyuzGallery(
       { id: 'escape', label: 'Fairing and escape tower', nodes: ['Fairing', 'EscapeTower'] },
       { id: 'spacecraft', label: 'Soyuz spacecraft', nodes: spacecraft.map((part) => part.node), isolate: true },
       { id: 'dock', label: 'Docking probe', nodes: ['OrbitalModule', 'DockingProbe'], isolate: true },
-      { id: 'descent', label: 'Descent module', nodes: ['DescentModule'], isolate: true },
+      { id: 'descent', label: 'Descent module', nodes: ['DescentModule', PARACHUTE_COVER], isolate: true },
       { id: 'cabin', label: 'Descent cabin', nodes: ['Cabin', 'Couches'], from: [-1, 0.2, 1] },
       { id: 'service', label: 'Instrument and propulsion module', nodes: ['ServiceModule', 'SolarLeft', 'SolarRight'], isolate: true },
     ],

@@ -7,6 +7,7 @@ import {
   descent,
   iglaMoves,
   onSoyuzPad,
+  parachuteCover,
   orbital,
   service,
   soyuzGallery,
@@ -86,6 +87,7 @@ const spacecraft: Part[] = [
       ['Return', 'Guided entry and landing on land'],
     ],
   },
+  parachuteCover(ORBITAL.ejection.altitude),
   {
     node: 'Cabin',
     name: 'Descent cabin',

@@ -3,7 +3,17 @@ import { TAIL, TURN } from '../../../places/tyuratam/site-1.parts.ts';
 import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { soyuzPad } from '../../../places/tyuratam/soyuz-pad.ts';
 import { soyuzWalker } from '../../crew/walkout.ts';
-import { CRAFT, descent, moduleTravel, onSoyuzPad, orbital, service, soyuzGallery, soyuzGallerySpecs } from '../../vehicles/gallery.ts';
+import {
+  CRAFT,
+  descent,
+  moduleTravel,
+  onSoyuzPad,
+  orbital,
+  parachuteCover,
+  service,
+  soyuzGallery,
+  soyuzGallerySpecs,
+} from '../../vehicles/gallery.ts';
 import { AREAS } from '../../vehicles/soyuz-7kok-flown.ts';
 import { commanded, soyuzChuteLooks, soyuzCommands, soyuzFlies } from '../../vehicles/soyuz-flies.ts';
 import { soyuzPlan } from '../../vehicles/soyuz-plan.ts';
@@ -90,6 +100,7 @@ const spacecraft: Part[] = [
       'The capsule used an ablative heat shield through entry. A parachute slowed it first and solid motors softened the final touchdown.',
     facts: [['Module', 'СА · спускаемый аппарат']],
   },
+  parachuteCover(ORBITAL.ejection.altitude),
   {
     node: 'Cabin',
     name: 'Descent cabin',

@@ -590,6 +590,15 @@ mesh (`glass...`, `lamp...`, `concrete-scorch/stain...`, anything blended). A jo
 fails if one differs. So a mesh the viewer must find gets a name in `flight.ts`, a custom
 property, or its own origin, and a new per-mesh material goes in `_PER_MESH_MATERIAL`.
 
+**The names kept are those of the day the model was built.** A GLB built before a flight's data came to name one of
+its meshes has that mesh joined into its neighbours: the name is gone (the Soyuz's parachute cover was dropped by a
+name no GLB had, and never left), or it is still there on the joined mesh (its main engine's bell was all three
+outlets, and the fire hung 14 cm off the bell). When a flight's data starts to name something of a model, build that
+model again (`pnpm model <id>`, then `pnpm collision`). `tests/flights.test.mjs` fails a drop, a fire, a hinge or a
+parachute's fastening that names no node of the flown model; it cannot tell a mesh that carries its neighbours. What
+leaves the vehicle, or must be found whatever the data says, is a node of its own (`srlib.group`: a cover, a hatch),
+which no join touches.
+
 ## Performance: measured, and never bought with quality
 
 Nothing visible is made coarser, blurrier, later or different for speed. Time is won from wasted

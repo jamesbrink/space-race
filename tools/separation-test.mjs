@@ -16,6 +16,8 @@ const cases = [
   ['ussr/voskhod/voskhod-2', 'AftSection_1', 'AftSection_2'],
   ['ussr/voskhod/voskhod-2', 'AftSection_2', 'AftSection_3'],
   ['ussr/voskhod/voskhod-2', 'Airlock'],
+  ['ussr/soyuz/soyuz-3', 'ParachuteCover'],
+  ['ussr/soyuz/soyuz-t-2', 'ParachuteCover'],
   ['usa/gemini/gt-3', 'NoseFairing', 'ScannerFairing'],
   ['usa/gemini/gt-3', 'EquipmentSection'],
   ['usa/gemini/gt-3', 'RetroSection'],

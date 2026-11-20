@@ -15,6 +15,12 @@ export { commanded } from '../../vostok/vehicles/vostok-flies.ts';
  * halves; the three modules; the parachute container's cover and the heat shield.
  */
 
+/**
+ * The main parachute container's cover: a node of its own in every ship's model (soyuz_7kok.py `descent`, which builds
+ * the descent module of the 7K-OK, 7K-OKS, 7K-T, 7K-TM and 7K-ST alike), its origin on its seat and its +Y out along its axis.
+ */
+export const PARACHUTE_COVER = 'ParachuteCover';
+
 /** What did each of the descent's events on a flight's day, for the labels of the commands a hand can give in its place. */
 export interface DescentWords {
   /** What parted the modules ("on the day the sequence did, after the burn"). */
@@ -42,6 +48,7 @@ export function soyuzCommands(day: DescentWords): Record<string, Command[]> {
   const engine: Command = { label: 'Fire the main engine along the long axis (by hand, the ship turned tail first)', ask: 'retro' };
   return {
     DescentModule: [part, cover, ...chutes],
+    [PARACHUTE_COVER]: [cover, ...chutes],
     OrbitalModule: [part],
     ServiceModule: [separate, part, engine],
     EscapeTower: [{ label: `Drop the escape tower (${OVER})`, ask: 'step:drop:escape-tower' }],
@@ -152,7 +159,7 @@ export function soyuzFlies(orbital: SoyuzRecord, chutes: ChuteDef[], ship: ShipN
       ...(ship.jettisoned ?? []).map((j) => ({ at: drop(j.id), nodes: j.nodes, on: j.id })),
       // the cover, shot off at the height the coast hands over at, and the heat shield, let go under the main parachute,
       // each comes down on its own body (a descent whose shield stayed on has no body for it, and the module keeps it)
-      { at: at('cover-off'), nodes: ['SA_Parachute58'], on: 'cover', rides: [{ body: 'cover' }] },
+      { at: at('cover-off'), nodes: [PARACHUTE_COVER], on: 'cover', rides: [{ body: 'cover' }] },
       ...(orbital.descent?.bodies.some((b) => b.id === 'shield')
         ? [{ at: at('cover-off') + main, nodes: ['SA_Shield'], on: 'shield', rides: [{ body: 'shield' }] }]
         : []),

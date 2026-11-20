@@ -9,6 +9,7 @@ import {
   iglaMoves,
   moduleTravel,
   onSoyuzPad,
+  parachuteCover,
   orbital,
   service,
   soyuzGallery,
@@ -85,6 +86,7 @@ const spacecraft: Part[] = [
       'After the braking burn the other two modules separated. The capsule landed under parachute with a final burst from its soft-landing rockets, about 400 km southwest of Karaganda.',
     facts: [['Module', 'СА · спускаемый аппарат']],
   },
+  parachuteCover(ORBITAL.ejection.altitude),
   {
     node: 'Cabin',
     name: 'Descent cabin',
