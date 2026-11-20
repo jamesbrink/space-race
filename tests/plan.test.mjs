@@ -540,7 +540,7 @@ const gemini = {
   checks: [],
 };
 
-const saturns = orbital.filter((f) => 'sivb' in recordFrom(f));
+const saturns = orbital.filter((f) => 'sic' in recordFrom(f));
 for (const f of saturns) {
   const o = recordFrom(f);
   const plan = f.plan;
@@ -629,6 +629,53 @@ for (const f of saturns) {
     const again = act(plan, s, { ignite: 'sivb-tli' }, 9_000, false);
     assert.deepEqual(again.refused, []);
     assert.equal(act(plan, again.state, { ignite: 'sivb-j2' }, 9_100, false).refused[0].why, 'burning');
+  });
+}
+
+/** The Saturn IB flights' records (saturn-ib-record.ts: `sib`), which saturn-ib-plan.ts writes the plan from. */
+for (const f of orbital.filter((x) => 'sib' in recordFrom(x))) {
+  const o = recordFrom(f);
+  const plan = f.plan;
+  const c = craftOf(plan);
+  const at = (id) => byId(plan.events, id).at;
+  test(`${f.id}: the Saturn IB plan carries the record's figures: eight H-1s, the J-2, the burns in orbit, the landing system`, () => {
+    assert.deepEqual(problems(plan), []);
+    assert.equal(c.mass, o.liftoff);
+    assert.deepEqual(
+      c.engines.filter((e) => e.body === 'sib' || e.body === 'sivb').map((e) => [e.id, e.count]),
+      [
+        ['h1-inboard', 4],
+        ['h1-outboard', 4],
+        ['sivb-j2', 1],
+      ],
+    );
+    assert.equal(byId(c.engines, 'h1-outboard').thrust, o.sib.h1.thrust);
+    assert.equal(byId(c.engines, 'sivb-j2').thrust.vacuum, o.sivb.j2.thrust);
+    assert.equal(byId(c.engines, 'sps').thrust.vacuum, o.csm.sps.thrust);
+    assert.equal(byId(c.tanks, 'sivb-propellant').load, o.sivb.propellant.load);
+    // (the joints part where the record has them, and each event of the ascent is the record's instant)
+    assert.equal(byId(c.joints, 'sib-separation').at, o.sib.separation);
+    assert.equal(byId(c.joints, 'spacecraft-separation').at, o.csm.separation.at);
+    assert.equal(byId(c.joints, 'cm-sm-separation').at, o.csm.modules.at);
+    assert.equal(at('sivb-cutoff'), o.sivb.cutoff);
+    assert.deepEqual(byId(plan.events, 'sivb-cutoff').when, [{ orbit: 'published' }]);
+    // (each burn is lit in its own attitude, held to the record's impulse, and cut at its record's instant)
+    for (const b of o.burns) {
+      const lit = byId(plan.events, b.id);
+      assert.equal(lit.at, b.on);
+      assert.deepEqual(doing(lit), [`attitude:${b.aim.id}`, `ignite:${b.engine}`]);
+      assert.equal(lit.do[1].flown, b.flown);
+      assert.ok(plan.attitude.includes(b.aim));
+      assert.equal(at(`${b.id}-cutoff`), b.off.at);
+    }
+    assert.equal(plan.target, o.target);
+    assert.deepEqual(byId(plan.events, 'main-deployment').when, [{ height: o.els.mains.height.value, going: 'down' }]);
+    const times = plan.events.map((e) => e.at.value);
+    assert.deepEqual(
+      times,
+      [...times].sort((a, b) => a - b),
+      'the events in order',
+    );
   });
 }
 
