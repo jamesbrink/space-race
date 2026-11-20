@@ -2232,9 +2232,11 @@ export class OrbitDeck extends Deck {
       h.q = h.log[i]!.q;
       if (steering) h.log.length = i + 1;
     }
-    if (!steering) return;
-    // (the hand controller's rate: the thruster set worked by hand)
-    const rate = this.recordPlan.craft[0]!.thrusters.find((x) => x.mode === 'manual' && x.rate)!.rate!.value * DEG;
+    // (the hand controller's rate: the thruster set worked by hand; a craft with none, an uncrewed target, is not turned by
+    // the keys at all, where it threw and stopped the deck)
+    const manual = this.recordPlan.craft[0]!.thrusters.find((x) => x.mode === 'manual' && x.rate);
+    if (!steering || !manual) return;
+    const rate = manual.rate!.value * DEG;
     let q = h.q;
     q = normalize(multiply(q, aboutAxis(KEYS.w![0], push.pitch * rate * dt)));
     q = normalize(multiply(q, aboutAxis(KEYS.a![0], push.yaw * rate * dt)));
