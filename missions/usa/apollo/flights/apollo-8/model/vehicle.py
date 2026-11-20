@@ -10,12 +10,15 @@ sys.path.insert(0, os.path.join(_root, "tools", "blender"))
 sys.path.insert(0, os.path.join(_root, "missions", "usa", "apollo", "vehicles"))
 import apollo_csm  # noqa: E402
 import launch_escape  # noqa: E402
+import lunar_stack  # noqa: E402
 import saturn_v  # noqa: E402
 from srlib import IN, run  # noqa: E402
 
 
 def build():
     saturn_v.build()
+    # (on ML-1 as every Saturn V stood on its launcher: the first stage indexed over hold-down positions I to IV)
+    lunar_stack.index_on_launcher(503)
     apollo_csm.build(saturn_v.CSM_OFFSET, spacecraft=103)
     launch_escape.build(saturn_v.CSM_OFFSET, saturn_v.HEIGHT, boardable=True)
     return "Apollo 8, SA-503: 363 ft nominal height to the Q-ball"

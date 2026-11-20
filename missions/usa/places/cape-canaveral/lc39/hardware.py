@@ -312,8 +312,9 @@ def arms(parts, detailed, skylab=False, side_hinge=False):
 
 def holddowns(parts):
     parts.node("Holddown_Arms")
+    # At positions I to IV, east, north, west and south of the opening, as articulated_holddowns places them.
     for i in range(4):
-        theta = pi / 4 + i * pi / 2
+        theta = -pi / 2 + i * pi / 2
         u = (cos(theta), sin(theta), 0)
         for radius, z, size in ((34, 1.4, (8, 5, 2.8)), (32, 7.5, (4, 4, 10)), (17, 18.7, (2.4, 3.2, 1.2))):
             obox(parts("Holddown_Arms", "steel"), (radius * u[0], radius * u[1], DECK + z), u, (0, 0, 1), size)

@@ -23,3 +23,31 @@ At range zero, **11:22 EST**, the Sun was 41.8° above the horizon at azimuth 16
 - [SA-507 and adapter SLA-15](../../vehicles/sa-507.md)
 - [CSM-108 Yankee Clipper](../../vehicles/csm-108.md)
 - [LM-6 Intrepid](../../vehicles/lm-6.md)
+
+## Fly
+
+Fly takes the flight deck at the pad: SA-507 under your hands from ignition through the translunar injection. On entry
+guidance (G) and the sequencer (B) are off and Hold is on: you light the five F-1s, steer on the outboard engines' gimbals
+(Hold keeping the attitude your keys leave), cut the centre and the four, let the S-IC go, light the S-II, drop its aft
+interstage and the escape tower, cut the S-II's centre engine early and the four after it, stage again, light the S-IVB into the parking orbit, and light it once more for
+the injection. Each act does what the hardware would: a stage let go under thrust stays pressed on, an engine lit into a
+closed interstage breaks the stack up, the J-2 cannot be lit again while it burns, and the stack in orbit turns only as
+fast as the S-IVB's small attitude jets allow. With G and B on, the record's ascent (its S-IC programme, its guidance's
+closed loop, its events at their times) makes the parking orbit and the injection. The run, and how it compares with the
+record, is in [mission.md](mission.md), from MSFC's flight evaluation of SA-507 (MPR-SAT-FE-70-1).
+
+The flight ends with the injection: the stack, whole, Intrepid in the adapter, coasts on toward the Moon, which pulls on it. What came
+next is not flown.
+
+## What is not flown or is simplified
+
+- Nothing after the S-IVB's second cutoff: the transposition and docking, Intrepid drawn out of the adapter, the S-IVB sent past the Moon, the lunar orbit, the landing and the return. The stack coasts on whole.
+- The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV (abort boundaries assumed from Apollo 11's press kit, p. 78: Apollo 12's has no table of them).
+- The S-IC holds the record on this flight's own pitch programme, but the S-II falls short of the record's speed and
+  height and the S-IVB makes up the difference, cutting 11 to 15 seconds late (mission.md, `MISSES`); the iterative
+  guidance is a linear tangent in each of its two burns; the engines' starts and cutoff transients, the tower clearance
+  yaw, the S-IVB's boil-off in orbit and the J-2's cutoff impulse at the injection are not flown.
+- The two lightning discharges, at 36.5 and 52 seconds, are not flown. They dropped the fuel cells off the spacecraft's
+  buses and cost its platform its attitude reference; the launch vehicle's guidance flew on unharmed and the trajectory stayed close to the
+  planned one, so nothing in the path is theirs to show (mission.md; AS-507 flight evaluation, Section 12A; mission
+  report, §14.1.3).

@@ -48,6 +48,10 @@ const SIC_A14 =
 const SIVB_A14 =
   'The S-II spends its propellant 1.7 s before the record’s cutoff (its J-2s drawing at Table 6-1’s figures with the impulse held through the mixture-ratio shift, as Apollo 13’s) and is let go 53 m/s slow, and the S-IVB’s guidance burns 9.7 s longer than the record’s to the same orbit, which it reaches within 0.1 km of the record’s heights. See apollo-14/mission.md. Not adjusted';
 
+const SII_SHORT =
+  'The S-IC holds its record on this flight’s own pitch programme (its flight evaluation’s figure, read off the page and flown open), but leaves the stack 25 to 50 m/s slow at separation, within tolerance; the S-II’s closed loop, flown as the law’s one linear tangent against the turning local level from the iterative guidance’s start (its own command fell near evenly in the inertial frame), takes it a further 15 to 45 m/s behind the record and lower (the S-II falls short on Apollo 11 too, where the S-IC’s fast start hid it). The S-IVB’s guidance makes up the speed and reaches the published orbit, 11 to 15 s after the record’s cutoff, so at the record’s insertion instant it is still burning and slower. The stack’s mass at the first cutoff is the mass tables’ within a ton, so what is short is impulse or loss, not propellant: the F-1s’ thrust is held at its mean (the flight’s rose through the burn), the J-2s’ impulse is held through the mixture-ratio shift (it rose at the lower ratio), the drag is estimated. Not adjusted';
+const A8_SII = `${SII_SHORT}. On AS-503 the S-II’s centre engine was not cut early: the check is at the five engines’ cutoff`;
+
 const BOOSTER =
   'the powered flight ends 4 per cent too fast. It leaves the pad at only 1.19 g, so most of the thrust goes to holding it up and the speed gained is ' +
   'four times as sensitive as the thrust: one per cent in thrust, flow or liftoff weight is 3 to 4 per cent in speed (see the last test). The engine is two figures ' +
@@ -809,6 +813,23 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       },
     },
   }),
+  'usa/apollo/apollo-8': inUnits({
+    ascent: {
+      'sii-centre-cutoff.speed': { by: -85.06, slack: 9, why: A8_SII, short: 'the S-II falls short' },
+      'sii-centre-cutoff.altitude': { by: -5_528, slack: 600, why: A8_SII, short: 'lower through the S-II' },
+      'sii-separation.speed': { by: -89.0, slack: 9, why: SII_SHORT, short: 'the S-II falls short' },
+      'sii-separation.altitude': { by: -5_503, slack: 600, why: SII_SHORT, short: 'lower through the S-II' },
+      cutoffAt: { by: 14.92, slack: 1.5, why: SII_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
+      'insertion.speed': { by: -35.26, slack: 4, why: SII_SHORT, short: 'still burning at the record’s insertion' },
+    },
+  }),
+  'usa/apollo/apollo-10': inUnits({
+    ascent: {
+      'sii-separation.speed': { by: -63.7, slack: 7, why: SII_SHORT, short: 'the S-II falls short' },
+      cutoffAt: { by: 12.75, slack: 1.3, why: SII_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
+      'insertion.speed': { by: -19.11, slack: 2.5, why: SII_SHORT, short: 'still burning at the record’s insertion' },
+    },
+  }),
   'usa/apollo/apollo-11': inUnits({
     ascent: {
       maxQ: {
@@ -842,6 +863,13 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     ascent: {
       maxQ: { by: 4_257, slack: 400, why: SIC_A14, short: 'the S-IC through the densest air' },
       cutoffAt: { by: 9.709, slack: 1.2, why: SIVB_A14, short: 'the S-IVB burns longer to the orbit' },
+    },
+  }),
+  'usa/apollo/apollo-12': inUnits({
+    ascent: {
+      'sii-centre-cutoff.altitude': { by: -5_419, slack: 600, why: SII_SHORT, short: 'lower through the S-II' },
+      cutoffAt: { by: 11.4, slack: 1.2, why: SII_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
+      'insertion.speed': { by: -9.587, slack: 1.5, why: SII_SHORT, short: 'still burning at the record’s insertion' },
     },
   }),
   'usa/apollo/apollo-7': inUnits({

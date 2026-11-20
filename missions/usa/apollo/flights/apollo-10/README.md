@@ -15,3 +15,27 @@ The [spacecraft and launch vehicle](spacecraft.md) occupy two Gallery exhibits. 
 At [Pad 39B](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-3. At liftoff the computed Sun was at azimuth 141.3° and elevation 78.7°. The Moon was at azimuth 82.0° and elevation 58.8°.
 
 The site opens at 10:06 EDT when Stafford entered Charlie Brown. Cernan followed at 10:11 and Young at 10:16. The end of the boarding window at 11:09 is estimated ahead of the T−86 minute white-room closeout report. Launch control confirmed the 12° standby position by T−46 minutes and full retraction by T−4 min 30 s. [NASA launch-day commentary](https://www.nasa.gov/wp-content/uploads/2026/01/as10-pao.pdf)
+
+## Fly
+
+Fly takes the flight deck at the pad: SA-505 under your hands from ignition through the translunar injection. On entry
+guidance (G) and the sequencer (B) are off and Hold is on: you light the five F-1s, steer on the outboard engines' gimbals
+(Hold keeping the attitude your keys leave), cut the centre and the four, let the S-IC go, light the S-II, drop its aft
+interstage and the escape tower, cut the S-II's centre engine early and the four after it, stage again, light the S-IVB into the parking orbit, and light it once more for
+the injection. Each act does what the hardware would: a stage let go under thrust stays pressed on, an engine lit into a
+closed interstage breaks the stack up, the J-2 cannot be lit again while it burns, and the stack in orbit turns only as
+fast as the S-IVB's small attitude jets allow. With G and B on, the record's ascent (its S-IC programme, its guidance's
+closed loop, its events at their times) makes the parking orbit and the injection. The run, and how it compares with the
+record, is in [mission.md](mission.md), from MSFC's flight evaluation of SA-505 (MPR-SAT-FE-69-7).
+
+The flight ends with the injection: the stack, whole, Snoopy in the adapter, coasts on toward the Moon, which pulls on it. What came
+next is not flown.
+
+## What is not flown or is simplified
+
+- Nothing after the S-IVB's second cutoff: the transposition and docking, Snoopy drawn out of the adapter, the S-IVB sent past the Moon, the lunar orbit, Snoopy's descent to 47,400 feet and the return. The stack coasts on whole.
+- The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV (press kit, p. 29).
+- The S-IC holds the record on this flight's own pitch programme, but the S-II falls short of the record's speed and
+  height and the S-IVB makes up the difference, cutting 11 to 15 seconds late (mission.md, `MISSES`); the iterative
+  guidance is a linear tangent in each of its two burns; the engines' starts and cutoff transients, the tower clearance
+  yaw, the S-IVB's boil-off in orbit and the J-2's cutoff impulse at the injection are not flown.

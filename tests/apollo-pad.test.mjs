@@ -63,7 +63,8 @@ for (const [number, letter, launcher] of [
       // adjacent landing must be within a person's step at every LOD. The near end reaches the hatch.
       const floor = room.lo[1] + pad.position[1] - 0.05 * 0.3048;
       assert.ok(Math.abs(hatch.lo[1] - floor) < 0.15, `sill ${hatch.lo[1]}, landing ${floor}`);
-      if (number === 11) {
+      // (a dated launcher's white room, Apollo 8's, 10's and 11's: lc-39.md)
+      if (number !== 9) {
         const gap = room.lo[0] - hatch.hi[0];
         assert.ok(gap > 0 && gap < 0.3, `white room to hatch threshold: ${gap} m`);
       } else {

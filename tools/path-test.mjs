@@ -170,6 +170,18 @@ const FLIGHTS = {
     coast: 3000,
   },
   // (the S-IC, the S-II, the parking orbit, the S-IVB lit again for the injection and the coast toward the Moon after it)
+  a8: {
+    id: 'usa/apollo/apollo-8',
+    instants: [5, 60, 126, 155, 200, 400, 525, 600, 700, 3000, 10_100, 10_250, 10_400, 10_560, 12_500, 40_000, 120_000],
+    orbit: [3000],
+    coast: 3000,
+  },
+  a10: {
+    id: 'usa/apollo/apollo-10',
+    instants: [5, 60, 135, 162, 200, 460, 554, 600, 717, 3000, 9_100, 9_250, 9_400, 9_555, 11_000, 40_000, 120_000],
+    orbit: [3000],
+    coast: 3000,
+  },
   a11: {
     id: 'usa/apollo/apollo-11',
     instants: [5, 60, 135, 162, 200, 460, 549, 600, 703, 3000, 9800, 9900, 10_100, 10_210, 12_000, 40_000, 120_000],
@@ -187,6 +199,12 @@ const FLIGHTS = {
   a13: {
     id: 'usa/apollo/apollo-13',
     instants: [5, 60, 135, 163, 200, 330, 540, 590, 600, 750, 3000, 9300, 9400, 9600, 9700, 12_000, 40_000, 120_000],
+    orbit: [3000],
+    coast: 3000,
+  },
+  a12: {
+    id: 'usa/apollo/apollo-12',
+    instants: [5, 60, 135, 162, 200, 460, 553, 600, 706, 3000, 9_950, 10_100, 10_250, 10_390, 12_000, 40_000, 120_000],
     orbit: [3000],
     coast: 3000,
   },

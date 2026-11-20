@@ -54,7 +54,14 @@ export function framesOf(file) {
   const index = (name) => gltf.nodes.findIndex((n) => n.name === name);
   return {
     point: (name, p = [0, 0, 0]) => (index(name) < 0 ? null : at(frames.get(index(name)), p)),
-    box(name) {
+    /** `inFrameOf`: the box in that node's own frame (its turn and place taken off), not the model's. */
+    box(name, inFrameOf) {
+      const ref = inFrameOf === undefined ? null : frames.get(index(inFrameOf));
+      // (a frame of turns and a place: its inverse is its turns' transpose, after the place is taken off)
+      const into = (q) =>
+        ref
+          ? [0, 1, 2].map((k) => ref[k * 4] * (q[0] - ref[12]) + ref[k * 4 + 1] * (q[1] - ref[13]) + ref[k * 4 + 2] * (q[2] - ref[14]))
+          : q;
       const lo = [Infinity, Infinity, Infinity];
       const hi = [-Infinity, -Infinity, -Infinity];
       const visit = (i) => {
@@ -62,7 +69,7 @@ export function framesOf(file) {
         for (const prim of n.mesh === undefined ? [] : gltf.meshes[n.mesh].primitives) {
           const { min, max } = gltf.accessors[prim.attributes.POSITION];
           for (const c of [0, 1, 2, 3, 4, 5, 6, 7]) {
-            const q = at(frames.get(i), [c & 1 ? max[0] : min[0], c & 2 ? max[1] : min[1], c & 4 ? max[2] : min[2]]);
+            const q = into(at(frames.get(i), [c & 1 ? max[0] : min[0], c & 2 ? max[1] : min[1], c & 4 ? max[2] : min[2]]));
             q.forEach((v, k) => {
               lo[k] = Math.min(lo[k], v);
               hi[k] = Math.max(hi[k], v);

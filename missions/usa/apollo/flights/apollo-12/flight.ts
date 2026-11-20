@@ -5,12 +5,16 @@ import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { APOLLO12_THRUST } from '../../vehicles/propulsion.ts';
 import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
+import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
+import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
 import { intrepidModel, intrepidPort, intrepidStackParts, intrepidViews } from './intrepid.ts';
+import { orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const inch = 0.0254;
 const kit = 'NASA Apollo 12 Press Kit, spacecraft and launch vehicle descriptions';
 const report = 'Apollo 12 Mission Report MSC-01855, table 5-I';
+const PLAN = saturnVPlan(orbital);
 const elapsed = (h: number, m: number, s: number) => h * 3600 + m * 60 + s;
 const lm = 'Lunar module · Intrepid';
 const ship = 'Spacecraft';
@@ -358,6 +362,10 @@ export const flight: Flight = {
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39A,
   weather: WEATHER,
+  plan: { ...PLAN, aloft: WEATHER.aloft },
+  flies: saturnVFlies(PLAN),
+  flownNote:
+    'The two lightning discharges, at 36.5 and 52 s, are not flown: they dropped the spacecraft’s fuel cells off its buses and cost its platform its attitude reference, not the launch vehicle’s guidance, and the path was not moved by them (mission.md).',
   crew: ['Charles Conrad Jr.', 'Richard F. Gordon Jr.', 'Alan L. Bean'],
   summary:
     'Conrad and Bean landed Intrepid within walking distance of Surveyor III. On two moonwalks they set up the first full Apollo lunar surface experiments package and recovered parts of the robotic lander. Gordon waited in lunar orbit aboard Yankee Clipper.',

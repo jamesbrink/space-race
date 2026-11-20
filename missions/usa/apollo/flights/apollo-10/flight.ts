@@ -5,6 +5,9 @@ import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { APOLLO10_THRUST } from '../../vehicles/propulsion.ts';
 import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
+import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
+import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
+import { orbital } from './orbital.ts';
 import { snoopyModel, snoopyPort, snoopyStackParts, snoopyViews } from './snoopy.ts';
 import { WEATHER } from './weather.ts';
 
@@ -12,6 +15,7 @@ const inch = 0.0254;
 const lb = 0.45359237;
 const kit = 'NASA Apollo 10 press kit, May 1969';
 const report = 'Apollo 10 Mission Report, MSC-00126';
+const PLAN = saturnVPlan(orbital);
 const mass = `${report}, table A.4-I`;
 const parking = 'NASA SP-4029, Apollo 10, p. 73, parking orbit at insertion';
 const elapsed = (h: number, m: number, s: number) => h * 3600 + m * 60 + s;
@@ -339,6 +343,8 @@ export const flight: Flight = {
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39B,
   weather: WEATHER,
+  plan: { ...PLAN, aloft: WEATHER.aloft },
+  flies: saturnVFlies(PLAN),
   crew: ['Thomas P. Stafford', 'John W. Young', 'Eugene A. Cernan'],
   summary:
     'Young kept Charlie Brown in lunar orbit while Stafford and Cernan took Snoopy down over the Sea of Tranquility. The landing radar measured the terrain below. Only the ascent stage returned to dock.',
@@ -470,6 +476,8 @@ export const flight: Flight = {
     snoopyModel,
     mobileLauncher(3, {
       pad: 'b',
+      holdDowns: 'as-505',
+      firstMotion: 0.25,
       ingress: boarding[0],
       parkedBy: -2760,
       pao: 'Apollo 10 launch-day PAO commentary, crew insertion and prelaunch countdown.',
