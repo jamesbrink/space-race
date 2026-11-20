@@ -8,6 +8,7 @@ import {
   descent,
   iglaMoves,
   onSoyuzPad,
+  parachuteCover,
   orbital,
   service,
   soyuzGallery,
@@ -66,6 +67,7 @@ const spacecraft: Part[] = [
       ['Return', 'Heat shield, parachutes and soft-landing engines'],
     ],
   },
+  parachuteCover(ORBITAL.ejection.altitude, 'On Soyuz 1 the drogue came out but could not draw the main parachute from its container.'),
   {
     node: 'Cabin',
     name: 'Descent cabin',

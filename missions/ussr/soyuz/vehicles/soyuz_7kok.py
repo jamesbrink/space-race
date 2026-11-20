@@ -12,6 +12,7 @@ from srlib import MeshBuilder, bore, frame, group, mark_shells, material
 
 MM = 0.001
 BOARDING_HATCH_AZIMUTH, BOARDING_HATCH_STATION = -90, 5740  # degrees in the XY plane, mm above the spacecraft aft
+MAIN_PARACHUTE_AZIMUTH = 58  # degrees: the main parachute container's cover on the shoulder; the reserve's is at 122 (both estimated)
 DESCENT = [(500, 2320), (970, 2420), (1095, 2540), (1100, 2710), (1070, 2990), (985, 3400), (870, 3770), (695, 4080), (470, 4300), (380, 4480)]
 
 
@@ -80,6 +81,10 @@ def port(parent, skin, name, az, z, r, tilt, clear, paints, hatch=False):
     base = frame(metres(polar(r, az, z)), out)
     bpy.context.view_layer.update()
     bore([skin.name], base, (clear + 10) * MM, 0.26)
+    # A hatch is a node of its own under its module, named for it, so that its face is found by name however the
+    # module's other fittings are joined for the export; a window's fittings hang on the module itself.
+    if hatch:
+        parent = group(name, parent)
     rim = surface(
         parent,
         name + "Ring",
@@ -254,11 +259,19 @@ def descent(paints, *, heat_shield_base=2320):
     mark_shells([shield.name, lip.name, crown.name])
     for az in (0, 180):
         port(node, skin, "SA_Port" + str(az), az, 3400, 981, 12, 104, paints)
-    # Oval covers for the two independent parachute containers on the shoulder.
-    for az, wide in ((58, 240), (122, 181)):
-        plane = frame(metres(polar(844, az, 3820)), polar(0.90, az, 0.44))
-        plane = plane @ Matrix.Diagonal((1, 0.65, 1, 1))
-        lid = surface(node, "SA_Parachute" + str(az), paints["tape"], [(wide + 24, -65), (wide + 24, 5), (wide, 17), (0, 19)], plane)
+    # Oval covers for the two independent parachute containers on the shoulder. The main container's is a node of its
+    # own, ParachuteCover, which the flight shoots off: its origin is the lid's middle on its seat on the hull and its +Z
+    # (the file's +Y) points out along the lid's axis, the way it leaves. The reserve's stays with the module.
+    oval = Matrix.Diagonal((1, 0.65, 1, 1))
+    for az, wide in ((MAIN_PARACHUTE_AZIMUTH, 240), (122, 181)):
+        seat = frame(metres(polar(844, az, 3820)), polar(0.90, az, 0.44))
+        rim = [(wide + 24, -65), (wide + 24, 5), (wide, 17), (0, 19)]
+        if az == MAIN_PARACHUTE_AZIMUTH:
+            cover = group("ParachuteCover")
+            cover.matrix_local = seat
+            lid = surface(cover, "ParachuteCover_Lid", paints["tape"], rim, oval)
+        else:
+            lid = surface(node, "SA_Parachute" + str(az), paints["tape"], rim, seat @ oval)
         mark_shells([lid.name])
     # Vzor: optical hood on the forward-facing side of the return capsule.
     base = frame(metres((0, -810, 3870)), (0, -0.91, 0.42))

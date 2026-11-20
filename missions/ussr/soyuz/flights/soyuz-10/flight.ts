@@ -8,6 +8,7 @@ import {
   descent,
   iglaMoves,
   onSoyuzPad,
+  parachuteCover,
   orbital,
   service,
   soyuzGallery,
@@ -72,6 +73,7 @@ const spacecraft: Part[] = [
       'The orbital and propulsion modules were discarded for entry. The descent module followed a controlled descent and set down in Kazakhstan in the first Soviet crewed landing at night.',
     facts: [['Module', 'СА · спускаемый аппарат']],
   },
+  parachuteCover(ORBITAL.ejection.altitude),
   {
     node: 'Cabin',
     name: 'Descent cabin',

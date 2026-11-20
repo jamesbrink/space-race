@@ -78,6 +78,57 @@ for (const file of files) {
         }
       });
 
+  // What the flown scene finds by name in the model that flies (`Flight.flies`, viewer/stage/flightshow.ts): a node a drop
+  // lets go that is not in the GLB stays on the vehicle and says nothing, and a fire hung on one is never lit (the Soyuz's
+  // cover was dropped by a name no model had). What is let go is in every level of detail, since it leaves whichever level
+  // is drawn; a fire, a parachute's fastening, the shock layer's face and what a ride hides are found in the finest alone.
+  if (flight.flies)
+    test(`${flight.id}: what flies names nodes of its model`, () => {
+      const flies = flight.flies;
+      const flown = flight.models.find((m) => m.id === flies.model);
+      assert.ok(flown, `flies.model: no model called ${flies.model}`);
+      const glb = join(root, 'public', flown.url);
+      const levels = [glb, glb.replace(/\.glb$/, '.lod1.glb'), glb.replace(/\.glb$/, '.lod2.glb')].map((file) => ({
+        file,
+        nodes: allNodes(file),
+      }));
+      const missing = [];
+      const want = (node, why, among = levels) => {
+        for (const { file, nodes } of among)
+          if (!nodes.has(node)) missing.push(`${why} names ${node}, which is not in ${relative(root, file)}`);
+      };
+      const full = levels.slice(0, 1);
+      for (const drop of flies.drops) {
+        assert.ok(drop.nodes.length, `the drop on ${drop.on ?? drop.at} lets nothing go`);
+        for (const node of drop.nodes) want(node, `the drop on ${drop.on ?? `${drop.at} s`}`);
+        // (what a ride hides is under what it lets go, where the finest level has it: a pilot, gone from his seat)
+        for (const ride of drop.rides ?? []) for (const node of ride.hide ?? []) want(node, `the ride on ${ride.body}`, full);
+      }
+      if (flies.engine) want(flies.engine, 'flies.engine', full);
+      for (const fire of flies.fires ?? []) want(fire.node, `the fire of ${fire.on}`, full);
+      if (flies.hatch) {
+        want(flies.hatch.node, 'flies.hatch');
+        assert.ok(
+          flies.drops.some((d) => d.nodes.includes(flies.hatch.node)),
+          `flies.hatch: no drop lets ${flies.hatch.node} go`,
+        );
+      }
+      for (const turn of flies.eventRotations ?? []) want(turn.node, `the hinge turned on ${turn.event}`);
+      if (flies.air?.shield) want(flies.air.shield, 'flies.air.shield', full);
+      if (flies.air?.collar) want(flies.air.collar, 'flies.air.collar', full);
+      // a figure carried down is one of the flight's models, with the harness it hangs by
+      const figures = (flies.hangs ?? []).map((hang) => {
+        const figure = flight.models.find((m) => m.id === hang.model);
+        assert.ok(figure, `flies.hangs: no model called ${hang.model}`);
+        const nodes = allNodes(join(root, 'public', figure.url));
+        if (!nodes.has('Harness')) missing.push(`the figure ${hang.model} has no Harness in ${figure.url}`);
+        return nodes;
+      });
+      // a parachute is made fast to a node of the flown model, or of a figure carried down
+      for (const chute of flies.chutes ?? []) if (!figures.some((nodes) => nodes.has(chute.at))) want(chute.at, `the ${chute.on}`, full);
+      assert.deepEqual(missing, [], `${flight.id}: ${missing.length} names with no node`);
+    });
+
   if (flight.surroundings)
     test(`${flight.id}: surroundings`, () => {
       assert.ok(!flight.surroundings.startsWith('/'), 'url must be relative (Pages serves from a sub-path)');
