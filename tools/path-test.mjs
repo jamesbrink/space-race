@@ -169,6 +169,14 @@ const FLIGHTS = {
     orbit: [3000, 60_000],
     coast: 3000,
   },
+  // (eleven days: the S-IB, the S-IVB to the orbit, the rendezvous with the spent stage, the days of SPS burns, the deorbit,
+  // the modules parted, the entry, the drogues and the mains)
+  a7: {
+    id: 'usa/apollo/apollo-7',
+    instants: [5, 60, 146, 170, 300, 600, 3000, 10_700, 100_000, 600_000, 934_700, 934_800, 935_100, 935_700, 936_000, 936_230, 936_400],
+    orbit: [3000, 100_000],
+    coast: 3000,
+  },
   // (the S-IC, the S-II, the parking orbit, the S-IVB lit again for the injection and the coast toward the Moon after it)
   a8: {
     id: 'usa/apollo/apollo-8',
@@ -915,34 +923,47 @@ class Run {
         await new Promise((r) => setTimeout(r, 300));
         // biome-ignore lint/security/noGlobalEval: the one wait, shared by the page's steps
         await eval(SETTLE);
+        // (the rig in charge: one the vehicle does not have, a seat in an uncrewed target, leaves the far one)
+        return st.cameraMode;
       },
       [v, SETTLE],
     );
   }
 
   /**
-   * The flight flown live by its own sequence from the pad to `t`, exactly: the clock put forward five seconds at a time
+   * The record's flight flown live from the pad to `t` (guidance and the sequencer thrown on before the ignition; with
+   * `record` false, as the deck leaves them, by hand), exactly: the clock put forward five seconds at a time
    * (as far as a deck flies in a frame), and stopped there; then a prediction made from there
    * and drawn. A deck flies up to its clock in whole ticks of its own, so the flight at an instant is the same however the
    * clock got there, and so is everything drawn from it. (Run at three hundred times life's rate, as it was, the flight
    * stopped wherever the frames happened to leave it: "T+5" was T+5 in one run and T+8 in the next.)
    */
-  seek(t) {
+  seek(t, record = true) {
     return this.page.evaluate(
-      async ([t, SETTLE]) => {
+      async ([t, SETTLE, record]) => {
         const sr = window.sr;
         const c = sr.cockpit;
         const st = sr.stage;
         st.frozen = false;
         if (!window.__lit) {
           window.__lit = true;
+          // (the record's flight: Fly is taken by hand, guidance and the sequencer off (deck.ts `START`), so both are thrown on
+          // by the deck's own controls, G and B, before the ignition; on the pad with the lever full that is the record's
+          // run. Hands that take it over later throw them off again: `set`)
+          for (const which of record ? ['guidance', 'sequence'] : []) {
+            if (c.steering[which]) continue;
+            c.eventAt = -1e9;
+            c.command(which);
+          }
           c.eventAt = -1e9;
           c.command('next'); // ignition
         }
         sr.clock.pause();
         // (the deck flies as the clock is put forward, whether or not the scene is drawn: it is drawn every twentieth step
-        // and at the last, so a day in orbit, eighteen thousand steps, is not eighteen thousand frames)
-        for (let i = 0; i < 20000 && sr.clock.t < t - 1e-9 && !c.state?.landing; i++) {
+        // and at the last, so a day in orbit, eighteen thousand steps, is not eighteen thousand frames; as many steps as the
+        // instant asks, so a fortnight in orbit reaches its last day)
+        const steps = Math.ceil((t - sr.clock.t) / 5) + 20;
+        for (let i = 0; i < steps && sr.clock.t < t - 1e-9 && !c.state?.landing; i++) {
           const was = sr.clock.t;
           sr.clock.seek(Math.min(t, was + 5));
           if (i % 20 === 0) {
@@ -955,10 +976,33 @@ class Run {
         // biome-ignore lint/security/noGlobalEval: the one wait, shared by the page's steps
         await eval(SETTLE);
         const p = sr.path;
-        return { shown: Boolean(p.shown), t: sr.clock.t, live: Boolean(p.live) };
+        const s = c.state;
+        return { shown: Boolean(p.shown), t: sr.clock.t, live: Boolean(p.live), down: Boolean(s?.landing || s?.landed || s?.broke) };
       },
-      [t, SETTLE],
+      [t, SETTLE, record],
     );
+  }
+
+  /**
+   * Wait (at most twenty seconds) until two frames of the frozen stage a few frames apart are the same picture: what
+   * arrives on its own clock after the page has opened (the day's weather map, brought in over a second and a half, the
+   * far cloud baked again with each step: weathermap.ts) is the scene still coming, not a frame drawn two ways. A scene
+   * that never comes to rest is left to the measure, which fails it. Returns whether it came to rest.
+   */
+  async still() {
+    const page = this.page;
+    const style = await page.addStyleTag({ content: '#ui, #gallery, #title { visibility: hidden !important }' });
+    let rest = false;
+    let was = null;
+    for (let i = 0; i < 40 && !rest; i++) {
+      for (let k = 0; k < 6; k++) await this.turn();
+      const now = await page.screenshot({ type: 'png' });
+      rest = was !== null && now.equals(was);
+      was = now;
+      if (!rest) await new Promise((r) => setTimeout(r, 500));
+    }
+    await style.evaluate((el) => el.remove());
+    return rest;
   }
 
   /** The line's own pixels: the frame with it and without it, the stage frozen and the camera still, the page hidden. */
@@ -1399,16 +1443,18 @@ class Run {
    * a time (a sixtieth of a second of it, at most five seconds), exactly to `t`, the stage drawn each time. Never by the
    * wall's clock: a hand held for a second is held for a second of the flight's, however long the frames take.
    */
-  runTo(t, rate) {
+  runTo(t, rate, atBreak = false) {
     return this.page.evaluate(
-      async ([t, rate]) => {
+      async ([t, rate, atBreak]) => {
         const sr = window.sr;
         const c = sr.cockpit;
         sr.stage.frozen = false;
         sr.clock.pause();
         const step = Math.min(5, rate / 60);
         // (down; or in pieces and flown no further: a launch vehicle that broke up, whose run ends there)
-        const ended = () => c.state?.landing || c.state?.landed || (c.state?.broke && c.run?.duration <= c.state.broke.t + 1e-6);
+        // (or, `atBreak`, in pieces at all: a stack broken at a joint comes down in two bodies, which no path of it whole foretells)
+        const ended = () =>
+          c.state?.landing || c.state?.landed || (c.state?.broke && (atBreak || c.run?.duration <= c.state.broke.t + 1e-6));
         for (let i = 0; i < 400000 && sr.clock.t < t - 1e-9 && !ended(); i++) {
           const was = sr.clock.t;
           sr.clock.seek(Math.min(t, was + step));
@@ -1418,7 +1464,7 @@ class Run {
         }
         return sr.clock.t;
       },
-      [t, rate],
+      [t, rate, atBreak],
     );
   }
 
@@ -1436,6 +1482,30 @@ class Run {
       c.eventAt = -1e9;
       c.command(what);
     }, what);
+  }
+
+  /** Whether a stage of the launch vehicle burns (its thrust, not what the last stage lets out once stopped). */
+  lit() {
+    return this.page.evaluate(() => {
+      const c = window.sr.cockpit;
+      return c.vehicle && c.state && !c.state.broke ? c.vehicle.thrust(c.state) > 0 : false;
+    });
+  }
+
+  /**
+   * A switch of the deck's, guidance or the sequencer, thrown to `on` by its own control (G, B) where it is not so already:
+   * the hands taking the flight over from the record's (`seek` flies the record's with both on).
+   */
+  set(which, on) {
+    return this.page.evaluate(
+      ([which, on]) => {
+        const c = window.sr.cockpit;
+        if (c.steering[which] === on) return;
+        c.eventAt = -1e9;
+        c.command(which);
+      },
+      [which, on],
+    );
   }
 
   /** The prediction on show once it is of the instant on show, and where it says the flight ends, in the Earth's frame. */
@@ -1474,7 +1544,8 @@ class Run {
   here() {
     return this.page.evaluate(() => {
       const s = window.sr.path.sample;
-      const r = s.centre ?? s.r;
+      // (the point the deck's simulator flies, which the path is predicted from: path.ts `PathSample.flies`)
+      const r = s.flies ?? s.centre ?? s.r;
       const w = 7.292115e-5 * s.t;
       return {
         t: s.t,
@@ -1622,6 +1693,8 @@ class Run {
         if (!m.key) this.fail(at, 'the key beside the navball does not name the record’s line');
         if (view === 'map' && !m.limb) this.fail(at, 'the Earth has no outline on the map');
         if (view === 'map' && !m.marker) this.fail(at, 'the vehicle has no marker on the map');
+        // (the scene come to rest first: a still scene must then draw the same frame twice)
+        await this.still();
         const px = await this.pixels(shots ? at.replace(/[ /+]/g, '-') : null, null, 'ref');
         if (px.area < 30) this.fail(at, `the record's line has ${px.area} pixels of its own`);
         if (px.unsteady) this.fail(at, `${px.unsteady} pixels differ between two frames of a still scene`);
@@ -1642,7 +1715,8 @@ class Run {
     // flown on by hand: a prediction on show, and made again as the flight goes; the record's line stays where it stood
     if (!stood) return;
     for (const t of [8, 20]) {
-      const s = await this.seek(t);
+      // (by hand: lit with guidance and the sequencer as the deck leaves them, off)
+      const s = await this.seek(t, false);
       await this.view('chase');
       await this.turn();
       const at = `${where} T+${t} by hand`;
@@ -1795,7 +1869,9 @@ class Run {
   async none(where, broke) {
     const shown = await this.page.evaluate(async () => {
       for (let i = 0; i < 30; i++) await new Promise((r) => requestAnimationFrame(r));
-      return Boolean(window.sr.path.prediction) || window.sr.path.mesh.visible;
+      // (the line ahead's own ribbon: its mesh carries the line flown and the record's with nothing predicted, path.ts `place`)
+      const p = window.sr.path;
+      return Boolean(p.prediction) || (p.mesh.visible && p.ahead.n > 0);
     });
     this.log(`  ${where}: in pieces since T+${broke.t.toFixed(1)} (${broke.text.split('.')[0]}): no path`);
     if (shown) this.fail(where, `the path still shows a future for a vehicle in pieces (T+${broke.t.toFixed(1)})`);
@@ -1870,7 +1946,9 @@ class Run {
       .map((x) => `stage ${x.i} lit ${x.from.toFixed(1)} to ${x.to !== null ? x.to.toFixed(1) : 'dry'}`);
     if (since.length)
       this.fail(where, `burned after the prediction at T+${from.t.toFixed(1)}: ${since.join('; ')} (before: ${JSON.stringify(before)})`);
-    const broke = after?.broke?.ended ? after.broke : null;
+    // (in pieces: held to where the path had it as it broke, whether its run ends there or, a stack broken at a joint,
+    // goes on in two bodies, which the path of it whole does not foretell: the hands' end stops there, `runTo` atBreak)
+    const broke = after?.broke && (after.broke.ended || Math.abs(after.broke.t - got.t) <= 5) ? after.broke : null;
     const said = broke ? await this.predictedAt(got.t) : p.ecef;
     if (!said) return this.fail(where, `it broke up at T+${got.t.toFixed(1)}, outside the prediction made at T+${from.t.toFixed(1)}`);
     const miss = apart(said, got.ecef);
@@ -1892,7 +1970,7 @@ class Run {
       );
       this.log(`    (the vehicle when the hands let go: ${JSON.stringify(before)}; at the end: ${JSON.stringify(after)})`);
     }
-    if (broke) await this.none(where, broke);
+    if (broke?.ended) await this.none(where, broke);
   }
 }
 
@@ -1928,6 +2006,8 @@ for (const [W, H] of handsOnly || at ? [] : quick ? [SIZES[0]] : SIZES) {
             const where = `${key} ${W} orbit T+${t} ${v}`;
             r.cases++;
             const s = await r.seek(t);
+            // (an orbit view is of the record's flight in orbit: one that has come down short of it tests no orbit)
+            if (s.t < t - 1e-6) r.fail(where, `the record's flight is at T+${s.t.toFixed(1)}, not T+${t}${s.down ? ', down' : ''}`);
             await r.view(v);
             await r.turn();
             if (!s.shown) {
@@ -1992,7 +2072,14 @@ for (const [W, H] of handsOnly ? [] : SIZES) {
               const where = `${key} ${W} T+${t} ${v}${look === 'cel' ? ' cel' : ''}`;
               r.cases++;
               const s = await r.seek(t);
-              await r.view(v);
+              // (the record's flight reaches each of its instants, but one past where it comes down)
+              if (s.t < t - 1e-6 && !s.down) r.fail(where, `the record's flight stopped at T+${s.t.toFixed(1)}, short of T+${t}`);
+              else if (s.t < t - 1e-6) r.log(`  ${where}: down at T+${s.t.toFixed(1)}`);
+              const rig = await r.view(v);
+              if (v === 'onboard' && rig !== 'onboard') {
+                r.log(`  ${where}: no seat`);
+                continue;
+              }
               await r.turn();
               if (!s.shown) {
                 r.log(`  ${where}: no path`);
@@ -2028,18 +2115,18 @@ if (!quick && !at) {
             const t1 = 20 + rand() * 100;
             await r.open(1280, 800, f);
             await r.seek(t1);
-            await r.deck('guidance');
+            await r.set('guidance', false);
             await r.hold('KeyW', 1 + rand() * 2);
             await r.views(`${name} pitched at T+${t1.toFixed(0)}`);
             await r.runTo(t1 + 5 + rand() * 10, 2);
-            await r.deck('sequence');
+            await r.set('sequence', false);
             await r.deck('next');
             await r.runTo((await r.now()) + 2, 1);
             await r.views(`${name} cut`);
             // (the live vehicle is a rigid body that tumbles as it falls; the path a point mass on the stack's drag, nose first)
             await r.outcome(
               `${name} cut, then down`,
-              () => r.runTo(4000, 300),
+              () => r.runTo(4000, 300, true),
               (way) => 2000 + 0.02 * way,
             );
           },
@@ -2055,23 +2142,18 @@ if (!quick && !at) {
             const t1 = 30 + rand() * (n === 0 ? 80 : 400);
             await r.open(1280, 800, f);
             await r.seek(t1);
-            await r.deck('guidance');
+            await r.set('guidance', false);
             await r.hold('KeyW', 1 + rand());
             await r.views(`${name} pitched at T+${t1.toFixed(0)}`);
-            await r.deck('sequence');
+            await r.set('sequence', false);
             // (Space walks the steps: the next is a stage's cut or its drop; each is taken until nothing is lit)
             // (every step there is, if need be: a step may light a stage as well as cut one, Block E's ignition among them, and
             // stopping after a fixed count could leave one burning, which the path, the flight with nothing more done, is not)
-            const lit = () =>
-              r.page.evaluate(() => {
-                const c = window.sr.cockpit;
-                return c.vehicle && c.state && !c.state.broke ? c.vehicle.thrust(c.state) > 0 : false;
-              });
-            for (let k = 0; k < 16 && (await lit()); k++) {
+            for (let k = 0; k < 16 && (await r.lit()); k++) {
               await r.deck('next');
               await r.runTo((await r.now()) + 1 + rand() * 4, 1);
             }
-            if (await lit()) r.fail(name, 'an engine is still lit after every step: the hands cannot let go');
+            if (await r.lit()) r.fail(name, 'an engine is still lit after every step: the hands cannot let go');
             await r.views(`${name} cut`);
             // (cut fast enough to stay up, it is held to where the path has it once round, as an orbital burn's is)
             if (!(await r.stood())?.broke?.ended && (await r.predicted())?.outcome === 'orbit')
@@ -2099,17 +2181,27 @@ if (!quick && !at) {
           const t1 = 900 + rand() * 2500;
           await r.open(1280, 800, f);
           await r.seek(t1);
-          await r.deck('guidance');
+          await r.set('guidance', false);
           if (turnFor) await r.hold('KeyD', turnFor);
           await r.deck('next');
           await r.runTo((await r.now()) + 60, 2);
+          // (a stage lit again in orbit, a stack's, burns until it is cut or dry, where a spacecraft's burn ends by itself: the
+          // hands cut it after its minute, Space walking the steps until nothing is lit, so what follows is the flight with
+          // nothing more done that the path is)
+          for (let k = 0; k < 4 && (await r.lit()); k++) {
+            await r.deck('next');
+            await r.runTo((await r.now()) + 2, 1);
+          }
+          if (await r.lit()) r.fail(name, 'an engine is still lit after every step: the hands cannot let go');
           await r.views(`${name} at T+${t1.toFixed(0)}`);
           const p = await r.predicted();
           if (p?.outcome === 'impact')
             await r.outcome(
               `${name}, then down`,
               async () => {
-                await r.page.evaluate(() => window.sr.clock.seek(window.sr.path.prediction.impact.t));
+                // (run there five seconds at a time, as a deck flies: a stack is flown in ticks, no further in a frame than
+                // `MOST`, so a clock put forward at once to the end left the flight where it was)
+                await r.runTo(await r.page.evaluate(() => window.sr.path.prediction.impact.t), 300);
                 await r.runTo((await r.now()) + 0.1, 1);
               },
               // (the deck's run is flyOrbit's, the path the propagator's, on the same forces: tests/staged.test.mjs holds the two
