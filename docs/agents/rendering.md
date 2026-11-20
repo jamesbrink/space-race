@@ -775,7 +775,10 @@ JavaScript heap and 125 MB of decoded pictures.
   340 the lighter tier holds on the page's side is a little over half of that: room for what the count does not see
   (a driver's own copies, the compositor's), and for the next flight. A desktop browser will not reproduce the
   kill: the account is the evidence. **Anything new that allocates is run through it**, and a figure is raised only
-  with a reason written here.
+  with a reason written here. The JavaScript heap is held too where the browser says what it is (Chromium): 450 MB in
+  flight and aboard (`HEAP` in tools/mem-test.mjs). A flight of days set it (issue #173): Gemini VII's fourteen-day
+  record run held 530 MB in flight when it kept every step of its coast, and holds 369 (388 aboard) now that a quiet
+  coast keeps only the samples its motion changed between (simulator.md, "The core"; `--flight usa/gemini/gt-7`).
 - **Two tiers, decided once as the page opens** (`viewer/tier.ts`; `sr.stage.tier`). `full` is every size as it was
   made, and a desktop's picture is not touched by any of this (main against the branch, frozen, 1440x900: the pixels
   that differ are the clouds' and the sea's, which go by the time since the page opened, and as many differ between

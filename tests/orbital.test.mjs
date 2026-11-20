@@ -23,6 +23,7 @@ import {
   publishedOf,
   shipOf,
 } from '../src/sim/orbital.ts';
+import { between } from '../src/sim/run.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
@@ -890,7 +891,8 @@ test('a check of the orbit at an instant reads the coast there as mean elements,
   assert.ok(Math.abs(r['begun.apogee'] - (begun.a + span - ball)) < 50, `apogee ${r['begun.apogee']}`);
   assert.ok(Math.abs(r['begun.period'] - o.orbit.period.value) < 0.05, `period ${r['begun.period']}`);
   // between two of the coast's steps: read off a state stepped there from the step's start, as the samples either side are
-  const [before, after] = [read.samples.findLast((s) => s.t <= start + 1234.5), read.samples.find((s) => s.t > start + 1234.5)];
+  // (five seconds either side: where a coast that kept every step has its samples; sim/run.ts `between` reads the coast there)
+  const [before, after] = [-5, 5].map((by) => ({ t: start + 1234.5 + by, ...between(read.samples, start + 1234.5 + by) }));
   const perigeeOf = (s) => {
     const m = meanOf({ r: frameOf(f).toDate(s.r), v: frameOf(f).toDate(s.v) });
     return m.a * (1 - m.e);
@@ -901,7 +903,9 @@ test('a check of the orbit at an instant reads the coast there as mean elements,
   // the run itself is the plain one's to the last bit, and the plain one has no readings
   const { 'begun.perigee': _a, 'begun.apogee': _b, 'begun.period': _c, 'later.perigee': _d, ...rest } = r;
   assert.deepEqual(rest, plain.results);
-  assert.deepEqual(read.samples, plain.samples);
+  // (each run's quiet stretches are flown again by its own coast, sim/rails.ts: the samples kept are the same, and so is which begin one)
+  const kept = (run) => run.samples.map(({ rails, ...s }) => ({ ...s, stretch: Boolean(rails) }));
+  assert.deepEqual(kept(read), kept(plain));
   assert.equal(
     Object.keys(plain.results).some((k) => k.includes('.')),
     false,
@@ -1001,8 +1005,9 @@ test('a manoeuvre in the coast pushes its impulse along the line it lit on, and 
   assert.deepEqual(movesOf(f.plan), [], 'none on the flight as it is');
   const plain = flyOrbit(f.plan, ...where);
   const moved = flyOrbit(plan, ...where);
+  // (both at the same instant, ten minutes on: the plane turns under J2 too, by more in a minute than a hundredth of this)
   const normal = (run) => {
-    const s = run.samples.find((x) => x.t >= at + 600);
+    const s = between(run.samples, at + 600);
     return unit(cross(s.r, s.v));
   };
   const turned = Math.acos(Math.min(1, dot(normal(plain), normal(moved))));

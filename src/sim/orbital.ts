@@ -31,7 +31,7 @@ import {
 import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
 import { ratioOf } from '../world/thermosphere.ts';
 import { airAt, airDrag } from './air.ts';
-import { thirdOf } from './core/gravity.ts';
+import { termsOf, thirdOf } from './core/gravity.ts';
 import { atmosphere, meanFreePath } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
 import { along } from './fly.ts';
@@ -51,6 +51,7 @@ import {
   type Pursuit,
 } from './plan.ts';
 import { type Ahead, coelliptic, flownFrom, reach, stationPush, type Target } from './pursuit.ts';
+import { passed, type Railed, stretches } from './rails.ts';
 import type { CoastRotation } from './rigid.ts';
 
 /**
@@ -539,6 +540,8 @@ export type OrbitPhase = 'orbit' | 'braking' | 'descent' | 'entry' | 'down';
 
 /** The coast at one instant. */
 export interface OrbitSample {
+  /** From here to the next sample is a quiet stretch whose samples were let go (`flyOrbit`): what flies it again (sim/rails.ts). */
+  rails?: Railed<OrbitSample>;
   rotation?: CoastRotation;
   /** Seconds from liftoff. */
   t: number;
@@ -626,6 +629,49 @@ const AIMED_BEFORE = 3000;
 /** Where the air is taken to begin for the choice of step, and where it is thick: m above the sea. */
 const THIN = 150_000;
 const THICK = 100_000;
+/** The coast's long step, s: above `THIN` with nothing burning. */
+const LONG = 10;
+/** How long either side of an instant something happens at a coast keeps every sample, s: two long steps, so whatever is read there is read between the samples it always was. */
+const ATTEND = 2 * LONG;
+/** How long the drawn attitude takes to turn to a burn's line, or to the orbital orientation a hand takes it to, s (staged.ts `recordSamples`). */
+export const TURNING = 60;
+
+/**
+ * When the ship is turned to its braking burn's line: where the plan turns it to its aim, where that comes before the
+ * burn; else `TURNING` before it.
+ */
+export function orientedAt(plan: FlightPlan, ship: Pick<Ship, 'aimId' | 'on'>): number {
+  const turned = plan.events.find((e) => e.automatic && e.do.some((a) => 'attitude' in a && a.attitude === ship.aimId));
+  const turnedAt = turned?.when.find((w) => 'time' in w);
+  return turnedAt && 'time' in turnedAt && turnedAt.time < ship.on ? turnedAt.time : ship.on - TURNING;
+}
+
+/**
+ * The stretches of a coast in which every sample is kept however quiet it is, each from and to, s: `ATTEND` either side
+ * of every instant the plan's clock sets something off at or the record gives for an event or a mark, and of each turn
+ * the drawn attitude makes (a manual period's beginning and end, a manoeuvre's and the braking burn's turn to their
+ * lines: staged.ts `recordSamples`). What is read off a run at any of these is read between the same samples as if
+ * every step had been kept.
+ */
+function attendedOf(plan: FlightPlan, ship: Ship): [number, number][] {
+  const out: [number, number][] = [];
+  const round = (from: number, to = from): void => {
+    if (Number.isFinite(from) && Number.isFinite(to) && from < Number.MAX_SAFE_INTEGER) out.push([from - ATTEND, to + ATTEND]);
+  };
+  for (const e of plan.events) {
+    round(clockAt(plan, e));
+    if (e.at) round(e.at.value);
+  }
+  for (const m of plan.record?.marks ?? []) round(m.at.value);
+  for (const p of plan.record?.manual?.periods ?? []) {
+    round(p.from.value, p.from.value + TURNING);
+    round(p.to.value);
+  }
+  const turn = plan.record?.manoeuvreTurn?.value ?? 0;
+  for (const m of ship.moves) round(m.on - turn, m.off);
+  round(orientedAt(plan, ship), ship.off);
+  return out;
+}
 /** The entry interface the results are quoted at, m above the sea: a convention, not a property of the air. */
 const INTERFACE = 100_000;
 
@@ -743,6 +789,12 @@ export function publishedOf(plan: FlightPlan, site: Geodetic, kind?: PeriodKind)
  * the air, the decay the ball's free-molecule figure on its disc.
  */
 export const ORBIT_DRAG = { coast: true, decay: true };
+
+/**
+ * Whether a quiet coast keeps its samples by how fast its motion changes (`flyOrbit`), switched. Off, every sample that
+ * falls due is kept, as until November 2026: what the tests hold the kept run against.
+ */
+export const KEPT = { quiet: true };
 
 /**
  * The upper air by the day's Sun (world/thermosphere.ts: Jacchia 1971 on the day's 10.7 cm flux and Kp), switched. Off,
@@ -1221,7 +1273,11 @@ export interface CoastContacts {
  * the height the pilot left at. `site` is where it was launched from and `frame` the flight's (world/earthframe.ts:
  * made from the instant of liftoff), which between them fix the orbit's plane, the Earth's turning under it and the Sun.
  * `seaLevel` is the sea's height above the ellipsoid, taken as the same everywhere. `every`: how
- * often a sample is kept, s. With `hands` (the flight deck's descent by hand), the coast hands
+ * often a sample is kept, s, while anything happens. While nothing does (the long step, before the braking burn, nothing
+ * near: every step is flown as ever) a run kept at least every long step keeps a sample only where the velocity has
+ * changed by a fifth of itself since the last (sim/rails.ts `KEPT_TURN`), at each mark, and all of them round every
+ * instant something happens at (`attendedOf`); the sample such a stretch begins at carries what flies it again
+ * (`OrbitSample.rails`), so a run of days is held as a few thousand samples and read as if it held them all. With `hands` (the flight deck's descent by hand), the coast hands
  * over to flyDown at the first event of the descent a hand gave, if that comes before the height.
  *
  * Forces: gravity with J2 (world/orbit.ts); the air of atmosphere.ts turning with the Earth, on
@@ -1377,6 +1433,15 @@ export function flyOrbit(
       r: s.r,
       v: s.v,
     };
+  };
+
+  // What flies a quiet stretch again between the two samples kept of it (sim/rails.ts `stretches`): this coast's own
+  // gravity and its own push, the ship as it was from the stretch's start (nothing changes on it within one).
+  const again = stretches(termsOf(plan.gravity, frame), (as) => (at, r, v) => pushAs({ r, v }, at, as));
+  const railed: Railed<OrbitSample> = {
+    of: (s) => s.r,
+    state: again,
+    sample: (a, b, at) => ({ ...sample(again(a, b, at), at), phase: a.phase, rails: railed }),
   };
 
   /** The nodal period of the orbit a state is on (in the frame of date, whose +Z is the pole), by its mean elements. */
@@ -1559,6 +1624,20 @@ export function flyOrbit(
   const samples: OrbitSample[] = [sample()];
   let kept = t;
   let before = samples[0]!;
+  // Which samples are kept (the rule is at the head of this function). `kept` is when one last fell due, as ever, so
+  // the instants that fall due are the same ones whatever is let go; `quiet`: every step since the last sample kept
+  // was a quiet one; `letGo`: how many that fell due since then were let go.
+  const thin = KEPT.quiet && every <= LONG;
+  const attended = thin ? attendedOf(plan, ship) : [];
+  const busy = (at: number): boolean => attended.some(([from, to]) => at >= from && at <= to);
+  let quiet = true;
+  let letGo = 0;
+  const keep = (s: OrbitSample): void => {
+    if (letGo > 0) samples[samples.length - 1]!.rails = railed;
+    samples.push(s);
+    quiet = true;
+    letGo = 0;
+  };
   /** Where it was over as it came through the interface: the landing's miss is measured along the line from there. */
   let gate: Vec3 | null = null;
   // (six hours past the last thing planned, or past now with nothing planned: a day in orbit is flown round to its burn; a
@@ -1575,10 +1654,15 @@ export function flyOrbit(
   while (t < LIMIT) {
     const mark = marks.find((m) => m > t + 1e-9);
     const burning = (t >= on && t < off) || moves.some((m) => t >= m.on && t < m.off);
-    const most = before.altitude > THIN ? (burning ? 1 : 10) : before.altitude > THICK ? 1 : 0.05;
-    const h = Math.min(most, mark === undefined ? most : mark - t, contacts?.limit(t) ?? Infinity);
+    const most = before.altitude > THIN ? (burning ? 1 : LONG) : before.altitude > THICK ? 1 : 0.05;
+    const near = contacts?.limit(t) ?? Infinity;
+    const h = Math.min(most, mark === undefined ? most : mark - t, near);
     const last = state;
     const as = t;
+    // (a quiet step: the long one, nothing near, before the braking burn and the modules' parting)
+    const calm = most === LONG && near >= most && as < on && as < parted;
+    // (a quiet stretch ends where the quiet does: at a sample)
+    if (!calm && letGo > 0) keep(before);
     // (what a braking held on the target has given: the thrust commanded at each step's start, over the step)
     holding.forEach((is, i) => {
       if (!is || as < moves[i]!.on || as >= moves[i]!.off) return;
@@ -1598,7 +1682,7 @@ export function flyOrbit(
     if (touched) {
       // Keep both sides of the velocity jump. A cubic across it draws the cabin through the
       // other hull even when the step ended clear. The detached body keeps the same break.
-      if (samples.at(-1)!.t < as) samples.push(before);
+      if (samples.at(-1)!.t < as) keep(before);
       impulses.sort((a, b) => a.at - b.at);
       let dr: Vec3 = [0, 0, 0];
       let dv: Vec3 = [0, 0, 0];
@@ -1725,7 +1809,9 @@ export function flyOrbit(
         rest.results.retroLate = late;
         const made = [...burns, ...(rest.burns ?? [])];
         for (const b of burns) rest.results[`${b.lit}.velocity`] = b.velocity;
-        if (samples[samples.length - 1]!.t < t) samples.push(sample());
+        if (samples[samples.length - 1]!.t < t) keep(sample());
+        // (the rest begins at this sample again: if a quiet stretch begins there, it begins at this one)
+        if (rest.samples[0]!.rails) samples[samples.length - 1]!.rails = rest.samples[0]!.rails;
         return {
           samples: [...samples, ...rest.samples.slice(1)],
           results: rest.results,
@@ -1765,7 +1851,7 @@ export function flyOrbit(
     // (down through the ejection height, burn or no burn: a coast begun short of an orbit comes down without one)
     if (t === handover) {
       phase = 'down';
-      samples.push({ ...now, phase });
+      keep({ ...now, phase });
       break;
     }
     if (now.altitude <= floor && now.altitude < before.altitude) {
@@ -1788,15 +1874,20 @@ export function flyOrbit(
         results.alongTrack = dot(miss, track);
         results.crossTrack = dot(miss, cross(track, axes.up));
       }
-      samples.push(end);
+      keep(end);
       break;
     }
-    if (touched || t - kept >= every - 1e-9 || marks.includes(t)) {
-      samples.push(now);
+    quiet &&= calm;
+    const marked = marks.includes(t);
+    if (touched || t - kept >= every - 1e-9 || marked) {
       kept = t;
+      if (thin && quiet && !touched && !marked && !busy(t) && !passed(samples[samples.length - 1]!.v, now.v)) letGo++;
+      else keep(now);
     }
     before = now;
   }
+  // (a coast that ends up there, in a stretch let go: it ends at its last step, a sample)
+  if (letGo > 0) keep(before);
   for (const b of burns) results[`${b.lit}.velocity`] = b.velocity;
   return { samples, results, ...(burns.length ? { burns } : {}) };
 }

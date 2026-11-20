@@ -1,7 +1,7 @@
 import '../ui/time.css';
-import { type Doing, type Sample, sampleAt } from '../sim/fly.ts';
+import type { Doing, Sample } from '../sim/fly.ts';
 import type { SitedFlight } from '../types.ts';
-import { recordOf, type Run } from '../sim/run.ts';
+import { recordOf, type Run, shownAt } from '../sim/run.ts';
 import { type Clock, missionTime } from '../world/clock.ts';
 
 /**
@@ -228,7 +228,7 @@ export class Flown {
     this.trace();
     const t = this.clock.t;
     const inFlight = t >= 0 && t <= this.duration;
-    const s = sampleAt(this.samples, Math.max(0, Math.min(this.duration, t)));
+    const s = shownAt(this.samples, Math.max(0, Math.min(this.duration, t)));
     const at = String(((s.t / this.duration) * W).toFixed(1));
     this.cursors.forEach((c) => {
       c.setAttribute('x1', at);

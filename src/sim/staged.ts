@@ -74,13 +74,17 @@ import {
   liftOf,
   movesOf,
   type OrbitFlown,
+  type OrbitSample,
+  orientedAt,
   publishedOf,
   shipOf,
+  TURNING,
   targetFrom,
 } from './orbital.ts';
 import type { Target } from './pursuit.ts';
 import { type Action, type BodyDef, clockAt, type EngineDef, type EventDef, eventOf, type FlightPlan, type TankDef } from './plan.ts';
-import { aboutAxis, fromAxes, multiply, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
+import type { Railed } from './rails.ts';
+import { aboutAxis, attitudeBetween, fromAxes, multiply, normalize as normalizeQ, type Quat, rotateFor, turn as turnQ } from './rigid.ts';
 import { nozzleThrust } from './thrust.ts';
 import type { LiveSample } from './vehicle.ts';
 
@@ -1353,11 +1357,9 @@ export function recordSamples(
   const lights = coastEvents(plan).on?.do.find((a) => 'ignite' in a);
   const braking = lights && 'ignite' in lights ? lights.ignite : null;
   // (turned to the burn's line from where the plan turns it to its aim, where that comes before the burn; else a minute before)
-  const turned = plan.events.find((e) => e.automatic && e.do.some((a) => 'attitude' in a && a.attitude === ship.aimId));
-  const turnedAt = turned?.when.find((w) => 'time' in w);
-  const oriented = turnedAt && 'time' in turnedAt && turnedAt.time < ship.on ? turnedAt.time : ship.on - 60;
+  const oriented = orientedAt(plan, ship);
   // (over a minute, or as long as there is before the burn: a Mercury capsule's retrosequence is thirty seconds)
-  const turning = Math.min(60, ship.on - oriented);
+  const turning = Math.min(TURNING, ship.on - oriented);
   const burnAt = whole.coast.samples.find((x) => x.t >= ship.on) ?? whole.coast.samples[0]!;
   // (a coast with no burn is never turned to one: it keeps the attitude it was let go in)
   const aimed = ship.aim
@@ -1410,6 +1412,7 @@ export function recordSamples(
         entering: s.phase === 'entry',
         drawn: s.r,
         rotation: s.rotation,
+        rails: s.rails,
       })),
     // (come through the entry, as the descent's bodies have)
     ...descent.map((s) => ({
@@ -1423,6 +1426,7 @@ export function recordSamples(
       entering: true,
       drawn: s.drawn,
       rotation: undefined,
+      rails: undefined,
     })),
   ];
   // (heat shield first along the motion through the air; a lifting body banked is drawn at its trim, its long axis tipped
@@ -1462,6 +1466,87 @@ export function recordSamples(
       ),
     };
   });
+  /** The spacecraft alone at an instant of the coast or the descent, lying as `q` has it. */
+  const alone = (s: (typeof ending)[number], q: Quat, passive?: { wind: Vec3; alignment: number }): LiveSample => {
+    const wind = sub(s.v, cross(spin, s.r));
+    const axis = turnQ(q, [1, 0, 0]);
+    const here = frame.place(s.r, s.t);
+    const at = add(s.drawn, offset);
+    return {
+      ...blank,
+      t: s.t,
+      ...ALONE,
+      entered: s.entering,
+      out: s.down ? outAt(s.t) : null,
+      altitude: here.height,
+      range: angleBetween(frame.toFixed(s.r, s.t), frame.toFixed(pad, 0)) * MEAN_RADIUS,
+      speed: length(s.v),
+      groundSpeed: length(wind),
+      climb: 0,
+      groundClimb: 0,
+      g: s.g,
+      q: s.q,
+      mach: s.mach,
+      mass: s.t >= parts ? ship.entry.mass : ship.mass,
+      latitude: here.latitude,
+      longitude: here.longitude,
+      r: sub(at, scale(axis, centre)),
+      v: s.v,
+      axis,
+      attitude: q,
+      ...(passive && { passive }),
+      ...(s.rotation && { rotation: s.rotation, rates: s.rotation.rates }),
+      alpha: angleBetween(axis, wind) / DEG,
+      burning: [
+        ...(s.t >= ship.on && s.t < Math.min(ship.off, parts) && braking ? [{ engine: braking, thrust: 0 }] : []),
+        ...ship.moves.filter((m) => s.t >= m.on && s.t < m.off).map((m) => ({ engine: m.engine, thrust: m.accel * ship.mass })),
+      ],
+      centre: at,
+      ...(s.rails && { rails: railsOf(s.rails) }),
+    };
+  };
+  // A quiet stretch of the coast kept as its two ends (orbital.ts `flyOrbit`), for whatever reads this run between them
+  // (sim/rails.ts `Railed`): the coast's own stretch flown again, at the centre of mass these samples draw it by, the
+  // attitude turned evenly between the two ends' (nothing turns it faster in a stretch the coast let go: orbital.ts
+  // `attendedOf`) and the little the air does read straight between them.
+  const railing = new Map<Railed<OrbitSample>, Railed<LiveSample>>();
+  const railsOf = (coast: Railed<OrbitSample>): Railed<LiveSample> => {
+    const had = railing.get(coast);
+    if (had) return had;
+    const flown = (a: LiveSample, b: LiveSample, t: number) =>
+      coast.state({ t: a.t, r: sub(a.centre, offset), v: a.v }, { t: b.t, r: sub(b.centre, offset), v: b.v }, t);
+    const made: Railed<LiveSample> = {
+      of: (x) => x.centre,
+      state: (a, b, t) => {
+        const at = coast.state({ t: a.t, r: sub(a.r, offset), v: a.v }, { t: b.t, r: sub(b.r, offset), v: b.v }, t);
+        return { r: add(at.r, offset), v: at.v };
+      },
+      sample: (a, b, t) => {
+        const k = (t - a.t) / (b.t - a.t);
+        const at = flown(a, b, t);
+        const mix = (x: number, y: number): number => x + (y - x) * k;
+        const turned = a.rotation && { delta: rotateFor(a.rotation.delta, a.rotation.rates, t - a.t), rates: a.rotation.rates };
+        return alone(
+          {
+            t,
+            r: at.r,
+            v: at.v,
+            g: mix(a.g, b.g),
+            q: mix(a.q, b.q),
+            mach: mix(a.mach, b.mach),
+            down: false,
+            entering: a.entered,
+            drawn: at.r,
+            rotation: turned,
+            rails: coast,
+          },
+          attitudeBetween(a, b, k),
+        );
+      },
+    };
+    railing.set(coast, made);
+    return made;
+  };
   for (const s of ending) {
     const wind = sub(s.v, cross(spin, s.r));
     let q: Quat;
@@ -1488,47 +1573,14 @@ export function recordSamples(
       lastPassive = s.t;
       q = passiveSpherePose(baseAtRelease, supportedWind, alignment);
     } else if (move) q = left = toward(rest, move.q, Math.min(1, (s.t - move.move.on + manoeuvreTurn) / manoeuvreTurn));
-    else if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / 60));
+    else if (by) q = left = toward(rest, lie(scale(unit(s.v), -1)), Math.min(1, (s.t - by.from.value) / TURNING));
     else if (s.t < oriented) q = rest;
     else if (s.t <= ship.off) q = toward(rest, aimed, Math.min(1, (s.t - oriented) / turning));
     else if (s.t < parts) q = aimed;
     else q = toward(aimed, length(wind) > 1 ? lie(trimmed(s, wind)) : aimed, Math.min(1, (s.t - parts) / 30));
     if (!passive) baseAtRelease = q;
     if (s.rotation) q = multiply(q, s.rotation.delta);
-    const axis = turnQ(q, [1, 0, 0]);
-    const here = frame.place(s.r, s.t);
-    const at = add(s.drawn, offset);
-    out.push({
-      ...blank,
-      t: s.t,
-      ...ALONE,
-      entered: s.entering,
-      out: s.down ? outAt(s.t) : null,
-      altitude: here.height,
-      range: angleBetween(frame.toFixed(s.r, s.t), frame.toFixed(pad, 0)) * MEAN_RADIUS,
-      speed: length(s.v),
-      groundSpeed: length(wind),
-      climb: 0,
-      groundClimb: 0,
-      g: s.g,
-      q: s.q,
-      mach: s.mach,
-      mass: s.t >= parts ? ship.entry.mass : ship.mass,
-      latitude: here.latitude,
-      longitude: here.longitude,
-      r: sub(at, scale(axis, centre)),
-      v: s.v,
-      axis,
-      attitude: q,
-      ...(passive && { passive: { wind: supportedWind, alignment } }),
-      ...(s.rotation && { rotation: s.rotation, rates: s.rotation.rates }),
-      alpha: angleBetween(axis, wind) / DEG,
-      burning: [
-        ...(s.t >= ship.on && s.t < Math.min(ship.off, parts) && braking ? [{ engine: braking, thrust: 0 }] : []),
-        ...ship.moves.filter((m) => s.t >= m.on && s.t < m.off).map((m) => ({ engine: m.engine, thrust: m.accel * ship.mass })),
-      ],
-      centre: at,
-    });
+    out.push(alone(s, q, passive ? { wind: supportedWind, alignment } : undefined));
   }
   return out;
 }

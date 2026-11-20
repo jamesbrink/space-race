@@ -4,7 +4,7 @@
 // tests/predict.test.mjs holds a prediction to depend on its start as the physics does and no more (issue #30).
 import { apparentBy, guided, spacecraft, stack } from '../src/sim/fliers.ts';
 import { fly, sampleAt } from '../src/sim/fly.ts';
-import { coastOf } from '../src/sim/orbital.ts';
+import { coastOf, KEPT } from '../src/sim/orbital.ts';
 import { predict, propagate } from '../src/sim/predict.ts';
 import { flyWhole, guidanceOf, sequenceOf, steer } from '../src/sim/staged.ts';
 import { stagedVehicle } from '../src/sim/stagedlive.ts';
@@ -75,7 +75,11 @@ export function predictions(flight) {
   if (!plan.attitude.some((a) => 'law' in a.hold)) return list;
   const seq = sequenceOf(plan);
   const x = steer(plan, site, frame, sea);
+  // (every step of the coast kept, as it was when these starts were first taken: the start "forty minutes before the burn"
+  // is the first sample from then, and a coast kept by how fast its motion changes has its next one minutes later)
+  KEPT.quiet = false;
   const shown = flyWhole(plan, site, frame, sea, x, 10);
+  KEPT.quiet = true;
   const a = shown.ascent;
   const where = (turn) => ({ site, seaLevel: sea, frame: turned(frame, turn) });
   // from separation; on a flight whose burn is more than a revolution away (a day in orbit), from the coast forty minutes

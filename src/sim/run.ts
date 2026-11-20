@@ -16,13 +16,14 @@ import { type Afloat, afloatAt, floatOn } from './afloat.ts';
 import { skyOf } from './air.ts';
 import type { CraftState } from './craft.ts';
 import { downOf } from './descent.ts';
-import { ballisticOf, flownOnce, type Sample, sampleAt } from './fly.ts';
+import { ballisticOf, flownOnce, type Sample } from './fly.ts';
 import { flyLoose, type LooseFlown } from './loose.ts';
 import { type CoastContacts, coastEvents, coastOf, shipOf } from './orbital.ts';
 import { type Action, clockAt, type EventDef, eventOf, type FlightPlan } from './plan.ts';
 import type { Target } from './pursuit.ts';
-import { type CoastRotation, conjugate, IDENTITY, multiply, nlerp, type Quat, rotateFor, turn } from './rigid.ts';
+import { attitudeBetween, type CoastRotation, IDENTITY, multiply, nlerp, type Quat, rotateFor, turn } from './rigid.ts';
 import { wavesOf } from './sea.ts';
+import type { Stretched } from './rails.ts';
 import { apart, Sheds } from './shed.ts';
 import {
   type DrawnDescent,
@@ -55,7 +56,11 @@ export interface Run {
   launchAborted?: boolean;
   /** The frame its samples are in: the flight's (world/earthframe.ts `frameOf`). */
   frame: EarthFrame;
-  /** The sample on show at `t`: the last at or before it (the first, before the run's start). */
+  /**
+   * The sample on show at `t`: the last at or before it (the first, before the run's start); or, in a quiet stretch of a
+   * coast of which only the ends were kept (`Sample.rails`), the sample at `t` itself, flown again from the stretch's
+   * start (sim/rails.ts).
+   */
   at(t: number): Sample;
   /** What happened on it, in order of time: the plan's events by their ids, and the record's instants (`RunEvent`). */
   events: readonly RunEvent[];
@@ -65,7 +70,11 @@ export interface Run {
   results: readonly Held[];
   /** The line it has flown: its samples, in order of time (viewer/path.ts draws the line flown from them). */
   track(): readonly Sample[];
-  /** In order of time. A live run's are `LiveSample`s. */
+  /**
+   * In order of time. A live run's are `LiveSample`s. Not every step of a long coast: while nothing happens only the
+   * samples its motion has changed enough between are kept (sim/orbital.ts `flyOrbit`), so what is read between two of
+   * them is asked of `at`, `between` or `filled`, never laid straight across.
+   */
   samples: readonly Sample[];
   /** When it came down, seconds from liftoff: Infinity until it has. */
   duration: number;
@@ -110,7 +119,7 @@ export interface Run {
 /** What every run answers the same way from its own samples. */
 const asked = {
   at(this: Run, t: number): Sample {
-    return sampleAt(this.samples, t);
+    return shownAt(this.samples, t);
   },
   track(this: Run): readonly Sample[] {
     return this.samples;
@@ -182,8 +191,92 @@ export function recordTimes(events: readonly RunEvent[]): Record<string, number>
   return out;
 }
 
+/**
+ * The sample on show at `t` among a run's samples (`Run.at`): the last at or before it, or within a quiet stretch
+ * kept as its ends the sample at `t` itself, flown again.
+ */
+export function shownAt<S extends Stretched>(samples: readonly S[], t: number): S {
+  let lo = 0;
+  let hi = samples.length - 1;
+  while (lo < hi) {
+    const mid = (lo + hi + 1) >> 1;
+    if (samples[mid]!.t <= t) lo = mid;
+    else hi = mid - 1;
+  }
+  const a = samples[lo]!;
+  const b = samples[lo + 1];
+  if (!a.rails || !b || !(t > a.t) || !(t < b.t)) return a;
+  return (a.rails.sample as unknown as (a: S, b: S, t: number) => S)(a, b, t);
+}
+
+/**
+ * A run's line through its samples with what was let go of its quiet stretches put back (`Sample.rails`): wherever two
+ * kept lie more than `every` seconds apart, as many points between them as bring them within it, evenly, each the
+ * instant, the place of the point flown and its velocity there, flown again. For what draws a line through a run's
+ * samples and wants them close (the record's line: viewer/path.ts). The same array where nothing was let go, or where
+ * more than `most` stretches were (a line of so many is drawn by fewer points than the run kept: each stretch flown
+ * again would be work for nothing).
+ */
+export function filled<S extends Stretched>(
+  samples: readonly S[],
+  every: number,
+  most = Infinity,
+): readonly (S | { t: number; r: Vec3; v: Vec3 })[] {
+  let stretches = 0;
+  for (const s of samples) if (s.rails) stretches++;
+  if (!stretches || stretches > most) return samples;
+  const out: (S | { t: number; r: Vec3; v: Vec3 })[] = [];
+  for (let i = 0; i < samples.length; i++) {
+    const a = samples[i]!;
+    out.push(a);
+    const b = samples[i + 1];
+    if (!a.rails || !b || !(b.t - a.t > every)) continue;
+    const of = a.rails.of as unknown as (x: S) => Vec3;
+    const [from, to] = [
+      { t: a.t, r: of(a), v: a.v },
+      { t: b.t, r: of(b), v: b.v },
+    ];
+    const n = Math.ceil((b.t - a.t) / every);
+    for (let k = 1; k < n; k++) {
+      const t = a.t + ((b.t - a.t) * k) / n;
+      out.push({ t, ...a.rails.state(from, to, t) });
+    }
+  }
+  return out;
+}
+
+/**
+ * A run's samples with those let go round each of `instants` (in order of time) made again, in place: within a quiet
+ * stretch kept as its ends (`Sample.rails`), the samples the coast would have kept every `every` seconds, from the one
+ * before the first of the instants in it to the one after the last. For what writes something of its own on a run's
+ * samples at instants of its own (a hand turning the ship in its coast: deck/orbitdeck.ts), so that it is drawn between
+ * samples as near each other as if none had been let go. Done again on its own result, it adds nothing.
+ */
+export function attend<S extends Stretched>(samples: S[], instants: readonly number[], every = 10): void {
+  if (!instants.length || !samples.some((s) => s.rails)) return;
+  const out: S[] = [];
+  let j = 0;
+  for (let i = 0; i < samples.length; i++) {
+    const a = samples[i]!;
+    out.push(a);
+    const b = samples[i + 1];
+    while (j < instants.length && instants[j]! <= a.t) j++;
+    if (!a.rails || !b || !(b.t - a.t > every) || j >= instants.length || instants[j]! >= b.t) continue;
+    const first = instants[j]!;
+    let last = first;
+    while (j < instants.length && instants[j]! < b.t) last = instants[j++]!;
+    const from = Math.max(1, Math.floor((first - a.t) / every));
+    const to = Math.ceil((last - a.t) / every);
+    const made = a.rails.sample as unknown as (a: S, b: S, t: number) => S;
+    for (let k = from; k <= to && a.t + k * every < b.t - 1e-9; k++) out.push(made(a, b, a.t + k * every));
+  }
+  if (out.length === samples.length) return;
+  samples.length = 0;
+  for (const s of out) samples.push(s);
+}
+
 /** The two samples either side of `t`, and how far between them it is: both the last, at or past the end. */
-export function either<S extends Sample>(samples: readonly S[], t: number): [S, S, number] {
+export function either<S extends { t: number }>(samples: readonly S[], t: number): [S, S, number] {
   let lo = 0;
   let hi = samples.length - 1;
   while (hi - lo > 1) {
@@ -197,12 +290,12 @@ export function either<S extends Sample>(samples: readonly S[], t: number): [S, 
   return [a, b, b.t > a.t ? Math.min(1, Math.max(0, (t - a.t) / (b.t - a.t))) : 0];
 }
 
-/** Position and velocity at `t` between the run's samples: a cubic Hermite through the two either side. */
-export function between<S extends Pick<Sample, 'r' | 'v' | 't'>>(
-  samples: readonly S[],
-  t: number,
-  point: (s: S) => Vec3 = (s) => s.r,
-): { r: Vec3; v: Vec3 } {
+/**
+ * Position and velocity at `t` between the run's samples: a cubic Hermite through the two either side; or, where they
+ * are the ends of a quiet stretch whose samples were let go (`Sample.rails`), the stretch flown again to `t`
+ * (sim/rails.ts), the point asked for carried from the point flown as it lies at the two ends.
+ */
+export function between<S extends Stretched>(samples: readonly S[], t: number, point: (s: S) => Vec3 = (s) => s.r): { r: Vec3; v: Vec3 } {
   let lo = 0;
   let hi = samples.length - 1;
   while (hi - lo > 1) {
@@ -216,19 +309,20 @@ export function between<S extends Pick<Sample, 'r' | 'v' | 't'>>(
   if (h <= 1e-9 || t <= a.t) return { r: point(a), v: a.v };
   if (t >= b.t) return { r: point(b), v: b.v };
   const s = (t - a.t) / h;
+  if (a.rails) {
+    const of = a.rails.of as unknown as (x: S) => Vec3;
+    const [pa, pb] = [of(a), of(b)];
+    const flown = a.rails.state({ t: a.t, r: pa, v: a.v }, { t: b.t, r: pb, v: b.v }, t);
+    const [oa, ob] = [sub(point(a), pa), sub(point(b), pb)];
+    return { r: add(flown.r, add(oa, scale(sub(ob, oa), s))), v: flown.v };
+  }
   const [h00, h10, h01, h11] = [2 * s ** 3 - 3 * s ** 2 + 1, s ** 3 - 2 * s ** 2 + s, -2 * s ** 3 + 3 * s ** 2, s ** 3 - s ** 2];
   const r: Vec3 = [0, 1, 2].map((i) => h00 * point(a)[i]! + h10 * h * a.v[i]! + h01 * point(b)[i]! + h11 * h * b.v[i]!) as unknown as Vec3;
   const v: Vec3 = [0, 1, 2].map((i) => a.v[i]! + (b.v[i]! - a.v[i]!) * s) as unknown as Vec3;
   return { r, v };
 }
 
-/** A spinning spacecraft can turn many revolutions between orbital samples. Interpolate its
- * commanded attitude, then apply the analytic angular drift from the last impact. */
-export function attitudeBetween(a: LiveSample, b: LiveSample, k: number): Quat {
-  if (!a.rotation || !b.rotation) return nlerp(a.attitude, b.attitude, k);
-  const base = nlerp(multiply(a.attitude, conjugate(a.rotation.delta)), multiply(b.attitude, conjugate(b.rotation.delta)), k);
-  return multiply(base, rotateFor(a.rotation.delta, a.rotation.rates, k * (b.t - a.t)));
-}
+export { attitudeBetween };
 
 /** Keep the active ascent body's path on both sides of every impulse inside a physics tick.
  * The vehicle supplies its own samples so its centre, drawing datum and attitude stay together. */
