@@ -36,7 +36,8 @@ missions/                             the record: one folder per nation, program
                                       alone, the Agena's coast and ascent burn or the ATDA put in orbit by the Atlas, a failed flight's `planned`);
                                       saturn-v-record.ts, saturn-v-plan.ts, saturn-v-flies.ts, a Saturn V flight's record (`SaturnVRecord`, its
                                       flight's orbital.ts), the plan written from it (`saturnVPlan`: the S-IC's five F-1s, the S-II's five J-2s
-                                      with its centre cut as flown, the tower, the S-IVB's parking-orbit burn and its translunar injection on a
+                                      with its centre cut as flown and its four cut at the record's instant or when the run has spent its propellant
+                                      (`siiSpent`), the tower, the S-IVB's parking-orbit burn and its translunar injection on a
                                       law of its own, the coast with the Moon) and what its model sheds and burns (`saturnVFlies`);
                                       command-module-aero.ts, the Block II command module's trim drag (CM-107's, TN D-6725);
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,

@@ -1669,11 +1669,23 @@ export interface Held {
   got: number;
 }
 
+/**
+ * When the run stopped the engine an event of the plan cuts, s from liftoff (an ascent check's '<event>.stop'): its own
+ * instant, cut or run dry, which is the record's only where the plan cuts it on the clock. NaN for an event that cuts no
+ * stage's engine.
+ */
+export function stopOf(plan: FlightPlan, run: Pick<Ascended, 'stops'>, event: string): number {
+  const cut = eventOf(plan, event)?.do.find((a) => 'cut' in a);
+  const i = cut && 'cut' in cut ? stagesOf(plan).findIndex((s) => s.engine.id === cut.cut) : -1;
+  return i < 0 ? Number.NaN : (run.stops[i] ?? Number.NaN);
+}
+
 /** Every check an orbital plan sets, against a whole flight flown (`flyWhole`): for the Flown panel and the debrief. */
 export function held(plan: FlightPlan, whole: FlownWhole): Held[] {
   const ascent = (id: string): number => {
     const [event, field] = id.split('.');
     if (!field) return (whole.ascent.summary as unknown as Record<string, number>)[id] ?? Number.NaN;
+    if (field === 'stop') return stopOf(plan, whole.ascent, event!);
     if (event === 'injection') return (whole.ascent.injected as Record<string, number> | undefined)?.[field] ?? Number.NaN;
     return (whole.ascent.at[event!] as unknown as Record<string, number> | undefined)?.[field] ?? Number.NaN;
   };

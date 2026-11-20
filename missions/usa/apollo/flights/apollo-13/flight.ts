@@ -3,9 +3,12 @@ import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
 import { lc39Crew } from '../../crew/lc39.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
+import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
+import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
 import { aquariusModel, aquariusPort, aquariusStackParts, aquariusStackViews } from './aquarius.ts';
 import { odysseyCommand, odysseyPort, odysseyService, odysseyViews } from './odyssey.ts';
+import { orbital } from './orbital.ts';
 import { APOLLO13_THRUST, impactRadioView, launcher } from './sa508.ts';
 import { WEATHER } from './weather.ts';
 
@@ -18,6 +21,7 @@ const boarding: [number, number] = [-elapsed(2, 41, 0), -elapsed(2, 12, 23)];
 // The closeout crew had the hatch open during the T−3:30 hold. The endpoint is a bound.
 const closeout = { openBy: -elapsed(3, 30, 0), coverClosedBy: -elapsed(1, 29, 57) };
 const cabin = blockIICabin(3871);
+const PLAN = saturnVPlan(orbital);
 
 export const flight: Flight = {
   id: 'usa/apollo/apollo-13',
@@ -33,6 +37,8 @@ export const flight: Flight = {
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39A,
   weather: WEATHER,
+  plan: { ...PLAN, aloft: WEATHER.aloft },
+  flies: saturnVFlies(PLAN),
   crew: ['James A. Lovell Jr.', 'John L. Swigert Jr.', 'Fred W. Haise Jr.'],
   summary:
     'When an oxygen tank failed in Odyssey, all three men took shelter in Aquarius. They used the lunar module’s descent engine to turn the docked spacecraft back toward Earth. They returned to Earth in Odyssey, splashing down in the Pacific on 17 April.',

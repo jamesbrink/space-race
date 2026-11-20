@@ -22,6 +22,32 @@ At the base of the first stage, inspect the RP-1 cutoff valve on tail service ma
 
 At 16:03:02 EST the Sun was 22.0° above the horizon at azimuth 234.0° true. The Moon was 70.0° high at 148.8°. The showers had passed the pad. MILA reported 16 km visibility, seven tenths cumulus with an estimated base of 1,219 m, and two tenths altocumulus at 2,438 m. Total cover was eight tenths. The northwest light pole measured 5.0 m/s from 255° at 18.3 m above grade. The cloud field represents conditions at liftoff. Its individual clouds and drift are estimated. [Flight evaluation, appendix A, table A-1 and figs. A-3 and A-4](https://www.apollojournals.org/afj/ap14fj/pdf/a14_saturn-v-fer.pdf) · [Weather inputs](weather.ts)
 
+## Fly
+
+Fly takes the flight deck at the pad: SA-509 under your hands from ignition through the translunar injection, launched
+when it was, forty minutes late after a cloud held the count at T−8:02, and rolled onto the azimuth that moved it to,
+75.6° east of north rather than the planned 72°. On entry guidance (G) and the sequencer (B) are off and Hold is on: you
+light, steer, cut and stage each of the three stages, drop the S-II's aft interstage and the escape tower, make the
+parking orbit and light the S-IVB again for the injection. With G and B on, the record's ascent (its S-IC programme, its
+guidance's closed loop, its events at their times, the S-II burning to its oxygen's depletion) makes the parking orbit
+and the injection. The run, and how it compares with the record, is in [mission.md](mission.md), from MSFC's flight
+evaluation of SA-509 (MPR-SAT-FE-71-1).
+
+The flight ends with the injection: the stack, whole, coasts on toward the Moon, which pulls on it. The six docking
+attempts and what came after are not flown.
+
+## What is not flown or is simplified
+
+- Nothing after the S-IVB's second cutoff: the transposition and the six attempts at docking, Antares drawn out of the
+  adapter, the S-IVB sent to strike the Moon, the landing at Fra Mauro and the return. The stack coasts on whole.
+- The weather hold itself is not flown: the run starts at the liftoff it delayed.
+- The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV.
+- The S-IC flies a pitch programme traced off the evaluation's Fig. 9-4, whose first hundred seconds are drawn short of
+  the rest: its greatest dynamic pressure is 14 per cent over the record's (mission.md). The S-II burns to the run's own
+  depletion 1.7 s early and the S-IVB 9.7 s longer to the same orbit; the iterative guidance is a linear tangent in each
+  of its two burns; the engines' starts and cutoff transients, the tower clearance yaw and the S-IVB's boil-off in orbit
+  are not flown.
+
 ## Hardware notes
 
 - [SA-509 and adapter SLA-17](../../vehicles/sa-509.md)

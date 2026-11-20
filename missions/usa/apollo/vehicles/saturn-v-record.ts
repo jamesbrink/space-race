@@ -56,7 +56,11 @@ export interface SaturnVRecord {
   /**
    * The second stage with the S-II/S-IVB interstage on it, at first motion; its aft interstage, let go at the second plane;
    * its propellant; its centre engine and its four outboard engines, each cut as the record has it (`why`: what the
-   * centre's cut was for, in the record's words); the outboards' mixture-ratio shift; its separation.
+   * centre's cut was for, in the record's words); the outboards' mixture-ratio shift; its separation. Where the record has
+   * the outboard engines cut by the stage's own depletion sensors and the run is to find when (`outboard.spent`, in the
+   * record's words), their cut is flown at the instant the run's propellant is spent and the events after it (the separation,
+   * the S-IVB's start) at the record's intervals from it, as the instrument unit timed them from that cutoff (its time
+   * base 4): the record's instants are then figures the run is held to (saturn-v-plan.ts `siiSpent`).
    */
   sii: {
     mass: Measure;
@@ -64,7 +68,7 @@ export interface SaturnVRecord {
     propellant: { load: Measure; usable: Measure };
     ignition: Measure;
     centre: J2Figures & { cut: Measure; why: string };
-    outboard: J2Figures & { cut: Measure; shift?: MixtureShift };
+    outboard: J2Figures & { cut: Measure; shift?: MixtureShift; spent?: string };
     separation: Measure;
     push: Measure;
   };

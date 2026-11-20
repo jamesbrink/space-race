@@ -13,6 +13,7 @@ import { coastEvents, coastOf, movesOf, shipOf } from '../src/sim/orbital.ts';
 import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
 import { act, startCraft } from '../src/sim/craft.ts';
 import { byHand, drawnFrom, givenUp, guidanceOf, movedTo, schedule, sequenceOf, stagesOf } from '../src/sim/staged.ts';
+import { siiSpent } from '../missions/usa/apollo/vehicles/saturn-v-plan.ts';
 import { HARDWARE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { dayOf } from './ballistic.mjs';
 import { recordFrom } from './records.mjs';
@@ -570,7 +571,8 @@ for (const f of saturns) {
     assert.equal(seq.stages[0].cut, o.sic.centreCut.value);
     assert.equal(seq.stages[1].cut, o.sic.outboardCut.value);
     assert.equal(seq.stages[2].cut, o.sii.centre.cut.value);
-    assert.equal(seq.stages[3].cut, o.sii.outboard.cut.value);
+    // (the four cut at the record's instant, or where its depletion sensors cut them, when the run's propellant is spent)
+    assert.equal(seq.stages[3].cut, o.sii.outboard.spent ? siiSpent(o) : o.sii.outboard.cut.value);
     assert.ok(seq.stages[4].orbit, 'the first burn cut by its guidance on the orbit reached');
     assert.equal(seq.stages[5].speed.value, o.sivb.second.speed.value, 'the injection cut on its speed');
     assert.equal(seq.stages[5].from, o.sivb.second.ignition.value);
@@ -593,6 +595,28 @@ for (const f of saturns) {
     assert.deepEqual(plan.gravity, { central: 'earth', terms: ['j2', 'moon'] });
     assert.equal(plan.record.bound, o.bound);
   });
+
+  if (o.sii.outboard.spent)
+    test(`${f.id}: the S-II's four are cut when the run has spent its propellant, and what follows that cutoff keeps the record's intervals`, () => {
+      // the instant the simulator's own schedule finds the S-II's tank dry, with no cut of the four's own (siiSpent's figure)
+      const open = structuredClone(plan);
+      const cut = open.events.find((e) => e.id === 'sii-outboard-cutoff');
+      cut.when = [{ time: o.sii.ignition.value + 3600 }];
+      const i = stagesOf(open).findIndex((s) => s.engine.id === 'j2-outboard');
+      const dry = schedule(open)[i];
+      assert.ok(dry.dry, 'the tank runs dry');
+      assert.ok(Math.abs(dry.to - siiSpent(o)) < 0.02, `siiSpent ${siiSpent(o)} s, the schedule's dry tank ${dry.to} s`);
+      const t4 = siiSpent(o);
+      const seq = sequenceOf(plan);
+      assert.ok(Math.abs(seq.stages[3].sep - (t4 + o.sii.separation.value - o.sii.outboard.cut.value)) < 1e-9);
+      assert.ok(Math.abs(seq.stages[4].from - (t4 + o.sivb.first.ignition.value - o.sii.outboard.cut.value)) < 1e-9);
+      // (each instant the run's own, derived; the record's kept as a figure in its source, to hold the run to)
+      const at = plan.events.find((e) => e.id === 'sii-outboard-cutoff').at;
+      assert.equal(at.confidence, 'derived');
+      assert.equal(at.value, t4);
+      assert.ok(at.source.includes(String(o.sii.outboard.cut.value)));
+      console.log(`  # ${f.id}: the S-II's four spent at ${t4.toFixed(2)} s, the record's cutoff at ${o.sii.outboard.cut.value} s`);
+    });
 
   test(`${f.id}: the S-IVB's J-2 cannot be lit again while it burns, and is once it is cut`, () => {
     let s = startCraft(plan);

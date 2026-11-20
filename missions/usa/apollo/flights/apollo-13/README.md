@@ -20,6 +20,32 @@ Arm 9 took the white room back to its 12° standby position around T−43 minute
 
 At range zero, **14:13 EST**, the Sun stood 57.2° above the horizon at azimuth 237.2° true and the Moon stood 51.2° high at 79.6°. The Merritt Island station reported 16 km visibility, four tenths altocumulus at 5,790 m and ten tenths thin cirrostratus with a base estimated at 7,925 m. The southeast pad pole measured a 6.3 m/s wind from 105°. The veil’s optical thickness is estimated. [AS-508 flight evaluation, appendix A, table A-1](https://www.ibiblio.org/apollo/Documents/lvfea-AS508-Apollo13.pdf) · [Weather inputs](weather.ts)
 
+## Fly
+
+Fly takes the flight deck at the pad: SA-508 under your hands from ignition through the translunar injection. On entry
+guidance (G) and the sequencer (B) are off and Hold is on: you light the five F-1s, steer, cut and stage the S-IC, light
+the S-II, drop its aft interstage and the escape tower, and fly the S-II on as its centre engine shuts itself down at
+5:31, as SA-508's did: a 14 to 16 Hz oscillation in the stage dropped its thrust-OK switches 132 seconds early. That is
+the record's and happens whoever is flying. The other four burn on until the stage's oxygen runs down to its depletion
+sensors, half a minute longer than planned, and the S-IVB burns longer to make the orbit: with G and B on, the run's own
+guidance and propellant make up the loss, as the vehicle's did, and nothing scripts how long. The run, and how it
+compares with the record, is in [mission.md](mission.md), from MSFC's flight evaluation of SA-508 (MPR-SAT-FE-70-2).
+
+The flight ends with the injection: the stack, whole, coasts on toward the Moon, which pulls on it. The oxygen tank's
+failure two days out, the lifeboat in Aquarius and the return round the Moon are not flown.
+
+## What is not flown or is simplified
+
+- Nothing after the S-IVB's second cutoff: the transposition and docking, Aquarius drawn out of the adapter, the S-IVB
+  sent to strike the Moon, Odyssey's oxygen tank failure at 55:54:53 and everything after it. The stack coasts on whole.
+- The S-II's centre engine is cut at the record's instant; the oscillation that cut it is not flown. Its four burn to
+  the run's own depletion, 2.8 s before the record's (mission.md says why), and the S-IVB burns 11.6 s longer than the
+  record's to the same orbit.
+- The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV.
+- The S-IC flies a pitch programme traced off the evaluation's Fig. 9-4; the iterative guidance is a linear tangent in
+  each of its two burns; the mixture-ratio shift is at the record's instant; the engines' starts and cutoff transients,
+  the tower clearance yaw and the S-IVB's boil-off in orbit are not flown.
+
 ## Hardware notes
 
 - [Saturn V SA-508 and SLA-16](../../vehicles/sa-508.md)
