@@ -89,7 +89,8 @@ export const commanded = <P extends { node: string }>(parts: P[], commands: Reco
 /**
  * The flight in the scene (`Flight.flies`): the stack off the pad as staged.ts flies it, and what leaves it, each flown on
  * (the record's `ascent.sheds`): the first stage with the interstage, the second stage, the equipment section and the
- * retrograde section; the fairings in orbit; the rendezvous and recovery section with the main.
+ * retrograde section; the fairings, and whatever else it let go of in orbit (`released`); the rendezvous and recovery
+ * section with the main.
  */
 export function geminiFlies(o: GeminiTitanRecord): NonNullable<Flight['flies']> {
   const at = (id: string) => o.events.find((e) => e.id === id)!.at.value;
@@ -119,6 +120,7 @@ export function geminiFlies(o: GeminiTitanRecord): NonNullable<Flight['flies']> 
       { at: o.separation.at.value, nodes: ['TitanStage2', 'TitanStage2Engine'], on: 'adapter-separation' },
       { at: at('fairings'), nodes: ['NoseFairing'], on: 'fairings/nose' },
       { at: at('fairings'), nodes: ['ScannerFairing'], on: 'fairings/scanner' },
+      ...(o.released ?? []).map((x) => ({ at: x.at.value, nodes: x.nodes, on: x.id })),
       { at: o.adapter.equipment.gone.value, nodes: ['EquipmentSection'], on: 'equipment-section-release' },
       { at: o.retro.gone.value, nodes: ['RetroSection'], on: 'retro-section-release' },
       // (the rendezvous and recovery section, pulled off by the pilot parachute with the main in it: at the record's

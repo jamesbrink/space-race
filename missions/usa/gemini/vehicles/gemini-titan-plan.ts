@@ -92,11 +92,20 @@ export interface Manoeuvre {
   label: string;
   /** Which pair fired: the aft-firing (pushing toward the nose) or the forward-firing (toward the tail). */
   thrusters: 'aft' | 'forward';
-  attitude: { label: string; aim: 'velocity' | 'normal'; sense: 1 | -1; confidence: Confidence; source: string };
+  /** `below`: along the motion, the line pitched down from the level by so many degrees (up, negative: plan.ts `Hold`). */
+  attitude: { label: string; aim: 'velocity' | 'normal'; sense: 1 | -1; below?: Measure; confidence: Confidence; source: string };
   turned: Measure;
   on: Measure;
   off: Measure;
   deltaV?: Measure;
+}
+
+/** Something the spacecraft let go of in orbit besides its fairings (a pod it threw out): its joint's id, which its shed in `ascent.sheds` is `on`, and its nodes. */
+export interface Released {
+  id: string;
+  label: string;
+  nodes: string[];
+  at: Measure;
 }
 
 export interface GeminiTitanRecord {
@@ -112,6 +121,8 @@ export interface GeminiTitanRecord {
   };
   /** The spacecraft let go of the second stage: when, how fast the two were pushed apart, and what flew on. */
   separation: { at: Measure; push: Measure; mass: Measure };
+  /** What else it let go of in orbit, each at its instant (`Released`). */
+  released?: Released[];
   ascent: {
     guidance: Guidance;
     drag: { until: Measure; area: Measure; curve: Curve }[];
@@ -161,7 +172,8 @@ export interface GeminiTitanRecord {
   /**
    * The re-entry module once the retrograde section has gone: its mass then, its drag against Mach number on its heat
    * shield's disc, its lift over drag as flown (`lift`) and as predicted (`predicted`, said and not flown), the angle of
-   * attack it trimmed at, and the bank held from `banked`.
+   * attack it trimmed at, and the bank held from `banked`; and, where the record has the crew roll it again, each later
+   * bank from its instant (`banks`).
    */
   entry: {
     mass: Measure;
@@ -172,6 +184,7 @@ export interface GeminiTitanRecord {
     trim: Measure;
     bank: Measure;
     banked: Measure;
+    banks?: { label: string; bank: Measure; at: Measure }[];
   };
   /** Its heat of entry (sim/heating.ts): the shock layer drawn. */
   heating: Heating;
@@ -235,6 +248,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
   const joints: JointDef[] = [
     // Their combined mass is included in the recorded spacecraft mass; only their detached bodies use individual estimates.
     { id: 'fairings', label: 'Nose and scanner fairings let go', gone: [], at: fairings.at },
+    ...(o.released ?? []).map((x): JointDef => ({ id: x.id, label: x.label, gone: [], at: x.at })),
     {
       id: 'staging-nuts',
       label: 'First stage let go',
@@ -366,7 +380,12 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
       (m): AttitudeDef => ({
         id: `${m.id}-attitude`,
         label: m.attitude.label,
-        hold: { aim: m.attitude.aim, sense: m.attitude.sense, confidence: m.attitude.confidence },
+        hold: {
+          aim: m.attitude.aim,
+          sense: m.attitude.sense,
+          ...(m.attitude.below ? { below: m.attitude.below } : {}),
+          confidence: m.attitude.confidence,
+        },
         source: m.attitude.source,
       }),
     ),
@@ -376,6 +395,9 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
       hold: { bank: o.entry.bank },
       source: o.entry.bank.source,
     },
+    ...(o.entry.banks ?? []).map(
+      (b, i): AttitudeDef => ({ id: `banked-attitude-${i + 2}`, label: b.label, hold: { bank: b.bank }, source: b.bank.source }),
+    ),
     // (the retrofire attitude last: the coast's burn lights in it, orbital.ts `shipOf`)
     {
       id: 'retrofire-attitude',
@@ -433,6 +455,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
       when: [{ after: 'second-stage-engine:cut', wait: o.separation.at.value - s2.cutoff.value }],
     },
     timed('fairings:separate', fairings.label, fairings.at, [{ separate: 'fairings' }]),
+    ...(o.released ?? []).map((x) => timed(`${x.id}:separate`, x.label, x.at, [{ separate: x.id }])),
     ...moves,
     timed('retrosequence', 'Retrosequence: to retrofire attitude', r.sequence, [{ attitude: 'retrofire-attitude' }]),
     timed(
@@ -455,6 +478,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
       source: r.gone.source,
     },
     timed('entry-bank', 'Banked for the entry', o.entry.banked, [{ attitude: 'banked-attitude' }]),
+    ...(o.entry.banks ?? []).map((b, i) => timed(`entry-bank-${i + 2}`, b.label, b.at, [{ attitude: `banked-attitude-${i + 2}` }])),
     // (the drogue at its height, once the retrograde section has gone: what lets what comes down loose, orbital.ts `coastOf`)
     {
       id: chuteEvent('reentry-module', 'drogue parachute'),
@@ -498,7 +522,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
   const ascentWhen = (id: string): Pick<PlanCheck, 'when'> =>
     id === 'firstG'
       ? { when: { most: 'g', aboard: ['titan-first-stage'] } }
-      : id === 'lastG'
+      : id === 'lastG' || id === 'coreG'
         ? { when: { most: 'g', aboard: ['titan-second-stage'], gone: ['titan-first-stage'] } }
         : {};
   const checks: PlanCheck[] = [

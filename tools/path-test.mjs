@@ -176,6 +176,16 @@ const FLIGHTS = {
     orbit: [3000, 8000],
     coast: 3000,
   },
+  // (eight days: staging, insertion, the perigee raised, the pod, the third day's burns, the night before retrofire, the burn
+  // timed for the landing place, the entry banked, the drogue at 69,000 ft, the main)
+  gt5: {
+    id: 'usa/gemini/gt-5',
+    instants: [
+      5, 60, 150, 200, 340, 600, 3000, 3400, 7700, 183_200, 191_000, 686_200, 686_300, 687_000, 687_300, 687_660, 687_800, 688_000,
+    ],
+    orbit: [3000, 183_200],
+    coast: 3000,
+  },
   // (a day: the airlock out, the walk at 11:34, the airlock shot off, the burn by hand at 11:36 on the 19th and the descent)
   vk2: {
     id: 'ussr/voskhod/voskhod-2',

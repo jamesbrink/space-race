@@ -23,6 +23,7 @@ const FLIGHTS = {
   'ussr/vostok/vostok-4': ['Ignition', 'Drop the strap-ons'],
   'ussr/voskhod/voskhod-1': ['Ignition', 'Drop the strap-ons'],
   'usa/gemini/gt-3': ['Ignition', 'Staging: the second stage lit through the interstage'],
+  'usa/gemini/gt-5': ['Ignition', 'Staging: the second stage lit through the interstage'],
   'ussr/voskhod/voskhod-2': ['Ignition', 'Drop the strap-ons'],
   ...Object.fromEntries(
     ['gatv-5002', 'gatv-5003', 'gatv-5004', 'atda', 'gatv-5005', 'gatv-5006', 'gatv-5001'].map((id) => [
@@ -209,7 +210,7 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
   // each flight into orbit as flown, untouched: in orbit with its apogee on the deck once the ship is alone, and down at the
   // run's end with the deck and the navball at nought
   if (w === 1280)
-    for (const id of Object.keys(FLIGHTS).filter((f) => f.startsWith('ussr/') || f === 'usa/gemini/gt-3')) {
+    for (const id of Object.keys(FLIGHTS).filter((f) => f.startsWith('ussr/') || f.startsWith('usa/gemini/gt-'))) {
       const where = `${id} as flown at ${w}`;
       const { page, errors, context: ctx } = await fly(id, w, h, touch);
       const seek = async (t) => {

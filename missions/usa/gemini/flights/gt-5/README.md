@@ -17,12 +17,17 @@ first day; the first rendezvous radar, and a target for it that was thrown out a
 | Landing | 29°47′ N 69°45′ W, 89 nautical miles short of the planned point |
 | Recovery | USS *Lake Champlain* |
 
-**In this repo: the vehicle in the gallery, and its launch site.** Spacecraft No. 5 on GLV-5 as
+**In this repo: the vehicle in the gallery, its launch site, and the flight.** Spacecraft No. 5 on GLV-5 as
 they left the pad can be turned, taken apart as they staged, and cut open: the radar on its nose,
 the fuel cells and their tanks in the adapter, the pod hung in its middle. At Complex 19 it stands
 on the thrust mount on the morning of the flight: the erector raised while the crew go up and laid
 down at T−35, Cooper and Conrad on the approach to the ramp in their G4C suits, each a figure to walk
-the site as, under that morning's sky. The flight itself is not built: see "What is not built" below.
+the site as, under that morning's sky. **It is flown from the pad**, by hand or by the record's
+guidance and sequence, on the simulator's one Gemini-Titan plan ([orbital.ts](orbital.ts), set out in
+[mission.md](mission.md)): GLV-5 on its own weights, engines and pitch programme, the published orbit,
+the pod thrown out, the perigee raised and the four burns toward a point in space, eight days and
+120 revolutions, the retrofire and the entry on the banks the crew flew, which is where the 89
+nautical miles were lost.
 
 ## The name
 
@@ -186,11 +191,15 @@ drawn: the report has none at liftoff, and the station's cumulus at 660 m is of 
 - **The crew in their seats.** Cooper and Conrad stand on the approach to the ramp in the G4C suit,
   without the outer cover Gemini IV's pilot had ([g4c-suit.md](../../crew/g4c-suit.md)); both crewmen also sit in the cabin. The red-lettered label under Cooper's name tag (S65-28740) and the flight's emblem, whose
   place on the suits nothing read gives, are not built.
-- **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
-  built and the lamps are dark. The pod does not fly; it sits where it was carried.
-- **The flight azimuth** is not given as a figure here: it is not in the parts of the report that
-  were read. The inclination is Gemini IV's to six hundredths of a degree, and that flight's
-  azimuth was 72°.
+- **Of the flight** ([mission.md](mission.md), section 6, which lists it all): the pod is let go and
+  drifts off, not a target to chase, and the radar's track of it is not drawn; the ship is flown end
+  on in orbit where it drifted for most of the eight days, so the run's orbit decays more slowly than
+  the tracked one and its retrofire, timed for where the ship came down, is lit 589 s after the
+  record's; along the track the landing is held by that aim, not a result. The first stage flies its
+  pitch programme as its table prints the rates, which the table's own differences contradict, and
+  comes to its cutoff 6.9 km low; the second stage's shutdown impulse is not flown. The onboard
+  computer and the update that misled it are not simulated: the banks it led the crew to are. The
+  oxygen's failure, the thrusters that failed from the fifth day and the drifting are not flown.
 
 ## Where sources disagree
 
@@ -201,6 +210,10 @@ drawn: the report has none at liftoff, and the station's cumulus at 660 m is of 
 | Oxygen pressure at launch | 815 psia (5.1.7.2.1) | "810 psi at lift-off" (6.1.2.2) | the first, the system's own section |
 | The landing point | 29°47′ N 69°45′ W (Table 4.3-I, final) | the ship recovered at 29°52.5′ N (the summary, 1.0) | the table, as the landing; the other is where it was picked up |
 | How far short | 89 nautical miles (4.1, 4.3) | 89.25, and 19.67 to the right (5.1.5); "17 miles off track" (4.1) | 89 |
+| The pitch programme's rates | 0.75, 0.56, 0.25 deg/s actual against 0.709, 0.516, 0.235 planned (Table 5.2-IV) | differences of +0.041, +0.044, +0.015 in the same table, and "low-pitch program rates" (4.1) | the rates as printed (mission.md, section 2) |
+| The zero-lift bank in the entry | 90° from 190:44:20 to about 190:47:20 (5.1.5.2.3) | 88° left from about 40 s after guidance began, held "about 1 min 30 sec" (7.1.1.7, 7.1.2.7) | from 190:45:00 to 190:47:20 |
+| The retrograde section cut away | 190:28:30 (Table 4.2-I) | 190:29:30 (5.1.8.2) | the table |
+| Why it landed short | "omitting a term in the ground computer entry": the elapsed days left out of the time of retrofire, 7.89° of longitude (4.1, 6.2.2.2.1) | a wrong rate of the Earth's turning, as it is often retold | the report: the program's rate, 360.98° a day, was right |
 | The marks near Laredo | "the crew was able to see smoke at the Laredo site and make several experiment sightings" (4.1) | they saw the smoke but not the pattern laid out for them (*Titans*, p. 258) | only that they saw the smoke is said |
 
 ## Not found

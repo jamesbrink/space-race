@@ -24,6 +24,9 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { commanded, geminiCommands, geminiFlies } from '../../vehicles/gemini-flies.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
+import { orbital } from './orbital.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -408,7 +411,7 @@ const parts: PartWords[] = [
 const vehicle = lc19Vehicle(
   geminiTitanStack({
     flight: 'gt-5',
-    parts,
+    parts: commanded(parts, geminiCommands()),
     // the crew went aboard at the planned T-100 minutes (the press kit, p. 13: the mission report has them in "at the proper
     // time", 7.1.1.1, and the count ran without a hold); when the hatches were shut is not in what was read: twenty
     // minutes after, estimated
@@ -711,7 +714,7 @@ export const flight: Flight = {
       value: 341163 * LB,
       unit: 'kg',
       confidence: 'documented',
-      note: `341,163 lb at liftoff and 344,689 lb at ignition, the weights the Aerospace Corporation gave (${GV}, section 3.3)`,
+      note: `341,163 lb at liftoff and 344,685 lb at ignition, the weights the Aerospace Corporation gave (${GV}, section 3.3)`,
     },
   ],
   motors: [
@@ -731,6 +734,18 @@ export const flight: Flight = {
     ),
     ...thrusters('spacecraft 5, whose propulsion system "was the same as the spacecraft 4 system" (the Gemini V mission report, 3.1.2.7)'),
   ],
+  // the flight as an orbit, written from its record: GLV-5's two stages on their own weights and engines, the orbit, the
+  // pod, the five burns, the retrofire and the entry as the crew banked it, each figure with its source (orbital.ts;
+  // mission.md), flown through the day's air over the pad
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-5’s own weights and engines, on its pitch programme as flown and then a stated steering law. ' +
+    'From the spacecraft’s separation the run shown is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
+    'The perigee burn and the four burns toward a point in space are flown at the instants and impulses the mission report gives; the pod is thrown out and not chased. ' +
+    'The retrofire is timed by the run’s own state for where the ship came down, as the ground timed it for its target, so after eight days the landing along the track is held, not a result; ' +
+    'the entry is flown on the banks the crew flew, full lift, 54° left, 88° with no lift while the computer’s wrong position pegged its needle, and back, which is where the 89 nautical miles were lost (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it, the pod, and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot],
   // the place round the pad as it stood that August: as in March (places/cape-canaveral/lc19/model/1965-03.py)
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',

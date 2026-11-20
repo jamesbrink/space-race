@@ -264,6 +264,39 @@ INPUTS['usa/gemini/gt-3'] = [
   ['entry', 'drag'],
 ];
 
+// Gemini-Titan 5's (its own report has nearly everything): where on the orbit it began, reckoned from the ground range; its
+// mass and free-molecule figure; the forward thrusters, never lit, the type's; when the crew turned for four of the five burns;
+// the adapter's sections, worked from the weights; the retrofire's attitude, spacing, thrust and burn, worked from its table;
+// the re-entry module's drag area and drag (Mercury's), its lift and trim read off a figure, and when two of the banks began
+INPUTS['usa/gemini/gt-5'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['mass'],
+  ['rarefied', 'drag'],
+  ['rarefied', 'area'],
+  ['oams', 'forward', 'thrust'],
+  ['oams', 'forward', 'isp'],
+  ['moves', '0', 'turned'],
+  ['moves', '1', 'turned'],
+  ['moves', '3', 'turned'],
+  ['moves', '4', 'turned'],
+  ['adapter', 'equipment', 'mass'],
+  ['adapter', 'retro', 'mass'],
+  ['retro', 'sequence'],
+  ['retro', 'below'],
+  ['retro', 'spacing'],
+  ['retro', 'thrust'],
+  ['retro', 'burn'],
+  ['entry', 'area'],
+  ['entry', 'drag'],
+  ['entry', 'lift'],
+  ['entry', 'predicted'],
+  ['entry', 'trim'],
+  ['entry', 'banked'],
+  ['entry', 'banks', '1', 'at'],
+  ['entry', 'banks', '3', 'at'],
+];
+
 /**
  * A Gemini-Titan's coast inputs that are not documented (its record, gemini-titan-plan.ts): listed, and what each is worth,
  * flown on the plan `geminiTitanPlan` writes from a changed copy.
