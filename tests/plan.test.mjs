@@ -310,7 +310,10 @@ for (const f of titans) {
     // the lift is the module's own, flown at the bank the record holds from its instant
     const entry = c.bodies.find((b) => b.aero);
     assert.equal(entry.aero.lift, o.entry.lift);
-    assert.deepEqual(shipOf(plan).banks, [{ at: o.entry.banked.value, bank: o.entry.bank.value }]);
+    assert.deepEqual(shipOf(plan).banks, [
+      { at: o.entry.banked.value, bank: o.entry.bank.value },
+      ...(o.entry.banks ?? []).map((b) => ({ at: b.at.value, bank: b.bank.value })),
+    ]);
     assert.equal(c.crew.words.many, true, 'two men');
   });
 

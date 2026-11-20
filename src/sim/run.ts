@@ -549,8 +549,15 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const times = orbitalEvents(flight, whole);
   const events: RunEvent[] = [];
   const told = new Set<string>();
+  // (one the record has no instant of, after a braking burn timed for the landing place, as much later as the burn: an
+  // entry's bank set off by the clock)
+  const later = (e: EventDef): number => {
+    if (!whole.plan) return 0;
+    const [was, is] = [clockAt(plan, eventOf(plan, e.id)), clockAt(flown, e)];
+    return Number.isFinite(was) && Number.isFinite(is) && was < Number.MAX_SAFE_INTEGER ? is - was : 0;
+  };
   for (const e of flown.events) {
-    const t = e.record ? times[e.record.id] : e.at?.value;
+    const t = e.record ? times[e.record.id] : e.at && e.at.value + later(e);
     if (t === undefined) continue;
     events.push({ event: e.id, ...(e.record ? { record: e.record.id } : {}), t });
     if (e.record) told.add(e.record.id);

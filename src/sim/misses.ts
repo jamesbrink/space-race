@@ -150,6 +150,21 @@ const GT3_ENTRY =
   'is some 110 km along the track at retrofire). Flown lift up throughout it lands 390 km further on, flown level 246 km shorter (the last test): the record cannot hold the landing to a ' +
   'hundred kilometres. The record itself landed 60 nautical miles short of its target because the lift was 35 per cent below the prediction; that is flown, not this';
 
+/** Gemini-Titan 5 (missions/usa/gemini/flights/gt-5/orbital.ts, mission.md). */
+const GT5_PITCH =
+  'The first stage is flown open on the pitch programme as Table 5.2-IV of the mission report prints its actual rates, 0.75, 0.56 and 0.25 deg/s, and comes to its cutoff 6.9 km low and 4.5 degrees flat, ' +
+  'where the record has the flight "slightly lofted because of low-pitch program rates" (4.1). The table’s own difference column (+0.041, +0.044 and +0.015 deg/s against the planned 0.709, 0.516 and 0.235) ' +
+  'and that sentence have the rates lower than planned, and the rates printed are higher: flown at the planned rates the cutoff comes at 63.6 km and 18.7 degrees, 69 m/s slow. Which reading is right is not ' +
+  'settled; the printed one is flown, nothing adjusted. The second stage’s law then cuts on the published orbit at 333.37 s, the record’s 333.28, at the separation’s speed to 1 m/s';
+const GT5_DECAY =
+  'The run’s ship comes down more slowly over the last five days than the tracked one: from the third day’s burns to revolution 120 its apogee falls 15.5 km where the tracking has 25.9. It is flown end on ' +
+  'in the free-molecule flow, on the adapter’s 7.30 m² disc (rarefied.area), where for most of the eight days it drifted, powered down and venting ("the spacecraft attitude control and the hydrogen and ' +
+  'oxygen continued venting throughout most of the flight", 4.3.1.2, the ground’s own drag factor for it moving by 23 per cent after the third day). Flown on 10 m², between end on and tumbling, the ' +
+  'apogee comes within 3 km and the burn 61 s early: the attitude it drifted in is not in the record, and nothing is changed';
+const GT5_LATE =
+  'The retrofire is timed for the place the ship came down (sim/plan.ts LandingAim), so after eight days it is lit as far after the record’s 190:27:43.3 as the run is behind the record’s clock ' +
+  '(589 s, flown on from the ascent), and the entry it then flies takes some 90 s longer from the burn to the drogue than the record’s: its lift read off a preliminary figure and the Mercury capsule’s drag';
+
 const GT3_SHOWN =
   'Flown on from the state the ascent left the spacecraft in: the guidance cuts the second stage on the published orbit 0.7 s after the recorded instant, level at the perigee’s height over the reference ball';
 
@@ -809,6 +824,53 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       },
       alongTrack: { by: -200_000, slack: 10_000, why: `200 km short of where it landed, along the track. ${GT3_SHOWN}. ${GT3_ENTRY}` },
       crossTrack: { by: 36_420, slack: 4_000, why: `36 km to the right of it. ${GT3_SHOWN}. ${GT3_ENTRY}` },
+    },
+  }),
+  'usa/gemini/gt-5': inUnits({
+    ascent: {
+      'beco.altitude': { by: -6_945, slack: 500, why: GT5_PITCH, short: 'the pitch rates as printed' },
+      'beco.climb': { by: -4.548, slack: 0.2, why: GT5_PITCH, short: 'the pitch rates as printed' },
+    },
+    coast: {
+      'after-680000.apogee': {
+        by: 16_661,
+        slack: 1_500,
+        why: `303.4 km on the last day where the tracking has 154.8 nautical miles (286.7 km). ${GT5_DECAY}`,
+        short: 'flown end on, where it drifted',
+      },
+      ejectionAt: {
+        by: 826.1,
+        slack: 40,
+        why: `The drogue comes out 826 s after the record’s 190:49:19. ${GT5_LATE}. ${GT5_DECAY}`,
+        short: 'the burn timed for the landing place',
+      },
+      crossTrack: {
+        by: 42_943,
+        slack: 4_000,
+        why: 'It comes down 43 km to the right of where the ship landed: from the published orbit begun where the injection is reckoned (injection.arc, the ground range at separation taken for the arc, good to half a degree), eight days on. Flown on from the ascent’s own state it is within a kilometre. Not adjusted',
+      },
+    },
+    shown: {
+      'after-680000.apogee': {
+        by: 16_265,
+        slack: 1_500,
+        why: `303.0 km on the last day where the tracking has 154.8 nautical miles (286.7 km). ${GT5_DECAY}`,
+        short: 'flown end on, where it drifted',
+      },
+      ejectionAt: {
+        by: 678.7,
+        slack: 40,
+        why: `The drogue comes out 679 s after the record’s 190:49:19. ${GT5_LATE}. ${GT5_DECAY}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    descent: {
+      'reentry-module.at': {
+        by: 750.4,
+        slack: 40,
+        why: `The ship is down 750 s after the record’s 190:55:14: the burn lit late and the entry longer (the drogue’s miss), and 71 s more under the main, flown at the 31.6 ft/s NASA CR-1106 gives the type, where the record has it from 10,600 ft at 190:51:16 to the sea at 190:55:14, 44.5 ft/s on the average. ${GT5_LATE}`,
+        short: 'the burn timed for the landing place',
+      },
     },
   }),
   'ussr/voskhod/voskhod-1': inUnits({
