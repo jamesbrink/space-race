@@ -16,7 +16,8 @@ const rover = flight.models.find((model) => model.id === 'rover');
 test('Apollo 17 presents the flight hardware and crew in the Gallery', () => {
   assert.equal(lacks(flight, 'gallery'), null);
   assert.equal(lacks(flight, 'site'), null);
-  assert.ok(lacks(flight, 'fly'));
+  // (flown from the pad through the translunar injection: missions/usa/apollo/vehicles/saturn-v-plan.ts)
+  assert.equal(lacks(flight, 'fly'), null);
   assert.deepEqual(
     flight.models.map((m) => m.id),
     ['vehicle', 'challenger', 'pad', 'crew', 'pilot', 'lmp', 'rover'],

@@ -5,9 +5,12 @@ import { WEATHER } from './weather.ts';
 import { roverModel } from '../../vehicles/rover-gallery.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
+import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
+import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
 import { falconModel, falconPort, falconStackParts, falconStackViews } from './falcon.ts';
 import { endeavourCommand, endeavourPort, endeavourService, endeavourViews } from './endeavour.ts';
+import { orbital } from './orbital.ts';
 import { APOLLO15_THRUST, stackViews, launcher } from './sa510.ts';
 
 const elapsed = (h: number, m: number, s: number) => h * 3600 + m * 60 + s;
@@ -18,6 +21,7 @@ const ingress = -elapsed(2, 41, 0); // 06:53 EDT, Scott first aboard. Range zero
 const boarding: [number, number] = [ingress, -elapsed(1, 58, 0)]; // Approximate hatch closure during the T−2-hour broadcast.
 const coverCloseout = -elapsed(1, 31, 0); // Estimated between the T−1:41 cover installation and the T−1:31 white-room closeout call.
 const cabin = blockIICabin(3871);
+const PLAN = saturnVPlan(orbital);
 
 export const flight: Flight = {
   id: 'usa/apollo/apollo-15',
@@ -33,6 +37,8 @@ export const flight: Flight = {
   site: LC39A_EDT,
   opens: { at: ingress, model: 'pad', view: 'launcher' },
   weather: WEATHER,
+  plan: { ...PLAN, aloft: WEATHER.aloft },
+  flies: saturnVFlies(PLAN),
   crew: ['David R. Scott', 'Alfred M. Worden', 'James B. Irwin'],
   summary:
     'Scott and Irwin unfolded a rover from Falcon and drove along Hadley Rille and the Apennine Front. In lunar orbit Worden photographed their landing region from Endeavour. On the way home he climbed outside to collect the film.',
@@ -93,9 +99,9 @@ export const flight: Flight = {
     specification(
       rocket,
       'Mass at liftoff',
-      6394652 * lb,
+      6399652 * lb,
       'kg',
-      'AS-510 Flight Evaluation Report, table 16-2, actual weight at holddown-arm release, 6,394,652 lb',
+      'AS-510 Flight Evaluation Report, table 16-2, actual weight at holddown-arm release, 6,399,652 lb',
     ),
     specification('Spacecraft', 'CSM at transposition', 66885 * lb, 'kg', masses),
     specification('Lunar module · Falcon', 'LM at transposition', 36220 * lb, 'kg', masses),

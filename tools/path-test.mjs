@@ -208,6 +208,27 @@ const FLIGHTS = {
     orbit: [3000],
     coast: 3000,
   },
+  // (the first J mission: the S-IC's four retrorockets, the lower parking orbit, the S-II to its oxygen's depletion, the injection)
+  a15: {
+    id: 'usa/apollo/apollo-15',
+    instants: [5, 60, 136, 160, 200, 460, 545, 560, 695, 3000, 10_190, 10_300, 10_500, 10_560, 13_000, 40_000, 120_000],
+    orbit: [3000],
+    coast: 3000,
+  },
+  // (the S-IC, the S-II to its oxygen's depletion, the S-IVB longer to the orbit, the injection)
+  a16: {
+    id: 'usa/apollo/apollo-16',
+    instants: [5, 60, 138, 162, 200, 462, 555, 570, 706, 3000, 9200, 9300, 9500, 9565, 12_000, 40_000, 120_000],
+    orbit: [3000],
+    coast: 3000,
+  },
+  // (by night, on the azimuth the hold moved: the S-IC to its fuel's depletion, the S-II to its oxygen's, the injection)
+  a17: {
+    id: 'usa/apollo/apollo-17',
+    instants: [5, 60, 139, 161, 200, 461, 555, 570, 703, 3000, 11_540, 11_650, 11_850, 11_915, 14_000, 40_000, 120_000],
+    orbit: [3000],
+    coast: 3000,
+  },
   // (three revolutions: staging, insertion, the first burn by day, the night, the third burn, retrofire, the entry banked, the drogue, the main)
   gt3: {
     id: 'usa/gemini/gt-3',

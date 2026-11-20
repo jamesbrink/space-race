@@ -18,6 +18,36 @@ The terrain follows LROC stereo elevations near the lander and LOLA altimetry be
 
 ![LRV-1, with detail of the wheel and control console](../../../../../docs/readme/apollo-15-rover.webp)
 
+## Fly
+
+Fly takes the flight deck at the pad: SA-510 under your hands from ignition through the translunar injection, launched
+on time at 09:34 EDT and rolled onto the day's azimuth, 80.1° east of north. On entry guidance (G) and the sequencer (B)
+are off and Hold is on: you light, steer, cut and stage each of the three stages, drop the S-II's aft interstage and the
+escape tower, make the parking orbit, 166 by 170 km, lower than Apollo 14's for the heavier J-mission stack, and light
+the S-IVB again for the injection. With G and B on, the record's ascent (its S-IC programme, its guidance's closed loop,
+its events at their times, the S-II burning to its oxygen's depletion) makes the parking orbit and the injection. The
+run, and how it compares with the record, is in [mission.md](mission.md), from MSFC's flight evaluation of SA-510
+(MPR-SAT-FE-71-2).
+
+The flight ends with the injection: the stack, whole, coasts on toward the Moon, which pulls on it. The docking and what
+came after are not flown. The rover rides folded on Falcon inside the adapter and is not driven in the flight: drive it
+from its gallery (above).
+
+## What is not flown or is simplified
+
+- Nothing after the S-IVB's second cutoff: the transposition and docking, Falcon drawn out of the adapter with the rover
+  folded on it, the S-IVB sent to strike the Moon, the landing at Hadley–Apennine and the return. The stack coasts on
+  whole.
+- The lunar roving vehicle is not driven in the flight: it rides folded in Falcon's quadrant I, its mass in the lunar
+  module's. It is driven in its gallery.
+- The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV.
+- The S-IC flies a pitch programme traced off the evaluation's Fig. 9-10, its time axis read from the figure's frame at
+  7.8 s: its greatest dynamic pressure is 8 per cent over the record's (mission.md). The first two stages are pushed apart
+  at one even rate, the reconstructed distance's mean, without the F-1s' tailoff that slowed them. The S-II burns to the
+  run's own depletion 2.5 s early and the S-IVB 11.1 s longer to the same orbit; the iterative guidance is a linear tangent
+  in each of its two burns; the engines' starts and cutoff transients, the tower clearance yaw and the S-IVB's boil-off in
+  orbit are not flown.
+
 ## Hardware notes
 
 - [SA-510 and SLA-19](../../vehicles/sa-510.md)
