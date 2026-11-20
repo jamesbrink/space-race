@@ -1,6 +1,7 @@
 import { assumed, doc, estimated } from '../../../../../src/measure.ts';
 import type { Flight, JetDef, Motor } from '../../../../../src/types.ts';
 import { LC34_FT as FT } from '../../../places/cape-canaveral/lc-34.ts';
+import { saturnIBFlies } from '../../vehicles/saturn-ib-flies.ts';
 import { apollo7Plan } from './orbital.ts';
 import { UPRIGHTING } from './uprighting.ts';
 
@@ -21,11 +22,9 @@ export const translationJets: JetDef[] = Array.from({ length: 4 }, (_, quad) => 
 }));
 
 const craft = apollo7Plan.craft[0]!;
-function drop(on: string, nodes: string[]) {
-  const joint = craft.joints.find((j) => j.id === on);
-  if (!joint?.at) throw new Error(`Missing Apollo 7 visual separation time for ${on}`);
-  return { on, at: joint.at.value, nodes };
-}
+const shared = saturnIBFlies(apollo7Plan);
+/** When the spacecraft left the S-IVB, s: the adapter's panels open from it. */
+const parted = craft.joints.find((j) => j.id === 'spacecraft-separation')!.at!.value;
 
 const stageNames: Record<string, string> = {
   'h1-inboard': 'Four inboard H-1 engines',
@@ -95,44 +94,13 @@ export const timeline: Flight['timeline'] = [
 ].sort((a, b) => a.t - b.t);
 
 export const flies: NonNullable<Flight['flies']> = {
-  model: 'vehicle',
+  ...shared,
   target: {
     drop: 'spacecraft-separation',
     name: 'S-IVB',
     tailFirst: doc(11820, 'AS-205 flight evaluation §12.2, approximate time of tail-first alignment'),
     until: doc(168 * 3600 + 27 * 60, 'Apollo 7 Mission Report §3.4, approximate reentry time'),
   },
-  drops: [
-    drop('sib-separation', ['SaturnFirstStage', 'SaturnInterstage', 'FirstStageEngines', 'FirstStageTankStructure']),
-    drop('les-jettison', ['LaunchEscape', 'BoostCover']),
-    drop('spacecraft-separation', [
-      'SaturnSecondStage',
-      'SecondStageEngine',
-      'SecondStageTankStructure',
-      'InstrumentUnit',
-      'InstrumentUnitEquipment',
-      'SpacecraftAdapter',
-    ]),
-    drop('cm-sm-separation', ['ServiceModule', 'ServiceSumpTanks', 'ServicePower', 'ServiceHelium', 'ReactionControl', 'ServiceEngine']),
-    drop('forward-shield-jettison', ['ForwardShield']),
-  ],
-  fires: [
-    ...Array.from({ length: 8 }, (_, i) => ({
-      node: `H1_Bell_${i}`,
-      radius: 23 * IN,
-      on: i < 4 ? 'h1-inboard' : 'h1-outboard',
-      burns: 'kerosene-lox' as const,
-    })),
-    { node: 'J2_Bell', radius: 38.5 * IN, on: 'sivb-j2', burns: 'hydrogen-lox' },
-    { node: 'SPS_Bell', radius: 47.25 * IN, on: 'sps', burns: 'hydrazine-n2o4' },
-    ...Array.from({ length: 4 }, (_, i) => ({
-      node: `LES_Nozzle_${i}`,
-      radius: 5.5 * IN,
-      on: 'launch-escape-motor',
-      mount: true as const,
-      burns: 'solid-perchlorate' as const,
-    })),
-  ],
   eventRotations: [
     ...[0, 1].map((i) => ({
       event: 'escape-canards',
@@ -163,8 +131,8 @@ export const flies: NonNullable<Flight['flies']> = {
       node: 'SLA_PetalSkin_3',
       axis: [1, 0, 0],
       angle: (20 * Math.PI) / 180,
-      from: 28 * 3600 + 20 * 60 - drop('spacecraft-separation', []).at,
-      to: 28 * 3600 + 20 * 60 + 5 - drop('spacecraft-separation', []).at,
+      from: 28 * 3600 + 20 * 60 - parted,
+      to: 28 * 3600 + 20 * 60 + 5 - parted,
     },
   ],
   chutes: [
@@ -202,6 +170,5 @@ export const flies: NonNullable<Flight['flies']> = {
       cluster: { azimuth, tilt: estimated(20, 'Estimated visual spread of the three mains about the common bridle') },
     })),
   ],
-  air: { shield: 'HeatShield', collar: 'SaturnFirstStage' },
   uprighting: UPRIGHTING,
 };

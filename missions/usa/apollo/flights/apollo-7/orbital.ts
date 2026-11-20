@@ -1,27 +1,19 @@
-/** Apollo 7 as flown by CSM-101 and Saturn IB AS-205. All elapsed times are ground elapsed time. */
+/**
+ * Apollo 7 as flown by CSM-101 and Saturn IB AS-205: the record the plan is written from (vehicles/saturn-ib-plan.ts
+ * `saturnIBPlan`). All elapsed times are ground elapsed time.
+ */
 import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
 import { trackedState } from '../../../../../src/sim/orbital.ts';
-import type {
-  Action,
-  AttitudeDef,
-  EngineDef,
-  EventDef,
-  FlightPlan,
-  OrbitFix,
-  PlanCheck,
-  Pursuit,
-  Trigger,
-} from '../../../../../src/sim/plan.ts';
-import type { ShedBody } from '../../../../../src/types.ts';
+import type { Action, AttitudeDef, EventDef, FlightPlan, OrbitFix, PlanCheck, Pursuit, Trigger } from '../../../../../src/sim/plan.ts';
 import { earthFrame } from '../../../../../src/world/earthframe.ts';
 import { cross, dot, ecefToGeodetic, enuAxes, scale, sub, unit } from '../../../../../src/world/frames.ts';
 import { step } from '../../../../../src/world/orbit.ts';
 
-import { TRIM, TRIM_DRAG } from '../../vehicles/command-module-aero.ts';
+import { CSM_OUTSIDE, localAim, saturnIBPlan } from '../../vehicles/saturn-ib-plan.ts';
+import type { Burn, SaturnIBRecord } from '../../vehicles/saturn-ib-record.ts';
 import { aborts, escapeEngine } from './escape.ts';
 
 const FT = 0.3048;
-const IN = 0.0254;
 const LB = 0.45359237;
 const LBF = 4.448221615;
 const NMI = 1852;
@@ -282,41 +274,22 @@ function spsAxis(index: number): AttitudeDef {
   return localAim(id, burn.name, [dot(dv, cross(left, up)), dot(dv, left), dot(dv, up)], source);
 }
 
-function localAim(id: string, label: string, [forward, left, up]: readonly [number, number, number], source: string): AttitudeDef {
-  return {
-    id,
-    label,
-    source,
-    hold: {
-      aim: 'velocity',
-      sense: 1,
-      yaw: derived((Math.atan2(left, forward) * 180) / Math.PI, source),
-      below: derived((-Math.atan2(up, Math.hypot(forward, left)) * 180) / Math.PI, source),
-      confidence: 'derived',
-    },
-  };
-}
-
 const spsAttitudes = sps.map((_, i) => spsAxis(i));
-const spsEvents = sps.flatMap((burn, i) => {
-  const id = `sps-${i + 1}`;
-  return [
-    timed(id, `SPS ${i + 1} · ${burn.name}`, burn.on, [
-      { attitude: spsAttitudes[i]!.id },
-      {
-        ignite: 'sps',
-        flown: doc(burn.dv * FT, `${REPORT}, Table 3-V, SPS impulse excluding the RCS ullage translation`),
-        firingTime: doc(
-          burn.duration,
-          `${REPORT}, ${i === 3 || i === 5 ? 'Table 5.18-IV, thrusting interval including the transient' : 'Table 3-V, effective duration'}`,
-        ),
-        massAtIgnition: doc(burn.mass * LB, WEIGHTS),
-        ...(spsToward[i] ? { toward: spsToward[i] } : {}),
-      },
-    ]),
-    timed(`${id}-cutoff`, `SPS ${i + 1} cutoff`, burn.off, [{ cut: 'sps' }]),
-  ];
-});
+const spsBurns: Burn[] = sps.map((burn, i) => ({
+  id: `sps-${i + 1}`,
+  label: `SPS ${i + 1} · ${burn.name}`,
+  engine: 'sps',
+  aim: spsAttitudes[i]!,
+  on: doc(burn.on, EVENTS),
+  off: { at: doc(burn.off, EVENTS), label: `SPS ${i + 1} cutoff` },
+  flown: doc(burn.dv * FT, `${REPORT}, Table 3-V, SPS impulse excluding the RCS ullage translation`),
+  firingTime: doc(
+    burn.duration,
+    `${REPORT}, ${i === 3 || i === 5 ? 'Table 5.18-IV, thrusting interval including the transient' : 'Table 3-V, effective duration'}`,
+  ),
+  massAtIgnition: doc(burn.mass * LB, WEIGHTS),
+  ...(spsToward[i] ? { toward: spsToward[i] } : {}),
+}));
 
 const rcs = [
   { id: 'rcs-phasing-1', name: 'First phasing maneuver', on: T(3, 20, 9.9), length: 16.8, dv: 5.7, axis: [-1, 0, 0] },
@@ -341,38 +314,34 @@ const formationAim = localAim(
   [1, 0, 0],
   'Along the motion: the thrust is commanded on the stage',
 );
-const formationEvents: EventDef[] = [
-  {
-    ...timed('rcs-formation', 'Station-keeping with the S-IVB', FORMATION, [
-      { attitude: formationAim.id },
-      {
-        ignite: 'sm-rcs',
-        flown: estimated(0, 'No impulse on the record: the thrusters’ pulses beside the stage were not recorded'),
-        toward: {
-          station: {
-            ahead: estimated(
-              -100 * FT,
-              'NASA, Apollo 7/S-IVB Rendezvous in Space, photo caption: photographed at approximately 100 ft during transposition. The stage is taken to be directly behind the spacecraft',
-            ),
-            above: estimated(0, 'Photo range only'),
-          },
-          until: doc(T(3, 20, 9.9), `${REPORT}, Table 2-I, first phasing maneuver`),
-        },
-      },
-    ]),
-    at: estimated(
-      FORMATION,
-      'Time to pull clear for transposition, estimated from the separation’s motion; the instant is not on the record',
-    ),
-  },
-  {
-    ...timed('rcs-formation-cutoff', 'In formation with the S-IVB', FORMATION + 300, [{ cut: 'sm-rcs' }]),
+const formationBurn: Burn = {
+  id: 'rcs-formation',
+  label: 'Station-keeping with the S-IVB',
+  engine: 'sm-rcs',
+  aim: formationAim,
+  on: estimated(
+    FORMATION,
+    'Time to pull clear for transposition, estimated from the separation’s motion; the instant is not on the record',
+  ),
+  off: {
     at: estimated(
       FORMATION + 300,
       'Five minutes to turn round and come to rest by the stage: an estimate, the transposition’s own times not being on the record',
     ),
+    label: 'In formation with the S-IVB',
   },
-];
+  flown: estimated(0, 'No impulse on the record: the thrusters’ pulses beside the stage were not recorded'),
+  toward: {
+    station: {
+      ahead: estimated(
+        -100 * FT,
+        'NASA, Apollo 7/S-IVB Rendezvous in Space, photo caption: photographed at approximately 100 ft during transposition. The stage is taken to be directly behind the spacecraft',
+      ),
+      above: estimated(0, 'Photo range only'),
+    },
+    until: doc(T(3, 20, 9.9), `${REPORT}, Table 2-I, first phasing maneuver`),
+  },
+};
 
 /**
  * The separation from the stage once the station was left: "After a short period of station keeping, a separation
@@ -388,65 +357,35 @@ const separationAim = localAim(
   [1, 0, 0],
   'Along the motion: derived from the orbit it left (161.0 by 122.2 to 161.5 by 122.0 n. mi.) and the stage drawing ahead afterwards',
 );
-const separationEvents: EventDef[] = [
-  {
-    ...timed('rcs-separation', 'Separation from the S-IVB', SEPARATED, [
-      { attitude: separationAim.id },
-      { ignite: 'sm-rcs', flown: doc(2 * FT, `${REPORT}, §8, p. 8-3: a separation maneuver of 2 ft/sec`) },
-    ]),
-    at: estimated(
-      SEPARATED,
-      `${REPORT}, §8: "after a short period of station keeping"; put at the end of the station-keeping interval (SP-4029)`,
-    ),
-  },
-  {
-    ...timed('rcs-separation-cutoff', 'Separation maneuver complete', SEPARATED + 10, [{ cut: 'sm-rcs' }]),
+const separationBurn: Burn = {
+  id: 'rcs-separation',
+  label: 'Separation from the S-IVB',
+  engine: 'sm-rcs',
+  aim: separationAim,
+  on: estimated(
+    SEPARATED,
+    `${REPORT}, §8: "after a short period of station keeping"; put at the end of the station-keeping interval (SP-4029)`,
+  ),
+  off: {
     at: estimated(
       SEPARATED + 10,
       'Ten seconds: 2 ft/s on two 100 lbf thrusters at the spacecraft’s mass; the firing’s length is not on the record',
     ),
+    label: 'Separation maneuver complete',
   },
-];
+  flown: doc(2 * FT, `${REPORT}, §8, p. 8-3: a separation maneuver of 2 ft/sec`),
+};
 
-const rcsEvents = rcs.flatMap((burn, i) => [
-  timed(burn.id, burn.name, burn.on, [
-    { attitude: rcsAttitudes[i]!.id },
-    {
-      ignite: 'sm-rcs',
-      flown: doc(burn.dv * FT, `${REPORT}, Table 3-IV, resultant translation; braking's intermittent pulses are averaged`),
-      ...(rcsToward[i] ? { toward: rcsToward[i] } : {}),
-    },
-  ]),
-  timed(
-    `${burn.id}-cutoff`,
-    `${burn.name} complete`,
-    burn.on + burn.length,
-    [{ cut: 'sm-rcs' }],
-    `${REPORT}, §3.2.1 and Tables 2-I and 3-IV`,
-  ),
-]);
-
-const h1 = (id: string, label: string): EngineDef => ({
-  id,
-  label,
-  body: 'sib',
-  count: 4,
-  tanks: ['sib-propellant'],
-  kind: 'liquid',
-  thrust: {
-    seaLevel: assumed(200_000 * LBF, 'NASA SP-4206, ch. 4, rated sea-level thrust of each H-1 on AS-201 through AS-205'),
-    vacuum: derived(
-      (2810.91 * 9.80665 * 295) / 8,
-      `${ASCENT}, Table 8-II average stage flow and Fig. 8-2 high-altitude specific impulse, read as about 295 s`,
-    ),
-  },
-  isp: {
-    seaLevel: derived((200_000 * LBF * 8) / (9.80665 * 2810.91), `${ASCENT}, Table 8-II stage flow at the H-1's rated sea-level thrust`),
-    vacuum: estimated(295, `${ASCENT}, Figure 8-2, end of the eight-engine firing, read as about 295 s`),
-  },
-  starts: { count: 1, ground: true, confidence: 'documented', source: `${ASCENT}, §8` },
-  burns: 'kerosene-lox',
-});
+const rcsBurns: Burn[] = rcs.map((burn, i) => ({
+  id: burn.id,
+  label: burn.name,
+  engine: 'sm-rcs',
+  aim: rcsAttitudes[i]!,
+  on: doc(burn.on, EVENTS),
+  off: { at: doc(burn.on + burn.length, `${REPORT}, §3.2.1 and Tables 2-I and 3-IV`), label: `${burn.name} complete` },
+  flown: doc(burn.dv * FT, `${REPORT}, Table 3-IV, resultant translation; braking's intermittent pulses are averaged`),
+  ...(rcsToward[i] ? { toward: rcsToward[i] } : {}),
+}));
 
 const bank = (id: string, angle: number, inferred = false): AttitudeDef => ({
   id,
@@ -499,475 +438,224 @@ const entryBanks = entryProgramme.map(([at], i) =>
 );
 const service = sps[7];
 const shield = DROGUE - 1.6;
-const capsuleArea = Math.PI * (77 * IN) ** 2;
-// saturn_ib.py: the SM aft bulkhead (XA838) meets the top of the adapter.
-export const CSM_MATING_HEIGHT = (80.2 * 12 + 58.4 * 12 + 36 + 28 * 12) * IN;
-const stackCm = CSM_MATING_HEIGHT + 162 * IN;
 const shieldMass = derived((12_277 - 11_936) * LB, `${WEIGHTS}, Mach 10 less drogue deployment; includes char and CM consumables`);
 const serviceMass = derived((23_453 - 12_364) * LB, `${WEIGHTS}, CSM before separation less the CM after separation`);
 const boosterMass = derived(42_574.2 + 2_995.5, `${ASCENT}, Table 6-I, S-IB and interstage masses at separation`);
 const towerMass = doc(4_025.2, `${ASCENT}, Table 6-I, launch escape system`);
 
-function released(
-  on: string,
-  name: string,
-  mass: NonNullable<ShedBody['mass']>,
-  source: string,
-  [aft, forward, radius, centre]: [number, number, number, number],
-  [foreDrag, aftDrag, sideDrag]: [number, number, number],
-): ShedBody {
-  const from = derived(aft, source);
-  const to = derived(forward, source);
-  return {
-    on,
-    name,
-    mass,
-    from,
-    to,
-    radius: derived(radius, source),
-    centre: estimated(centre, `${source}; approximate center after release`),
-    gyration: {
-      roll: estimated(radius * 0.78, `${source}; hollow shell approximation`),
-      across: estimated(Math.hypot((forward - aft) / Math.sqrt(12), radius / Math.sqrt(2)), `${source}; hollow shell approximation`),
+export const orbital: SaturnIBRecord = {
+  label: 'Saturn IB AS-205 with CSM-101',
+  liftoff: doc(586_392.8, `${ASCENT}, Table 6-I, total stack at first motion`),
+  sib: {
+    mass: derived(450_830.9 + 2_995.5 - 6_277.3, `${ASCENT}, Table 6-I, stage and interstage less thrust buildup propellant`),
+    spent: boosterMass,
+    propellant: {
+      load: derived(450_830.9 - 6_277.3 - 42_574.2, `${ASCENT}, Table 6-I, stage at first motion less its residual mass at separation`),
     },
-    ahead: estimated(foreDrag, `${source}; approximate fore drag area`),
-    astern: estimated(aftDrag, `${source}; approximate aft drag area`),
-    side: { from, to, dragArea: estimated(sideDrag, `${source}; approximate broadside drag area`) },
-  };
-}
-
-const sheds: ShedBody[] = [
-  released(
-    'sib-separation',
-    'S-IB and interstage',
-    boosterMass,
-    'Saturn IB stage envelope in saturn_ib.py and MPR-SAT-FE-68-4, Figure A-1',
-    [0, 1187 * IN, 130 * IN, 8.5],
-    [35, 38, 180],
-  ),
-  {
-    ...released(
-      'les-jettison',
-      'Escape tower and boost cover',
-      towerMass,
-      'Launch escape system envelope in launch_escape.py and Apollo 7 press kit Figure 25a',
-      [stackCm, 224 * FT, 78 * IN, 64],
-      [12, 12, 20],
+    h1: {
+      thrust: {
+        seaLevel: assumed(200_000 * LBF, 'NASA SP-4206, ch. 4, rated sea-level thrust of each H-1 on AS-201 through AS-205'),
+        vacuum: derived(
+          (2810.91 * 9.80665 * 295) / 8,
+          `${ASCENT}, Table 8-II average stage flow and Fig. 8-2 high-altitude specific impulse, read as about 295 s`,
+        ),
+      },
+      isp: {
+        seaLevel: derived(
+          (200_000 * LBF * 8) / (9.80665 * 2810.91),
+          `${ASCENT}, Table 8-II stage flow at the H-1's rated sea-level thrust`,
+        ),
+        vacuum: estimated(295, `${ASCENT}, Figure 8-2, end of the eight-engine firing, read as about 295 s`),
+      },
+    },
+    inboardCut: doc(140.64, `${ASCENT}, §8.1`),
+    outboardCut: doc(144.32, `${ASCENT}, §8.1`),
+    separation: doc(145.6, EVENTS),
+    push: estimated(1.5, 'combined first-stage retrorocket and second-stage ullage separation model'),
+  },
+  sivb: {
+    mass: derived(
+      586_392.8 - (450_830.9 + 2_995.5 - 6_277.3) - 4_025.2 - 16_528.0,
+      `${ASCENT}, Table 6-I, remaining stack mass with the first stage, LES and spacecraft removed`,
     ),
-    forward: true,
-    motors: [
+    propellant: {
+      load: doc(233_269 * LB, 'Saturn S-IVB-205 Stage Flight Evaluation Report, §14.2.1, best estimate at liftoff: 233,269 lbm'),
+      usable: derived(
+        (233_269 - 518 - 760) * LB,
+        'Saturn S-IVB-205 Stage Flight Evaluation Report, §14.2.2, loaded mass less 518 lbm LOX and 760 lbm LH₂ unusable',
+      ),
+    },
+    j2: {
+      thrust: doc(1_009_902, `${ASCENT}, Table 9-II, engine analysis, actual mean at high mixture ratio`),
+      isp: doc(424.2, `${ASCENT}, Table 9-II, engine analysis, high mixture ratio`),
+      shift: {
+        at: doc(455.77, `${ASCENT}, §9.1, low mixture ratio command`),
+        before: doc(1, `${ASCENT}, Table 9-II, high mixture ratio`),
+        after: derived(769_231 / 1_009_902, `${ASCENT}, Table 9-II, the thrust at the low mixture ratio (769,231 N) over that at the high`),
+      },
+      starts: `${ASCENT}, §9, AS-205 used one ignition`,
+    },
+    ignition: doc(146.97, `${ASCENT}, Fig. 9-2, engine start command`),
+    cutoff: doc(J2_OFF, `${ASCENT}, §9.1, guidance cutoff command`),
+    vents: [sivbVenting],
+  },
+  les: {
+    mass: towerMass,
+    at: doc(166.5, EVENTS),
+    motor: {
+      thrust: doc(33_000 * LBF, 'Apollo 7 press kit, p. 25, tower jettison motor'),
+      burn: assumed(1.1, 'Apollo Spacecraft News Reference, launch escape subsystem, burn slightly longer than one second'),
+    },
+    escape: escapeEngine,
+  },
+  csm: {
+    sm: derived(
+      16_528.0 - 12_364 * LB,
+      `${ASCENT}, Table 6-I initial CSM less the CM after separation (${WEIGHTS}); approximates CM consumables usage`,
+    ),
+    cm: {
+      label: 'Command module 101',
+      mass: doc(11_936 * LB, `${WEIGHTS}, at drogue deployment; held through descent`),
+      lift: {
+        points: [
+          [0, 0.37],
+          [4, 0.37],
+          [10, 0.35],
+          [20, 0.33],
+          [25, 0.31],
+        ],
+        confidence: 'estimated',
+        source: `${REPORT}, Fig. 5.2-1, flight-derived L/D digitized approximately through Mach 4; held below Mach 4`,
+      },
+      trim: derived(20, `${REPORT}, Fig. 5.2-1, trim about 160 deg angle of attack (20 deg from heat shield forward)`),
+    },
+    shield: shieldMass,
+    sps: {
+      thrust: doc(21_180 * LBF, `${REPORT}, Table 5.18-I, calculated steady state during burn 5`),
+      isp: doc(314.0, `${REPORT}, Table 5.18-I, calculated steady state during burn 5`),
+      starts: doc(8, `${REPORT}, Table 3-V, eight starts demonstrated on CSM-101`),
+      load: doc(9737.3 * LB, `${REPORT}, §5.18.2, calculated actual load: 6026.7 lbm oxidizer and 3710.6 lbm fuel`),
+      deltaV: doc(service.dv * FT, `${REPORT}, Table 3-V, SPS-only impulse on the eighth burn`),
+    },
+    separation: {
+      at: doc(SEPARATION, `${LV_TRAJ}, Table VI`),
+      push: estimated(0.6, 'initial separation represented by a modest relative spring clearance; later RCS translation is separate'),
+    },
+    modules: {
+      at: doc(MODULES, EVENTS),
+      after: doc(12_356 * LB, `${WEIGHTS}, CM at entry interface`),
+      leaves: serviceMass,
+      push: derived(27.5 * FT, `${REPORT}, §3.4, reconstructed 25–30 ft/s posigrade; midpoint modeled as axial clearance`),
+    },
+  },
+  burns: [formationBurn, separationBurn, ...rcsBurns, ...spsBurns],
+  entry: { parting: bank('entry-lift-up', 0), attitudes: entryAttitudes, events: entryBanks },
+  els: {
+    shield: {
+      at: derived(shield, `${REPORT}, §5.5, 1.6 s before drogue mortar firing`),
+      height: doc(23_500 * FT, `${REPORT}, §5.5`),
+      push: estimated(4, 'forward cover clearance speed; not reconstructed'),
+    },
+    drogues: {
+      at: doc(DROGUE, `${REPORT}, Table 2-I and §5.5`),
+      wait: doc(1.6, `${REPORT}, §5.5, the forward heat shield jettisoned 1.6 s before the drogue mortars fired`),
+      fills: doc(10, `${REPORT}, §5.5, first disreefing after 10 s`),
+    },
+    mains: {
+      at: doc(MAIN, `${REPORT}, Table 2-I and §5.5`),
+      height: doc(10_300 * FT, `${REPORT}, §5.5`),
+      fills: assumed(16, 'Apollo Earth Landing System, two reefed stages; represented by one progressive fill'),
+    },
+  },
+  ascent: {
+    guidance: {
+      azimuth: doc(72, `${ASCENT}, §1.0, flight azimuth east of north after roll`),
+      vertical: doc(10.31, `${ASCENT}, Fig. 12-1, pitch starts at 10.31 s`),
+      kick: derived(134.26 - 10.31, `${ASCENT}, Fig. 12-1, end less start of first-stage pitch program`),
+      roll: {
+        points: [
+          [0, -28],
+          [11, -28],
+          [40, 0],
+        ],
+        confidence: 'estimated',
+        source: `${ASCENT}, Fig. 12-1, actual attitude approximately a 28° roll from pad alignment`,
+      },
+      attached: {
+        align: [doc(636, `${ASCENT}, Table 12-I, alignment starts`), doc(678, `${ASCENT}, Table 12-I, alignment complete`)],
+        pitch: {
+          points: [
+            [0, 0],
+            [9780 - 4.972, 0],
+            [9860 - 4.972, -20],
+          ],
+          confidence: 'estimated',
+          source: `${ASCENT}, §12.2, GRR+9780 pitch 20° down from local horizontal; simplified 80-s ramp`,
+        },
+        freeze: derived(10275 - 4.972, `${ASCENT}, §12.2, GRR+10275; ${LV_TRAJ}, §1, GRR 4.972 s before range zero`),
+      },
+      programme: {
+        points: [
+          [0, 0],
+          [10.31, 0],
+          [20, 1.3],
+          [40, 8.6],
+          [60, 20.0],
+          [80, 32.0],
+          [100, 43.4],
+          [120, 52.2],
+          [134.26, 59.3],
+        ],
+        confidence: 'estimated',
+        source: `${ASCENT}, Fig. 12-1, approximate digitization of the first stage’s space-fixed pitch programme, flown open as it was and held from its end to the J-2’s start; thrust assumed along the pitch axis and yaw departures omitted. The S-IVB’s attitude (Fig. 12-4) is not flown: it was the iterative guidance’s answer to the flight as it went, and the law’s closed loop takes its place`,
+      },
+      turn: doc(146.97, `${ASCENT}, §9 and §11, S-IVB power phase represented by tangent steering`),
+      target: {
+        at: 'sivb-cutoff',
+        altitude: doc(
+          748_374 * FT,
+          `${REPORT}, Table 3-II, Fischer ellipsoid height at cutoff (${LV_TRAJ}, Table XIII, p. 74, has the same place 6,600.454 km from the Earth's centre)`,
+        ),
+        over: 'ellipsoid',
+        climb: doc(0, `${REPORT}, Table 3-II, space-fixed flight path at cutoff`),
+        inclination: doc(31.58, `${REPORT}, Table 2-II`),
+      },
+    },
+    source: `${ASCENT}, §1, §11, and ${REPORT}, Table 3-II`,
+    drag: [
       {
-        name: 'Tower jettison motor',
-        thrust: doc(33_000 * LBF, 'Apollo 7 press kit, p. 25, tower jettison motor'),
-        burn: assumed(1.1, 'Apollo Spacecraft News Reference, launch escape subsystem, burn slightly longer than one second'),
+        until: doc(J2_OFF, `${ASCENT}, §9.1`),
+        area: derived(Math.PI * (6.6 / 2) ** 2, `${ASCENT}, Fig. 6-2, 6.60 m reference vehicle diameter`),
+        curve: {
+          points: [
+            [0, 0.25],
+            [0.8, 0.3],
+            [1.1, 0.55],
+            [1.4, 0.45],
+            [2, 0.36],
+            [6, 0.23],
+          ],
+          confidence: 'estimated',
+          source: 'Slender-stack axial drag approximation; flight configuration drag curve not digitized',
+        },
       },
     ],
-  },
-  {
-    ...released(
-      'cm-sm-separation',
-      'Service module',
-      serviceMass,
-      'Apollo CSM model stations from MIT R-547 and apollo_csm.py: XA706 to XA993 with forward fairing',
-      [stackCm - 294 * IN, stackCm + 19 * IN, 78 * IN, stackCm - 1.8],
-      [11, 12, 23],
+    steering: estimated(
+      8,
+      'deg/s² at full throw, about each axis: NOT FOUND. The S-IB’s four outboard H-1 engines gimballed, the S-IVB’s J-2 gimballed with its auxiliary propulsion modules for roll: taken as the Atlas’s 8 (Friendship 7’s orbital.ts), as Gemini-Titan 3’s is',
     ),
-    push: derived(27.5 * FT, `${REPORT}, §3.4, reconstructed 25–30 ft/s posigrade; midpoint modeled as axial clearance`),
   },
-  {
-    ...released(
-      'forward-shield-jettison',
-      'Forward heat shield',
-      shieldMass,
-      'Block II forward heat-shield stations 81.13–112.25 inches in command_module.py',
-      [stackCm + 81.13 * IN, stackCm + 112.25 * IN, 36 * IN, stackCm + 94 * IN],
-      [2.6, 3.1, 1.4],
+  rarefied: {
+    drag: assumed(
+      2.2,
+      'King-Hele, The Prediction of Satellite Lifetimes, §9.1, customary effective drag coefficient for perigees of 150–400 km',
     ),
-    forward: true,
+    area: derived(
+      CSM_OUTSIDE / 4,
+      'A quarter of the outside of the command and service modules, which is the area a convex body presents on the average over every way it can lie (Cauchy). The outside is the modules’ own sizes (flight.ts: 406.25 in long over all, 154 in across, the barrel and fairing 181 in, the engine’s extension 112 in to a 94.5 in exit) taken as a cone, a cylinder and a frustum to the engine’s exit, closed there: 111.6 m². Its attitude is assumed random: the ship drifted for most of eleven days and no timeline of how it lay is in anything read. Where it was held (the firings, the rendezvous) is not told apart',
+    ),
+    length: doc(154 * 0.0254, 'Apollo 7 press kit p.25, CM diameter'),
   },
-];
-
-/** The outside of the command and service modules as a convex body, m²: the command module's cone, the service module's barrel with its fairing, a frustum to the engine's exit, and the exit's disc. */
-const CSM_OUTSIDE = (() => {
-  const [radius, exit] = [77 * IN, (94.5 / 2) * IN];
-  const [barrel, extension] = [(155 + 26) * IN, 112 * IN];
-  const cone = 406.25 * IN - barrel - extension;
-  return (
-    Math.PI * radius * Math.hypot(cone, radius) +
-    2 * Math.PI * radius * barrel +
-    Math.PI * (radius + exit) * Math.hypot(extension, radius - exit) +
-    Math.PI * exit * exit
-  );
-})();
-
-export const apollo7Plan: FlightPlan = {
-  kind: 'orbital',
-  craft: [
-    {
-      id: 'saturn-ib',
-      label: 'Saturn IB AS-205 with CSM-101',
-      mass: doc(586_392.8, `${ASCENT}, Table 6-I, total stack at first motion`),
-      sheds,
-      vents: [sivbVenting],
-      bodies: [
-        {
-          id: 'sib',
-          label: 'S-IB, first stage and interstage',
-          count: 1,
-          mass: derived(450_830.9 + 2_995.5 - 6_277.3, `${ASCENT}, Table 6-I, stage and interstage less thrust buildup propellant`),
-          nodes: ['SaturnFirstStage'],
-        },
-        {
-          id: 'sivb',
-          label: 'S-IVB, instrument unit and adapter',
-          count: 1,
-          mass: derived(
-            586_392.8 - (450_830.9 + 2_995.5 - 6_277.3) - 4_025.2 - 16_528.0,
-            `${ASCENT}, Table 6-I, remaining stack mass with the first stage, LES and spacecraft removed`,
-          ),
-          nodes: ['SaturnSecondStage'],
-        },
-        {
-          id: 'les',
-          label: 'Launch escape tower with boost cover',
-          count: 1,
-          mass: towerMass,
-          nodes: ['LaunchEscape'],
-        },
-        {
-          id: 'sm',
-          label: 'Service module',
-          count: 1,
-          mass: derived(
-            16_528.0 - 12_364 * LB,
-            `${ASCENT}, Table 6-I initial CSM less the CM after separation (${WEIGHTS}); approximates CM consumables usage`,
-          ),
-          nodes: ['ServiceModule'],
-        },
-        {
-          id: 'forward-shield',
-          label: 'Forward heat shield',
-          count: 1,
-          mass: shieldMass,
-          nodes: ['ForwardShield'],
-        },
-        {
-          id: 'cm',
-          label: 'Command module 101',
-          count: 1,
-          mass: doc(11_936 * LB, `${WEIGHTS}, at drogue deployment; held through descent`),
-          nodes: ['CommandModule'],
-          aero: {
-            area: derived(capsuleArea, 'Apollo 7 press kit p.25, area of the 154 in heat shield disc'),
-            drag: {
-              points: TRIM_DRAG.map(([mach, cd]) => [mach, cd] as [number, number]),
-              confidence: 'assumed',
-              source: `${TRIM}: trim drag of the same Block II shape, with different mass distribution; low endpoint held below Mach 0.4`,
-            },
-            lift: {
-              points: [
-                [0, 0.37],
-                [4, 0.37],
-                [10, 0.35],
-                [20, 0.33],
-                [25, 0.31],
-              ],
-              confidence: 'estimated',
-              source: `${REPORT}, Fig. 5.2-1, flight-derived L/D digitized approximately through Mach 4; held below Mach 4`,
-            },
-            trim: derived(20, `${REPORT}, Fig. 5.2-1, trim about 160 deg angle of attack (20 deg from heat shield forward)`),
-            dragArea: derived(0.853 * capsuleArea, `${TRIM}, Mach 0.4 drag coefficient on the capsule reference area`),
-          },
-        },
-      ],
-      joints: [
-        {
-          id: 'sib-separation',
-          label: 'S-IB/S-IVB separation',
-          gone: ['sib'],
-          at: doc(145.6, EVENTS),
-          leaves: boosterMass,
-          push: estimated(1.5, 'combined first-stage retrorocket and second-stage ullage separation model'),
-          // (the S-IVB's J-2 stands in the closed interstage over the S-IB, which was not hot-staged)
-          closed: { engines: ['sivb-j2'] },
-        },
-        {
-          id: 'les-jettison',
-          label: 'Launch escape tower jettison',
-          gone: ['les'],
-          at: doc(166.5, EVENTS),
-        },
-        {
-          id: 'spacecraft-separation',
-          label: 'CSM/S-IVB separation',
-          gone: ['sivb'],
-          at: doc(SEPARATION, `${LV_TRAJ}, Table VI`),
-          push: estimated(0.6, 'initial separation represented by a modest relative spring clearance; later RCS translation is separate'),
-        },
-        {
-          id: 'cm-sm-separation',
-          label: 'Command/service module separation',
-          gone: ['sm'],
-          at: doc(MODULES, EVENTS),
-          after: doc(12_356 * LB, `${WEIGHTS}, CM at entry interface`),
-          leaves: serviceMass,
-        },
-        {
-          id: 'forward-shield-jettison',
-          label: 'Forward heat shield jettison',
-          gone: ['forward-shield'],
-          at: derived(shield, `${REPORT}, §5.5, 1.6 s before drogue mortar firing`),
-          push: estimated(4, 'forward cover clearance speed; not reconstructed'),
-        },
-      ],
-      engines: [
-        h1('h1-inboard', 'Four inboard H-1 engines'),
-        h1('h1-outboard', 'Four outboard H-1 engines'),
-        escapeEngine,
-        {
-          id: 'sivb-j2',
-          body: 'sivb',
-          label: 'Rocketdyne J-2',
-          count: 1,
-          tanks: ['sivb-propellant'],
-          kind: 'liquid',
-          thrust: { vacuum: doc(1_009_902, `${ASCENT}, Table 9-II, engine analysis, actual mean at high mixture ratio`) },
-          isp: { vacuum: doc(424.2, `${ASCENT}, Table 9-II, engine analysis, high mixture ratio`) },
-          throttle: {
-            curve: {
-              points: [
-                [0, 1],
-                [455.77, 1],
-                [455.78, 769_231 / 1_009_902],
-              ],
-              confidence: 'derived',
-              source: `${ASCENT}, §9.1 and Table 9-II, low mixture ratio command at 455.77 s; thrust and mass flow approximated with one thrust ratio`,
-            },
-          },
-          starts: { count: 1, ground: false, confidence: 'documented', source: `${ASCENT}, §9, AS-205 used one ignition` },
-          burns: 'hydrogen-lox',
-        },
-        {
-          id: 'sps',
-          body: 'sm',
-          label: 'Service Propulsion System',
-          count: 1,
-          tanks: ['sps-propellant'],
-          kind: 'liquid',
-          thrust: { vacuum: doc(21_180 * LBF, `${REPORT}, Table 5.18-I, calculated steady state during burn 5`) },
-          isp: { vacuum: doc(314.0, `${REPORT}, Table 5.18-I, calculated steady state during burn 5`) },
-          starts: {
-            count: 8,
-            ground: false,
-            confidence: 'documented',
-            source: `${REPORT}, Table 3-V, eight starts demonstrated on CSM-101`,
-          },
-          flown: doc(service.dv * FT, `${REPORT}, Table 3-V, SPS-only impulse on the eighth burn`),
-          deltaV: doc(service.dv * FT, `${REPORT}, Table 3-V, SPS-only impulse on the eighth burn`),
-          burns: 'hydrazine-n2o4',
-        },
-        {
-          id: 'sm-rcs',
-          body: 'sm',
-          label: 'Service module reaction control',
-          count: 1,
-          tanks: [],
-          kind: 'liquid',
-          thrust: { vacuum: assumed(2 * 100 * LBF, 'Apollo CSM News Reference, two 100-lbf SM thrusters on an axial translation axis') },
-          starts: {
-            count: 1000,
-            ground: false,
-            confidence: 'estimated',
-            source: 'Pulse train represented as its average force; no relevant start limit in the flight record',
-          },
-          burns: 'hydrazine-n2o4',
-        },
-      ],
-      tanks: [
-        {
-          id: 'sps-propellant',
-          body: 'sm',
-          label: 'SPS propellant',
-          holds: 'propellant',
-          load: doc(9737.3 * LB, `${REPORT}, §5.18.2, calculated actual load: 6026.7 lbm oxidizer and 3710.6 lbm fuel`),
-        },
-        {
-          id: 'sib-propellant',
-          body: 'sib',
-          label: 'S-IB LOX/RP-1',
-          holds: 'propellant',
-          load: derived(450_830.9 - 6_277.3 - 42_574.2, `${ASCENT}, Table 6-I, stage at first motion less its residual mass at separation`),
-        },
-        {
-          id: 'sivb-propellant',
-          body: 'sivb',
-          label: 'S-IVB LOX/LH₂',
-          holds: 'propellant',
-          load: doc(233_269 * LB, 'Saturn S-IVB-205 Stage Flight Evaluation Report, §14.2.1, best estimate at liftoff: 233,269 lbm'),
-          usable: derived(
-            (233_269 - 518 - 760) * LB,
-            'Saturn S-IVB-205 Stage Flight Evaluation Report, §14.2.2, loaded mass less 518 lbm LOX and 760 lbm LH₂ unusable',
-          ),
-        },
-      ],
-      thrusters: [
-        // What turns the stack going up: without it the live vehicle has no steering at all, and a flight taken over rose
-        // straight up and was left behind by the turning Earth (until November 2026).
-        {
-          id: 'saturn-steering',
-          label: 'Steering',
-          body: 'sivb',
-          does: ['rotation'],
-          mode: 'automatic',
-          authority: estimated(
-            8,
-            'deg/s² at full throw, about each axis: NOT FOUND. The S-IB’s four outboard H-1 engines gimballed, the S-IVB’s J-2 gimballed with its auxiliary propulsion modules for roll: taken as the Atlas’s 8 (Friendship 7’s orbital.ts), as Gemini-Titan 3’s is',
-          ),
-        },
-        {
-          id: 'sm-manual-rate',
-          label: 'SM RCS proportional rate',
-          body: 'sm',
-          does: ['rotation'],
-          mode: 'manual',
-          rate: assumed(
-            0.7,
-            'Apollo Operations Handbook, Block II vol. 1 §2.3, stabilization and control, proportional rate table: LOW setting, all three axes',
-          ),
-        },
-      ],
-      chutes: [
-        {
-          id: 'els-drogues',
-          body: 'cm',
-          label: 'Twin drogues',
-          dragArea: estimated(
-            0.55 * 2 * Math.PI * (8.25 * FT) ** 2,
-            'Two 16.5 ft drogues, Apollo Earth Landing System; 0.55 effective coefficient for the ribbon canopies',
-          ),
-          fills: doc(10, `${REPORT}, §5.5, first disreefing after 10 s`),
-        },
-        {
-          id: 'els-mains',
-          body: 'cm',
-          label: 'Three main parachutes',
-          instead: ['els-drogues'],
-          dragArea: estimated(
-            0.75 * 3 * Math.PI * (41.75 * FT) ** 2,
-            'Three 83.5 ft ringsails, Apollo Earth Landing System; 0.75 effective coefficient for projected drag',
-          ),
-          fills: assumed(16, 'Apollo Earth Landing System, two reefed stages; represented by one progressive fill'),
-        },
-      ],
-      limits: [],
-      heating: {
-        noseRadius: assumed(
-          184.8 * IN,
-          'Block II spherical aft heat shield profile as modeled from North American structural training drawings, shared with CM-101',
-        ),
-        starts: estimated(290, 'Initial shield temperature is unused for shock-gas proxy with no heated surfaces'),
-        surfaces: [],
-      },
-      drag: [
-        {
-          until: doc(J2_OFF, `${ASCENT}, §9.1`),
-          area: derived(Math.PI * (6.6 / 2) ** 2, `${ASCENT}, Fig. 6-2, 6.60 m reference vehicle diameter`),
-          curve: {
-            points: [
-              [0, 0.25],
-              [0.8, 0.3],
-              [1.1, 0.55],
-              [1.4, 0.45],
-              [2, 0.36],
-              [6, 0.23],
-            ],
-            confidence: 'estimated',
-            source: 'Slender-stack axial drag approximation; flight configuration drag curve not digitized',
-          },
-        },
-      ],
-      rarefied: {
-        drag: assumed(
-          2.2,
-          'King-Hele, The Prediction of Satellite Lifetimes, §9.1, customary effective drag coefficient for perigees of 150–400 km',
-        ),
-        area: derived(
-          CSM_OUTSIDE / 4,
-          'A quarter of the outside of the command and service modules, which is the area a convex body presents on the average over every way it can lie (Cauchy). The outside is the modules’ own sizes (flight.ts: 406.25 in long over all, 154 in across, the barrel and fairing 181 in, the engine’s extension 112 in to a 94.5 in exit) taken as a cone, a cylinder and a frustum to the engine’s exit, closed there: 111.6 m². Its attitude is assumed random: the ship drifted for most of eleven days and no timeline of how it lay is in anything read. Where it was held (the firings, the rendezvous) is not told apart',
-        ),
-        length: doc(154 * 0.0254, 'Apollo 7 press kit p.25, CM diameter'),
-      },
-      lands: { on: 'sea', ship: 'the command module' },
-    },
-  ],
-  attitude: [
-    {
-      id: 'saturn-steering',
-      label: 'Saturn IB ascent',
-      source: `${ASCENT}, §1, §11, and ${REPORT}, Table 3-II`,
-      hold: {
-        law: {
-          azimuth: doc(72, `${ASCENT}, §1.0, flight azimuth east of north after roll`),
-          vertical: doc(10.31, `${ASCENT}, Fig. 12-1, pitch starts at 10.31 s`),
-          kick: derived(134.26 - 10.31, `${ASCENT}, Fig. 12-1, end less start of first-stage pitch program`),
-          roll: {
-            points: [
-              [0, -28],
-              [11, -28],
-              [40, 0],
-            ],
-            confidence: 'estimated',
-            source: `${ASCENT}, Fig. 12-1, actual attitude approximately a 28° roll from pad alignment`,
-          },
-          attached: {
-            align: [doc(636, `${ASCENT}, Table 12-I, alignment starts`), doc(678, `${ASCENT}, Table 12-I, alignment complete`)],
-            pitch: {
-              points: [
-                [0, 0],
-                [9780 - 4.972, 0],
-                [9860 - 4.972, -20],
-              ],
-              confidence: 'estimated',
-              source: `${ASCENT}, §12.2, GRR+9780 pitch 20° down from local horizontal; simplified 80-s ramp`,
-            },
-            freeze: derived(10275 - 4.972, `${ASCENT}, §12.2, GRR+10275; ${LV_TRAJ}, §1, GRR 4.972 s before range zero`),
-          },
-          programme: {
-            points: [
-              [0, 0],
-              [10.31, 0],
-              [20, 1.3],
-              [40, 8.6],
-              [60, 20.0],
-              [80, 32.0],
-              [100, 43.4],
-              [120, 52.2],
-              [134.26, 59.3],
-            ],
-            confidence: 'estimated',
-            source: `${ASCENT}, Fig. 12-1, approximate digitization of the first stage’s space-fixed pitch programme, flown open as it was and held from its end to the J-2’s start; thrust assumed along the pitch axis and yaw departures omitted. The S-IVB’s attitude (Fig. 12-4) is not flown: it was the iterative guidance’s answer to the flight as it went, and the law’s closed loop takes its place`,
-          },
-          turn: doc(146.97, `${ASCENT}, §9 and §11, S-IVB power phase represented by tangent steering`),
-          target: {
-            at: 'sivb-cutoff',
-            altitude: doc(
-              748_374 * FT,
-              `${REPORT}, Table 3-II, Fischer ellipsoid height at cutoff (${LV_TRAJ}, Table XIII, p. 74, has the same place 6,600.454 km from the Earth's centre)`,
-            ),
-            over: 'ellipsoid',
-            climb: doc(0, `${REPORT}, Table 3-II, space-fixed flight path at cutoff`),
-            inclination: doc(31.58, `${REPORT}, Table 2-II`),
-          },
-        },
-      },
-    },
-    formationAim,
-    separationAim,
-    ...rcsAttitudes,
-    ...spsAttitudes,
-    bank('entry-lift-up', 0),
-    ...entryAttitudes,
-  ],
   // The spent stage, with the instrument unit and the adapter on it, flown on from the separation as a craft of its own.
   target: {
     joint: 'spacecraft-separation',
@@ -981,36 +669,56 @@ export const apollo7Plan: FlightPlan = {
       'King-Hele’s customary 2.2 (The Prediction of Satellite Lifetimes, §9.1) on 117 m²: a quarter of the outside of the stage, instrument unit and adapter taken as a cylinder 260 in across and 44 ft long and a cone 28 ft long down to 154 in (press kit, pp. 26, 32 and 33), which is the area a convex body presents on the average over every way it can lie (Cauchy). Its attitude is assumed random: the crew found it tumbling at the rendezvous, and how it lay after its control was let go is not in anything read. The adapter’s open panels are not counted',
     ),
   },
-  events: [
-    timed('liftoff', 'Liftoff', 0, [{ ignite: 'h1-inboard' }, { ignite: 'h1-outboard' }]),
-    timed('sib-inboard-cutoff', 'Inboard H-1 engines cut off', 140.64, [{ cut: 'h1-inboard' }], `${ASCENT}, §8.1`),
-    timed('sib-outboard-cutoff', 'Outboard H-1 engines cut off', 144.32, [{ cut: 'h1-outboard' }], `${ASCENT}, §8.1`),
-    timed('sib-separation', 'S-IB separates', 145.6, [{ separate: 'sib-separation' }]),
-    timed('sivb-ignition', 'J-2 ignition', 146.97, [{ ignite: 'sivb-j2' }], `${ASCENT}, Fig. 9-2, engine start command`),
-    timed('les-jettison', 'Escape tower and boost cover jettison', 166.5, [{ separate: 'les-jettison' }]),
-    // (the guidance's own cutoff: flown where the orbit reached has the record's period; the recorded instant is held as a figure)
-    timed('sivb-cutoff', 'J-2 cutoff', J2_OFF, [{ cut: 'sivb-j2' }], `${ASCENT}, §9.1, guidance cutoff command`, [{ orbit: 'published' }]),
-    timed('spacecraft-separation', 'CSM separates from S-IVB', SEPARATION, [{ separate: 'spacecraft-separation' }], `${LV_TRAJ}, Table VI`),
-    ...formationEvents,
-    ...separationEvents,
-    ...rcsEvents,
-    ...spsEvents,
-    timed('cm-sm-separation', 'Command module separates from service module', MODULES, [
-      { separate: 'cm-sm-separation' },
-      { attitude: 'entry-lift-up' },
-    ]),
-    ...entryBanks,
-    timed('forward-shield-jettison', 'Forward heat shield jettison', shield, [{ separate: 'forward-shield-jettison' }], `${REPORT}, §5.5`, [
-      { after: 'cm-sm-separation' },
-      { height: 23_500 * FT, going: 'down' },
-    ]),
-    timed('drogue-deployment', 'Twin drogues deploy', DROGUE, [{ deploy: 'els-drogues' }], `${REPORT}, Table 2-I and §5.5`, [
-      { after: 'forward-shield-jettison', wait: 1.6 },
-    ]),
-    timed('main-deployment', 'Three mains deploy', MAIN, [{ deploy: 'els-mains' }], `${REPORT}, Table 2-I and §5.5`, [
-      { height: 10_300 * FT, going: 'down' },
-    ]),
-  ].sort((a, b) => a.at!.value - b.at!.value),
+  orbit: {
+    over: { is: 'oblate', confidence: 'documented', source: `${REPORT}, Table 3-I, Fischer ellipsoid` },
+    perigee: doc(123.3 * NMI, `${REPORT}, Table 2-II`),
+    apogee: doc(153.7 * NMI, `${REPORT}, Table 2-II`),
+    inclination: doc(31.58, `${REPORT}, Table 2-II`),
+    period: derived(
+      89.525 * 60,
+      `${LV_TRAJ}, Table XIII, p. 74, the tracked state at insertion read as a mean orbit, perigee to perigee: 89.525 min. ${REPORT}, Table 2-II prints 89.7, to a tenth of a minute, where its own heights (123.3 by 153.7 n. mi.) go round in 89.56`,
+    ),
+    kind: { is: 'anomalistic', confidence: 'documented', source: `${REPORT}, Table 3-I, perigee to perigee` },
+    mass: doc(32_356 * LB, `${WEIGHTS}, first SPS firing, nearest tabulated free-flight mass`),
+    injection: {
+      at: doc(INSERTION, `${LV_TRAJ}, Table XIII, p. 74`),
+      heading: 'north',
+      arc: derived(16.2, `${REPORT}, Table 3-II, along-orbit arc from launch to insertion`),
+      anomaly: estimated(0, 'Insertion close to perigee; for standalone initial orbit solver'),
+    },
+  },
+  marks: [
+    mark('insertion', 'Orbital insertion', INSERTION, `${LV_TRAJ}, Table XIII, p. 74`),
+    mark('sivb-safing', 'S-IVB propellant dump begins', T(1, 34, 29)),
+    mark('sivb-safing-end', 'S-IVB propellant dump ends', T(1, 46, 30)),
+    mark('sivb-takeover', 'Crew takes over S-IVB attitude', T(2, 30, 49.1)),
+    mark('sivb-rendezvous', 'Station-keeping with S-IVB', T(29, 55, 43)),
+    mark('sivb-departure', 'Leaves the S-IVB', T(30, 20, 0)),
+    mark('sivb-reentry', 'S-IVB reenters over the Indian Ocean', T(168, 27, 0), `${REPORT}, §3.4`),
+    mark('entry-interface', 'Entry interface · 400,000 ft', INTERFACE),
+    mark('blackout-in', 'Communications blackout', T(259, 54, 58)),
+    mark('blackout-out', 'Communications restored', T(259, 59, 46)),
+    { ...mark('splashdown', 'Splashdown', SPLASH), lands: 'cm' },
+  ],
+  mission: {
+    manoeuvreTurn: estimated(30, 'Display slew into the published coast burn directions; exact attitude timeline unavailable'),
+    entryInterface: doc(400_000 * FT, `${REPORT}, Table 3-VI`),
+    landing: {
+      at: doc(SPLASH, EVENTS),
+      latitude: doc(27.54, `${REPORT}, §5.16.1, recovery forces estimate`),
+      longitude: doc(-64.07, `${REPORT}, §5.16.1, recovery forces estimate`),
+      near: 'the Atlantic near USS Essex',
+      aimed: {
+        confidence: 'documented',
+        source: `${REPORT}, §3.2.2 and §3.3: the eighth firing was the deorbit maneuver, computed by the ground for the planned landing area; the spacecraft came down within sight of the recovery ship`,
+      },
+    },
+    ground: doc(0, `${REPORT}, §5.5, the Atlantic`),
+    supplies: doc(11, 'Apollo 7 press kit, open-ended mission up to eleven days'),
+    manual: { parting: derived(MODULES - service.off, `${REPORT}, Table 2-I, coast from SPS cutoff to CM/SM separation`) },
+    automatic:
+      'The Earth landing sequence ran automatically. The crew flew the initial entry bank by hand before handing roll control to the computer.',
+  },
   checks: [
     ascentCheck('cutoffSpeed', 'S-IVB cutoff inertial speed', 25_526 * FT, 'm/s', 180, `${REPORT}, Table 3-II`),
     ascentCheck('inclination', 'Insertion inclination', 31.58, '°', 1, `${REPORT}, Table 2-II`),
@@ -1069,69 +777,21 @@ export const apollo7Plan: FlightPlan = {
       'SP-4029, Apollo 7 timeline, end of the sextant tracking interval',
     ),
   ],
-  record: {
-    aborts,
-    manoeuvreTurn: estimated(30, 'Display slew into the published coast burn directions; exact attitude timeline unavailable'),
-    orbit: {
-      over: { is: 'oblate', confidence: 'documented', source: `${REPORT}, Table 3-I, Fischer ellipsoid` },
-      perigee: doc(123.3 * NMI, `${REPORT}, Table 2-II`),
-      apogee: doc(153.7 * NMI, `${REPORT}, Table 2-II`),
-      inclination: doc(31.58, `${REPORT}, Table 2-II`),
-      period: derived(
-        89.525 * 60,
-        `${LV_TRAJ}, Table XIII, p. 74, the tracked state at insertion read as a mean orbit, perigee to perigee: 89.525 min. ${REPORT}, Table 2-II prints 89.7, to a tenth of a minute, where its own heights (123.3 by 153.7 n. mi.) go round in 89.56`,
-      ),
-      kind: { is: 'anomalistic', confidence: 'documented', source: `${REPORT}, Table 3-I, perigee to perigee` },
-      mass: doc(32_356 * LB, `${WEIGHTS}, first SPS firing, nearest tabulated free-flight mass`),
-      injection: {
-        at: doc(INSERTION, `${LV_TRAJ}, Table XIII, p. 74`),
-        heading: 'north',
-        arc: derived(16.2, `${REPORT}, Table 3-II, along-orbit arc from launch to insertion`),
-        anomaly: estimated(0, 'Insertion close to perigee; for standalone initial orbit solver'),
-      },
-    },
-    coastFixes: [
-      ascentFix(69, 50, -80.5571, 28.3622, 6377.851, 505.4, 25.17, 88.01),
-      ascentFix(70, 75.5, -80.5264, 28.3708, 6385.48, 734.2, 31.64, 83.65),
-      ascentFix(72, 145.59, -79.9558, 28.531, 6435.104, 2320.3, 26.32, 75.79),
-      ascentFix(73, 300, -76.7541, 29.3409, 6545.545, 3150.1, 8.6, 77.44),
-      ascentFix(74, 500, -69.2121, 30.6568, 6597.563, 5554.5, 0.93, 81.92),
-      ascentFix(74, 616.76, -61.9777, 31.3633, 6600.454, 7780.3, 0, 85.91),
-      ascentFix(74, INSERTION, -61.2293, 31.4091, 6600.459, 7788.6, 0.01, 86.32),
-      fix(`${REPORT}, Table 3-II, actual venting start`, [T(1, 34, 29), 27.77, -107.39, 752_413, 25_560, -0.09, 74.38]),
-      fix(`${REPORT}, Table 3-II, actual venting end`, [T(1, 46, 30), 29.43, -55.24, 767_308, 25_555, 0.18, 102.47]),
-      beforeSeparation,
-      ...ignitionFixes.map((row, i) => fix(`${REPORT}, Table 3-III, actual SPS ${i + 1} ignition`, [sps[i]!.on, ...row])),
-      fix(`${REPORT}, Table 3-VI; §5.16.1 for onboard flight-path angle`, [INTERFACE, 29.92, -92.62, 400_000, 25_846, -2.072, 87.47]),
-    ],
-    entryInterface: doc(400_000 * FT, `${REPORT}, Table 3-VI`),
-    landing: {
-      at: doc(SPLASH, EVENTS),
-      latitude: doc(27.54, `${REPORT}, §5.16.1, recovery forces estimate`),
-      longitude: doc(-64.07, `${REPORT}, §5.16.1, recovery forces estimate`),
-      near: 'the Atlantic near USS Essex',
-      aimed: {
-        confidence: 'documented',
-        source: `${REPORT}, §3.2.2 and §3.3: the eighth firing was the deorbit maneuver, computed by the ground for the planned landing area; the spacecraft came down within sight of the recovery ship`,
-      },
-    },
-    ground: doc(0, `${REPORT}, §5.5, the Atlantic`),
-    supplies: doc(11, 'Apollo 7 press kit, open-ended mission up to eleven days'),
-    manual: { parting: derived(MODULES - service.off, `${REPORT}, Table 2-I, coast from SPS cutoff to CM/SM separation`) },
-    automatic:
-      'The Earth landing sequence ran automatically. The crew flew the initial entry bank by hand before handing roll control to the computer.',
-    marks: [
-      mark('insertion', 'Orbital insertion', INSERTION, `${LV_TRAJ}, Table XIII, p. 74`),
-      mark('sivb-safing', 'S-IVB propellant dump begins', T(1, 34, 29)),
-      mark('sivb-safing-end', 'S-IVB propellant dump ends', T(1, 46, 30)),
-      mark('sivb-takeover', 'Crew takes over S-IVB attitude', T(2, 30, 49.1)),
-      mark('sivb-rendezvous', 'Station-keeping with S-IVB', T(29, 55, 43)),
-      mark('sivb-departure', 'Leaves the S-IVB', T(30, 20, 0)),
-      mark('sivb-reentry', 'S-IVB reenters over the Indian Ocean', T(168, 27, 0), `${REPORT}, §3.4`),
-      mark('entry-interface', 'Entry interface · 400,000 ft', INTERFACE),
-      mark('blackout-in', 'Communications blackout', T(259, 54, 58)),
-      mark('blackout-out', 'Communications restored', T(259, 59, 46)),
-      { ...mark('splashdown', 'Splashdown', SPLASH), lands: 'cm' },
-    ],
-  },
+  coastFixes: [
+    ascentFix(69, 50, -80.5571, 28.3622, 6377.851, 505.4, 25.17, 88.01),
+    ascentFix(70, 75.5, -80.5264, 28.3708, 6385.48, 734.2, 31.64, 83.65),
+    ascentFix(72, 145.59, -79.9558, 28.531, 6435.104, 2320.3, 26.32, 75.79),
+    ascentFix(73, 300, -76.7541, 29.3409, 6545.545, 3150.1, 8.6, 77.44),
+    ascentFix(74, 500, -69.2121, 30.6568, 6597.563, 5554.5, 0.93, 81.92),
+    ascentFix(74, 616.76, -61.9777, 31.3633, 6600.454, 7780.3, 0, 85.91),
+    ascentFix(74, INSERTION, -61.2293, 31.4091, 6600.459, 7788.6, 0.01, 86.32),
+    fix(`${REPORT}, Table 3-II, actual venting start`, [T(1, 34, 29), 27.77, -107.39, 752_413, 25_560, -0.09, 74.38]),
+    fix(`${REPORT}, Table 3-II, actual venting end`, [T(1, 46, 30), 29.43, -55.24, 767_308, 25_555, 0.18, 102.47]),
+    beforeSeparation,
+    ...ignitionFixes.map((row, i) => fix(`${REPORT}, Table 3-III, actual SPS ${i + 1} ignition`, [sps[i]!.on, ...row])),
+    fix(`${REPORT}, Table 3-VI; §5.16.1 for onboard flight-path angle`, [INTERFACE, 29.92, -92.62, 400_000, 25_846, -2.072, 87.47]),
+  ],
+  aborts,
 };
+
+export const apollo7Plan: FlightPlan = saturnIBPlan(orbital);

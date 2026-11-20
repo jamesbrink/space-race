@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { globSync } from 'node:fs';
 import { test } from 'node:test';
 import { Quaternion, Vector3 } from 'three';
-import { CSM_MATING_HEIGHT } from '../missions/usa/apollo/flights/apollo-7/orbital.ts';
+import { CSM_MATING_HEIGHT } from '../missions/usa/apollo/vehicles/saturn-ib-plan.ts';
 import { nlerp, turn } from '../src/sim/rigid.ts';
 import { between, either, orbitalRecord } from '../src/sim/run.ts';
 import { Sheds } from '../src/sim/shed.ts';
