@@ -40,7 +40,7 @@ export const flight: Flight = {
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   weather: WEATHER,
   plan: { ...PLAN, aloft: WEATHER.aloft },
-  flies: saturnVFlies(PLAN),
+  flies: saturnVFlies(PLAN, nodes(launcher)),
   crew: ['John W. Young', 'Thomas K. Mattingly II', 'Charles M. Duke Jr.'],
   summary:
     'Young and Duke took Orion to the Descartes highlands after a six-hour landing delay. Mattingly mapped the Moon from Casper and climbed outside on the way home to recover the film.',

@@ -445,7 +445,7 @@ export const flight: Flight = {
   site: LC39A,
   weather: WEATHER,
   plan: { ...PLAN, aloft: WEATHER.aloft },
-  flies: saturnVFlies(PLAN),
+  flies: saturnVFlies(PLAN, launchVehicle),
   crew: ['Frank Borman', 'James A. Lovell Jr.', 'William A. Anders'],
   summary:
     'The first people to orbit the Moon flew there in a command and service module. Inside the adapter beneath them rode an instrumented steel cylinder. They circled the Moon ten times before turning for home.',

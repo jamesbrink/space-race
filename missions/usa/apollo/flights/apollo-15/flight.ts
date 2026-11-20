@@ -38,7 +38,7 @@ export const flight: Flight = {
   opens: { at: ingress, model: 'pad', view: 'launcher' },
   weather: WEATHER,
   plan: { ...PLAN, aloft: WEATHER.aloft },
-  flies: saturnVFlies(PLAN),
+  flies: saturnVFlies(PLAN, nodes(launcher)),
   crew: ['David R. Scott', 'Alfred M. Worden', 'James B. Irwin'],
   summary:
     'Scott and Irwin unfolded a rover from Falcon and drove along Hadley Rille and the Apennine Front. In lunar orbit Worden photographed their landing region from Endeavour. On the way home he climbed outside to collect the film.',

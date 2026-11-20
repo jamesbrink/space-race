@@ -344,7 +344,7 @@ export const flight: Flight = {
   site: LC39B,
   weather: WEATHER,
   plan: { ...PLAN, aloft: WEATHER.aloft },
-  flies: saturnVFlies(PLAN),
+  flies: saturnVFlies(PLAN, nodes(launcher)),
   crew: ['Thomas P. Stafford', 'John W. Young', 'Eugene A. Cernan'],
   summary:
     'Young kept Charlie Brown in lunar orbit while Stafford and Cernan took Snoopy down over the Sea of Tranquility. The landing radar measured the terrain below. Only the ascent stage returned to dock.',

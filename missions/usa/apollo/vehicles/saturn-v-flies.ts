@@ -2,9 +2,9 @@
  * What a Saturn V flight's run carries off the pad and what it sheds on the way (types.ts `Flight.flies`), by the nodes
  * saturn_v.py and launch_escape.py name: the S-IC with its engines, the S-II's aft interstage, the escape tower and its
  * boost cover, the S-II with its engines and the S-IVB's interstage, each let go by its plan's joint
- * (saturn-v-plan.ts), with what a stage carried as a node of its own (the S-IC's retrorocket fairings, the S-II centre
- * engine's pogo accumulator: absent on a model whose vehicle had none); and each engine's fire, under its own bell,
- * burning while the run has its plan's engine burn.
+ * (saturn-v-plan.ts), with what a stage carried as a node of its own where this vehicle had it (the S-IC's retrorocket
+ * fairings from SA-510, two pairs on it and four after; the S-II centre engine's pogo accumulator from SA-509); and each
+ * engine's fire, under its own bell, burning while the run has its plan's engine burn.
  */
 import type { Flight } from '../../../../src/types.ts';
 import type { FlightPlan } from '../../../../src/sim/plan.ts';
@@ -14,7 +14,13 @@ const IN = 0.0254;
 const F1_EXIT = ((11 * 12 + 7) / 2) * IN;
 const J2_EXIT = 38.5 * IN;
 
-export function saturnVFlies(plan: FlightPlan, model = 'vehicle'): NonNullable<Flight['flies']> {
+/**
+ * `carried`: the nodes of the launch vehicle's own parts list (its `launcher`). A node a stage carried on some vehicles
+ * and not on others leaves with its stage only where this one's list has it, so no drop names a node its model lacks
+ * (tests/flights.test.mjs holds every flight to that).
+ */
+export function saturnVFlies(plan: FlightPlan, carried: readonly string[], model = 'vehicle'): NonNullable<Flight['flies']> {
+  const had = (names: string[]) => names.filter((name) => carried.includes(name));
   const joints = plan.craft[0]!.joints;
   const drop = (on: string, nodes: string[]) => {
     const at = joints.find((j) => j.id === on)?.at;
@@ -28,7 +34,7 @@ export function saturnVFlies(plan: FlightPlan, model = 'vehicle'): NonNullable<F
         'SaturnFirstStage',
         'FirstStageEngines',
         'FirstStageTankStructure',
-        ...['A', 'B', 'C', 'D'].map((fin) => `FirstStageRetros${fin}`),
+        ...had(['A', 'B', 'C', 'D'].map((fin) => `FirstStageRetros${fin}`)),
       ]),
       drop('sii-skirt', ['LowerInterstage']),
       drop('les-jettison', ['LaunchEscape', 'BoostCover']),
@@ -37,7 +43,7 @@ export function saturnVFlies(plan: FlightPlan, model = 'vehicle'): NonNullable<F
         'SecondStageEngines',
         'SecondStageTankStructure',
         'SaturnInterstage',
-        'PogoAccumulator',
+        ...had(['PogoAccumulator']),
       ]),
     ],
     fires: [

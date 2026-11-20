@@ -39,7 +39,7 @@ export const flight: Flight = {
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   weather: WEATHER,
   plan: { ...PLAN, aloft: WEATHER.aloft },
-  flies: saturnVFlies(PLAN),
+  flies: saturnVFlies(PLAN, nodes(launcher)),
   crew: ['Eugene A. Cernan', 'Ronald E. Evans', 'Harrison H. Schmitt'],
   summary:
     'Cernan and Schmitt drove through the Taurus–Littrow valley from Challenger. In lunar orbit Evans used America’s cameras, radar sounder, ultraviolet spectrometer and infrared scanner, then recovered three film cassettes on the way home.',

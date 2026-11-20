@@ -40,7 +40,7 @@ export const flight: Flight = {
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   weather: WEATHER,
   plan: { ...PLAN, aloft: WEATHER.aloft },
-  flies: saturnVFlies(PLAN),
+  flies: saturnVFlies(PLAN, nodes(launcher)),
   crew: ['Alan B. Shepard Jr.', 'Stuart A. Roosa', 'Edgar D. Mitchell'],
   summary:
     'Roosa docked Kitty Hawk with Antares on the sixth attempt. Shepard and Mitchell landed in the Fra Mauro highlands and pulled a two-wheeled cart toward Cone Crater. Roosa photographed the Moon from orbit while they worked on the surface.',
