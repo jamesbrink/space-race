@@ -23,6 +23,7 @@ const FLIGHTS = {
   'ussr/vostok/vostok-4': ['Ignition', 'Drop the strap-ons'],
   'ussr/voskhod/voskhod-1': ['Ignition', 'Drop the strap-ons'],
   'usa/gemini/gt-3': ['Ignition', 'Staging: the second stage lit through the interstage'],
+  'usa/gemini/gt-4': ['Ignition', 'Staging: the second stage lit through the interstage'],
   'usa/gemini/gt-5': ['Ignition', 'Staging: the second stage lit through the interstage'],
   'ussr/voskhod/voskhod-2': ['Ignition', 'Drop the strap-ons'],
   ...Object.fromEntries(

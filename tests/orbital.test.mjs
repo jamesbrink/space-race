@@ -10,7 +10,18 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { geminiTitanPlan } from '../missions/usa/gemini/vehicles/gemini-titan-plan.ts';
 import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
-import { aimOf, coastOf, flyOrbit, heightsBall, injectionState, liftOf, movesOf, publishedOf, shipOf } from '../src/sim/orbital.ts';
+import {
+  aimOf,
+  coastOf,
+  delayed,
+  flyOrbit,
+  heightsBall,
+  injectionState,
+  liftOf,
+  movesOf,
+  publishedOf,
+  shipOf,
+} from '../src/sim/orbital.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import { cross, DEG, dot, length, siteFrame, unit } from '../src/world/frames.ts';
@@ -264,6 +275,38 @@ INPUTS['usa/gemini/gt-3'] = [
   ['entry', 'drag'],
 ];
 
+// Gemini-Titan 4's: where on the orbit it began (from the separation's place), its mass and free-molecule area (drifting), the
+// thrusters' impulse and the forward pair's thrust (the type's); of the station keeping's 46 burns (moves 0 to 45) when each
+// was turned to and its end (its start and length are Table 4-IV's), the pitch read off the platform for all but the first
+// two, and the impulse of one aft chamber from 01:04:29 (moves 14 to 45); the adapter's sections, the retrofire's turn and the
+// rockets' thrust, the re-entry module's area, drag, lift (none: rolled), its lift unflown, its trim and when it was banked
+INPUTS['usa/gemini/gt-4'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['mass'],
+  ['rarefied', 'drag'],
+  ['rarefied', 'area'],
+  ['oams', 'aft', 'isp'],
+  ['oams', 'forward', 'thrust'],
+  ['oams', 'forward', 'isp'],
+  ...Array.from({ length: 46 }, (_, i) => [
+    ['moves', `${i}`, 'turned'],
+    ['moves', `${i}`, 'off'],
+    ...(i >= 2 ? [['moves', `${i}`, 'attitude', 'below']] : []),
+    ...(i >= 14 ? [['moves', `${i}`, 'deltaV']] : []),
+  ]).flat(),
+  ['adapter', 'equipment', 'mass'],
+  ['adapter', 'retro', 'mass'],
+  ['retro', 'sequence'],
+  ['retro', 'thrust'],
+  ['entry', 'area'],
+  ['entry', 'drag'],
+  ['entry', 'lift'],
+  ['entry', 'predicted'],
+  ['entry', 'trim'],
+  ['entry', 'banked'],
+];
+
 // Gemini-Titan 5's (its own report has nearly everything): where on the orbit it began, reckoned from the ground range; its
 // mass and free-molecule figure; the forward thrusters, never lit, the type's; when the crew turned for four of the five burns;
 // the adapter's sections, worked from the weights; the retrofire's attitude, spacing, thrust and burn, worked from its table;
@@ -337,10 +380,13 @@ function titanInputs(f, o, run) {
   console.log(`  #   retro.below 0, the push straight back: ${moved((c) => (c.retro.below.value = 0))}`);
   console.log(`  #   entry.bank 0, the lift held up: ${moved((c) => (c.entry.bank.value = 0))}`);
   console.log(`  #   entry.bank 90, the lift held level: ${moved((c) => (c.entry.bank.value = 90))}`);
-  console.log(`  #   entry.lift the predicted 0.29: ${moved((c) => (c.entry.lift.points = [[0, o.entry.predicted.value]]))}`);
+  console.log(
+    `  #   entry.lift the predicted ${o.entry.predicted.value.toFixed(2)}: ${moved((c) => (c.entry.lift.points = [[0, o.entry.predicted.value]]))}`,
+  );
   console.log(`  #   entry.lift none: ${moved((c) => (c.entry.lift.points = [[0, 0]]))}`);
   console.log(`  #   entry.mass +5 %: ${moved((c) => (c.entry.mass.value *= 1.05))}`);
-  console.log(`  #   the third burn 5 % more: ${moved((c) => (c.moves[3].deltaV.value *= 1.05))}`);
+  // (the last burn with an impulse of its own: Gemini 3's third, Gemini 4's before retrofire)
+  console.log(`  #   the last burn's impulse 5 % more: ${moved((c) => (c.moves.findLast((m) => m.deltaV).deltaV.value *= 1.05))}`);
   console.log(`  #   the burns at the thrusters' thrust, not the indicator's: ${moved((c) => c.moves.forEach((m) => delete m.deltaV))}`);
 }
 
@@ -794,4 +840,29 @@ test('a lifting entry flies its lift while a bank is held: lift up goes further,
   console.log(
     `  #   L/D 0.2 on Friendship 7's capsule: lift up ${((up.alongTrack - none.alongTrack) / 1000).toFixed(0)} km further, lift down ${((none.alongTrack - down.alongTrack) / 1000).toFixed(0)} km short; ${up.entryG.toFixed(2)} g against ${none.entryG.toFixed(2)}`,
   );
+});
+
+test('a braking burn timed for the landing place moves the chain the record ties to it: the burns, turns and readings from its start', () => {
+  // (a landing whose chain begins before the burn's command: `LandingAim.from`)
+  const f = all.find((x) => x.plan?.record?.landing?.aimed?.from);
+  assert.ok(f, 'a flight whose chain begins before its braking burn');
+  const plan = f.plan;
+  const from = plan.record.landing.aimed.from.value;
+  const by = 600;
+  const moved = delayed(plan, from, by);
+  const [before, after] = [movesOf(plan), movesOf(moved)];
+  assert.equal(after.length, before.length);
+  before.forEach((m, i) => assert.equal(after[i].on, m.on >= from ? m.on + by : m.on, `${m.lit}: moved with the chain only if in it`));
+  assert.ok(before.some((m) => m.on >= from) && before.some((m) => m.on < from), 'burns both in the chain and before it');
+  assert.equal(coastOf(moved).on, coastOf(plan).on + by, 'the braking burn with it');
+  for (const c of plan.checks) {
+    if (!c.when || !('at' in c.when)) continue;
+    const d = moved.checks.find((x) => x.id === c.id);
+    assert.equal(
+      d.when.at,
+      c.when.at >= from ? c.when.at + by : c.when.at,
+      `${c.id}: read as long after the chain's start as the record has it`,
+    );
+  }
+  assert.equal(moved.record.landing.aimed, undefined, 'and no longer aimed');
 });

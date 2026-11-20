@@ -561,11 +561,16 @@ export function abortAt(plan: FlightPlan, t: number, preferOrbit = false): Abort
  * run's own forces bring it down level with that place along its track, and everything the plan sets off by the clock
  * from the burn's command on follows by as much. The recorded instant is then a figure the run is held to
  * (`OrbitResults.retroLate`). `late`: how long after the intended instant the burn was in fact lit, s, where the record
- * says it was not lit when intended: applied to the instant solved. Left out of a landing, the burn is lit by the clock
- * at its recorded instant: a flight whose burn was not timed for the place it came down at.
+ * says it was not lit when intended: applied to the instant solved. `from`: where the ground timed more than the burn
+ * itself for the place (a burn before it that set up the entry, and the attitude turned to for that), the instant, s from
+ * liftoff, from which everything the clock sets off is the braking burn's chain and keeps its recorded interval to it:
+ * guidance works the instant before it, and moves it with the burn. Left out, the chain begins at the burn's command (or
+ * its lighting). Left out of a landing, the burn is lit by the clock at its recorded instant: a flight whose burn was not
+ * timed for the place it came down at.
  */
 export interface LandingAim {
   late?: Measure;
+  from?: Measure;
   confidence: Confidence;
   source: string;
 }

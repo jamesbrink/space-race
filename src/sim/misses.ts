@@ -189,6 +189,23 @@ const ATDA_APOGEE =
   'Apogee 176 nautical miles against 167. The sustainer is cut at the planned 25,298 ft/s, and the two verniers then burn their recorded 18.8 s alone and add 73 m/s where the record’s states have 23 ' +
   '(25,290 to 25,365 ft/s): their thrust as printed, taken as the pair’s, and their flow at the sustainer’s impulse, neither read for the verniers alone. Not adjusted';
 
+const GT4_DECAY =
+  'The orbit comes down more slowly than Gemini IV’s did: by the 61st revolution its apogee is some 20 km higher than Table 4-III’s and its perigee 5 to 8 km. It is drifted on the air of the day’s Sun ' +
+  '(sim/air.ts) at King-Hele’s 2.2 on a quarter of the ship’s outside, 10.3 m² (Cauchy: it drifted for two and a half days and was held for the rest, on 7.3 m² nose or tail first); the report fitted its own ' +
+  'decay with an atmosphere 0.72 of the ARDC 1959 one (section 4.3.1.2) and gives no ballistic figure. Which of the area, the coefficient and the air is short is not established; nothing is adjusted';
+
+const GT4_LATE =
+  'Its period is so much the longer that after 62 revolutions it is some ten minutes behind where the record’s clock has it. The ground timed the burn before retrofire and retrofire for the place it was ' +
+  'to come down, so they are timed for it here (sim/plan.ts `LandingAim`, its `from` the burn before retrofire’s turn to its attitude): the two are lit as much later than the record’s instants, ' +
+  'keeping their recorded interval, and everything after them comes as much later';
+
+const GT4_ACROSS =
+  'The burns timed for the place bring it down level with it along its track, not across it: lit some ten minutes after the record’s instant, the Earth has turned 2.6 degrees more under the orbit ' +
+  'by then, and the track passes the place to its left';
+
+const GT4_SHOWN =
+  'Begun from where the ascent flown left the spacecraft, 7 km low at perigee and 6 km high at apogee at cutoff (the ascent’s figures hold)';
+
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -870,6 +887,84 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 40,
         why: `The ship is down 750 s after the record’s 190:55:14: the burn lit late and the entry longer (the drogue’s miss), and 71 s more under the main, flown at the 31.6 ft/s NASA CR-1106 gives the type, where the record has it from 10,600 ft at 190:51:16 to the sea at 190:55:14, 44.5 ft/s on the average. ${GT5_LATE}`,
         short: 'the burn timed for the landing place',
+      },
+    },
+  }),
+  'usa/gemini/gt-4': inUnits({
+    shown: {
+      'after-184080.apogee': {
+        by: 10_325,
+        slack: 1_500,
+        why: `Apogee 286.5 km in revolution 33 where Table 4-III has 276.1. ${GT4_DECAY}. ${GT4_SHOWN}`,
+      },
+      'after-291696.apogee': {
+        by: 16_527,
+        slack: 1_500,
+        why: `Apogee 277.7 km in revolution 52 where Table 4-III has 261.1. ${GT4_DECAY}. ${GT4_SHOWN}`,
+      },
+      'after-342672.apogee': {
+        by: 20_166,
+        slack: 1_500,
+        why: `Apogee 273.0 km in revolution 61 where Table 4-III has 252.8. ${GT4_DECAY}. ${GT4_SHOWN}`,
+      },
+      'after-351300.perigee': {
+        by: 6_977,
+        slack: 1_500,
+        why: `The burn before retrofire, timed with retrofire for the landing place and read as long after it as the record’s reading, leaves a vacuum perigee of 85.3 km where the record has 42.3 nautical miles, 78.3 km: its 134 ft/s, blunt end forward, from an orbit 20 km higher at apogee than the record’s. ${GT4_DECAY}. ${GT4_SHOWN}`,
+      },
+      ejectionAt: {
+        by: 618.2,
+        slack: 30,
+        why: `The drogue comes out 618 s after the record’s 97:50:53, at 40,000 ft as recorded. ${GT4_LATE}. ${GT4_DECAY}`,
+      },
+      crossTrack: {
+        by: 78_514,
+        slack: 8_000,
+        why: `It comes down 79 km to the right of where Gemini IV landed (within 10 km along the track). ${GT4_ACROSS}. ${GT4_SHOWN}`,
+      },
+    },
+    coast: {
+      'after-184080.perigee': {
+        by: 6_945,
+        slack: 1_000,
+        why: `Perigee 169.9 km in revolution 33 where Table 4-III has 163.0. ${GT4_DECAY}`,
+      },
+      'after-291696.perigee': {
+        by: 6_372,
+        slack: 1_000,
+        why: `Perigee 168.2 km in revolution 52 where Table 4-III has 161.9. ${GT4_DECAY}`,
+      },
+      'after-291696.apogee': {
+        by: 15_735,
+        slack: 1_500,
+        why: `Apogee 276.9 km in revolution 52 where Table 4-III has 261.1. ${GT4_DECAY}`,
+      },
+      'after-342672.perigee': {
+        by: 7_884,
+        slack: 1_000,
+        why: `Perigee 167.3 km in revolution 61 where Table 4-III has 159.5. ${GT4_DECAY}`,
+      },
+      'after-342672.apogee': {
+        by: 19_891,
+        slack: 1_500,
+        why: `Apogee 272.7 km in revolution 61 where Table 4-III has 252.8. ${GT4_DECAY}`,
+      },
+      ejectionAt: {
+        by: 675.6,
+        slack: 30,
+        why: `The drogue comes out 676 s after the record’s 97:50:53, at 40,000 ft as recorded. ${GT4_LATE}. ${GT4_DECAY}`,
+      },
+      crossTrack: {
+        by: 114_681,
+        slack: 8_000,
+        why: `It comes down 115 km to the right of where Gemini IV landed (within 10 km along the track). ${GT4_ACROSS}`,
+      },
+    },
+    descent: {
+      'reentry-module.at': {
+        by: 675.2,
+        slack: 30,
+        why: `Down 675 s after the record’s 97:56:12: the drogue out 618 s late (the coast’s miss), and the rest the main at the type’s 10,600 ft on the Technical Summary’s mean rate. ${GT4_LATE}`,
       },
     },
   }),

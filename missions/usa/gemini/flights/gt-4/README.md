@@ -23,8 +23,12 @@ they left the pad can be turned, taken apart as they staged, and cut open; the s
 pilot's hatch and brings out what White went outside with. At Complex 19 it stands on the thrust
 mount on the morning of the flight: the erector raised while the crew go up, stopping twice on
 its way down and laid down at last after the hold, McDivitt and White on the approach to the ramp in
-their G4C suits, each a figure to walk the site as, under that morning's clear sky. The flight
-itself is not built: see "What is not built" below.
+their G4C suits, each a figure to walk the site as, under that morning's clear sky. **Fly** flies it from
+the pad by physics, under the player's hands as every flight is (G and B off, Hold on): GLV-4 on its own
+weights and engines, the station keeping as the record's 46 burns of the aft and forward thrusters, four
+days in orbit, the burn before retrofire, retrofire, and the entry rolled with no lift, as it was flown
+when the computer had failed. How, from what, and what the run gives against the record:
+[mission.md](mission.md).
 
 ## The name
 
@@ -195,10 +199,14 @@ each with its confidence; the air aloft is ERA5's (`aloft.ts`).
 - **The crew in their seats.** McDivitt and White stand on the approach to the ramp in the G4C suit
   ([g4c-suit.md](../../crew/g4c-suit.md)), White's let out over its cover for going outside; his
   overvisor and thermal gloves are not built. Both men also sit in the cabin in their flight suits.
-- **The flight.** No trajectory, no orbit as data, no simulator run: the instruments stand as
-  built and the lamps are dark. The space walk is shown only as the hatch that opened and the
-  equipment that went out through it.
-- **The second stage as a target**, apart from its two lights.
+- **Of the flight** ([mission.md](mission.md), section 7): the space walk is not flown, only shown as the
+  hatch that opened and the equipment that went out through it; the second stage is not flown as a target
+  (it falls away as a body of its own, and the range to it is not checked); the station keeping's 27 thrusts
+  of the up-firing and right-firing thrusters, and every burn's yaw and roll, are left out, and each burn's
+  pitch is read off the platform's gimbal angle on a sign that is ours. The run's orbit decays more
+  slowly than the record's, so after four days it is some ten minutes behind the record's clock; the burn before
+  retrofire and retrofire are timed for the place, as the ground timed them, and it comes down where Gemini IV did
+  along the track but ten minutes late and 79 km to the right (misses recorded in src/sim/misses.ts, nothing adjusted).
 
 ## Where sources disagree
 
@@ -222,7 +230,6 @@ each with its confidence; the air aloft is ERA5's (`aloft.ts`).
 - **How far the hatch opened**, as a figure: 100° is by eye from the photographs.
 - **Where the flashing lights were** round the second stage, and where the electrostatic charge
   experiment's sensor was in the adapter's skin.
-- **The first stage's thrust as flown**: the report's section 5.2 has it and was not transcribed.
 
 ## Where the spacecraft is now
 

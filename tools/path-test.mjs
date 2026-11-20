@@ -176,6 +176,14 @@ const FLIGHTS = {
     orbit: [3000, 8000],
     coast: 3000,
   },
+  // (four days: staging, insertion, the station keeping on both pairs, then on one, the walk's hours drifting, the second day,
+  // the burn before retrofire, retrofire, the entry rolled, the drogue at 40,000 ft, the main)
+  gt4: {
+    id: 'usa/gemini/gt-4',
+    instants: [5, 60, 150, 200, 340, 600, 2000, 4500, 16_000, 200_000, 350_900, 351_590, 351_620, 351_900, 352_200, 352_300, 352_500],
+    orbit: [3000, 200_000],
+    coast: 3000,
+  },
   // (eight days: staging, insertion, the perigee raised, the pod, the third day's burns, the night before retrofire, the burn
   // timed for the landing place, the entry banked, the drogue at 69,000 ft, the main)
   gt5: {

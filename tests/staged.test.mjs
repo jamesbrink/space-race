@@ -625,6 +625,33 @@ const UNDOCUMENTED = {
     'titan.second.propellant',
     'titan.staging',
   ],
+  // Gemini-Titan 4's: GLV-4's own weights and engines (its mission report), the stages' masses derived from the weights, the
+  // first stage's sea-level impulse read past a misprint and its vacuum one GLV-1's, the separation's push the middle of the
+  // report's 6 to 7 ft/s, the interstage's open sides, the drag, the pitch-over and the steering
+  'usa/gemini/gt-4': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.0.until',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    'ascent.drag.1.until',
+    'ascent.guidance.kick',
+    'ascent.steering.authority',
+    'separation.mass',
+    'separation.push',
+    'titan.first.dry',
+    'titan.first.engine.isp.seaLevel',
+    'titan.first.engine.isp.vacuum',
+    'titan.first.engine.thrust.vacuum',
+    'titan.first.mass',
+    'titan.first.propellant',
+    'titan.hot.endures',
+    'titan.hot.open',
+    'titan.hot.turn',
+    'titan.second.dry',
+    'titan.second.mass',
+    'titan.second.propellant',
+  ],
   // Gemini-Titan 5's: GLV-5's own weights and engines (the mission report), but for the first stage's vacuum impulse (GLV-1's),
   // the weights' shares worked from its weight table, the separation's push from the spacecraft's accelerometers, and the
   // law's step after the stored programme, which it solves
