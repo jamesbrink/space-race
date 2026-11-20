@@ -76,7 +76,43 @@ for (const [flight, serial, firstMotion] of flights) {
         assert.deepEqual([...problems], []);
       });
     }
-  if (serial === 206) {
+  if (serial === 207) {
+    test('SA-207 white room withdraws twelve degrees and parks at 180 degrees clear of the tower', async () => {
+      const under = (object, name) => object && (object.name === name || under(object.parent, name));
+      const inverse = new Matrix4();
+      for (const level of levels) {
+        const site = await surfaces(pad, level);
+        const arm = site.meshes.filter((m) => under(m.object, 'Service_Arm_9'));
+        const tower = site.meshes.filter((m) => under(m.object, 'Umbilical_Tower'));
+        assert.ok(arm.length && tower.length);
+        const hinge = arm.find((m) => m.object.parent?.name === 'Service_Arm_9').object.parent;
+        const plate = arm.find((m) => under(m.object, 'White_Room_Bridgeplate')).object.parent;
+        site.pose(flight.opens.at);
+        const initial = hinge.quaternion.clone(),
+          flat = plate.quaternion.clone();
+        site.pose(-2820);
+        assert.ok(Math.abs(plate.quaternion.angleTo(flat) - Math.PI / 2) < 1e-6);
+        site.pose(-300);
+        assert.ok(Math.abs(hinge.quaternion.angleTo(initial) - Math.PI / 15) < 1e-6);
+        site.pose(-279);
+        assert.ok(Math.abs(hinge.quaternion.angleTo(initial) - Math.PI) < 1e-6);
+        for (const t of countdownSamples(stack, pad, 160).filter((at) => at >= -4140 && at <= -279)) {
+          site.pose(t);
+          for (const fixed of tower) {
+            for (const moving of arm) {
+              if (!fixed.world.intersectsBox(moving.world)) continue;
+              inverse.copy(fixed.object.matrixWorld).invert().multiply(moving.object.matrixWorld);
+              assert.ok(
+                !fixed.geo.boundsTree.intersectsGeometry(moving.geo, inverse),
+                `${moving.object.name} enters ${fixed.object.name} at ${t}s`,
+              );
+            }
+          }
+        }
+      }
+    });
+  }
+  if (serial < 500) {
     test(`${flight.id} eight S-IB fins meet the pedestal bearings at every detail level`, async () => {
       const ft = 0.3048;
       for (const level of levels) {
@@ -129,8 +165,9 @@ for (const [flight, serial, firstMotion] of flights) {
           assert.ok(node && move, name);
           if (name.startsWith('Holddown_Link_')) {
             // KSC Postlaunch Report §6.41 and SA-206 flight manual §VII: commit
-            // at +0.020, nominal 140 ms to the last retraction, before first motion.
-            assert.equal(move.from, 0.02);
+            // at +0.020 on SA-206, 0.17 s before motion. This interval and the manual’s
+            // nominal 140 ms to last retraction are carried to the SA-207 reconstruction.
+            assert.equal(move.from, serial === 206 ? 0.02 : firstMotion - 0.17);
             assert.ok(Math.abs(move.to - move.from - 0.14) < 1e-6 && move.to < firstMotion, name);
           } else if (name.startsWith('Cable_Mast_')) {
             // The cable connections held until approximately four inches of vehicle rise.

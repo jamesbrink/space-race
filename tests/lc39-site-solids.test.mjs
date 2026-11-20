@@ -128,7 +128,7 @@ for (const [flight, serial, firstMotion] of flights) {
   test(`${flight.id} full fin span clears the baked tower, crane and withdrawn service arms along the launch axis`, () => {
     const full = solidsOf(pad);
     // Test the full swept width even at heights where the stack is narrower than its fins.
-    const radius = ((serial === 206 ? 40.7 : 63) / 2) * 0.3048;
+    const radius = ((serial < 500 ? 40.7 : 63) / 2) * 0.3048;
     const a = stack.position ?? [0, 0, 0];
     const b = [a[0], a[1] + 150, a[2]];
     const allClear = pad.sequence.at(-1).at;
@@ -136,7 +136,7 @@ for (const [flight, serial, firstMotion] of flights) {
     const pieces = full.pieces.filter(
       (p) => ['Umbilical_Tower', 'Hammerhead_Crane'].includes(p.node) || /^Service_Arm_(?:\d+|1A)$/.test(p.node),
     );
-    assert.equal(pieces.length, serial === 206 ? 7 : 11);
+    assert.equal(pieces.length, serial < 500 ? 7 : 11);
     for (const piece of pieces) {
       const world = new SiteWorld([{ ...pad, solids: { ...full, pieces: [piece] } }]);
       const start = inflight.has(piece.node) ? allClear : 0;
@@ -144,7 +144,7 @@ for (const [flight, serial, firstMotion] of flights) {
     }
   });
 
-  if (serial === 206) {
+  if (serial < 500) {
     test(`${flight.id} clears every baked structure during inflight arm retraction and through 150 m of ascent`, () => {
       const end = pad.sequence.at(-1).at;
       const rocket = [...collisionPieces(stack, solidsOf(stack))(end)];
@@ -208,7 +208,7 @@ for (const [flight, serial, firstMotion] of flights) {
         const times = piece.track.filter((v, i) => i % 8 === 0 && v > firstMotion && v < end);
         for (const t of [...times, end]) {
           const finish = frame(t);
-          // MPR-SAT-FE-73-3 §§6 and 16: ~7.3 MN at 586 tonnes, only ~3 t/s propellant
+          // SA-206 and SA-207 flight evaluations §§6 and 16: ~7.3 MN at over 580 tonnes, ~3 t/s propellant
           // flow. 5 m/s² upward bounds net acceleration for these first 6.3 s, allowing
           // for falling mass. Test every height up to that bound, independently of actual timing.
           const maxRise = 0.5 * 5 * (t - firstMotion) ** 2;
@@ -227,9 +227,9 @@ for (const [flight, serial, firstMotion] of flights) {
     const releaseEnds = new Map(
       pad.parts.flatMap((p) => (p.clocked ?? []).filter((m) => /^(Holddown_Link_|Tail_Carrier_)/.test(m.node)).map((m) => [m.node, m.to])),
     );
-    assert.equal(releaseEnds.size, serial === 206 ? 8 : 7);
+    assert.equal(releaseEnds.size, serial < 500 ? 8 : 7);
     const allowed = new Map();
-    if (serial === 206) {
+    if (serial < 500) {
       // Only the small bearing at each fin tip can share bake cells with pedestal hardware.
       // The allowance covers the sloping underside plus one clipped box cell on each side.
       const area = (i) => {

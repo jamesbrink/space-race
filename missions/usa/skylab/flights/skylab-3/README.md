@@ -4,6 +4,20 @@ At 07:10 EDT on 28 July 1973, Alan Bean, Owen Garriott and Jack Lousma left Kenn
 
 At range zero the Sun stood just 5.2° above the horizon at azimuth 71.2° true. The Moon stood higher in the same part of the sky, at elevation 21.8° and azimuth 77.0°. The simulator calculates these geometric directions from Pad 39B with the JPL DE440 ephemeris.
 
+## Launch Complex 39B
+
+Approach the mobile launcher from the south ramp, take the tower elevator to level 320, and cross the white room to CSM-117. Bean boards the left couch, Garriott the centre and Lousma the right. The same 127-foot steel pedestal that supported SA-206 carried SA-207. The crawler delivered this stack to Pad B on June 11. [Visit the launch site](https://jamesbrink.online/space-race/#usa/skylab/skylab-3/site/pad) · [SA-207 flight evaluation, table 3-1](https://ntrs.nasa.gov/citations/19730025088)
+
+The site opens before dawn at scheduled crew ingress. Pad floodlights illuminate SA-207 as they did in a photograph taken eight nights earlier. Their use on launch morning is assumed and their layout is estimated. [NASA photograph S73-32568](https://www.nasa.gov/gallery/skylab-3/)
+
+Launch Control reported the boost-cover hatch closed by countdown T−67 minutes, the access arm starting toward twelve-degree standby at T−45, and its final withdrawal at T−5. The site clock includes the two-minute hold at T−15. Pressure-hatch closeout and individual stroke durations are reconstructed. [Skylab 3 launch commentary, MC1, MC3, MC6 and MC8](https://digitalprojects.uah.edu/items/show/14424) · [Skylab 3 press kit, p. 20](https://ntrs.nasa.gov/citations/19760066714)
+
+During oxygen replenishment, cameras caught intermittent discharges from the outboard first-stage tanks. Reviewers counted about forty from tanks 3 and 4 in half an hour of film. Vent closure came at T−2 minutes 43 seconds. The exhibit describes these discharges; their individual plumes are omitted. [SA-207 flight evaluation, §3.4.2.1 and fig. 3-1](https://ntrs.nasa.gov/citations/19730025088)
+
+At liftoff, patchy ground fog limited reported visibility to 4.8 km. The observer recorded nine-tenths altocumulus at 4,570 m and five-tenths cirrus at 6,400 m. The northwest pad pole measured 2.6 m/s from 264° at 18.3 m above grade. The scene uses these observations with an estimated vertical fog profile and ERA5 winds aloft. [SA-207 flight evaluation, appendix A](https://ntrs.nasa.gov/citations/19730025088)
+
+![SA-207 on the pedestal at Pad 39B, with the launch tower and crew access arm](../../../../../docs/readme/skylab-3-pad.webp)
+
 ## The launch vehicle as an observatory
 
 Open the [Gallery](https://jamesbrink.online/space-race/#usa/skylab/skylab-3/gallery) or [stand SA-207 beside SA-206 in the Lineup](https://jamesbrink.online/space-race/#lineup/usa/skylab/skylab-3/vs/usa/skylab/skylab-2). Look inside the instrument unit beneath the four adapter panels. SA-207 carried a gas-filled X-ray detector, a supply of argon and methane, star sensors and a recorder. After CSM-117 pulled away, the instrument could swing out and look through the open end of the adapter. The spent upper stage turned to point it at the sky. Falling gas pressure switched off the counter after 110 minutes of measurements. The star sensors kept tracking. [SA-207 flight evaluation, §18](https://ntrs.nasa.gov/citations/19730025088)

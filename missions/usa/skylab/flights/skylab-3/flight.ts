@@ -1,16 +1,18 @@
 import type { Flight } from '../../../../../src/types.ts';
 import { blockIICabin } from '../../../apollo/vehicles/cabin.ts';
+import { boardingHatches } from '../../../apollo/vehicles/hatch.ts';
 import { nodes } from '../../../apollo/vehicles/stack-gallery.ts';
+import { LC39B } from '../../../places/cape-canaveral/lc-39.ts';
+import { sa207Elevation, sl3Ingress as ingress, sl3Launcher } from '../../../places/cape-canaveral/lc39-skylab.ts';
 import { spacecraftMotors } from '../../vehicles/csm-motors.ts';
+import { launchCrew } from './crew.ts';
 import { command, csmViews, port, service } from './csm117.ts';
 import { specs, timeline } from './record.ts';
 import { launcher, SA207_THRUST, stackViews } from './sa207.ts';
+import { WEATHER } from './weather.ts';
 
 // Shared Skylab stack registration, MSFC-MAN-206 figure 1-1: vehicle station of CM Xc zero, inches.
 const cabin = blockIICabin(2196.859);
-// Press kit p. 20 schedules ingress at T−2:40, before a two-minute hold.
-// Pressure-hatch closeout is estimated. Gallery seats are available throughout.
-const ingress: [number, number] = [-9720, -5400];
 
 export const flight: Flight = {
   id: 'usa/skylab/skylab-3',
@@ -23,6 +25,9 @@ export const flight: Flight = {
   launchVehicle: 'Saturn IB · SA-207',
   launch: '1973-07-28T11:10:50Z',
   launchSite: 'Launch Complex 39B, Kennedy Space Center',
+  site: LC39B,
+  weather: WEATHER,
+  opens: { at: ingress[0], model: 'pad', view: 'launcher' },
   crew: ['Alan L. Bean', 'Owen K. Garriott', 'Jack R. Lousma'],
   summary:
     'Bean, Garriott and Lousma took CSM-117 to the workshop for its second crewed visit. Two service-module thruster groups developed leaks. While engineers prepared a rescue option, the crew installed a new sunshade and continued their observations of the Sun, Earth and themselves.',
@@ -39,20 +44,23 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Skylab 3 · Saturn IB',
       url: 'models/usa/skylab/skylab-3/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
+      position: [0, sa207Elevation, 0],
       cutaway: true,
       ...cabin,
       cabin: { ...cabin.cabin, within: [...cabin.cabin.within, 'WaterDispenser', 'BackupParasol', 'RateGyroPackages'] },
       dockingPorts: [port],
       seats: [
-        { node: 'Seat_Commander', label: 'Bean’s left couch', from: 'SideHatch', open: ingress },
-        { node: 'Seat_CommandModulePilot', label: 'Garriott’s centre couch', from: 'SideHatch', open: ingress },
-        { node: 'Seat_LunarModulePilot', label: 'Lousma’s right couch', from: 'SideHatch', open: ingress },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Bean’s left couch', from: 'SideHatch', open: ingress },
+        { node: 'Seat_CommandModulePilot', figure: 'science-pilot', label: 'Garriott’s centre couch', from: 'SideHatch', open: ingress },
+        { node: 'Seat_LunarModulePilot', figure: 'pilot', label: 'Lousma’s right couch', from: 'SideHatch', open: ingress },
       ],
       scale: '223.5 ft / 68.12 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
       views: [{ id: 'launcher', label: 'Saturn IB', nodes: nodes(launcher) }, ...csmViews, ...stackViews],
-      parts: [...command, ...service, ...launcher],
+      parts: boardingHatches([...command, ...service, ...launcher], ingress, { openBy: ingress[0], coverClosedBy: -69 * 60 }),
     },
+    sl3Launcher,
+    ...launchCrew,
   ],
 };

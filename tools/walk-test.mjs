@@ -18,6 +18,7 @@
 import { globSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { framesOf } from '../tests/glb.mjs';
 import { launch, open, opt, url as urlOf } from './browser.mjs';
 
 const args = process.argv.slice(2);
@@ -329,6 +330,23 @@ function lc39Routes(flight) {
   const seats = flight.models.find((m) => m.id === 'vehicle').seats;
   const deck = -47 * 0.3048;
   const level = FT(320.85);
+  const pad = flight.models.find((m) => m.id === 'pad');
+  const [bearingX, , bearingZ] = framesOf(join(root, 'public', pad.url)).point('Service_Arm_9');
+  // Pad coordinates in feet. The straight arm opens onto the tower centreline.
+  // A side-mounted bearing has a fixed landing outside the tower and an angled truss.
+  const bx = bearingX / FT(1);
+  const by = -bearingZ / FT(1);
+  const towerExit =
+    Math.abs(by) > 1
+      ? [
+          { to: F(62, -8), y: level, within: 0.15, note: 'through the open tower face' },
+          { to: F(bx + 0.4, -8), y: FT(320), within: 0.15, note: 'out onto the fixed landing' },
+          { to: F(bx + 0.4, -15), y: FT(320), within: 0.15 },
+          { to: F(bx + 3, by + 1.5), y: FT(320), within: 0.15 },
+          { to: F(bx + 2, by), y: FT(320), within: 0.15 },
+          { to: F(bx, by), y: FT(320.44), within: 0.15, note: 'over the side bearing' },
+        ]
+      : [{ to: F(75, 0), y: level, within: 0.15 }];
   return seats.map((seat) => ({
     name: `Complex 39: crawlerway, launcher stairs, elevator and white room to ${seat.label}`,
     walker: seat.figure,
@@ -345,8 +363,8 @@ function lc39Routes(flight) {
       { to: F(77, 20), y: 0.09, within: 0.18, note: 'inside the elevator' },
       { lift: { model: 'pad', part: 'Umbilical_Tower', action: 'crew-elevator', stop: 15 }, y: level + 0.09, note: 'ride to level 320' },
       { to: F(75, 10), y: level, within: 0.15, note: 'out through the tower railing' },
-      { to: F(75, 0), y: level, within: 0.15 },
-      { to: F(33, 0), y: FT(320.44), within: 0.12, note: 'cross the hinge and the arm' },
+      ...towerExit,
+      { to: F(33, (3 * by) / (bx - 30)), y: FT(320.44), within: 0.12, note: 'across the arm to the foot of the stairs' },
       { to: F(8, 0), y: FT(326.4), within: 0.1, note: 'up the inner stair and into the white room' },
       { board: { seat: seat.node, hatch: [1.6, 99.88, -0.76], label: seat.label } },
     ],

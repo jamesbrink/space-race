@@ -469,3 +469,19 @@ test('SA-512 has the two observed cloud layers and the northwest light pole wind
   assert.equal(day.visibility, 11000);
   assert.equal(day.map, 'cape-canaveral.1972-12-07');
 });
+
+test('SA-207 stands in ground fog under the two layers reported at range zero', async () => {
+  const flight = await load('usa/skylab/flights/skylab-3/flight.ts');
+  const day = dayOf(flight);
+  assert.equal(flight.weather.observed.at, flight.launch);
+  assert.equal(day.cumulus, null);
+  assert.equal(day.deck.height, 4570);
+  assert.equal(day.deck.cover, deckPatches(0.9));
+  assert.equal(day.high.height, 6400);
+  assert.equal(day.high.cover, 0.5);
+  assert.equal(day.visibility, 4800);
+  assert.equal(day.wind.speed, 2.6);
+  assert.equal(flight.weather.wind.from.value, 264);
+  assert.equal(day.map, 'cape-canaveral.1973-07-28');
+  assert.ok(existsSync(new URL(`../public/globe/${day.map}.weather.png`, import.meta.url)));
+});
