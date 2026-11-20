@@ -204,7 +204,7 @@ export const orbital: SoyuzRecord = {
       ),
     },
     {
-      id: 'entry',
+      id: 'dense-air',
       label: 'Into the dense air: the guided descent begins',
       at: doc(MSK(17, 9, 29, 43), `${MISHIN('Soyuz-4 lands successfully')}: "began its aerodynamic descent at 09:29:43 Moscow Time"`),
     },
