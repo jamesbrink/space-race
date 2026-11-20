@@ -31,7 +31,7 @@ export const nominalStageMotors: Motor[] = [
   },
 ];
 
-export function skylabStages(serial: 206 | 207): Part[] {
+export function skylabStages(serial: 206 | 207 | 208): Part[] {
   return [
     part(
       'SaturnSecondStage',
