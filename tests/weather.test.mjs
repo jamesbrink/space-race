@@ -485,3 +485,47 @@ test('SA-207 stands in ground fog under the two layers reported at range zero', 
   assert.equal(day.map, 'cape-canaveral.1973-07-28');
   assert.ok(existsSync(new URL(`../public/globe/${day.map}.weather.png`, import.meta.url)));
 });
+
+// The days added from the Saturn V flight evaluation reports (AS-503 to AS-505, appendix A, table A-1) and, for Soyuz, the
+// synoptic stations either side of Tyuratam (NOAA ISD): each flight's sky is its own day's, its map is baked, and the
+// figures the viewer draws are the record's.
+const DAYS = [
+  ['usa/apollo/flights/apollo-8/flight.ts', { cumulus: null, deck: 0, high: [0.4, 9000], wind: [360, 5.1], visibility: 16000 }],
+  ['usa/apollo/flights/apollo-9/flight.ts', { cumulus: null, deck: [1, 1070, true], high: null, wind: [160, 6.9], visibility: 16000 }],
+  [
+    'usa/apollo/flights/apollo-10/flight.ts',
+    { cumulus: [0.4, 671], deck: [0.2, 3350], high: [1, 9000], wind: [125, 8.2], visibility: 18000 },
+  ],
+  ['ussr/soyuz/flights/soyuz-1/flight.ts', { cumulus: null, deck: [1, 2400], high: null, wind: [230, 1], visibility: 25000 }],
+  ['ussr/soyuz/flights/soyuz-3/flight.ts', { cumulus: null, deck: [0.625, 800], high: null, wind: [320, 7.2], visibility: 20000 }],
+  ['ussr/soyuz/flights/soyuz-4/flight.ts', { cumulus: null, deck: 0, high: [0.125, 9000], wind: [90, 4.1], visibility: 50000 }],
+  ['ussr/soyuz/flights/soyuz-10/flight.ts', { cumulus: null, deck: 0, high: null, wind: [230, 3.1], visibility: 50000 }],
+  ['ussr/soyuz/flights/soyuz-12/flight.ts', { cumulus: null, deck: [1, 450, true], high: null, wind: [200, 6], visibility: 50000 }],
+  ['ussr/soyuz/flights/soyuz-16/flight.ts', { cumulus: null, deck: 0, high: null, wind: [70, 13], visibility: 50000 }],
+  ['ussr/soyuz/flights/soyuz-t-2/flight.ts', { cumulus: null, deck: 0, high: null, wind: [90, 3], visibility: 50000 }],
+];
+
+test('Apollo 8 to 10 and every Soyuz stand under the day they flew on: the record at the hour nearest liftoff, its map baked', async () => {
+  for (const [path, want] of DAYS) {
+    const flight = await load(path);
+    const w = flight.weather;
+    const day = dayOf(flight);
+    const name = flight.name ?? path;
+    assert.ok(
+      Math.abs(Date.parse(w.observed.at) - Date.parse(flight.launch)) <= 90 * 60_000,
+      `${name}: observed within the hour and a half of liftoff`,
+    );
+    assert.ok(w.aloft?.levels.length > 30 && w.hours?.length === 13, `${name}: ERA5's column and hours`);
+    assert.ok(existsSync(new URL(`../public/globe/${day.map}.weather.png`, import.meta.url)), `${name}: ${day.map} baked`);
+    assert.deepEqual(day.cumulus && [day.cumulus.cover, day.cumulus.height], want.cumulus, `${name}: cumulus`);
+    if (want.deck === 0) assert.equal(day.deck.cover, 0, `${name}: no deck`);
+    else {
+      assert.equal(day.deck.cover, deckPatches(want.deck[0]), `${name}: deck cover`);
+      assert.equal(day.deck.height, want.deck[1], `${name}: deck base`);
+      assert.equal(day.deck.overcast ?? false, want.deck[2] ?? false, `${name}: overcast`);
+    }
+    assert.deepEqual(day.high.cover === null ? null : [day.high.cover, day.high.height], want.high, `${name}: high cloud`);
+    assert.deepEqual([w.wind.from.value, day.wind.speed], want.wind, `${name}: wind`);
+    assert.equal(day.visibility, want.visibility, `${name}: visibility`);
+  }
+});

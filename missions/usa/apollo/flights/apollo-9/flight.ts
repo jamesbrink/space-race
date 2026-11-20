@@ -7,6 +7,7 @@ import { boardingHatches } from '../../vehicles/hatch.ts';
 import { APOLLO9_THRUST } from '../../vehicles/propulsion.ts';
 import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
 import { spiderModel, spiderPort, spiderStackParts, spiderViews } from './spider.ts';
+import { WEATHER } from './weather.ts';
 
 const inch = 0.0254;
 const lb = 0.45359237;
@@ -486,6 +487,7 @@ export const flight: Flight = {
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39A,
+  weather: WEATHER,
   crew: ['James A. McDivitt', 'David R. Scott', 'Russell L. Schweickart'],
   summary:
     'Two spacecraft flew independently in Earth orbit. McDivitt and Schweickart tested Spider’s engines and returned to Scott aboard Gumdrop using the same docking system that would bring lunar crews home.',

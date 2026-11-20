@@ -20,6 +20,6 @@ The simulated 3.08-inch lateral offset and 0.300-ft/s closing speed in the first
 
 ## Launch site
 
-At [Pad 39A](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-2. At liftoff the computed Sun was at azimuth 143.6° and elevation 48.0°. The Moon was below the horizon at azimuth 333.5° and elevation −47.1°.
+At [Pad 39A](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-2. At liftoff the computed Sun was at azimuth 143.6° and elevation 48.0°. The Moon was below the horizon at azimuth 333.5° and elevation −47.1°. A low in the Gulf of Mexico kept the Cape overcast: at range zero Kennedy reported seven tenths stratocumulus at 1,070 m under ten tenths altostratus at 2,740 m, and 16 km visibility. The southeast pad pole measured 6.9 m/s from 160°. The model draws one overcast deck at the stratocumulus base; ERA5 supplies the surrounding hours and the air aloft. [AS-504 flight evaluation, appendix A and table A-1](https://www.ibiblio.org/apollo/Documents/lvfea-AS504-Apollo9.pdf) · [Weather inputs](weather.ts)
 
 The site opens at 08:29 EST when McDivitt entered Gumdrop. Schweickart followed at 08:34 and Scott at 08:40. Launch control reported hatch closure at about 09:20 and confirmed the crew arm in its 12° standby position by T−34 minutes. [NASA launch-day commentary](https://www.nasa.gov/wp-content/uploads/2026/01/as09-pao.pdf)

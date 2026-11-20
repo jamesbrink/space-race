@@ -5,6 +5,7 @@ import { lc39Crew } from '../../crew/lc39.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { CSM103_THRUST, SA503_THRUST } from '../../vehicles/propulsion.ts';
+import { WEATHER } from './weather.ts';
 
 const IN = 0.0254;
 const FT = 12 * IN;
@@ -438,6 +439,7 @@ export const flight: Flight = {
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39A,
+  weather: WEATHER,
   crew: ['Frank Borman', 'James A. Lovell Jr.', 'William A. Anders'],
   summary:
     'The first people to orbit the Moon flew there in a command and service module. Inside the adapter beneath them rode an instrumented steel cylinder. They circled the Moon ten times before turning for home.',

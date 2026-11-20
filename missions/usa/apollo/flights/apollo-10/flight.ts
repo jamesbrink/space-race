@@ -6,6 +6,7 @@ import { boardingHatches } from '../../vehicles/hatch.ts';
 import { APOLLO10_THRUST } from '../../vehicles/propulsion.ts';
 import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
 import { snoopyModel, snoopyPort, snoopyStackParts, snoopyViews } from './snoopy.ts';
+import { WEATHER } from './weather.ts';
 
 const inch = 0.0254;
 const lb = 0.45359237;
@@ -337,6 +338,7 @@ export const flight: Flight = {
   launchSite: 'Launch Complex 39B, Kennedy Space Center',
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39B,
+  weather: WEATHER,
   crew: ['Thomas P. Stafford', 'John W. Young', 'Eugene A. Cernan'],
   summary:
     'Young kept Charlie Brown in lunar orbit while Stafford and Cernan took Snoopy down over the Sea of Tranquility. The landing radar measured the terrain below. Only the ascent stage returned to dock.',

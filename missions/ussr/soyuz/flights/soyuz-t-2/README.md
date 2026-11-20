@@ -57,6 +57,6 @@ console on its own. The flight deck is pending. [Spacecraft record](spacecraft.m
 
 ## Launch site
 
-The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky uses the flight date and the place’s estimated weather. [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
+The launcher hangs above the Site 1 flame pit between the paired Soyuz service towers. Advance the pad slider to lower the towers. The opening time and clearance interval are illustrative. The sky is the day's: cloudless and hot, 28 °C, with 3 m/s from the east at Dzhusaly, 74 km south-east, at 15:00 UTC ([weather.ts](weather.ts); NOAA ISD). ERA5 supplies the surrounding hours and the air aloft. [Pad model, sources and simplifications](../../../places/tyuratam/site-1.md#soyuz-crews-at-site-1-19671980)
 
 Walk as Malyshev or Aksyonov in the Sokol KV-2. Its paired chest closures and central regulator distinguish it from the earlier Sokol-K. Each walk starts on the rail apron facing the launcher. The starting positions, footwear and garment details are reconstructed.

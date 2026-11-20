@@ -24,6 +24,6 @@ This flight opens in the Gallery and appears to scale in the Lineup. Its seats, 
 
 ## Launch site
 
-At [Pad 39A](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-1. At liftoff the computed Sun was at azimuth 121.4° and elevation 6.8°. The Moon was below the horizon at azimuth 110.8° and elevation −17.5°.
+At [Pad 39A](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-1. At liftoff the computed Sun was at azimuth 121.4° and elevation 6.8°. The Moon was below the horizon at azimuth 110.8° and elevation −17.5°. A cold front had passed the afternoon before. At range zero Kennedy reported four tenths cirrus of unknown height and 16 km visibility. The northwest pad pole measured 5.1 m/s from the north. The cirrus is drawn at an estimated 9,000 m; ERA5 supplies the surrounding hours and the air aloft. [AS-503 flight evaluation, appendix A and table A-1](https://www.ibiblio.org/apollo/Documents/lvfea-AS503-Apollo8.pdf) · [Weather inputs](weather.ts)
 
 The site opens at the start of that boarding window. At T−56 min 23 s, launch control reported the white room moving into its 12° standby position. [NASA launch-day commentary](https://www.nasa.gov/wp-content/uploads/2026/01/as08-pao.pdf)

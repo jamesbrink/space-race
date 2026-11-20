@@ -52,7 +52,7 @@ illustrates deployment and separates the three spacecraft modules for inspection
 
 ## Launch site
 
-The launcher stands over [Site 31’s excavated pad](../../../places/tyuratam/site-31.md). The site opens at an estimated two hours before launch. The crew lift reaches the boarding platform while the towers stand around the rocket. The towers fold clear before liftoff. At liftoff the Sun was at azimuth 173.8° true and elevation +22.4°. The Moon was at 227.3° and +3.8°. The viewing conditions use the place’s estimated sky.
+The launcher stands over [Site 31’s excavated pad](../../../places/tyuratam/site-31.md). The site opens at an estimated two hours before launch. The crew lift reaches the boarding platform while the towers stand around the rocket. The towers fold clear before liftoff. At liftoff the Sun was at azimuth 173.8° true and elevation +22.4°. The Moon was at 227.3° and +3.8°. The sky is the day's: a cold, clear morning under an anticyclone; Dzhusaly, 68 km south-east, had one okta of cirrus, 4 m/s from the east and −14 °C at 06:00 UTC, and nothing at 09:00 ([weather.ts](weather.ts); NOAA ISD; Kamanin's diary). ERA5 supplies the surrounding hours and the air aloft.
 
 ![Soyuz 4 with both solar arrays deployed and the spacecraft modules still joined](../../../../../docs/readme/soyuz-4/orbital-configuration.jpg)
 

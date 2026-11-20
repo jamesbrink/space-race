@@ -14,6 +14,7 @@ import {
   soyuzGallerySpecs,
   wingMoves,
 } from '../../vehicles/gallery.ts';
+import { WEATHER } from './weather.ts';
 
 const TASS = 'TASS communiqué of 23 April 1967, NASA translation ST-PR-10595, p. 1 (preliminary orbit)';
 const SIDDIQI = 'Asif A. Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
@@ -156,6 +157,7 @@ export const flight: Flight = {
   launchVehicle: 'Soyuz 11A511',
   launch: '1967-04-23T00:35:00Z',
   site: SITE1,
+  weather: WEATHER,
   opens: { at: -7200, model: 'pad', view: 'towers' },
   launchSite: 'Tyuratam (Baikonur), Site 1',
   crew: ['Vladimir M. Komarov'],
