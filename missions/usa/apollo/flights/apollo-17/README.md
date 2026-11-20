@@ -50,7 +50,7 @@ Taurus–Littrow (above), not in flight. The transposition and docking and what 
 - The S-IC flies a pitch programme traced off the evaluation's Fig. 9-5 and held from the tilt's arrest; it is let go
   34 m/s slow, the F-1s' cutoff decay not flown. The S-II burns to the run's own depletion 2.1 s early and is let go
   86 m/s slow, and the S-IVB burns 13.9 s longer to the orbit (mission.md); the iterative guidance is a linear tangent in
-  each of its two burns; the engines' starts and cutoff transients, the tower clearance yaw and the S-IVB's boil-off in
+  each of its two burns; the engines' starts and the S-IVB's cutoff transients, the tower clearance yaw and the S-IVB's boil-off in
   orbit are not flown.
 
 ## Hardware notes

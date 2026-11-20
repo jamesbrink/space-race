@@ -108,6 +108,20 @@ export const orbital: SaturnVRecord = {
       11,
       'm/s: read off the evaluation’s Fig. 12-3, the S-IC/S-II relative velocity, about 11 m/s some 0.7 s after the stages’ first motion apart (154.64 s), nearly all of it the S-IC’s retrorockets slowing the S-IC; the curve read, not a figure printed',
     ),
+    decay: {
+      centre: assumed(
+        2_659_605,
+        `AS-506's (its flight evaluation, MPR-SAT-FE-69-9, §5.4: 2,659,605 N s from the cutoff signal to no thrust), the type's taken: AS-503's inboard engine's is not given`,
+      ),
+      outboard: derived(
+        10_324_091 / 4,
+        `${EVAL}, §5.4 and Table 5-4: the four's cutoff impulse from their cutoff to the separation signal, 10,324,091 N s by the engines' analysis (10,365,326 by the guidance's data, 10.61 m/s), a quarter of it`,
+      ),
+    },
+    ullage: derived(
+      368_833 + 366_947 + 363_166 + 371_382,
+      `${EVAL}, §12.2.2 and Table 12-3: the four S-II ullage motors' impulse over their effective burn, each as measured, fired at 154.29 s`,
+    ),
   },
   sii: {
     mass: derived(471_114 + 3_960, `${MASS}: the S-II and the S-II/S-IVB interstage at holddown arm release (Table 21-1)`),
@@ -152,6 +166,10 @@ export const orbital: SaturnVRecord = {
           SII_LOW / (SII_LOW + SII_STEP),
           `${EVAL}, §6.3: the stage's thrust after the shift, 3,877,101 N, over that and the change it made, 1,209,777 N: all five engines shifted`,
         ),
+        flow: derived(
+          (SII_LOW / (SII_LOW + SII_STEP)) * (4159.0 / 4214.9),
+          `${EVAL}, Table 6-3: the S-II's reconstructed stage impulse at the low mixture ratio, 4,214.9 N s/kg (429.8 s), against 4,159.0 (424.1 s) at the high: the flow's share is the thrust's (§6.3) times the one over the other`,
+        ),
       },
     },
     separation: doc(524.9, SEPARATIONS),
@@ -159,6 +177,16 @@ export const orbital: SaturnVRecord = {
       3,
       'm/s: NOT FOUND. The S-II’s four retrorockets and the S-IVB’s two ullage motors parted the stages; the evaluation gives the S-IVB’s acceleration (Fig. 12-8) and not the speed apart (§12.3: "no clearance problems"). Apollo 11’s estimate taken',
     ),
+    decay: {
+      centre: derived(
+        813_491 / 5,
+        `${EVAL}, §6.4 and Table 6-4: the five engines' cutoff impulse from the cutoff to the S-II/S-IVB separation, 813,491 N s (3.8 m/s; 3.44 m/s by the guidance's data), a fifth of it: on AS-503 the five were cut together`,
+      ),
+      outboard: derived(
+        813_491 / 5,
+        `${EVAL}, §6.4 and Table 6-4: the five engines' cutoff impulse from the cutoff to the S-II/S-IVB separation, 813,491 N s (3.8 m/s; 3.44 m/s by the guidance's data), a fifth of it: on AS-503 the five were cut together`,
+      ),
+    },
   },
   les: {
     motor: {

@@ -39,7 +39,7 @@ rides folded in Orion's descent stage, its mass in Orion's: it is not driven in 
 - The S-IC flies a pitch programme traced off the evaluation's Fig. 9-12 and comes to its separation 38 m/s slow, most of
   it the F-1s' thrust decay, which is not flown. The S-II burns to the run's own depletion 2.9 s early and the S-IVB 13.1
   s longer to the same orbit (mission.md); the push of the S-IC's eight retromotors is read off a figure; the iterative
-  guidance is a linear tangent in each of its two burns; the engines' starts and cutoff transients, the tower clearance
+  guidance is a linear tangent in each of its two burns; the engines' starts and the S-IVB's cutoff transients, the tower clearance
   yaw and the S-IVB's boil-off in orbit are not flown.
 
 ## Hardware notes

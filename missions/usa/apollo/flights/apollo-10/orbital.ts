@@ -117,6 +117,20 @@ export const orbital: SaturnVRecord = {
       5,
       'm/s: NOT FOUND. The S-IC’s eight retrorockets and the S-II’s eight ullage motors parted the stages; how fast is not in the evaluation (§12.2.3: "well within staging limits")',
     ),
+    decay: {
+      centre: assumed(
+        2_659_605,
+        `AS-506's (MPR-SAT-FE-69-9, §5.4: 2,659,605 N s from the cutoff signal to no thrust), the type's taken: AS-505's centre engine's is not given`,
+      ),
+      outboard: derived(
+        10_530_035 / 4,
+        `${EVAL}, §5.4: the total impulse from the outboard cutoff to the separation, 10,530,035 N s (2,367,247 lbf s), a quarter of it`,
+      ),
+    },
+    ullage: assumed(
+      4 * 373_206,
+      `the S-II's four ullage motors at their nominal impulse over the effective burn, 373,206 N s each (AS-503's evaluation, MPR-SAT-FE-69-1, Table 12-3), taken: §12.2.2 has them perform "as predicted"`,
+    ),
   },
   sii: {
     mass: derived(484_159 + 3_649, `${MASS}: the S-II and the S-II/S-IVB interstage at holddown arm release (Table 20-1)`),
@@ -158,6 +172,10 @@ export const orbital: SaturnVRecord = {
           3_090_002 / 4_103_720,
           `${EVAL}, §6.3: the stage's thrust at ESC+350 s, 3,090,002 N, over the four engines' after the centre's cutoff, 4,103,720 N`,
         ),
+        flow: derived(
+          (3_090_002 / 4_103_720) * (4165.2 / 4221.8),
+          `${EVAL}, §6.3 and §6.4: the four's average impulse one second before cutoff, at the low mixture ratio, 4,221.8 N s/kg (430.5 s), against their 4,165.2 (424.7 s) at ESC+61 s: the flow's share is the thrust's times the one over the other`,
+        ),
       },
     },
     separation: doc(553.5, SEPARATIONS),
@@ -165,6 +183,16 @@ export const orbital: SaturnVRecord = {
       3,
       'm/s: NOT FOUND. The S-II’s four retrorockets and the S-IVB’s two ullage motors parted the stages (§12.4.3: "well within staging limits")',
     ),
+    decay: {
+      centre: assumed(
+        563_145 / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 5 per cent thrust level, 563,145 N s (126,600 lbf s; the guidance's data have 578,714 N s to the separation): its quarter, an outboard engine's (§6.4: nothing unusual in the centre engine's decay after its cutoff), taken for the centre's`,
+      ),
+      outboard: derived(
+        563_145 / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 5 per cent thrust level, 563,145 N s (126,600 lbf s; the guidance's data have 578,714 N s to the separation), a quarter of it`,
+      ),
+    },
   },
   les: {
     motor: {

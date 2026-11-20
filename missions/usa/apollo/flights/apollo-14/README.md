@@ -45,7 +45,7 @@ attempts and what came after are not flown.
 - The S-IC flies a pitch programme traced off the evaluation's Fig. 9-4, whose first hundred seconds are drawn short of
   the rest: its greatest dynamic pressure is 14 per cent over the record's (mission.md). The S-II burns to the run's own
   depletion 1.7 s early and the S-IVB 9.7 s longer to the same orbit; the iterative guidance is a linear tangent in each
-  of its two burns; the engines' starts and cutoff transients, the tower clearance yaw and the S-IVB's boil-off in orbit
+  of its two burns; the engines' starts and the S-IVB's cutoff transients, the tower clearance yaw and the S-IVB's boil-off in orbit
   are not flown.
 
 ## Hardware notes

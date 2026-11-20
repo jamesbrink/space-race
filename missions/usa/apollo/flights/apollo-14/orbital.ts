@@ -34,6 +34,17 @@ const SII_ISP = (423.3 + 424.1 + 424.8 + 424.1) / 4;
 const SII_LOAD = 379_139 + 737 + 72_115 + 111;
 const SII_LEFT = 550 + 787 + 1_342 + 123;
 const SII_GAS = 2_247 - 149 + (595 - 58);
+/** The S-II's propellant in its tanks and sump at the mixture-ratio step command and at the outboard cutoff (Table 6-3, engine flowmeter integration: the best estimate), kg. */
+const SII_AT_STEP = (131_918 + 30_507) * LB;
+const SII_AT_OECO = (1_213 + 2_960) * LB;
+/**
+ * The four's flow after the shift as a share of their rated flow (Table 6-1): what the tanks lost from the step to the cutoff
+ * (473.1 to 559.05 s) less the pressurizing gas at its mean rate over the burn (from the start command, 165.5 s), over the four's.
+ */
+const SII_LOW_FLOW =
+  ((SII_AT_STEP - SII_AT_OECO) / (559.05 - 473.1) - SII_GAS / (559.05 - 165.5)) / ((4 * SII_THRUST * LBF) / (G0 * SII_ISP));
+/** Their thrust's share after it (§6.3). */
+const SII_LOW_FLOW_THRUST = 776_070 / 924_939;
 /** The S-IVB's second burn: its mainstage propellant (Table 16-7) and the flow at the null mixture ratio (Table 7-2), kg and kg/s. */
 const SECOND_BURNED = 87_614 - 16_034;
 const SECOND_FLOW = (392.47 + 79.85) * LB;
@@ -115,6 +126,17 @@ export const orbital: SaturnVRecord = {
       5,
       'm/s: NOT FOUND. The S-IC’s eight retrorockets and the S-II’s eight ullage motors parted the stages; how fast is not in the evaluation. Apollo 11’s estimate, taken',
     ),
+    decay: {
+      centre: doc(682_522 * LBF, `${EVAL}, §5.4: the centre engine's cutoff impulse from the cutoff signal to no thrust, 682,522 lbf s`),
+      outboard: derived(
+        (2_664_436 * LBF) / 4,
+        `${EVAL}, §5.4: the outboard engines' cutoff impulse from the cutoff signal to no thrust, 2,664,436 lbf s, a quarter of it`,
+      ),
+    },
+    ullage: assumed(
+      4 * 373_206,
+      `the S-II's four ullage motors at their nominal impulse over the effective burn, 373,206 N s each (AS-503's evaluation, MPR-SAT-FE-69-1, Table 12-3), taken: SA-509's S-II carried them (deleted from AS-510, MPR-SAT-FE-71-2 §10.6)`,
+    ),
   },
   sii: {
     mass: derived(488_014 + 3_655, `${MASS}: the S-II and the S-II/S-IVB interstage at holddown arm release (Table 16-1)`),
@@ -158,6 +180,10 @@ export const orbital: SaturnVRecord = {
           776_070 / 924_939,
           `${EVAL}, §6.3: the stage's thrust at ESC+380.3 s, 776,070 lbf, over the four engines' after the centre's cutoff, 924,939 lbf`,
         ),
+        flow: derived(
+          SII_LOW_FLOW,
+          `${EVAL}, Table 6-3: the four's flow after the shift from the stage's propellant mass history (engine flowmeter integration, the best estimate): what the tanks lost from the step command to the outboard cutoff over that time, less the pressurizing gas at its mean rate over the burn (${SII_GAS} kg, above), over the four's rated flow at ESC+61 s: ${SII_LOW_FLOW.toFixed(4)}, against the thrust's ${(SII_LOW_FLOW_THRUST).toFixed(4)} (an impulse ${(100 * (SII_LOW_FLOW_THRUST / SII_LOW_FLOW - 1)).toFixed(1)} per cent higher at the low ratio; SA-509 to SA-511's books give 0.5 to 1.8)`,
+        ),
       },
     },
     separation: doc(
@@ -168,6 +194,16 @@ export const orbital: SaturnVRecord = {
       3,
       'm/s: NOT FOUND. The S-II’s four retrorockets and the S-IVB’s two ullage motors parted the stages. Apollo 11’s estimate, taken',
     ),
+    decay: {
+      centre: assumed(
+        (120_576 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 5 per cent thrust level, 120,576 lbf s: its quarter, an outboard engine's (§6.4 reads no other), taken for the centre's`,
+      ),
+      outboard: derived(
+        (120_576 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 5 per cent thrust level, 120,576 lbf s, a quarter of it`,
+      ),
+    },
   },
   les: {
     motor: {
@@ -279,39 +315,36 @@ export const orbital: SaturnVRecord = {
         points: [
           [0, 0],
           [12.8, 0],
-          [20, 3.8],
-          [25, 6.0],
-          [30, 8.6],
-          [35, 10.7],
-          [40, 13.1],
-          [45, 15.3],
-          [50, 17.7],
-          [55, 20.0],
-          [60, 22.6],
-          [65, 25.3],
-          [70, 27.9],
-          [75, 30.3],
-          [80, 33.4],
-          [85, 36.7],
-          [90, 39.9],
-          [95, 42.7],
-          [105, 48.9],
-          [110, 51.0],
-          [115, 53.1],
-          [120, 55.3],
-          [125, 57.0],
-          [130, 59.0],
-          [135, 60.3],
+          [30, 4.9],
+          [35, 6.8],
+          [40, 8.7],
+          [45, 11.3],
+          [50, 14.2],
+          [55, 16.7],
+          [60, 18.8],
+          [65, 22.1],
+          [70, 25.2],
+          [75, 28],
+          [80, 30.4],
+          [85, 34.7],
+          [90, 37.9],
+          [95, 40.7],
+          [105, 48.1],
+          [110, 50.2],
+          [115, 52.7],
+          [120, 55],
+          [125, 56.8],
+          [130, 58.6],
+          [135, 60],
           [140, 61.9],
-          [145, 63.3],
-          [150, 64.6],
-          [155, 65.9],
+          [145, 63.1],
+          [150, 64.5],
+          [155, 65.8],
           [160, 67.1],
-          [162.5, 67.5],
           [165, 67.7],
         ],
         confidence: 'estimated',
-        source: `${EVAL}, Fig. 9-4: the launch vehicle digital computer's pitch attitude command from the launch vertical, its line traced off the page scanned at 600 dpi against the figure's own grid (its first hundred seconds and first ten degrees drawn short of the rest, so read between the gridlines found: some two seconds and half a degree at best) and smoothed over five seconds, flown open as the S-IC flew it and held from its arrest (164.1 s, Table 2-2; the figure's plateau, 67.7°) to the iterative guidance's start. Before 20 s the line drawn leaves zero a second ahead of the programme's start at 12.8 s (Table 2-2), which is taken, and the tilt run straight from it to the figure's 3.8° at 20 s; between 95 and 105 s a gridline hides the line's corner, run straight. The figure draws the iterative guidance's first step some 4.5 s after Table 2-2's 205.9 s, which is taken`,
+        source: `${EVAL}, Fig. 9-4: the launch vehicle digital computer's pitch attitude command from the launch vertical, its line traced along the middle of its stroke off the page scanned at 600 dpi against the figure's own gridlines and averaged over five seconds, flown open as the S-IC flew it and held from its arrest (164.1 s, Table 2-2; the figure's plateau, 67.7°) to the iterative guidance's start. The figure's frame stands short of its first gridline on both axes, by 18 of the 203 pixels between its time gridlines (9.0 s) and 22 of the 140 between its degree gridlines (1.6°); the yaw panel under it, framed the same, draws nothing of the tower clearance yaw (1.7 to 9.7 s, Table 2-2), which a frame at range zero would hold (AS-506's Fig. 10-4, framed from −100 s, draws it); and the pitch line comes into the frame through its top edge at 18.4 s, after the programme's start. So it is read, as AS-510's Fig. 9-10 is, as a frame beginning at 9.0 s and 1.6° on the scale of the rest, not as a first hundred seconds and ten degrees drawn short, as it was first read (every point before 100 s then some 9 s earlier at the start and up to 3.8° further over: mission.md). Before 30 s the tilt is run straight from the programme's start at 12.8 s (Table 2-2) to the figure's 4.9° at 30 s, the line hidden by the frame's top before 18 s; the figure draws the iterative guidance's first step some 4.5 s after Table 2-2's 205.9 s, which is taken`,
       },
       turn: doc(
         205.9,

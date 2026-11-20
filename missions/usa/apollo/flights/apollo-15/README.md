@@ -45,7 +45,7 @@ from its gallery (above).
   7.8 s: its greatest dynamic pressure is 8 per cent over the record's (mission.md). The first two stages are pushed apart
   at one even rate, the reconstructed distance's mean, without the F-1s' tailoff that slowed them. The S-II burns to the
   run's own depletion 2.5 s early and the S-IVB 11.1 s longer to the same orbit; the iterative guidance is a linear tangent
-  in each of its two burns; the engines' starts and cutoff transients, the tower clearance yaw and the S-IVB's boil-off in
+  in each of its two burns; the engines' starts and the S-IVB's cutoff transients, the tower clearance yaw and the S-IVB's boil-off in
   orbit are not flown.
 
 ## Hardware notes

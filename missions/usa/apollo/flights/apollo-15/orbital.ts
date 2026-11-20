@@ -40,6 +40,17 @@ const SII_ISP = (425.1 + 424.1 + 423.7 + 424.6) / 4;
 const SII_LOAD = 379_369 + 737 + 71_994 + 111;
 const SII_LEFT = 622 + 787 + 1_700 + 123;
 const SII_GAS = 1_904 - 157 + (805 - 63);
+/** The S-II's propellant in its tanks and sump at the mixture-ratio step command and at the outboard cutoff (Table 6-2, engine flowmeter integration: the best estimate), kg. */
+const SII_AT_STEP = (102_707 + 24_957) * LB;
+const SII_AT_OECO = (1_373 + 3_750) * LB;
+/**
+ * The four's flow after the shift as a share of their rated flow (Table 6-1): what the tanks lost from the step to the cutoff
+ * (483.9 to 549.06 s) less the pressurizing gas at its mean rate over the burn (from the start command, 161.9 s), over the four's.
+ */
+const SII_LOW_FLOW =
+  ((SII_AT_STEP - SII_AT_OECO) / (549.06 - 483.9) - SII_GAS / (549.06 - 161.9)) / ((4 * SII_THRUST * LBF) / (G0 * SII_ISP));
+/** Their thrust's share after it (§6.3). */
+const SII_LOW_FLOW_THRUST = 799_259 / 932_634;
 /** The S-IVB's residuals at the second cutoff (Table 16-7): oxygen and hydrogen in and below the tanks, kg. */
 const SIVB_LEFT_LOX = 1_759 + 180;
 const SIVB_LEFT_LH2 = 754 + 26;
@@ -142,6 +153,13 @@ export const orbital: SaturnVRecord = {
       SEPARATION_RATE,
       `m/s: ${EVAL}, §10.6 and Fig. 10-15 (the reconstructed separation distance, read off the page): from AS-510 four of the S-IC's eight retrorockets and all of the S-II's ullage motors were deleted, and the distance at the S-II's start was less than on any flight before and less than predicted. It grew from nothing at the physical separation, 1.6 s after the outboard cutoff, to some 22 ft at 10 per cent J-2 thrust, 4.35 s after it: its mean rate, taken because the run flies the push as one impulse and none of the F-1s' tailoff, which §10.6 blames for the shortfall. The rate itself was higher at first, some 5 m/s as the retrorockets burned out, 2.6 s after the cutoff, and fell to under 2 m/s by 4 s under the tailoff's thrust`,
     ),
+    decay: {
+      centre: doc(667_656 * LBF, `${EVAL}, §5.4: the centre engine's cutoff impulse from the cutoff signal to no thrust, 667,656 lbf s`),
+      outboard: estimated(
+        (2_644_945 * LBF) / 4,
+        `${EVAL}, §5.4: the outboard engines' cutoff impulse from the cutoff signal to no thrust, 2,64_,945 lbf s, its fourth digit defaced on the scan and taken in the middle (2,644,945, within 0.2 per cent), a quarter of it`,
+      ),
+    },
   },
   sii: {
     mass: derived(488_493 + 3_641, `${MASS}: the S-II and the S-II/S-IVB interstage at holddown arm release (Table 16-1)`),
@@ -188,6 +206,10 @@ export const orbital: SaturnVRecord = {
           799_259 / 932_634,
           `${EVAL}, §6.3: the stage's thrust at ESC+350 s, 799,259 lbf, over the four engines' after the centre's cutoff, 932,634 lbf`,
         ),
+        flow: derived(
+          SII_LOW_FLOW,
+          `${EVAL}, Table 6-2: the four's flow after the shift from the stage's propellant mass history (engine flowmeter integration, the best estimate): what the tanks lost from the step command to the outboard cutoff over that time, less the pressurizing gas at its mean rate over the burn (${SII_GAS} kg, above), over the four's rated flow at ESC+61 s: ${SII_LOW_FLOW.toFixed(4)}, against the thrust's ${(SII_LOW_FLOW_THRUST).toFixed(4)} (an impulse ${(100 * (SII_LOW_FLOW_THRUST / SII_LOW_FLOW - 1)).toFixed(1)} per cent higher at the low ratio; SA-509 to SA-511's books give 0.5 to 1.8)`,
+        ),
       },
     },
     separation: doc(
@@ -198,6 +220,16 @@ export const orbital: SaturnVRecord = {
       3,
       'm/s: NOT FOUND. The S-II’s four retrorockets and the S-IVB’s two ullage motors parted the stages, "normal with nominal S-II retro motor and S-IVB ullage motor performance" (§10.6); how fast is not in the evaluation. Apollo 14’s estimate (Apollo 11’s), taken',
     ),
+    decay: {
+      centre: assumed(
+        (101_700 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 5 per cent thrust level, 101,700 lbf s: its quarter, an outboard engine's (§6.4 reads no other), taken for the centre's`,
+      ),
+      outboard: derived(
+        (101_700 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 5 per cent thrust level, 101,700 lbf s, a quarter of it`,
+      ),
+    },
   },
   les: {
     motor: {

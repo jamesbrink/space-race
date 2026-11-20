@@ -1426,7 +1426,12 @@ export class OrbitDeck extends Deck {
     const v = this.vehicleOf();
     const s = this.sampleAt(t);
     const throttle = (i: number) => (live ? v.throttle(live, i, t) : stages[i]!.throttle ? along(stages[i]!.throttle!, t) : 1);
-    const flow = (i: number) => stages[i]!.count * flowOf(stages[i]!.engine) * (lit.length ? throttle(i) : this.lever.at);
+    // (its flow's share over its thrust's, where the record has the two apart: Stage.drawn)
+    const drawnOver = (i: number) => {
+      const st = stages[i]!;
+      return st.drawn && st.drawn !== st.throttle && st.throttle ? along(st.drawn, t) / along(st.throttle, t) : 1;
+    };
+    const flow = (i: number) => stages[i]!.count * flowOf(stages[i]!.engine) * (lit.length ? throttle(i) * drawnOver(i) : this.lever.at);
     // (the specific impulse is the engines' whatever the setting: their rated thrust over their rated flow)
     const rated = on.reduce((sum, i) => sum + stages[i]!.count * flowOf(stages[i]!.engine), 0);
     const vac = (i: number) => stages[i]!.count * stages[i]!.engine.thrust.vacuum.value;
@@ -2509,7 +2514,7 @@ export class OrbitDeck extends Deck {
     /** What one of them has burned by `t`, all its units. */
     const burnedBy = (j: number) => {
       const from = staged[j]!.from;
-      return stages[j]!.count * flowOf(stages[j]!.engine) * integral(stages[j]!.throttle, from, Math.max(from, Math.min(t, stops[j]!)));
+      return stages[j]!.count * flowOf(stages[j]!.engine) * integral(stages[j]!.drawn, from, Math.max(from, Math.min(t, stops[j]!)));
     };
     return stages.map((s, i) => {
       // (a tank several stages draw on, an Atlas's: what is left in it, drawn by all of them)

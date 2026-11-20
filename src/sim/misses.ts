@@ -36,41 +36,20 @@ const inUnits = (runs: Record<string, Record<string, Omit<Miss, 'absolute'>>>): 
     ]),
   );
 
-const SIC_A11 =
-  'The S-IC flies flatter than the record on the record’s own attitude commands (its flight evaluation’s Fig. 10-4, read off the page and flown open): at the centre engine’s cutoff it is lower and faster, climbing three degrees flatter. Its thrust is Fig. 5-3’s within a per cent or two and its mass the mass tables’ to a ton at each cutoff; half again or twice the drag (estimated: the Saturn V’s curve not read), tried and not flown, slows it but leaves it flatter still. Left: the figure’s first thirty seconds, where its drawn line leaves zero before the programme’s start at 13.2 s, and the control system’s following of its command, not flown (the law puts the axis on the command at once). See apollo-11/mission.md. Not adjusted';
+const SATURN_FLOWN =
+  'The run flies the F-1s’ and the S-II J-2s’ cutoff impulse (their flight evaluations’ §5.4 and §6.4: plan.ts EngineDef.decay), the S-II’s ullage motors where it carried them (JointDef.ahead) and the J-2s’ flow after the mixture-ratio shift at the impulse the low ratio gave (Stage.drawn)';
+const SIC_A11 = `The S-IC flies flatter than the record on the record’s own attitude commands (its flight evaluation’s Fig. 10-4, traced along the middle of its stroke and flown open): at the centre engine’s cutoff it is lower and faster, at the separation 1.8° flatter. The figure’s time axis has no offset (its gridline at range zero labelled, its plateau and the guidance’s step where Table 2-2 has them); read along the stroke’s upper edge, as first read, it is 2.4° flatter still. Its thrust is Fig. 5-3’s within a per cent or two and its mass the mass tables’ to a ton at each cutoff; half again or twice the drag (estimated: the Saturn V’s curve not read), tried and not flown, slows it but leaves it flatter still. Left: the control system’s following of its command, not flown (the law puts the axis on the command at once), and the drag. ${SATURN_FLOWN}. See apollo-11/mission.md. Not adjusted`;
 const SII_A11 =
-  'The S-II’s closed loop, flown as the law’s one linear tangent against the turning local level from 204 s (the iterative guidance’s own command fell near evenly in the inertial frame, Fig. 10-4), takes the stack to the record’s speeds within 20 m/s but lower, from the S-IC’s flatter start; the S-IVB’s guidance makes the orbit 4 s after the record’s cutoff. Not adjusted';
-
-const SII_A13 =
-  'The S-II’s four outboard J-2s are cut when the run has spent the stage’s propellant, as its oxygen depletion sensors cut them (saturn-v-plan.ts siiSpent), and the run spends it 2.8 s before the record’s cutoff. Its usable load is the mass tables’ (Table 16-3: what was in and below the tanks at ignition, less what was left at cutoff and the gas drawn off it to pressurize the tanks), within 101 kg of what Table 16-9 has the engines burn; but the engines draw at Table 6-1’s figures at ESC+62 s, at the high mixture ratio, and after the shift at the stage’s thrust share with the impulse unchanged, which over the record’s own times comes to 447.4 t where Table 16-9 has the mainstage and the cutoff’s decay burn 444.8 t (0.6 % more). The shift to the low ratio, at which a J-2’s impulse is higher and its flow a smaller share than its thrust, is not flown as such. See apollo-13/mission.md. Not adjusted';
-const SIVB_A13 =
-  'The S-II spends its propellant 2.8 s early and is let go 73 m/s slow (above), and the S-IVB’s guidance burns 11.6 s longer than the record’s to make the parking orbit, which it reaches within 0.2 km of the record’s heights. The record’s own burn was 9.3 s longer than predicted, making up the S-II’s early centre cutoff. Not adjusted';
-
-const SIC_A14 =
-  'The greatest dynamic pressure is 35.7 kPa at 79.6 s where the record has 31.4 at 81.0. The S-IC flies the record’s own attitude commands (its flight evaluation’s Fig. 9-4, traced off the page: its first hundred seconds drawn short of the rest, read to some two seconds and half a degree) and comes to its centre cutoff 1.2 km lower and 11 m/s faster than the record, within the checks, and to its separation within them; the drag is the slender Saturn IB’s curve (estimated: the Saturn V’s not read), and the control system’s following of its command is not flown. See apollo-14/mission.md. Not adjusted';
-const SIVB_A14 =
-  'The S-II spends its propellant 1.7 s before the record’s cutoff (its J-2s drawing at Table 6-1’s figures with the impulse held through the mixture-ratio shift, as Apollo 13’s) and is let go 53 m/s slow, and the S-IVB’s guidance burns 9.7 s longer than the record’s to the same orbit, which it reaches within 0.1 km of the record’s heights. See apollo-14/mission.md. Not adjusted';
-
-const SII_SHORT =
-  'The S-IC holds its record on this flight’s own pitch programme (its flight evaluation’s figure, read off the page and flown open), but leaves the stack 25 to 50 m/s slow at separation, within tolerance; the S-II’s closed loop, flown as the law’s one linear tangent against the turning local level from the iterative guidance’s start (its own command fell near evenly in the inertial frame), takes it a further 15 to 45 m/s behind the record and lower (the S-II falls short on Apollo 11 too, where the S-IC’s fast start hid it). The S-IVB’s guidance makes up the speed and reaches the published orbit, 11 to 15 s after the record’s cutoff, so at the record’s insertion instant it is still burning and slower. The stack’s mass at the first cutoff is the mass tables’ within a ton, so what is short is impulse or loss, not propellant: the F-1s’ thrust is held at its mean (the flight’s rose through the burn), the J-2s’ impulse is held through the mixture-ratio shift (it rose at the lower ratio), the drag is estimated. Not adjusted';
+  'The S-II’s closed loop, flown as the law’s one linear tangent against the turning local level from 204 s (the iterative guidance’s own command fell near evenly in the inertial frame, Fig. 10-4), takes the stack to the record’s speeds within 30 m/s but lower, from the S-IC’s flatter start. See apollo-11/mission.md. Not adjusted';
+const TLI_A11 =
+  'The translunar injection, cut on its speed (Table 4-2’s space-fixed 10,841.0 m/s), is cut 6.0 s after the record’s cutoff: the stack comes to it with more of the S-IVB’s propellant left from a first burn that ends on the record’s instant, and its C3, eccentricity and mass hold their checks. See apollo-11/mission.md. Not adjusted';
+const SIC_A14 = `The S-IC flies the record’s own attitude commands, its flight evaluation’s Fig. 9-4 read with its frame beginning at 9.0 s and 1.6° on the scale of the rest (its first intervals short on both axes, its yaw panel drawing none of the tower clearance yaw, its pitch line coming into the frame after the programme’s start): the greatest dynamic pressure is then the record’s, but the stack climbs steeper and comes to the S-IC’s separation 41 m/s slow and 1.3 km high, within the checks, and the S-II, from there, lets the S-IVB go 64 m/s slow. Read as first read, its first hundred seconds drawn short, the S-IC flew flatter (4.3 kPa over at the greatest dynamic pressure) and the S-II held its checks. ${SATURN_FLOWN}. See apollo-14/mission.md. Not adjusted`;
+const SII_SHORT = `${SATURN_FLOWN}; with them the S-IC holds its record on this flight’s own pitch programme, its separation within 30 m/s, and the S-II takes it a further 25 to 40 m/s behind the record at the S-II’s cutoff. The stack’s mass at the first cutoff is the mass tables’ within a ton, so what is short is impulse or loss: the S-II’s thrust is held at its ESC+61 s figures through the high ratio, its start’s rising thrust is not flown, the S-II’s closed loop is flown as the law’s one linear tangent, and the drag is estimated. Not adjusted`;
 const A8_SII = `${SII_SHORT}. On AS-503 the S-II’s centre engine was not cut early: the check is at the five engines’ cutoff`;
-
+const SIVB_SHORT = `The S-II lets the S-IVB go slower than the record (above, within its checks where they are not listed), and the S-IVB’s guidance burns longer than the record’s to make the parking orbit, which it reaches within a few hundred metres of the record’s heights. ${SATURN_FLOWN}. Not adjusted`;
 const SIC_A15 =
-  'The greatest dynamic pressure is 39.9 kPa at 81.4 s where the record has 36.8 at 82.0. The S-IC flies the record’s own attitude commands (its flight evaluation’s Fig. 9-10, traced off the page, its frame read as beginning at 7.8 s on the scale of the rest, to some two seconds and half a degree; read with the frame at range zero it is 43.7 kPa) and comes to its centre cutoff 1.1 km lower and 6 m/s faster than the record, and to its separation 1.8 km low and 23 m/s slow, within the checks; the drag is the slender Saturn IB’s curve (estimated: the Saturn V’s not read), and the control system’s following of its command is not flown. See apollo-15/mission.md. Not adjusted';
-const SII_A15 =
-  'The S-II’s four outboard J-2s are cut when the run has spent the stage’s propellant, as its oxygen depletion sensors cut them (saturn-v-plan.ts siiSpent), and the run spends it 2.5 s before the record’s cutoff. Its usable load is the mass tables’ (Table 16-3), within 118 kg of what Table 16-9 has the engines burn; but the engines draw at Table 6-1’s figures at ESC+61 s, and after the shift at the stage’s thrust share with the impulse unchanged, which over the record’s own times comes to 448.6 t where Table 16-9 has 446.0 t (0.6 % more). The low ratio, at which a J-2’s impulse is higher and its flow a smaller share of its thrust (§6.5: averaging 4.81 against 4.71 predicted), is not flown as such. See apollo-15/mission.md. Not adjusted';
-const SIVB_A15 =
-  'The S-II spends its propellant 2.5 s early and is let go 77 m/s slow (above), and the S-IVB’s guidance burns 11.1 s longer than the record’s to make the parking orbit, which it reaches within 0.2 km of the record’s heights. See apollo-15/mission.md. Not adjusted';
-
-const SII_A16 =
-  'The S-II’s four outboard J-2s are cut when the run has spent the stage’s propellant, as its oxygen depletion sensors cut them (saturn-v-plan.ts siiSpent), and the run spends it 2.9 s before the record’s cutoff. Its usable load is the mass tables’ (Table 16-3, less what was left at cutoff and the gas drawn off to pressurize the tanks), within 75 kg of what Table 16-9 has the engines burn; but the engines draw at Table 6-1’s figures at ESC+61 s, at the high mixture ratio, and after the shift at the stage’s thrust share with the impulse unchanged, which over the record’s own times comes to 453.9 t where Table 16-9 has the mainstage and the cutoff’s decay burn 450.9 t (0.65 % more). The shift to the low ratio, at which a J-2’s impulse is higher and its flow a smaller share than its thrust, is not flown as such. The stage starts 38 m/s slow from the S-IC, whose F-1s’ thrust decay (§5.4) is not flown, and is let go 88 m/s slow. See apollo-16/mission.md. Not adjusted';
-const SIVB_A16 =
-  'The S-II spends its propellant 2.9 s early and is let go 88 m/s slow (above), and the S-IVB’s guidance burns 13.1 s longer than the record’s to make the parking orbit, which it reaches at the record’s heights. See apollo-16/mission.md. Not adjusted';
-
-const SII_A17 =
-  'The S-II’s four outboard J-2s are cut when the run has spent the stage’s propellant, as its oxygen depletion sensors cut them (saturn-v-plan.ts siiSpent), and the run spends it 2.07 s before the record’s cutoff. Its usable load is the mass tables’ (within 43 kg of what Table 16-9 has the engines burn), but the engines draw at Table 6-1’s figures at ESC+61 s and after the shift at the stage’s thrust share with the impulse unchanged, as Apollo 13’s and 14’s do. It is let go 86 m/s slow: 34 m/s of it from the S-IC, whose outboard engines’ cutoff decay (§5.4: 2,593,423 lbf s) is not flown, some 19 m/s from the early cutoff, and the rest where the record itself says the S-II gave the stack some 23 m/s more than its engines’ reconstructed performance accounts for, 14 m/s of it unexplained (§6.3), and the run flies that reconstruction. See apollo-17/mission.md. Not adjusted';
-const SIVB_A17 =
-  'The S-II is let go 86 m/s slow (above), and the S-IVB’s guidance burns 13.9 s longer than the record’s to make the parking orbit, which it reaches at the record’s inclination and within 0.08 min of its period, its perigee 3.4 km low and its apogee 3.4 km high. See apollo-17/mission.md. Not adjusted';
+  'The greatest dynamic pressure is 39.9 kPa at 81.4 s where the record has 36.8 at 82.0. The S-IC flies the record’s own attitude commands (its flight evaluation’s Fig. 9-10, traced off the page, its frame read as beginning at 7.8 s on the scale of the rest, to some two seconds and half a degree; read with the frame at range zero it is 43.7 kPa) and comes to its centre cutoff 1.1 km lower and 6 m/s faster than the record, and to its separation 1.7 km low and 7 m/s slow, within the checks; the drag is the slender Saturn IB’s curve (estimated: the Saturn V’s not read), and the control system’s following of its command is not flown. See apollo-15/mission.md. Not adjusted';
+const SII_A13 = `The S-II’s four outboard J-2s are cut when the run has spent the stage’s propellant, as its oxygen depletion sensors cut them (saturn-v-plan.ts siiSpent), and the run spends it 2.1 s before the record’s cutoff. Its usable load is the mass tables’ (Table 16-3), within a few hundred kilograms of what Table 16-9 has the engines burn; after the shift the J-2s draw the low ratio’s flow (AS-503’s impulse there taken), but before it at Table 6-1’s figures at ESC+62 s, which over the high ratio’s 370 s draw some 0.3 per cent more than the books: the snapshot’s flow, not the phase’s. See apollo-13/mission.md. Not adjusted`;
 
 const BOOSTER =
   'the powered flight ends 4 per cent too fast. It leaves the pad at only 1.19 g, so most of the thrust goes to holding it up and the speed gained is ' +
@@ -842,101 +821,67 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   }),
   'usa/apollo/apollo-8': inUnits({
     ascent: {
-      'sii-centre-cutoff.speed': { by: -85.06, slack: 9, why: A8_SII, short: 'the S-II falls short' },
-      'sii-centre-cutoff.altitude': { by: -5_528, slack: 600, why: A8_SII, short: 'lower through the S-II' },
-      'sii-separation.speed': { by: -89.0, slack: 9, why: SII_SHORT, short: 'the S-II falls short' },
-      'sii-separation.altitude': { by: -5_503, slack: 600, why: SII_SHORT, short: 'lower through the S-II' },
-      cutoffAt: { by: 14.92, slack: 1.5, why: SII_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
-      'insertion.speed': { by: -35.26, slack: 4, why: SII_SHORT, short: 'still burning at the record’s insertion' },
+      'sii-centre-cutoff.speed': { by: -64.02, slack: 7, why: A8_SII, short: 'the S-II falls short' },
+      'sii-centre-cutoff.altitude': { by: -5_020, slack: 600, why: A8_SII, short: 'lower through the S-II' },
+      'sii-separation.speed': { by: -64.19, slack: 7, why: SII_SHORT, short: 'the S-II falls short' },
+      cutoffAt: { by: 11.33, slack: 1.2, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
+      'insertion.speed': { by: -9.48, slack: 1.5, why: SIVB_SHORT, short: 'still burning at the record’s insertion' },
     },
   }),
   'usa/apollo/apollo-10': inUnits({
     ascent: {
-      'sii-separation.speed': { by: -63.7, slack: 7, why: SII_SHORT, short: 'the S-II falls short' },
-      cutoffAt: { by: 12.75, slack: 1.3, why: SII_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
-      'insertion.speed': { by: -19.11, slack: 2.5, why: SII_SHORT, short: 'still burning at the record’s insertion' },
+      cutoffAt: { by: 8.765, slack: 0.9, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
     },
   }),
   'usa/apollo/apollo-11': inUnits({
     ascent: {
       maxQ: {
-        by: 9_246,
-        slack: 1_000,
-        why: `The greatest dynamic pressure is 44.4 kPa at 86.5 s where the record has 35.2 at 83.0: ${SIC_A11}`,
+        by: 7_498,
+        slack: 800,
+        why: `The greatest dynamic pressure is 42.7 kPa at 86.1 s where the record has 35.2 at 83.0: ${SIC_A11}`,
         short: 'the S-IC flies flatter and faster',
       },
-      'sic-centre-cutoff.speed': { by: 65.4, slack: 8, why: SIC_A11, short: 'the S-IC flies flatter and faster' },
-      'sic-centre-cutoff.altitude': { by: -3_664, slack: 500, why: SIC_A11, short: 'the S-IC flies flatter' },
-      'sic-separation.altitude': { by: -6_034, slack: 700, why: SIC_A11, short: 'the S-IC flies flatter' },
-      'sic-separation.climb': { by: -2.394, slack: 0.3, why: SIC_A11, short: 'the S-IC flies flatter' },
-      'sii-centre-cutoff.altitude': { by: -15_488, slack: 1_600, why: SII_A11, short: 'lower through the S-II' },
-      'sii-separation.altitude': { by: -7_691, slack: 800, why: SII_A11, short: 'lower through the S-II' },
+      'sic-centre-cutoff.speed': { by: 53.12, slack: 6, why: SIC_A11, short: 'the S-IC flies flatter and faster' },
+      'sic-centre-cutoff.altitude': { by: -2_931, slack: 400, why: SIC_A11, short: 'the S-IC flies flatter' },
+      'sic-separation.altitude': { by: -4_783, slack: 500, why: SIC_A11, short: 'the S-IC flies flatter' },
+      'sic-separation.climb': { by: -1.829, slack: 0.2, why: SIC_A11, short: 'the S-IC flies flatter' },
+      'sii-centre-cutoff.altitude': { by: -11_760, slack: 1_200, why: SII_A11, short: 'lower through the S-II' },
+      'sii-separation.altitude': { by: -5_726, slack: 600, why: SII_A11, short: 'lower through the S-II' },
+      'injection.at': { by: 6.029, slack: 0.6, why: TLI_A11, short: 'the injection cut later' },
     },
   }),
   'usa/apollo/apollo-13': inUnits({
     ascent: {
-      'sii-outboard-cutoff.stop': { by: -2.848, slack: 0.3, why: SII_A13, short: 'the S-II spends its propellant early' },
-      'sii-separation.speed': { by: -73.39, slack: 8, why: SII_A13, short: 'the S-II spends its propellant early' },
-      cutoffAt: { by: 11.553, slack: 1.2, why: SIVB_A13, short: 'the S-IVB burns longer to the orbit' },
-      'insertion.speed': {
-        by: -10.34,
-        slack: 1.5,
-        why: `At the record’s insertion instant, 759.83 s, the run’s S-IVB is still burning: it is cut at 761.4 s. ${SIVB_A13}`,
-        short: 'the S-IVB still burning at the record’s insertion',
-      },
+      'sii-outboard-cutoff.stop': { by: -2.145, slack: 0.25, why: SII_A13, short: 'the S-II spends its propellant early' },
+      cutoffAt: { by: 5.487, slack: 0.6, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
     },
   }),
   'usa/apollo/apollo-14': inUnits({
     ascent: {
-      maxQ: { by: 4_257, slack: 400, why: SIC_A14, short: 'the S-IC through the densest air' },
-      cutoffAt: { by: 9.709, slack: 1.2, why: SIVB_A14, short: 'the S-IVB burns longer to the orbit' },
+      'sii-separation.speed': { by: -64.33, slack: 7, why: SIC_A14, short: 'the stack slower from a steeper S-IC' },
+      cutoffAt: { by: 11.65, slack: 1.2, why: SIC_A14, short: 'the S-IVB makes up the S-II’s shortfall' },
+      'insertion.speed': { by: -10.92, slack: 1.5, why: SIC_A14, short: 'still burning at the record’s insertion' },
     },
   }),
   'usa/apollo/apollo-12': inUnits({
     ascent: {
-      'sii-centre-cutoff.altitude': { by: -5_419, slack: 600, why: SII_SHORT, short: 'lower through the S-II' },
-      cutoffAt: { by: 11.4, slack: 1.2, why: SII_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
-      'insertion.speed': { by: -9.587, slack: 1.5, why: SII_SHORT, short: 'still burning at the record’s insertion' },
+      cutoffAt: { by: 7.523, slack: 0.8, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
     },
   }),
   'usa/apollo/apollo-15': inUnits({
     ascent: {
       maxQ: { by: 3_091, slack: 300, why: SIC_A15, short: 'the S-IC through the densest air' },
-      'sii-outboard-cutoff.stop': { by: -2.49, slack: 0.25, why: SII_A15, short: 'the S-II spends its propellant early' },
-      'sii-separation.speed': { by: -77.29, slack: 8, why: SII_A15, short: 'the S-II spends its propellant early' },
-      cutoffAt: { by: 11.14, slack: 1.1, why: SIVB_A15, short: 'the S-IVB burns longer to the orbit' },
-      'insertion.speed': {
-        by: -7.408,
-        slack: 0.75,
-        why: `At the record’s insertion instant, 704.67 s, the run’s S-IVB is still burning: it is cut at 705.8 s. ${SIVB_A15}`,
-        short: 'the S-IVB still burning at the record’s insertion',
-      },
+      cutoffAt: { by: 6.006, slack: 0.6, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
     },
   }),
   'usa/apollo/apollo-16': inUnits({
     ascent: {
-      'sii-outboard-cutoff.stop': { by: -2.868, slack: 0.3, why: SII_A16, short: 'the S-II spends its propellant early' },
-      'sii-separation.speed': { by: -88.29, slack: 9, why: SII_A16, short: 'the S-II spends its propellant early' },
-      cutoffAt: { by: 13.13, slack: 1.3, why: SIVB_A16, short: 'the S-IVB burns longer to the orbit' },
-      'insertion.speed': {
-        by: -20.8,
-        slack: 2,
-        why: `At the record’s insertion instant, 716.21 s, the run’s S-IVB is still burning: it is cut at 719.3 s. ${SIVB_A16}`,
-        short: 'the S-IVB still burning at the record’s insertion',
-      },
+      cutoffAt: { by: 7.314, slack: 0.8, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
     },
   }),
   'usa/apollo/apollo-17': inUnits({
     ascent: {
-      'sii-outboard-cutoff.stop': { by: -2.066, slack: 0.2, why: SII_A17, short: 'the S-II spends its propellant early' },
-      'sii-separation.speed': { by: -85.84, slack: 9, why: SII_A17, short: 'the S-II spends its propellant early' },
-      cutoffAt: { by: 13.9, slack: 1.4, why: SIVB_A17, short: 'the S-IVB burns longer to the orbit' },
-      'insertion.speed': {
-        by: -27.81,
-        slack: 3,
-        why: `At the record’s insertion instant, 712.66 s, the run’s S-IVB is still burning: it is cut at 716.5 s. ${SIVB_A17}`,
-        short: 'the S-IVB still burning at the record’s insertion',
-      },
+      cutoffAt: { by: 8.858, slack: 0.9, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
     },
   }),
   'usa/apollo/apollo-7': inUnits({

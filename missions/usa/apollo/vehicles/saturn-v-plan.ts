@@ -50,7 +50,7 @@ const LOWER = 198 * IN;
 const MODEL = 'saturn_v.py and saturn-v.md, the model’s stations (inches above the F-1 exits)';
 
 /** An F-1 as the plan flies it: the record's sea-level thrust and impulse, and in vacuum what its exit area adds at one atmosphere. */
-function f1(id: string, label: string, count: number, f: F1Figures): EngineDef {
+function f1(id: string, label: string, count: number, f: F1Figures, decay?: Measure): EngineDef {
   const lift = f.exitArea.value * P0;
   const vacuum = f.thrust.value + lift;
   const how = `the sea-level figure (${f.thrust.source}) and one atmosphere on the exit (${f.exitArea.source})`;
@@ -71,6 +71,7 @@ function f1(id: string, label: string, count: number, f: F1Figures): EngineDef {
       source: 'MSFC-MAN-503, §IV: the F-1s were started on the pad by ground equipment',
     },
     burns: 'kerosene-lox',
+    ...(decay ? { decay } : {}),
   };
 }
 
@@ -84,7 +85,16 @@ function j2(
   f: J2Figures,
   shift: MixtureShift | undefined,
   more: Partial<EngineDef> = {},
+  decay?: Measure,
 ): EngineDef {
+  const step = (before: Measure, after: Measure): [number, number][] =>
+    shift
+      ? [
+          [0, before.value],
+          [shift.at.value, before.value],
+          [shift.at.value + 0.01, after.value],
+        ]
+      : [];
   return {
     id,
     label,
@@ -98,17 +108,23 @@ function j2(
       ? {
           throttle: {
             curve: {
-              points: [
-                [0, shift.before.value],
-                [shift.at.value, shift.before.value],
-                [shift.at.value + 0.01, shift.after.value],
-              ],
+              points: step(shift.before, shift.after),
               confidence: shift.before.confidence === 'documented' ? shift.after.confidence : shift.before.confidence,
-              source: `before the shift: ${shift.before.source}; after it: ${shift.after.source}; the shift at ${shift.at.source}. Thrust and flow held at one share, the impulse unchanged`,
+              source: `before the shift: ${shift.before.source}; after it: ${shift.after.source}; the shift at ${shift.at.source}. ${shift.flow ? 'The thrust’s share: the flow’s is its own' : 'Thrust and flow held at one share, the impulse unchanged'}`,
             },
+            ...(shift.flow
+              ? {
+                  flow: {
+                    points: step(shift.before, shift.flow),
+                    confidence: shift.before.confidence === 'documented' ? shift.flow.confidence : shift.before.confidence,
+                    source: `the flow's share: before the shift as the thrust's (${shift.before.source}); after it ${shift.flow.source}, so that the impulse after it is the thrust's share over this, ${((shift.after.value / shift.flow.value) * f.isp.value).toFixed(1)} s`,
+                  },
+                }
+              : {}),
           },
         }
       : {}),
+    ...(decay ? { decay } : {}),
     starts: {
       count: 1,
       ground: false,
@@ -139,7 +155,7 @@ export function siiSpent(o: SaturnVRecord): number {
     if (t <= a) return 0;
     if (!shift) return t - a;
     const s = shift.at.value;
-    return shift.before.value * Math.max(0, Math.min(t, s) - a) + shift.after.value * Math.max(0, t - Math.max(a, s));
+    return shift.before.value * Math.max(0, Math.min(t, s) - a) + (shift.flow ?? shift.after).value * Math.max(0, t - Math.max(a, s));
   };
   const burned = (t: number) => flow(s2.centre) * held(Math.min(t, s2.centre.cut.value)) + 4 * flow(s2.outboard) * held(t);
   const load = s2.propellant.usable.value;
@@ -150,6 +166,19 @@ export function siiSpent(o: SaturnVRecord): number {
     else hi = mid;
   }
   return lo;
+}
+
+/**
+ * What the stack flying on gains from the S-II's ullage motors as the S-IC leaves, m/s: their impulse over its mass then,
+ * all that is above the S-IC as it stood on the pad (none of it has burned yet).
+ */
+function ullageAhead(o: SaturnVRecord, impulse: Measure): Measure {
+  const parts = [o.sii.mass, o.sii.skirt.mass, o.les.mass, o.sivb.mass, ...(o.sivb.payload ? [o.sivb.payload.mass] : []), o.csm.mass];
+  const mass = parts.reduce((sum, m) => sum + m.value, 0);
+  return derived(
+    impulse.value / mass,
+    `m/s: the S-II's ullage motors' impulse (${impulse.source}) over the stack above the S-IC, ${(mass / 1000).toFixed(1)} t (the record's masses at first motion: the S-II, its aft interstage, the tower, the S-IVB with what it carries and the command and service modules)`,
+  );
 }
 
 /** What leaves, as a body of its own (sim/shed.ts): the model's stretch of the stack, its radius, and a shell's figures for the rest. */
@@ -223,6 +252,7 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
       gone: ['sic'],
       at: s1.separation,
       push: s1.push,
+      ...(s1.ullage ? { ahead: ullageAhead(o, s1.ullage) } : {}),
       closed: { engines: ['j2-centre', 'j2-outboard'] },
     },
     { id: 'sii-skirt', label: 'S-II aft interstage jettison', gone: ['sii-skirt'], at: s2.skirt.at },
@@ -237,10 +267,10 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
     },
   ];
   const engines: EngineDef[] = [
-    f1('f1-centre', 'Centre F-1', 1, s1.f1),
-    f1('f1-outboard', 'Four outboard F-1s', 4, s1.f1),
-    j2('j2-centre', 'Centre J-2', 'sii', 'sii-propellant', 1, s2.centre, s2.outboard.shift),
-    j2('j2-outboard', 'Four outboard J-2s', 'sii', 'sii-propellant', 4, s2.outboard, s2.outboard.shift),
+    f1('f1-centre', 'Centre F-1', 1, s1.f1, s1.decay?.centre),
+    f1('f1-outboard', 'Four outboard F-1s', 4, s1.f1, s1.decay?.outboard),
+    j2('j2-centre', 'Centre J-2', 'sii', 'sii-propellant', 1, s2.centre, s2.outboard.shift, {}, s2.decay?.centre),
+    j2('j2-outboard', 'Four outboard J-2s', 'sii', 'sii-propellant', 4, s2.outboard, s2.outboard.shift, {}, s2.decay?.outboard),
     j2('sivb-j2', 'S-IVB J-2', 'sivb', 'sivb-propellant', 1, s3.first, undefined),
     j2('sivb-tli', 'S-IVB J-2 relit', 'sivb', 'sivb-propellant', 1, s3.second, s3.second.shift, {
       again: 'sivb-j2',

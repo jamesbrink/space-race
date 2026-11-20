@@ -820,7 +820,9 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
       const wind = sky.blow ? sub(over, blowing(v.frame, sky.blow, v.frame.place(p, at), altitude, at)) : over;
       const airspeed = length(wind);
       let thrust = 0;
-      for (let i = 0; i < stages.length; i++) if (v.burning(cur, i, since)) thrust += stack.thrust(i, at, air.pressure);
+      // (each stage burning; and one cut, its body still on, as its thrust decays: staged.ts `decayOf`)
+      for (let i = 0; i < stages.length; i++)
+        thrust += v.burning(cur, i, since) ? stack.thrust(i, at, air.pressure) : v.decay(cur, i, at, air.pressure);
       // (the last stage, stopped and still on: what it lets out, as staged.ts `ascend` and the live vehicle have it)
       if (cur.stages[last]!.gone > since && stopped(last, since) !== null) thrust += stack.vent(at);
       const mass = v.mass(cur, at);
@@ -881,11 +883,16 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
         thetaTurn = law.thetaAt(s, t, airOf(s, t).ground);
       }
       place(t);
+      // (a joint below the spacecraft parting with motors of its own firing: what the stack flying on gains, plan.ts `JointDef.ahead`)
+      let gained: Vec3 | null = null;
       for (const p of plan) {
         if (p.at > t + 1e-9 || doneIn(p.step, cur)) continue;
         const parting = p.step.kind === 'separate' && p.step.stage === last;
         const before = parting ? v.mass(cur, t) : 0;
         apply(p.step, t, cur);
+        const lower = p.step.kind === 'separate' && p.step.stage !== last ? seq.stages[p.step.stage]!.joint : null;
+        const ahead = lower ? fp.craft[0]!.joints.find((j) => j.id === lower)?.ahead : undefined;
+        if (ahead) gained = add(gained ?? u, scale(held ?? axisAt(r, u, t), ahead.value));
         if (p.step.kind === 'cut' && p.step.stage === last) events.push('cutoff');
         if (parting) {
           events.push('separation');
@@ -900,7 +907,7 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
         }
       }
       since = t;
-      return { events };
+      return gained ? { events, v: gained } : { events };
     },
   };
 }

@@ -8,10 +8,13 @@
  *   gravity  world/orbit.ts's, with J2.
  *   thrust   each stage burning, `count` of them alike: its throttle (its engine's `throttle.curve`, rated where none is
  *            given) of its vacuum thrust, less its nozzles' exit area times the air's pressure (sim/thrust.ts). Flow is the vacuum
- *            thrust over g0 times the vacuum specific impulse, times the throttle: so the engine's propellant flow is
+ *            thrust over g0 times the vacuum specific impulse, times the throttle (or the share of its flow the record
+ *            has apart from its thrust's: `throttle.flow`, `Stage.drawn`): so the engine's propellant flow is
  *            the same in air as out of it, and sea-level thrust and impulse come out as the record has them when the
  *            exit area is the one the two thrusts give (`exitAreaOf`). It burns from `ignition` to `cutoff`, or until
- *            its `usable` propellant is gone if that is sooner (said in `Ascended.stops`). No build-up, no tail-off.
+ *            its `usable` propellant is gone if that is sooner (said in `Ascended.stops`). No build-up. Where the record
+ *            gives its cutoff impulse (`EngineDef.decay`), its thrust falls from the cut to nothing over the impulse
+ *            (`decayOf`), while its body is on.
  *   drag     half rho v^2 Cd A against the motion through air that turns with the Earth (no wind: the day's winds
  *            aloft at Tyuratam have not been read), on `ascent.drag`'s areas and curves in turn.
  *   mass     what left the pad, less every stage's propellant burned, less each stage as it separates (what it
@@ -250,6 +253,16 @@ export function exitAreaOf(e: Pick<EngineDef, 'exitArea' | 'thrust'>): number {
 export const flowOf = (e: Pick<EngineDef, 'thrust' | 'isp'>): number => e.thrust.vacuum.value / (G0 * e.isp!.vacuum.value);
 
 /**
+ * An engine's decay after its cut (`EngineDef.decay`), cut at `share` of its rated thrust: how long its thrust takes to
+ * fall evenly from that to nothing, s, so as to give one unit's cutoff impulse. Null for an engine with none.
+ */
+export function decayOf(st: { engine: Pick<EngineDef, 'decay' | 'thrust'> }, share: number): { lasts: number } | null {
+  const impulse = st.engine.decay?.value ?? 0;
+  const thrust = share * st.engine.thrust.vacuum.value;
+  return impulse > 0 && thrust > 0 ? { lasts: (2 * impulse) / thrust } : null;
+}
+
+/**
  * A stage of an orbital plan: an engine that draws on a tank, with the body it is on and its tank, in the plan's order,
  * base first. Every figure is one unit's, and `count` of them are alike. A tank can be drawn on by several stages (an
  * Atlas's booster engines and its sustainer, both fed from the one tank, the boosters on a section that is dropped
@@ -264,6 +277,8 @@ export interface Stage {
   load: number;
   /** Its throttle setting against seconds from liftoff, where the record gives one. */
   throttle?: Curve;
+  /** The share of its rated flow it draws against seconds from liftoff: its `throttle.flow` where the record has one, else its throttle setting. */
+  drawn?: Curve;
   /** The stages that draw on its tank, itself among them, by index: `[i]` for a tank of its own. */
   shares: number[];
   /** The body its tank is on, and how many units of it there are. */
@@ -286,6 +301,7 @@ export function stagesOf(plan: FlightPlan): Stage[] {
       count: engine.count,
       load: (tank.usable ?? tank.load).value,
       ...(engine.throttle?.curve ? { throttle: engine.throttle.curve } : {}),
+      ...((engine.throttle?.flow ?? engine.throttle?.curve) ? { drawn: engine.throttle?.flow ?? engine.throttle?.curve } : {}),
       shares: tanked.flatMap((e, j) => (e.tanks[0] === tank.id ? [j] : [])),
       holder: { id: holder.id, count: holder.count },
     };
@@ -348,7 +364,7 @@ export function schedule(
     const drawn = (t: number) =>
       shares.reduce((sum, j) => {
         const from = seq.stages[j]!.from;
-        return sum + stages[j]!.count * flowOf(stages[j]!.engine) * integral(stages[j]!.throttle, from, Math.min(t, cutoffOf(j)));
+        return sum + stages[j]!.count * flowOf(stages[j]!.engine) * integral(stages[j]!.drawn, from, Math.min(t, cutoffOf(j)));
       }, 0);
     const from = Math.min(...shares.map((j) => seq.stages[j]!.from));
     const hi = Math.max(...shares.map((j) => cutoffOf(j)));
@@ -363,7 +379,7 @@ export function schedule(
       return dry < cutoff ? { from, to: Math.max(from, dry), dry: true } : { from, to: cutoff, dry: false };
     }
     const load = s.load;
-    const burned = (t: number) => flowOf(s.engine) * integral(s.throttle, from, t);
+    const burned = (t: number) => flowOf(s.engine) * integral(s.drawn, from, t);
     if (burned(cutoff) <= load) return { from, to: cutoff, dry: false };
     return { from, to: spentAt(burned, load, from, cutoff), dry: true };
   });
@@ -653,9 +669,16 @@ export function stackOf(plan: FlightPlan) {
       }
       return f;
     },
-    burned: (i: number, from: number, t: number) => flows[i]! * integral(stages[i]!.throttle, from, t),
+    burned: (i: number, from: number, t: number) => flows[i]! * integral(stages[i]!.drawn, from, t),
     thrust: (i: number, t: number, pressure: number) =>
       nozzleThrust(stages[i]!.count, stages[i]!.engine.thrust.vacuum.value, throttle(i, t), areas[i]!, pressure),
+    /** What stage `i`, cut at `cut`, still gives at `t` as its thrust decays (`decayOf`), N: nothing past its decay or with none. */
+    decay: (i: number, cut: number, t: number, pressure: number): number => {
+      const d = decayOf(stages[i]!, throttle(i, cut));
+      if (!d || t < cut || t >= cut + d.lasts) return 0;
+      const k = throttle(i, cut) * (1 - (t - cut) / d.lasts);
+      return nozzleThrust(stages[i]!.count, stages[i]!.engine.thrust.vacuum.value, k, areas[i]!, pressure);
+    },
     dragArea: (at: number, mach: number) => {
       const drag = drags.find((d) => at < d.until.value) ?? drags[drags.length - 1]!;
       return drag.area.value * along(drag.curve, mach);
@@ -719,6 +742,11 @@ export function ascend(
     return integrate(pushAt, plan[i]!.from, plan[i]!.to, 0.01, cutAt[i]!).at;
   };
   const stageSep = seq.stages.map((k) => k.sep);
+  // (what the stack that flies on gains as a joint below the spacecraft parts, `JointDef.ahead`: its own motors' impulse, at the instant)
+  const aheads = fp.craft[0]!.joints.flatMap((j) => {
+    const at = seq.stages.find((k) => k.joint === j.id)?.sep ?? seq.drop(j.id);
+    return j.ahead && Number.isFinite(at) ? [{ at, dv: j.ahead.value }] : [];
+  });
   const drops = seq.drops.map((d) => ({ at: d.at, mass: d.body.count * d.body.mass.value }));
   // what has left by an instant: a stage drops its fuelled mass less what it burned; another drop its own
   const droppedBy = (t: number) => {
@@ -757,6 +785,9 @@ export function ascend(
     stages.forEach((st, i) => {
       mass -= st.count * burned(i, t);
       if (as >= plan[i]!.from && as < plan[i]!.to) thrust += stack.thrust(i, t, air.air.pressure);
+      // (cut, and its body still on: what its decay still gives)
+      else if (as >= plan[i]!.to && as < stageSep[i]! && plan[i]!.to > plan[i]!.from)
+        thrust += stack.decay(i, plan[i]!.to, t, air.air.pressure);
     });
     // (the last stage, stopped and still on: what it lets out pushes the stack along its axis)
     if (as >= plan[plan.length - 1]!.to) thrust += stack.vent(t);
@@ -801,6 +832,10 @@ export function ascend(
       tPart,
       60,
       ...plan.flatMap((p) => [p.from, p.to]),
+      ...plan.flatMap((p, i) => {
+        const d = Number.isFinite(p.to) && p.to > p.from ? decayOf(stages[i]!, throttle(i, p.to)) : null;
+        return d ? [p.to + d.lasts] : [];
+      }),
       ...stageSep.filter(Number.isFinite),
       ...drops.map((d) => d.at),
       ...fp.craft[0]!.drag.map((d) => d.until.value),
@@ -876,6 +911,12 @@ export function ascend(
     const [before, t0] = [state, t];
     state = step(state, t, h, (s, tt) => pulled(forces(s, tt, m, gone, t0).accel, s, tt));
     t = Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
+    // (an impulse: the stack as it stood and as it went on, two samples at the one instant)
+    for (const k of aheads)
+      if (t === k.at) {
+        samples.push(sample(state, t));
+        state = { r: state.r, v: add(state.v, scale(axisAt(state, t, mode, airHere(state, t).ground), k.dv)) };
+      }
     // a stage cut on its velocity, when it reaches it in this step: the step is flown again to the instant it does, found by
     // the secant on the step's length (so the instant is a smooth function of the inputs, as the law's solution needs)
     const crossing = seq.stages.findIndex(
@@ -1051,7 +1092,9 @@ function solve(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: nu
   /** Newton's method from `x`: the solution, or null where it does not converge. */
   const newton = (from: Solved): Solved | null => {
     let x = from;
-    for (let k = 0; k < 40; k++) {
+    // (eighty steps: a start that is far off, its damped steps two degrees at most, can take more than forty to come in, and
+    // one that converges sooner stops where it did)
+    for (let k = 0; k < 80; k++) {
       const f = miss(x);
       if (Math.hypot(...f) < 1e-8) return x;
       const v = vec(x);
