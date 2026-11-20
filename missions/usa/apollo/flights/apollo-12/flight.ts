@@ -363,7 +363,7 @@ export const flight: Flight = {
   site: LC39A,
   weather: WEATHER,
   plan: { ...PLAN, aloft: WEATHER.aloft },
-  flies: saturnVFlies(PLAN),
+  flies: saturnVFlies(PLAN, nodes(launcher)),
   flownNote:
     'The two lightning discharges, at 36.5 and 52 s, are not flown: they dropped the spacecraft’s fuel cells off its buses and cost its platform its attitude reference, not the launch vehicle’s guidance, and the path was not moved by them (mission.md).',
   crew: ['Charles Conrad Jr.', 'Richard F. Gordon Jr.', 'Alan L. Bean'],

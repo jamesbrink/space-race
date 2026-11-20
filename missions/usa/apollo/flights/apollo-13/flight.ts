@@ -38,7 +38,7 @@ export const flight: Flight = {
   site: LC39A,
   weather: WEATHER,
   plan: { ...PLAN, aloft: WEATHER.aloft },
-  flies: saturnVFlies(PLAN),
+  flies: saturnVFlies(PLAN, nodes(launcher)),
   crew: ['James A. Lovell Jr.', 'John L. Swigert Jr.', 'Fred W. Haise Jr.'],
   summary:
     'When an oxygen tank failed in Odyssey, all three men took shelter in Aquarius. They used the lunar module’s descent engine to turn the docked spacecraft back toward Earth. They returned to Earth in Odyssey, splashing down in the Pacific on 17 April.',

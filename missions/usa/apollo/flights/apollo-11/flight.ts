@@ -349,7 +349,7 @@ export const flight: Flight = {
   site: LC39A_EDT,
   weather: WEATHER,
   plan: { ...PLAN, aloft: WEATHER.aloft },
-  flies: saturnVFlies(PLAN),
+  flies: saturnVFlies(PLAN, nodes(launcher)),
   crew: ['Neil A. Armstrong', 'Michael Collins', 'Edwin E. Aldrin Jr.'],
   summary:
     'Armstrong and Aldrin landed Eagle in the Sea of Tranquility while Collins orbited in Columbia. The descent stage stayed on the Moon as the two men lifted off to rejoin him.',
