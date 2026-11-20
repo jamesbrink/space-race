@@ -76,8 +76,9 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
     const { down } = flown();
     const first = bodies[0];
     const track = down.tracks[first.id];
-    // after its first parachute is out, and again under its last
-    for (const at of [Object.values(down.opened[first.id])[0] + 30, down.landed[first.id].at - 120]) {
+    // after its first parachute is out, and again under its last (two minutes up, or as it comes out where it is down sooner)
+    const last = Math.max(...Object.values(down.opened[first.id]));
+    for (const at of [Object.values(down.opened[first.id])[0] + 30, Math.max(last, down.landed[first.id].at - 120)]) {
       const s = track.findLast((x) => x.t <= at);
       held(
         predicted(descending(flown().plan ?? f.plan, dated, sea, { t: s.t }, { follow: first.id, from: down }), s),
