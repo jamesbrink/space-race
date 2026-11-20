@@ -610,6 +610,10 @@ export class OrbitDeck extends Deck {
   protected get ticks(): number {
     return this.state?.ticks ?? 0;
   }
+  /** The live vehicle has been set going: lit on the pad, taken over, or escaped from it (a pad escape is flown whole, at tick 0). */
+  protected override get begun(): boolean {
+    return this.state !== null;
+  }
   /** The run as it stands (deck/tape.ts): the live vehicle's state, how it is flown, and all that the hands have given since. */
   protected print(): string {
     return pack([
