@@ -110,15 +110,15 @@ export const orbital: VostokRecord = {
         `the main command, which put out the steering chambers: planned at 312.74 s (the cyclogram, ${NK}, p. 4) and not recorded on the day; taken as late as the preliminary command was (0.51 s). ` +
           `«300 s» (${SIDDIQI}, p. 277) and 299 s (${ZAK}) are not the documents’ figures. The core reached 22.0 m/s over its design (NIIP-5’s report, ibid.): a result here, not an input`,
       ),
-      separation: doc(
+      separation: estimated(
         300,
-        `the third stage’s «Зажигание» at T+321.42 s (NIIP-5’s report, ${NK}, p. 4), whose fire through the lattice cuts the core loose: the separation itself was not recorded. The plan had the third stage started at 311.74 s, before the core’s main command; the 9.7 s between plan and record is not explained in anything read`,
+        `flown at the third stage’s lighting, which is flown at 300 s (below): the separation itself was not recorded. The third stage’s «Зажигание» was at T+321.42 s (NIIP-5’s report, ${NK}, p. 4), whose fire through the lattice cuts the core loose; the plan had the third stage started at 311.74 s, before the core’s main command, and the 9.7 s between plan and record is not explained in anything read. Until November 2026 labelled documented`,
       ),
     },
     third: {
-      ignition: doc(
+      ignition: estimated(
         300,
-        `NIIP-5’s report: «Запуск “головной двигательной установки” 3-й ступени произошел в T+321.42 сек (команда “Зажигание”)» (${NK}, p. 4). The cyclogram had its start command at 311.74 s. Gagarin felt 10 to 15 s of weightlessness between the core and the third stage (${GAGARIN}), which this explains; “about 300 s” (${SIDDIQI}; ${ZAK}) is not the documents’ figure`,
+        `“about 300 s” (${SIDDIQI}; ${ZAK}), flown because the documented instant does not fly yet: NIIP-5’s report has «Запуск “головной двигательной установки” 3-й ступени произошел в T+321.42 сек (команда “Зажигание”)» (${NK}, p. 4), and with the core’s secondary masses the steering law reaches no orbit when the third stage is lit then (mission.md, “The 2011 documents”). The cyclogram had its start command at 311.74 s. Gagarin felt 10 to 15 s of weightlessness between the core and the third stage (${GAGARIN}), which 321.42 s explains. Until November 2026 labelled documented, though 300 s is not the documents’ figure`,
       ),
       cutoff: doc(
         677.08,

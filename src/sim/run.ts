@@ -336,7 +336,7 @@ export function coastContacts(
   const pending: { def: ShedBody; t: number }[] = [];
   const near = new Set<string>();
   const flying = new Set<string>();
-  const hits: { on: string; name: string; t: number; speed: number; energy: number }[] = [];
+  const hits: { on: string; name: string; t: number; speed: number; energy: number; detached?: boolean }[] = [];
   for (const def of plan.craft[0]!.sheds ?? []) {
     const index = flight.flies!.drops.findIndex((d) => d.on === def.on);
     const at = dropped[index];

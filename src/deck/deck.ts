@@ -1,4 +1,4 @@
-import type { Impact } from '../sim/contact.ts';
+import { type Impact, impactTitle } from '../sim/contact.ts';
 import type { Quat } from '../sim/rigid.ts';
 import { floorAt } from '../sim/forces.ts';
 import { floorOver, type Ground, SiteContact } from '../sim/sitecontact.ts';
@@ -362,7 +362,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     this.lastImpact.set(hit.on, hit.t);
     if (!breakup && last !== undefined && hit.t >= last && hit.t - last < 0.5) return;
     this.host.say?.(
-      breakup ? 'Impact breakup' : 'Spacecraft contact',
+      impactTitle(hit),
       `${hit.name} struck at ${hit.speed.toFixed(2)} m/s. The impact absorbed ${hit.energy.toFixed(1)} J.${hit.activeBroken ? ' Parts broke free from the spacecraft.' : ''}${hit.broken?.length ? ' Detached hardware broke apart.' : ''}`,
     );
   }

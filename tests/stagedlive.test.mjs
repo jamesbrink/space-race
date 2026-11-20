@@ -14,7 +14,8 @@ import { coastOf, flyDown, flyEjected, flyOrbit, heightsBall } from '../src/sim/
 import { abortAt } from '../src/sim/plan.ts';
 import { ejectedVerdict } from '../src/sim/verdict.ts';
 import { orbitalRelease } from '../src/sim/run.ts';
-import { apart } from '../src/sim/shed.ts';
+import { apart, Sheds } from '../src/sim/shed.ts';
+import { impactTitle } from '../src/sim/contact.ts';
 import { aboutAxis, turn } from '../src/sim/rigid.ts';
 import { guided } from '../src/sim/fliers.ts';
 import { handRange } from '../src/sim/lever.ts';
@@ -269,8 +270,9 @@ test('the live staged vehicle: what the estimated steering acceleration is worth
  * besides the record's) and `hands` (the sticks, guidance off), until the spacecraft parts, the vehicle is down or broken
  * up, or `until`. Returns the last state and the first at or after each instant in `look`.
  */
-function asked({ asks = [], sequence = true, guidance = true, hands, until = 2000, look = [] } = {}) {
-  const v = stagedVehicle(flight.plan, site, dated, sea, x);
+function asked({ on = VOSTOK, asks = [], sequence = true, guidance = true, hands, until = 2000, look = [] } = {}) {
+  const { plan, site, dated, sea, x } = on;
+  const v = stagedVehicle(plan, site, dated, sea, x);
   let now = 0;
   const queue = [...asks].sort((a, b) => a.at - b.at);
   const pilot = stagedPilot(v, x, site, dated, sea, {
@@ -283,15 +285,7 @@ function asked({ asks = [], sequence = true, guidance = true, hands, until = 200
       return out;
     },
   });
-  let s = v.tick(v.start(), {
-    pitch: 0,
-    yaw: 0,
-    roll: 0,
-    steps: [
-      { kind: 'ignite', stage: 0 },
-      { kind: 'ignite', stage: 1 },
-    ],
-  });
+  let s = v.tick(v.start(), { pitch: 0, yaw: 0, roll: 0, steps: on.liftoff });
   const at = {};
   while (!s.parted && !s.landed && !s.broke && s.t < until) {
     now = s.t;
@@ -301,42 +295,170 @@ function asked({ asks = [], sequence = true, guidance = true, hands, until = 200
   return { v, s, at };
 }
 const said = (s, title) => s.said.find((n) => n.title === title);
+/** A flight's live vehicle's makings, as `asked` flies it: its plan, where, its law's solution, and the stages lit at liftoff. */
+function rig(f) {
+  const where = siteFrame(f.site);
+  const frame = frameOf(f);
+  const level = f.site.seaLevel.value;
+  const lit = f.plan.events.find((e) => e.id === 'liftoff').do.map((a) => a.ignite);
+  return {
+    plan: f.plan,
+    site: where,
+    dated: frame,
+    sea: level,
+    x: f === flight ? x : steer(f.plan, where, frame, level),
+    stages: stagesOf(f.plan),
+    liftoff: stagesOf(f.plan).flatMap((st, i) => (lit.includes(st.engine.id) ? [{ kind: 'ignite', stage: i }] : [])),
+  };
+}
+const VOSTOK = rig(flight);
+const TITAN = rig(all.find((f) => f.id === 'usa/gemini/gt-3'));
 /** Stage `i`'s engine's thrust, and how it is lit hot into the stage below (the joint below's `hot`, this engine's). */
-const hotStage = (i) => ({
-  thrust: stages[i].engine.thrust,
-  hot: plan.craft[0].joints.find((j) => j.hot?.engine === stages[i].engine.id).hot,
+const hotStage = (i, on = VOSTOK) => ({
+  thrust: on.stages[i].engine.thrust,
+  hot: on.plan.craft[0].joints.find((j) => j.hot?.engine === on.stages[i].engine.id).hot,
 });
 
-test('hot staging at the record’s moment: the third stage lit with the core on fires into it, a share of its push reaching the stack, and the core let go a second later parts clean', () => {
-  const E = hotStage(2);
+test('hot staging at its moment, by hand on the Titan: the second stage lit fires into the first, a share of its push reaching the stack, and the one command cuts the first stage and lets it go as the record had them', () => {
+  const E = hotStage(1, TITAN);
   const share = E.hot.open.value * Math.sin(E.hot.turn.value * DEG);
-  // lit a second before the core goes, as the cyclogram had it (start 311.74 s, the core's main command 312.74 s)
-  const { v, s, at } = asked({ asks: [{ at: 299, steps: [{ kind: 'ignite', stage: 2 }] }], look: [299.5, 300.5] });
-  const joined = at[299.5];
-  const core = v.thrust({ ...joined, stages: joined.stages.map((g, i) => (i === 2 ? { ...g, from: Infinity } : g)) });
-  const pushing = v.thrust(joined) - core;
+  const v0 = stagedVehicle(TITAN.plan, TITAN.site, TITAN.dated, TITAN.sea, TITAN.x);
+  const lit = v0.sequence.find((k) => k.step.kind === 'ignite' && k.step.stage === 1).at;
+  const sets = v0.setsOff(1);
+  const wait = (kind) => sets.find((k) => k.step.kind === kind)?.wait;
   console.log(
-    `# lit at 299 s, joined: the third stage pushes ${(pushing / 1000).toFixed(1)} kN of its ${(E.thrust.vacuum.value / 1000).toFixed(1)} (${(100 * share).toFixed(0)} per cent, estimated); ${s.scorch[2].toFixed(2)} s of jet on the core’s top against ${E.hot.endures.value} s`,
+    `# the Titan's staging signal at ${lit} s: lit, the first stage cut ${wait('cut')} s and let go ${wait('separate').toFixed(2)} s after`,
   );
-  assert.ok(Math.abs(pushing - E.thrust.vacuum.value * share) < 1, `${pushing}`);
-  assert.ok(said(at[300.5], 'Hot staging'), 'the deck is told it is hot staging');
+  assert.deepEqual(
+    sets.map((k) => k.step),
+    [
+      { kind: 'cut', stage: 0 },
+      { kind: 'separate', stage: 0 },
+    ],
+  );
+  assert.equal(wait('cut'), 0);
+  assert.ok(wait('separate') > 0.5 && wait('separate') < 1, `${wait('separate')}`);
+  // the sequencer off: what follows the lighting is the hardware's, not the record's sequence
+  const { v, s, at } = asked({
+    on: TITAN,
+    sequence: false,
+    asks: [{ at: lit, steps: [{ kind: 'ignite', stage: 1 }] }],
+    look: [lit + 0.3],
+    until: lit + 20,
+  });
+  const joined = at[lit + 0.3];
+  assert.ok(!Number.isFinite(joined.stages[0].gone), 'joined still');
+  const pushing = v.thrust(joined);
+  console.log(
+    `# lit at ${lit} s, joined: the second stage pushes ${(pushing / 1000).toFixed(1)} kN of its ${(E.thrust.vacuum.value / 1000).toFixed(1)}; ${s.scorch[1].toFixed(2)} s of jet on the first stage's top against ${E.hot.endures.value} s`,
+  );
+  assert.ok(Math.abs(pushing - E.thrust.vacuum.value * share) < 0.02 * E.thrust.vacuum.value, `${pushing}`);
+  assert.equal(v.firing(joined)?.stage, 1);
+  assert.ok(said(s, 'Hot staging').text.includes('as the hardware'), said(s, 'Hot staging').text);
+  console.log(`# ${said(s, 'Hot staging').text}`);
   assert.equal(s.broke, null);
-  assert.ok(s.parted, 'and the flight goes on to the spacecraft’s parting');
-  assert.ok(Math.abs(s.scorch[2] - 1) < 0.02, `${s.scorch[2]}`);
+  assert.ok(
+    Math.abs(s.stages[0].to - lit) < 0.02 && Math.abs(s.stages[0].gone - lit - wait('separate')) < 0.02,
+    JSON.stringify(s.stages[0]),
+  );
+  assert.ok(Math.abs(s.scorch[1] - wait('separate')) < 0.02, `${s.scorch[1]}`);
+  assert.equal(s.chain, undefined, 'nothing left pending');
 });
 
-test('hot staging a minute early: the jet plays on the core’s top past what it stands, and the stack breaks up there', () => {
+test('hot staging early by hand is one act: lit a minute early the R-7’s core, and half a minute early the Titan’s first stage, are cut and let go by the same command, and nothing burns through', () => {
+  const { s } = asked({ asks: [{ at: 240, steps: [{ kind: 'ignite', stage: 2 }] }], until: 260 });
+  console.log(`# Vostok 1 lit at 240 s: ${said(s, 'Hot staging').text}`);
+  assert.equal(s.broke, null, s.broke?.text);
+  assert.ok(Math.abs(s.stages[1].to - 240) < 0.02 && Math.abs(s.stages[1].gone - 240) < 0.02, JSON.stringify(s.stages[1]));
+  assert.ok(s.stages[2].from <= 240 + 1e-9 && s.scorch[2] < 0.02, `${s.scorch[2]}`);
+  const titan = asked({ on: TITAN, asks: [{ at: 120, steps: [{ kind: 'ignite', stage: 1 }] }], until: 140 }).s;
+  assert.equal(titan.broke, null, titan.broke?.text);
+  assert.ok(Math.abs(titan.stages[0].to - 120) < 0.02 && titan.stages[0].gone < 121, JSON.stringify(titan.stages[0]));
+});
+
+test('hot staging with the strap-ons on: the core is let go but they press it on, and its top burns through unless they are dropped; the deck is told how long it has', () => {
   const E = hotStage(2);
-  const { s } = asked({ asks: [{ at: 240, steps: [{ kind: 'ignite', stage: 2 }] }] });
+  // lit at 100 s, nothing else asked: the strap-ons push the core on, and the jet plays on it past what it stands
+  const { v, s, at } = asked({ asks: [{ at: 100, steps: [{ kind: 'ignite', stage: 2 }] }], look: [101] });
+  assert.ok(said(s, 'Let go, still pushing'), 'the core let go, pressed on');
+  const firing = v.firing(at[101]);
+  assert.equal(firing?.stage, 2);
+  assert.ok(Math.abs(firing.left - (E.hot.endures.value - 1)) < 0.05, `${firing.left}`);
   assert.ok(s.broke, 'it broke up');
-  console.log(`# lit at 240 s with the core on: ${s.broke.text}`);
+  console.log(`# lit at 100 s with the strap-ons on: ${s.broke.text}`);
   assert.equal(s.broke.by, 'scorch');
-  assert.ok(Math.abs(s.broke.t - (240 + E.hot.endures.value)) < 0.05, `${s.broke.t}`);
+  assert.ok(Math.abs(s.broke.t - (100 + E.hot.endures.value)) < 0.05, `${s.broke.t}`);
   assert.equal(s.parted, null);
   assert.ok(
     s.stages.every((g) => g.gone <= s.broke.t + 1e-9 && g.to <= s.broke.t + 1e-9),
     'every engine out, every stage apart',
   );
+  // the strap-ons dropped two seconds on: the core goes with them, and the third stage flies on alone
+  const dropped = asked({
+    asks: [
+      { at: 100, steps: [{ kind: 'ignite', stage: 2 }] },
+      { at: 102, steps: [{ kind: 'separate', stage: 0 }] },
+    ],
+    look: [103],
+    until: 120,
+  });
+  assert.equal(dropped.s.broke, null, dropped.s.broke?.text);
+  assert.ok(Math.abs(dropped.s.stages[1].gone - 102) < 0.02, JSON.stringify(dropped.s.stages[1]));
+  assert.ok(Math.abs(dropped.s.scorch[2] - 2) < 0.05, `${dropped.s.scorch[2]}`);
+  assert.equal(dropped.v.firing(dropped.at[103]), null);
+});
+
+test('a stage let go of the one above it by a hand is cut by its letting go, as the staging signals cut it: the Titan’s first stage, let go burning, parts at once', () => {
+  const { s } = asked({ on: TITAN, asks: [{ at: 100, steps: [{ kind: 'separate', stage: 0 }] }], until: 110 });
+  assert.equal(said(s, 'Let go, still pushing'), undefined, 'not pressed on');
+  assert.ok(Math.abs(s.stages[0].to - 100) < 0.02 && Math.abs(s.stages[0].gone - 100) < 0.02, JSON.stringify(s.stages[0]));
+  assert.equal(s.broke, null);
+});
+
+test('the strap-ons dropped early: they leave as heavy as they are, and what they strike of each other is said to be detached hardware’s, not the spacecraft’s', () => {
+  const T = 80;
+  const v = stagedVehicle(plan, site, dated, sea, x);
+  const queue = [{ kind: 'separate', stage: 0 }];
+  const pilot = stagedPilot(v, x, site, dated, sea, { guidance: true, sequence: true, steps: () => [] });
+  let s = v.tick(v.start(), { pitch: 0, yaw: 0, roll: 0, steps: VOSTOK.liftoff });
+  const samples = [v.sample(s, 0)];
+  while (s.t < T - 1e-9) {
+    s = v.tick(s, pilot);
+    samples.push(v.sample(s, 0));
+  }
+  const before = v.mass(s);
+  s = v.tick(s, { ...pilot(s), steps: queue });
+  samples.push(v.sample(s, 0));
+  const when = s.stages[0].gone;
+  assert.ok(Math.abs(when - T) < 0.02);
+  const unit = v.unitMass(s, 0, when);
+  // (less the core's hundredth of a second of burning in the tick it left on)
+  assert.ok(Math.abs(before - v.mass(s) - 4 * unit) < 5, `${before - v.mass(s)} against 4 x ${unit}`);
+  const defs = plan.craft[0].sheds.filter((d) => d.on.startsWith(`${seq.stages[0].joint}/`));
+  assert.equal(defs.length, 4);
+  console.log(`# let go at ${T} s: each strap-on ${unit.toFixed(0)} kg, where the record's leaves ${defs[0].mass.value} kg`);
+  assert.ok(unit > defs[0].mass.value + 10_000);
+  const sheds = new Sheds(plan, site, sea, { frame: dated });
+  for (const d of defs) sheds.add(orbitalRelease(plan, d, samples, when, undefined, unit));
+  const hits = [];
+  while (s.t < T + 15) {
+    const was = s;
+    s = v.tick(s, pilot);
+    hits.push(
+      ...sheds.meet({ ...was, station: 0, mass: v.mass(was) }, { ...s, station: 0, mass: v.mass(s) }, 0).hits,
+      ...sheds.siblings(was.t, s.t),
+    );
+  }
+  const between = hits.filter((h) => h.name.split(' and ').length === 2);
+  console.log(
+    `# ${between.length} contacts between them, the hardest ${Math.max(0, ...between.map((h) => h.speed)).toFixed(1)} m/s: ${[...new Set(hits.map(impactTitle))].join(', ')}`,
+  );
+  assert.ok(between.length > 0, 'let go in that air, they meet');
+  for (const h of between) {
+    assert.equal(h.detached, true, h.name);
+    assert.match(impactTitle(h), /^Detached hardware /);
+  }
+  assert.ok(!hits.some((h) => impactTitle(h) === 'Spacecraft contact'), 'nothing struck the vehicle');
 });
 
 test('a part let go under thrust stays pressed on until what is under it stops pushing: the spacecraft rides the third stage to its cutoff', () => {
