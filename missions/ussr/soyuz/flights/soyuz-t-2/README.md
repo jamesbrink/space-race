@@ -39,11 +39,37 @@ at Salyut 6. The uncrewed Soyuz T-1 had already docked with the station during t
   mission record.
   [Baturin (ed.), *Mirovaya pilotiruyemaya kosmonavtika*, pp. 288–289](https://epizodsspace.airbase.ru/bibl/mpk/mpk.pdf)
 
+## The flight as flown
+
+From [mission.md](mission.md). The ascent is flown on the **Soyuz-U, 11A511U** (the 11A511's blocks with its own engines and
+its gain sized from the type's own table, a Soyuz T of 6,855 kg to a mean height of 220 km, not from this flight) and on
+Soyuz 3's instants: Block I runs dry at 532.0 s, level at 202 km, on **202.0 by 224.9 km** osculating where 202 by 249 km is
+given for this flight (Spacefacts, Russian Wikipedia; Encyclopedia Astronautica's 195 by 232 km would hold). The fourth
+revolution's two-impulse raise is flown as two burns at the apsides, each of the impulse that joins the insertion orbit to the
+one McDowell gives the ship on 6 June: **263.2 by 302.9 km** (262 by 317). **The rendezvous and docking with Salyut 6 are not
+flown**: the station is not in the plan; the approach, Malyshev's docking by hand and the three days docked are the record's
+events, and the ship waits in that orbit. The orbital module is let go a revolution after the undocking, before the braking
+burn, as on every Soyuz T; the burn, timed for the landing place, brings Malyshev and Aksyonov down on the descent module's own
+lift: at most **3.0 g**, on the ground at 3.8 m/s **98 km across the track** from the point "200 km south-east of Dzhezkazgan"
+and 827 s late. Every miss is recorded in src/sim/misses.ts, nothing adjusted.
+
+What the run does not do:
+
+- The rendezvous with Salyut 6: the far approach on the last revolution of the first day, the semi-automatic approach given up
+  near 200 m when the computer's request to brake was confirmed late, the docking by hand at the aft port, the joint work
+  with Popov and Ryumin and the undocking. The ship stays in the phasing orbit, not the station's.
+- The approach and attitude thrusters (DPO) that shared the main engine's tanks: only what the main engine burns is carried.
+- The braking burn's instant and length and the parting: the record has none of them; Soyuz 10's, Spacefacts' and Soyuz 11's
+  are taken.
+- The descent control system's steering to the landing place: the lift is held up throughout.
+- The Argon-16 and the Neptun console: the sequence flies the record's steps as every Soyuz's does.
+- The Soyuz T's escape system: its tower flies the first tower's estimated mass, and no escape is flown.
+
 ## Gallery
 
 Open the Soyuz-U fairing, deploy the solar wings and spread the spacecraft modules with the
 slider. Open the descent cabin and take either cosmonaut’s couch, or inspect the Neptun
-console on its own. The flight deck is pending. [Spacecraft record](spacecraft.md)
+console on its own. [Spacecraft record](spacecraft.md)
 
 ![Soyuz T-2 with its solar arrays deployed](../../../../../docs/readme/soyuz-t-2/orbital-configuration.jpg)
 

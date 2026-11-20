@@ -301,6 +301,22 @@ const FLIGHTS = {
     orbit: [3000, 30_000],
     coast: 3000,
   },
+  // (six days: the ascent on the Soyuz-U, the circularisation in two burns on the 17th and 18th revolutions, the docking ring
+  // let go on the fifth day, the braking burn timed for the landing place, the parting, the guided entry and the ground)
+  s16: {
+    id: 'ussr/soyuz/soyuz-16',
+    instants: [5, 60, 150, 300, 540, 1300, 3000, 88_000, 91_000, 100_000, 429_700, 509_000, 509_700, 510_500, 511_000, 511_600],
+    orbit: [3000, 100_000],
+    coast: 3000,
+  },
+  // (four days: the ascent on the Soyuz-U, the fourth revolution's two-impulse raise, the days docked unflown, the orbital
+  // module let go, the braking burn timed for the landing place, the parting, the guided entry and the ground)
+  t2: {
+    id: 'ussr/soyuz/soyuz-t-2',
+    instants: [5, 60, 150, 300, 540, 1300, 3000, 16_400, 19_300, 30_000, 332_000, 337_600, 338_400, 339_200, 339_800, 340_400],
+    orbit: [3000, 30_000],
+    coast: 3000,
+  },
   // (the Gemini targets: the Atlas, its verniers alone, the Agena's coast and its burn, the first orbit; the two lost ones
   // to the sea)
   g5003: { id: 'usa/gemini/gatv-5003', instants: [5, 60, 131, 200, 305, 340, 450, 600, 3000, 8000], orbit: [3000, 8000], coast: 3000 },

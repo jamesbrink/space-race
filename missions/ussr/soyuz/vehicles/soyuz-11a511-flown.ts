@@ -29,7 +29,7 @@ export const MPK =
   'Afanasyev et al., «Первые «Союзы»», ch. 5 of «Мировая пилотируемая космонавтика» (ed. Baturin, РТСофт, 2005), the table «Основные технические характеристики РН 11А511», p. 83';
 const KGF = G0;
 
-type Hardware = Omit<StageRecord, 'cutoff' | 'separation' | 'throttle' | 'velocity'>;
+export type Hardware = Omit<StageRecord, 'cutoff' | 'separation' | 'throttle' | 'velocity'>;
 
 /**
  * Blocks B, V, G and D: the 11A57's strap-ons with the 11A511's own masses and engine figures as its table has them, the 8D728
@@ -140,13 +140,18 @@ export interface Staging11A511 {
 
 /**
  * The three stages of a flight on the 11A511, in order (orbital.ts `stages`); the throttles the type's readings (vostok-8k72k.ts).
- * Block I is the 7K-OK era's unless the flight's era gives its own (`BLOCK_I_7KT`).
+ * Block I is the 7K-OK era's unless the flight's era gives its own (`BLOCK_I_7KT`); the strap-ons and the core the 11A511's
+ * unless the vehicle is another of the family on the same blocks (the 11A511U's, soyuz-11a511u-flown.ts).
  */
-export function stages11A511(day: Staging11A511, blockI: Omit<Hardware, 'ignition'> = BLOCK_I_11A511): StageRecord[] {
+export function stages11A511(
+  day: Staging11A511,
+  blockI: Omit<Hardware, 'ignition'> = BLOCK_I_11A511,
+  blocks: { strapOns: Hardware; core: Hardware } = { strapOns: STRAP_ONS_11A511, core: CORE_11A511 },
+): StageRecord[] {
   const { boosters, core, third } = day;
   return [
-    { ...STRAP_ONS_11A511, throttle: strapOnThrottle(boosters.separation.value), cutoff: boosters.cutoff, separation: boosters.separation },
-    { ...CORE_11A511, throttle: coreThrottle(core.cutoff.value), cutoff: core.cutoff, separation: core.separation },
+    { ...blocks.strapOns, throttle: strapOnThrottle(boosters.separation.value), cutoff: boosters.cutoff, separation: boosters.separation },
+    { ...blocks.core, throttle: coreThrottle(core.cutoff.value), cutoff: core.cutoff, separation: core.separation },
     { ...blockI, ignition: third.ignition, cutoff: third.cutoff, separation: third.separation, orbit: BLOCK_I_CUT },
   ];
 }
@@ -198,6 +203,8 @@ export interface Ascent11A511 {
   left: Left11A511;
   /** The ship's modules in orbit, kg, for their bodies once they part (soyuz-record.ts `modules`). */
   modules: { orbital: Measure; instrument: Measure };
+  /** What the ship let go in orbit that was no part of the launch vehicle (Soyuz 16's docking ring): each as a drop, by id. */
+  jettisons?: { id: string; at: Measure; mass: Measure; loose: Omit<ShedBody, 'on' | 'mass'> }[];
   checks: AscentCheck[];
 }
 
@@ -223,6 +230,7 @@ export function ascent11A511(day: Ascent11A511): AscentRecord {
       { id: 'escape-tower', at: day.tower, mass: TOWER_MASS },
       { ...fairing, mass: FAIRING_MASS },
       { id: 'aft-section', at: day.aft, mass: AFT_MASS },
+      ...(day.jettisons ?? []).map(({ id, at, mass }) => ({ id, at, mass })),
     ],
     centre: estimated(
       3.0,
@@ -260,6 +268,7 @@ export function ascent11A511(day: Ascent11A511): AscentRecord {
     ],
     sheds: [
       ...kept,
+      ...(day.jettisons ?? []).map((j) => ({ ...j.loose, on: j.id, mass: j.mass })),
       {
         on: 'escape-tower',
         name: 'The escape tower',

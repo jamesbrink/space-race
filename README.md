@@ -10,7 +10,7 @@ stands at its launch site as that site was that morning, under that day's Sun, M
 can be flown from liftoff to landing: as it was flown, or by your own hand.
 
 **44 crewed flights so far, Vostok 1 (April 1961) to Soyuz T-2 (June 1980).** All 44 have a Gallery and a Launch site.
-Twenty can fly from launch, and six others have orbital chapters. The seven uncrewed Gemini targets can be flown too, from Complex 14 on their Atlas: the two lost ones as the record had them fail.
+Thirty-three can fly from launch, and six others have orbital chapters. The seven uncrewed Gemini targets can be flown too, from Complex 14 on their Atlas: the two lost ones as the record had them fail.
 
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
 
@@ -84,35 +84,35 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Voskhod 1, *Rubin*](missions/ussr/voskhod/flights/voskhod-1/README.md) | 12 Oct 1964 | Komarov, Feoktistov, Yegorov | Voskhod 11A57 | ● | ● | ● |
 | [Voskhod 2, *Almaz*](missions/ussr/voskhod/flights/voskhod-2/README.md) | 18 Mar 1965 | Belyayev, Leonov | Voskhod 11A57 | ● | ● | ● |
 | [Gemini 3, *Molly Brown*](missions/usa/gemini/flights/gt-3/README.md) | 23 Mar 1965 | Grissom, Young | Titan II GLV | ● | ● | ● |
-| [Gemini IV](missions/usa/gemini/flights/gt-4/README.md) | 3 Jun 1965 | McDivitt, White | Titan II GLV | ● | ● | · |
-| [Gemini V](missions/usa/gemini/flights/gt-5/README.md) | 21 Aug 1965 | Cooper, Conrad | Titan II GLV | ● | ● | · |
-| [Gemini VII](missions/usa/gemini/flights/gt-7/README.md) | 4 Dec 1965 | Borman, Lovell | Titan II GLV | ● | ● | · |
-| [Gemini VI-A](missions/usa/gemini/flights/gt-6a/README.md) | 15 Dec 1965 | Schirra, Stafford | Titan II GLV | ● | ● | · |
+| [Gemini IV](missions/usa/gemini/flights/gt-4/README.md) | 3 Jun 1965 | McDivitt, White | Titan II GLV | ● | ● | ● |
+| [Gemini V](missions/usa/gemini/flights/gt-5/README.md) | 21 Aug 1965 | Cooper, Conrad | Titan II GLV | ● | ● | ● |
+| [Gemini VII](missions/usa/gemini/flights/gt-7/README.md) | 4 Dec 1965 | Borman, Lovell | Titan II GLV | ● | ● | ● |
+| [Gemini VI-A](missions/usa/gemini/flights/gt-6a/README.md) | 15 Dec 1965 | Schirra, Stafford | Titan II GLV | ● | ● | ● |
 | [Gemini VIII](missions/usa/gemini/flights/gt-8/README.md) | 16 Mar 1966 | Armstrong, Scott | Titan II GLV | ● | ● | · |
 | [Gemini IX-A](missions/usa/gemini/flights/gt-9a/README.md) | 3 Jun 1966 | Stafford, Cernan | Titan II GLV | ● | ● | · |
 | [Gemini X](missions/usa/gemini/flights/gt-10/README.md) | 18 Jul 1966 | Young, Collins | Titan II GLV | ● | ● | · |
 | [Gemini XI](missions/usa/gemini/flights/gt-11/README.md) | 12 Sep 1966 | Conrad, Gordon | Titan II GLV | ● | ● | · |
 | [Gemini XII](missions/usa/gemini/flights/gt-12/README.md) | 11 Nov 1966 | Lovell, Aldrin | Titan II GLV | ● | ● | · |
-| [Soyuz 1, *Rubin*](missions/ussr/soyuz/flights/soyuz-1/README.md) | 23 Apr 1967 | Komarov | Soyuz 11A511 | ● | ● | · |
+| [Soyuz 1, *Rubin*](missions/ussr/soyuz/flights/soyuz-1/README.md) | 23 Apr 1967 | Komarov | Soyuz 11A511 | ● | ● | ● |
 | [Apollo 7](missions/usa/apollo/flights/apollo-7/README.md) | 11 Oct 1968 | Schirra, Eisele, Cunningham | Saturn IB | ● | ● | ● |
-| [Soyuz 3, *Argon*](missions/ussr/soyuz/flights/soyuz-3/README.md) | 26 Oct 1968 | Beregovoy | Soyuz 11A511 | ● | ● | · |
-| [Apollo 8](missions/usa/apollo/flights/apollo-8/README.md) | 21 Dec 1968 | Borman, Lovell, Anders | Saturn V | ● | ● | · |
-| [Soyuz 4, *Amur*](missions/ussr/soyuz/flights/soyuz-4/README.md) | 14 Jan 1969 | Shatalov | Soyuz 11A511 | ● | ● | · |
+| [Soyuz 3, *Argon*](missions/ussr/soyuz/flights/soyuz-3/README.md) | 26 Oct 1968 | Beregovoy | Soyuz 11A511 | ● | ● | ● |
+| [Apollo 8](missions/usa/apollo/flights/apollo-8/README.md) | 21 Dec 1968 | Borman, Lovell, Anders | Saturn V | ● | ● | ● |
+| [Soyuz 4, *Amur*](missions/ussr/soyuz/flights/soyuz-4/README.md) | 14 Jan 1969 | Shatalov | Soyuz 11A511 | ● | ● | ● |
 | [Apollo 9, *Gumdrop* and *Spider*](missions/usa/apollo/flights/apollo-9/README.md) | 3 Mar 1969 | McDivitt, Scott, Schweickart | Saturn V | ● | ● | · |
-| [Apollo 10, *Charlie Brown* and *Snoopy*](missions/usa/apollo/flights/apollo-10/README.md) | 18 May 1969 | Stafford, Young, Cernan | Saturn V | ● | ● | · |
-| [Apollo 11, *Columbia* and *Eagle*](missions/usa/apollo/flights/apollo-11/README.md) | 16 Jul 1969 | Armstrong, Collins, Aldrin | Saturn V | ● | ● | · |
-| [Apollo 12, *Yankee Clipper* and *Intrepid*](missions/usa/apollo/flights/apollo-12/README.md) | 14 Nov 1969 | Conrad, Gordon, Bean | Saturn V | ● | ● | · |
-| [Apollo 13, *Odyssey* and *Aquarius*](missions/usa/apollo/flights/apollo-13/README.md) | 11 Apr 1970 | Lovell, Swigert, Haise | Saturn V | ● | ● | · |
-| [Apollo 14, *Kitty Hawk* and *Antares*](missions/usa/apollo/flights/apollo-14/README.md) | 31 Jan 1971 | Shepard, Roosa, Mitchell | Saturn V | ● | ● | · |
-| [Soyuz 10, *Granit*](missions/ussr/soyuz/flights/soyuz-10/README.md) | 22 Apr 1971 UTC | Shatalov, Yeliseyev, Rukavishnikov | Soyuz 11A511 | ● | ● | · |
+| [Apollo 10, *Charlie Brown* and *Snoopy*](missions/usa/apollo/flights/apollo-10/README.md) | 18 May 1969 | Stafford, Young, Cernan | Saturn V | ● | ● | ● |
+| [Apollo 11, *Columbia* and *Eagle*](missions/usa/apollo/flights/apollo-11/README.md) | 16 Jul 1969 | Armstrong, Collins, Aldrin | Saturn V | ● | ● | ● |
+| [Apollo 12, *Yankee Clipper* and *Intrepid*](missions/usa/apollo/flights/apollo-12/README.md) | 14 Nov 1969 | Conrad, Gordon, Bean | Saturn V | ● | ● | ● |
+| [Apollo 13, *Odyssey* and *Aquarius*](missions/usa/apollo/flights/apollo-13/README.md) | 11 Apr 1970 | Lovell, Swigert, Haise | Saturn V | ● | ● | ● |
+| [Apollo 14, *Kitty Hawk* and *Antares*](missions/usa/apollo/flights/apollo-14/README.md) | 31 Jan 1971 | Shepard, Roosa, Mitchell | Saturn V | ● | ● | ● |
+| [Soyuz 10, *Granit*](missions/ussr/soyuz/flights/soyuz-10/README.md) | 22 Apr 1971 UTC | Shatalov, Yeliseyev, Rukavishnikov | Soyuz 11A511 | ● | ● | ● |
 | [Apollo 15, *Endeavour* and *Falcon*](missions/usa/apollo/flights/apollo-15/README.md) | 26 Jul 1971 | Scott, Worden, Irwin | Saturn V | ● | ● | · |
 | [Apollo 16, *Casper* and *Orion*](missions/usa/apollo/flights/apollo-16/README.md) | 16 Apr 1972 | Young, Mattingly, Duke | Saturn V | ● | ● | · |
 | [Apollo 17, *America* and *Challenger*](missions/usa/apollo/flights/apollo-17/README.md) | 7 Dec 1972 | Cernan, Evans, Schmitt | Saturn V | ● | ● | · |
 | [Skylab 2, CSM-116](missions/usa/skylab/flights/skylab-2/README.md) | 25 May 1973 | Conrad, Kerwin, Weitz | Saturn IB | ● | ● | · |
 | [Skylab 3, CSM-117](missions/usa/skylab/flights/skylab-3/README.md) | 28 Jul 1973 | Bean, Garriott, Lousma | Saturn IB | ● | ● | · |
-| [Soyuz 12, *Ural*](missions/ussr/soyuz/flights/soyuz-12/README.md) | 27 Sep 1973 | Lazarev, Makarov | Soyuz 11A511 | ● | ● | · |
-| [Soyuz 16, *Buran*](missions/ussr/soyuz/flights/soyuz-16/README.md) | 2 Dec 1974 | Filipchenko, Rukavishnikov | Soyuz-U 11A511U | ● | ● | · |
-| [Soyuz T-2, *Yupiter*](missions/ussr/soyuz/flights/soyuz-t-2/README.md) | 5 Jun 1980 | Malyshev, Aksyonov | Soyuz-U 11A511U | ● | ● | · |
+| [Soyuz 12, *Ural*](missions/ussr/soyuz/flights/soyuz-12/README.md) | 27 Sep 1973 | Lazarev, Makarov | Soyuz 11A511 | ● | ● | ● |
+| [Soyuz 16, *Buran*](missions/ussr/soyuz/flights/soyuz-16/README.md) | 2 Dec 1974 | Filipchenko, Rukavishnikov | Soyuz-U 11A511U | ● | ● | ● |
+| [Soyuz T-2, *Yupiter*](missions/ussr/soyuz/flights/soyuz-t-2/README.md) | 5 Jun 1980 | Malyshev, Aksyonov | Soyuz-U 11A511U | ● | ● | ● |
 
 The 44 crewed flights with built launch sites and the seven Gemini target launches share eight pads. At the Cape they use
 Complexes 5, 14, 19 and 34 and Kennedy's Pads 39A and 39B. At Tyuratam they use Sites 1 and 31.

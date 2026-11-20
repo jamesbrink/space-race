@@ -15,6 +15,9 @@
  *                         bodies down from the ejection (tests/staged.test.mjs)
  *   live                  the live staged vehicle steered by its pilot against the batch ascent's last cutoff, at
  *                         tolerances set before it was flown (tests/stagedlive.test.mjs)
+ *   aloft                 the live staged vehicle flown by its pilot (guidance and sequence on) from the pad through the
+ *                         day's air: `breakup`, where it breaks up and the record's vehicle did not, `by` its instant in
+ *                         seconds from liftoff (tests/onestate.test.mjs)
  */
 export interface Miss {
   by: number;
@@ -265,6 +268,13 @@ const ACROSS_S10 =
 /** Soyuz 12's braking burn, timed for the landing place, the record having no instant of its own for it. */
 const ACROSS_S12 =
   'The braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`): the record has no instant for it, and Soyuz 10’s 41 min from the burn to the ground is taken. The run’s orbit after the raise holds TASS’s within a few kilometres, and on it the burn is lit some 816 s before that taken instant; lit so much earlier it comes down on a track the Earth has turned under less, to the north-east of McDowell’s point (itself queried, to a tenth of a degree). Not adjusted';
+
+const ACROSS_S16 =
+  'The braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`): the record has no instant for it, and Soyuz 10’s 41 min from the burn to the ground is taken. Six days on from an orbit whose period is the record’s within a few seconds, a few seconds a revolution are some ninety revolutions’ worth of the Earth turning under the track: the run’s pass over the landing’s latitude is that far to the east of McDowell’s point, to a tenth of a degree. Not adjusted';
+const ACROSS_T2 =
+  'The braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`): the record has no instant for it, and Soyuz 10’s 41 min from the burn to the ground is taken. The ship is not flown to Salyut 6: it waits out the three docked days in the phasing orbit McDowell gives it before the docking, lower than the station’s (the orbital module, let go from the station’s orbit, was at 311 by 323 km a month later: McDowell), and four days of another period put the run’s track west of the place «200 km south-east of Dzhezkazgan» (words, worked into a point). Not adjusted';
+const ASCENT_T2 =
+  'The 11A511U as given carries 6,855 kg to a mean height of 220 km, the type’s own table’s figure (soyuz-11a511u-flown.ts `UPRATING_11A511U`, sized on it and on no flight’s orbit); the Soyuz T of 6,850 kg is at that, and Block I runs dry with the stage level at 202 km and 7,797.5 m/s, its osculating apogee 225 km. The orbit given for this flight, 202 by 249 km (Spacefacts and Russian Wikipedia, no Soviet source read), is a mean height of 225.5 km; Encyclopedia Astronautica’s 195 by 232 km, and the 88.7 min both give, would hold. Not adjusted';
 
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
@@ -1377,6 +1387,77 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 60,
         why: 'Lazarev and Makarov are on the ground 571 s before the record’s 14:33:48. The braking burn is timed for the place they came down at (sim/plan.ts `LandingAim`), and lit 816 s before the instant taken for it (Soyuz 10’s 41 min before the touchdown: the record has none of its own); from the burn to the ground the run takes 45 min, from an orbit 100 km higher than Soyuz 10’s, on Soyuz 11’s planned burn and parting and the lift held up (all assumed). Not adjusted',
         short: 'the burn timed for the landing place',
+      },
+    },
+  }),
+  // Soyuz 16 and T-2, on the 11A511U: from the pad and from their published orbits (each flight's mission.md, "Against the record")
+  'ussr/soyuz/soyuz-16': inUnits({
+    aloft: {
+      breakup: {
+        by: 57.1,
+        slack: 3,
+        why: 'Flown live with guidance and the sequencer on, the stack meets the day’s winter jet (ERA5 at 10:00 UTC over Site 1: some 30 m/s from the north at 11 to 13 km, across its east-north-easterly track) five degrees off the air at 40 kPa, and its bending load passes the R-7’s limit, 3,340 Pa rad, by a per cent at T+57; in still air it reaches 9 per cent of it. That limit is estimated (vostok-8k72k.ts `limits.qAlpha`: Soyuz-2’s three-degree tolerance with a half again for strength), and Soyuz 4 in January (98 per cent), Soyuz 12 (84) and Soyuz T-2 (74) come near it the same way. Soyuz 16 flew: this is not believed to be what happened. Either the vehicle was stronger than the estimate, or its control system met the wind at a smaller angle than the pilot flies the law at; the R-7’s normal and lateral stabilisation are documented as holding the centre of mass to the planned trajectory (Startsev, «Ракетно-космическое приборостроение и информационные системы», 2016, vol. 3 no. 1, pp. 92–97), which is not load relief, and no load relief of the 11A511U was found. The limit is not changed to let this flight through. The batch run, which the scene and every other check fly, has no breakup',
+        short: 'the estimated bending limit in the winter jet',
+      },
+    },
+    coast: {
+      crossTrack: {
+        by: 135_656,
+        slack: 5_000,
+        why: `From the published orbit it comes down 136 km across the track. ${ACROSS_S16}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    ascent: {},
+    shown: {
+      crossTrack: {
+        by: 160_611,
+        slack: 5_000,
+        why: `From the pad it comes down 161 km across the track. ${ACROSS_S16}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    descent: {
+      'module.at': {
+        by: -962.1,
+        slack: 60,
+        why: 'Filipchenko and Rukavishnikov are on the ground 962 s before the record’s 11:03:35. The braking burn is timed for the place they came down at (sim/plan.ts `LandingAim`), and lit that much before the instant taken for it (Soyuz 10’s 41 min before the touchdown: the record has none of its own), the run being so far along its track ahead of the record’s clock after six days; from the burn to the ground it takes about the 41 min, on Spacefacts’ 188 s, Soyuz 11’s planned parting and the lift held up (assumed). Not adjusted',
+        short: 'the burn timed for the landing place',
+      },
+    },
+  }),
+  'ussr/soyuz/soyuz-t-2': inUnits({
+    coast: {
+      crossTrack: {
+        by: -187_446,
+        slack: 5_000,
+        why: `From the published orbit it comes down 187 km across the track. ${ACROSS_T2}`,
+        short: 'the station not flown',
+      },
+    },
+    ascent: {
+      apogee: { by: -24_053, slack: 500, why: `The osculating apogee at the cutoff, 224.9 km for the published 249. ${ASCENT_T2}` },
+    },
+    shown: {
+      'raised.apogee': {
+        by: -14_129,
+        slack: 1_000,
+        why: `From the pad: 302.9 km after the fourth revolution’s raise where McDowell has 317 (from the published orbit it holds: 316.2). The raise’s impulses are worked between the published orbits, and the run begins it from the lower apogee the ascent leaves (${ASCENT_T2.split('.')[0]})`,
+        short: 'the insertion apogee short',
+      },
+      crossTrack: {
+        by: -98_194,
+        slack: 5_000,
+        why: `From the pad it comes down 98 km across the track. ${ACROSS_T2}`,
+        short: 'the station not flown',
+      },
+    },
+    descent: {
+      'module.at': {
+        by: 826.7,
+        slack: 60,
+        why: 'Malyshev and Aksyonov are on the ground 827 s after the record’s 15:39:00. The braking burn is timed for the place they came down at (sim/plan.ts `LandingAim`), and lit that much after the instant taken for it (Soyuz 10’s 41 min before the touchdown: the record has none of its own): the ship, not flown to the station, waits in the phasing orbit and is that far behind the record’s clock along its track after four days; from the burn to the ground it takes about the 41 min, on Spacefacts’ three to four minutes, Soyuz 11’s planned parting and the lift held up (assumed). Not adjusted',
+        short: 'the station not flown',
       },
     },
   }),

@@ -79,6 +79,35 @@ Two steps, in order:
    no 7K-T flight's orbit: Soyuz 10's and 12's insertion checks then hold or miss on their own. tests/soyuz-uprating.test.mjs
    finds the 6,534 kg again and holds the 7K-T era's vehicle to 6,700 kg; Soyuz 3 flies the 7K-OK era's, unchanged.
 
+### The 11A511U (Soyuz-U)
+
+Soyuz 16 was the first crew to fly the 11A511U, and Soyuz T-2 flew it too (Siddiqi, Table IA: "11A511U"; McDowell's launch
+log: K15000-014 and Zh15000-196; MPK, p. 265: «это был первый запуск пилотируемого корабля с помощью модернизированной РН
+11А511У «Союз-У»»). It was made one vehicle for the crewed ships and the uncrewed satellites in place of six (MPK, p. 264): new
+engines on the strap-ons and the core, the 11D512 and the 11D511, run longer at their boosted thrust (lpre.de, from Energomash),
+and a smaller, lighter control system on the core. «Общие технические характеристики РН изменились незначительно»: with the
+7K-TM it was 49.313 m long and weighed 308 t, and it «позволяло увеличить массу корабля почти на 200 кг» (MPK, p. 264; RKK
+Energia's history, ch. 6, «примерно на 200 кг»). It is flown as [soyuz-11a511u-flown.ts](soyuz-11a511u-flown.ts) gives it:
+
+- **The engines' thrusts are the type's own table's** (RKK Energia 1946–1996, ch. 6, «Ракета-носитель 11А511У (У-2) с кораблями
+  7К-СТ. Основные характеристики»): the first stage 413.3 tf at the ground and 505.3 tf in vacuum, the core 99.7 tf in vacuum
+  (and 79.4 tf at the ground, lpre.de's), the strap-ons what that leaves, 83.5 and 101.4 tf each. Their impulses in vacuum
+  are the makers' as lpre.de tabulates them, 314.6 and 315.9 s, and at the ground what the thrusts leave on one nozzle.
+- **The blocks' masses and loads are the 11A511's** (MPK, p. 83), assumed: no figure of the 11A511U's own was found.
+- **Its gain, sized from its documented capability**: the type's table has a Soyuz T of 6,855 kg put on an orbit of a mean
+  height of 220 km at 51.6°. On the 11A511's blocks with its own engines, flown on Soyuz 16's instants from Site 1 in the
+  standard air to that mean height (its perigee the type's planned 204.3 km), the vehicle carries 6,545 kg: **310 kg short**.
+  Nothing found replaces an estimate (the throttles at the end of the strap-ons' and the core's burns are still the 8K72K's
+  readings, though the 11A511U ran its engines longer at their boost), so the 310 kg is the one unknown, `derived` from the
+  documented capability, and which figure carries it is `estimated`: Block I's own mass, a kilogram there a kilogram of ship,
+  as the 7K-T era's uprating above. Off the core, where MPK says mass was taken out, it would take about a tonne, more than its
+  control system weighed by any reckoning. It is sized on no flight's orbit: tests/soyuz-11a511u.test.mjs finds the 6,545 kg
+  again and holds the vehicle to the 6,855 kg. Soyuz 16's and T-2's insertion checks then hold or miss on their own.
+- **The second-generation escape system**: a stronger tower motor, and two pairs of motors on the fairing that carry the head
+  block up and aside between the tower's going and the fairing's, so that there was no moment without an escape; the tower went
+  at 123 s «вместо 160 с» (RKK Energia, ch. 6, for the Soyuz T; the first Soyuz's table has 157 s; MPK, p. 264, has the system on the 7K-TM's head block; Zak has it
+  first flown on Soyuz 19). Neither escape is flown; the head block's mass is the first tower's estimate.
+
 ## What the model gets wrong or leaves out
 
 - The detailed lower stack follows the earlier R-7 model. Its engines, paint and frost remain
@@ -93,3 +122,6 @@ Two steps, in order:
   attachment to the spacecraft are simplified. The internal SAS mechanisms are omitted.
 - The 7K-T era's uprating is a size on one figure (Block I's mass), not the change that was made, which is not known.
   The tower without its shroud from Soyuz 12 on flies the earlier tower's estimated mass.
+- The 11A511U's gain is likewise a size on Block I's mass: what each of its changes gave is not known. Its blocks' masses are
+  the 11A511's, its engines' throttles at the ends of their burns the 8K72K's readings, and its heavier escape tower flies the
+  first tower's estimated mass.

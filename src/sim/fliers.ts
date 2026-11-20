@@ -865,6 +865,16 @@ export function guided(fp: FlightPlan, site: Geodetic, seaLevel: number, start: 
             events.push('cutoff');
           }
         }
+      // the last stage run dry before its cut: the burn under guidance ends there all the same, as the batch run's stops it
+      // (staged.ts `ascend`: a stage's stop is its cut or its running dry)
+      const ending = cur.stages[last]!;
+      if (lastCut === null && Number.isFinite(ending.from) && !Number.isFinite(ending.to)) {
+        const dry = v.dry(last, ending.from, cur);
+        if (dry <= t + 1e-9) {
+          lastCut = dry;
+          events.push('cutoff');
+        }
+      }
       // the law's own change: the tangent takes over from the axis it had then (staged.ts `ascend`)
       if (thetaTurn === null && law.modeAt(t) === 'tangent') {
         const s = { r, v: u };

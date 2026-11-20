@@ -233,8 +233,10 @@ for (const f of vostoks.filter((x) => 'modules' in recordFrom(x))) {
     } else assert.deepEqual(parted, ['orbital-module', 'modules']);
     assert.equal(byId(c.bodies, 'orbital-module').mass, o.modules.orbital);
     assert.equal(byId(c.bodies, 'instrument').mass, o.modules.instrument);
+    // (with what the ship let go in orbit that was none of them: Soyuz 16's docking ring, a drop after the ship's separation)
+    const shed = (o.ascent?.drops ?? []).filter((d) => d.at.value > o.stages.at(-1).separation.value).reduce((m, d) => m + d.mass.value, 0);
     assert.ok(
-      Math.abs(o.modules.orbital.value + o.modules.instrument.value + o.entry.mass.value - o.mass.value) < 1e-6,
+      Math.abs(o.modules.orbital.value + o.modules.instrument.value + o.entry.mass.value + shed - o.mass.value) < 1e-6,
       'the three modules are the ship',
     );
     // its lift at its trim, held from the bank's instant; an entry the record has flown ballistic holds no bank at all

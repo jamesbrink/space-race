@@ -45,11 +45,42 @@ would meet the following July. [NASA, *Soviet Rehearsal for Apollo-Soyuz*](https
   [Afanasyev and Vorontsov, *The First Soyuz Spacecraft*, flight chronology](https://epizodsspace.airbase.ru/bibl/mpk/mpk.pdf) ·
   [NASA, *Astronautics and Aeronautics, 1974*, p. 207](https://www.nasa.gov/wp-content/uploads/2023/04/1974.pdf)
 
+## The flight as flown
+
+From [mission.md](mission.md). The ascent is flown on the **Soyuz-U, 11A511U**, its first flight with a crew: the 11A511's
+blocks with the 11A511U's own engines, their thrusts the type's table's, and its gain over the 11A511 sized on Block I's mass
+from the type's documented capability (a Soyuz T of 6,855 kg to a mean height of 220 km), not from this flight. On Soyuz 3's
+instants Block I is cut on the orbit at 531.9 s with 9 kg left, level at 191.7 km: **191.7 by 301.9 km** osculating, within
+Siddiqi's 191.7 by 314.8 (a mean; TASS gave 194 by 280). The 17th and 18th revolutions' corrections are flown as two burns at
+the apsides, each of the impulse that joins the published orbits: **219.5 by 226.0 km, 88.6 min**, where the joint flight's
+assembly orbit was about 225 km and 88.9 min. **The docking ring is shot off on 7 December**, 119 h 20 min in, and flies on
+by itself. The braking burn, timed for the landing place, brings Filipchenko and Rukavishnikov down in their Sokol-K suits on
+the descent module's own lift: at most **3.0 g**, on the ground at 3.4 m/s **161 km across the track** from McDowell's point
+and 962 s early. Every miss is recorded in src/sim/misses.ts, nothing adjusted.
+
+**Flown live, guidance and sequencer on, it breaks up at T+57.** The day's winter jet (ERA5: some 30 m/s from the north at
+11 to 13 km, across the track) puts the stack five degrees off the air at 40 kPa, and its bending load passes the R-7's limit,
+3,340 Pa rad, by a per cent. That limit is an estimate (Soyuz-2's tolerance with a half again for strength); Soyuz 4 in
+January reaches 98 per cent of it, Soyuz 12 84 and Soyuz T-2 74. Soyuz 16 flew, so this is not believed to be what happened:
+the vehicle was stronger than the estimate, or met the wind at a smaller angle than the law is flown at. The R-7's normal and
+lateral stabilisation held the centre of mass to the trajectory (Startsev, 2016), which is not load relief, and none for the
+11A511U was found; the limit is not widened to let this flight through. The recorded run (the launch site's clock, the idle
+show, the as-flown replay and every check) has no breakup. The miss is in src/sim/misses.ts (`aloft`).
+
+What the run does not do:
+
+- The first of the three corrections (the 4th or 5th revolution): what it did is on no record read.
+- The docking tests: the ring is let go once, at the emergency release; its retractions and re-engagements are not flown.
+- The braking burn's instant and the parting: the record has neither, and Soyuz 10's and Soyuz 11's are taken.
+- The descent control system's rolls: the lift is held up throughout.
+- The cabin's lowered pressure and raised oxygen, the colour television, the joint tracking with NASA and the experiments.
+- The second-generation escape system: its tower flies the first tower's estimated mass, and no escape is flown.
+
 ## Gallery
 
 The slider opens the Soyuz-U fairing, unfolds the solar arrays, releases the Apollo simulator ring
 and spreads the three modules for inspection. Look into the descent capsule to see both suited
-cosmonauts and take either couch to look at the reconstructed controls. The flight deck is pending. [Spacecraft record](spacecraft.md)
+cosmonauts and take either couch to look at the reconstructed controls. [Spacecraft record](spacecraft.md)
 
 ![Soyuz 16 with its solar arrays deployed and the Apollo simulator ring still attached](../../../../../docs/readme/soyuz-16/orbital-configuration.jpg)
 
