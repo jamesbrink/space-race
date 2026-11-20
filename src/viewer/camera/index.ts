@@ -3,7 +3,7 @@ import { FootRig, type FootView, ShoulderRig } from './foot.ts';
 import { FreeRig } from './free.ts';
 import { type Hands, listen, SPOKEN } from './input.ts';
 import { MapRig } from './map.ts';
-import { anchorOk, blendPose, fitDistance, nudgeIntoFrame } from './maths.ts';
+import { anchorOk, blendPose, finitePose, fitDistance, nudgeIntoFrame } from './maths.ts';
 import { OnboardRig } from './onboard.ts';
 import { ChaseRig, OrbitRig } from './orbit.ts';
 import { looking, type Pose, type Rig, type RigId, type World } from './rig.ts';
@@ -90,6 +90,8 @@ export class Cameras {
   private readonly now: Pose = { position: new THREE.Vector3(), quaternion: new THREE.Quaternion(), fov: 35 };
   /** What is left of the last rig's view, fading out over the new one. */
   private blend: { p: THREE.Vector3; q: THREE.Quaternion; fov: number; t: number; seconds: number } | null = null;
+  /** A pose that was not a number has been said (`update`): once is enough. */
+  private warned = false;
   private wasFlying = false;
   private stood = false;
   private quiet = false;
@@ -596,6 +598,19 @@ export class Cameras {
       if (under > 0 && Number.isFinite(under)) now.position.addScaledVector(this.scene.upAt(now.position, v), under);
     }
     const camera = this.camera;
+    // (a pose that is not a number is never put on the camera, which would draw nothing: the last that was is kept, and
+    // said once; the rig is taken up again from it)
+    if (!finitePose(now)) {
+      if (!this.warned) {
+        this.warned = true;
+        console.warn(`camera: the ${this.active.id} rig gave a pose that is not a number; the last finite pose is kept`);
+      }
+      now.position.copy(camera.position);
+      now.quaternion.copy(camera.quaternion);
+      this.blend = null;
+      if (finitePose(camera))
+        this.active.enter({ position: camera.position.clone(), quaternion: camera.quaternion.clone(), fov: now.fov }, this.pivot.clone());
+    }
     camera.position.copy(now.position);
     camera.quaternion.copy(now.quaternion);
     this.scene.upAt(this.pivot, camera.up);

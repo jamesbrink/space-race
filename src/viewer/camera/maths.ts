@@ -295,3 +295,19 @@ export function blendPose(
   position.addScaledVector(deltaP, 1 - k);
   quaternion.multiply(new THREE.Quaternion().slerp(deltaQ, 1 - k));
 }
+
+/**
+ * The plumb line in the scene's frame from the ellipsoid's normal at a place (ECEF) and the scene's axes there, into `out`.
+ * At the Earth's centre (a view of the whole Earth turned about it) there is no plumb line: the normal of a zero vector is
+ * not a number, and a rig framed on it would turn the camera to nowhere. There it is the scene's up.
+ */
+export function plumbIn(normal: readonly number[], axes: readonly (readonly number[])[], out: THREE.Vector3): THREE.Vector3 {
+  const [ex, ey, ez] = axes as [readonly number[], readonly number[], readonly number[]];
+  const along = (a: readonly number[]) => a[0]! * normal[0]! + a[1]! * normal[1]! + a[2]! * normal[2]!;
+  out.set(along(ex), along(ey), along(ez));
+  return Number.isFinite(out.x) && Number.isFinite(out.y) && Number.isFinite(out.z) ? out : out.set(0, 1, 0);
+}
+
+/** Whether a pose is all numbers: one that is not is never put on the camera (camera/index.ts `update`). */
+export const finitePose = (p: { position: THREE.Vector3; quaternion: THREE.Quaternion }): boolean =>
+  [p.position.x, p.position.y, p.position.z, p.quaternion.x, p.quaternion.y, p.quaternion.z, p.quaternion.w].every(Number.isFinite);
