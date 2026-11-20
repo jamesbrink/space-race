@@ -26,7 +26,10 @@
  * stops when it is cut or when its usable propellant is gone; one let go takes with it every stage below it in the list
  * that is still on (the strap-ons hang on the core), what it had left aboard, and whatever thrust it was giving, once nothing
  * presses it on (staging.ts `pressed`: until then it stays on and pushes); its own separation command shuts it down where
- * the record has it stop at its separation. Broken up (`broke`), the flight ends. An
+ * the record has it stop at its separation, and a hand's letting go of a stage under another always does (the staging
+ * signals did). Where the hardware's staging was one command (a stage lit into the one below, the joint's `hot`), a hand
+ * lighting that stage sets off the rest of it, the stage below cut and let go at the record's intervals (`setsOff`,
+ * `StagedState.chain`); the other steps can still be asked out of order, with what follows from them. Broken up (`broke`), the flight ends. An
  * engine is started once. The spacecraft parted, the vehicle is done: `parted` is where the coast begins (orbital.ts
  * flyOrbit). Back on the ground, it stops (`landed`).
  *
@@ -65,7 +68,7 @@ import {
   stackOf,
 } from './staged.ts';
 import { hotStage, pressed } from './staging.ts';
-import type { Curve } from '../types.ts';
+import type { Curve, Measure } from '../types.ts';
 import { handRange } from './lever.ts';
 import { nozzleThrust } from './thrust.ts';
 import { type LiveSample, TICK } from './vehicle.ts';
@@ -132,6 +135,11 @@ export interface StagedState {
   broke: null | Broke;
   /** What the hardware made of a hand's asking, in order: each said once, when it happened (the deck shows them). */
   said: readonly Said[];
+  /**
+   * What the vehicle's own staging sequence has still to do after a hand set it off (`StagedVehicle.setsOff`): each step at
+   * its instant, s. Left out where nothing is pending.
+   */
+  chain?: readonly { at: number; step: Step }[];
   /** The steering last applied. */
   controls: StagedControls;
   /**
@@ -181,6 +189,20 @@ export interface StagedVehicle {
   left(state: StagedState): number[];
   burning(state: StagedState, i: number, at?: number): boolean;
   thrust(state: StagedState): number;
+  /** What one unit of stage `i` weighs at `at` (now, if not given), kg: its body with what it has not burned, as it leaves. */
+  unitMass(state: StagedState, i: number, at?: number): number;
+  /**
+   * A stage firing into the one it stands on, still joined (the joint below's `hot`), now: which, and how many seconds of
+   * full thrust that one's top has left to stand (`hot.endures`, less what it has had). Null when none is.
+   */
+  firing(state: StagedState): { stage: number; left: number; endures: Measure } | null;
+  /**
+   * What lighting stage `i` by hand sets off where it is lit into the stage below (the joint below's `hot`): the record's
+   * cut and separation of that stage, each so long after the lighting as the record has it (none before it). One command
+   * of the hardware's, as the R-7's «Наддув» or the Titan's staging signal: the crew had no say in the rest. Empty for
+   * any other stage.
+   */
+  setsOff(i: number): readonly { wait: number; step: Step }[];
   /** When a stage lit at `from` runs dry, s: of a tank it shares with others (`Stage.shares`), as they stand in `state`, where it is given. */
   dry(i: number, from: number, state?: StagedState): number;
   /** Where the hands' lever holds stage `i` now (1: not held), and the stage's throttle at `at` under it, of rated thrust. */
@@ -542,10 +564,14 @@ export function stagedVehicle(
     const loose = s.stages.some((st) => Number.isFinite(st.loose) && !Number.isFinite(st.gone));
     // (an engine that fails as the record has it, plan.ts `EngineDef.fails`: shut down so long after it lit, whoever lit it)
     const failed = failing.filter((f) => burning(s, f.i) && s.t >= s.stages[f.i]!.from + f.after);
-    if (!c.steps?.length && !c.events?.length && !loose && !failed.length) return s;
+    // (what the vehicle's own staging sequence has still to do, a hand having set it off: `setsOff`)
+    const owed = s.chain?.some((x) => x.at <= s.t + 1e-9) ?? false;
+    if (!c.steps?.length && !c.events?.length && !loose && !failed.length && !owed) return s;
     let craft = s.craft;
     const said = [...s.said];
-    const doing = (k: Step): void => {
+    let chain = s.chain ?? [];
+    /** One step through the machine; `hand`: a hand's (or what the hardware does of one), not the record's sequence. */
+    const doing = (k: Step, hand = false): void => {
       if (k.kind === 'drop') {
         const d = seq.drops.find((x) => x.joint === k.id);
         if (d && !Number.isFinite(craft.joints[k.id]!.loose)) {
@@ -592,13 +618,37 @@ export function stagedVehicle(
         const nothing = !stages.some((_, j) => burning(before, j));
         craft = r.state;
         const now = view();
-        if (firesInto(now, k.stage, s.t))
+        if (firesInto(now, k.stage, s.t)) {
+          // lit by a hand, the one command sets off the rest of the hardware's staging as the record had it: the stage below
+          // cut and let go so long after (`setsOff`), whatever is asked between
+          const below = k.stage - 1;
+          const sets = hand
+            ? chains[k.stage]!.filter(({ step }) =>
+                step.kind === 'cut' ? burning(now, below) : !Number.isFinite(craft.joints[ids[below]!.joint]?.loose ?? Infinity),
+              )
+            : [];
+          if (sets.length) chain = [...chain, ...sets.map(({ wait, step }) => ({ at: s.t + wait, step }))].sort((p, q) => p.at - q.at);
+          const after = (w: number) => (w < 0.005 ? 'at once' : `${w.toFixed(1)} s later`);
+          const cut = sets.find((x) => x.step.kind === 'cut');
+          const parts = sets.find((x) => x.step.kind === 'separate');
+          // (its letting go cuts it too, where the record has no cut of its own before it)
+          const did =
+            cut && parts && Math.abs(cut.wait - parts.wait) >= 0.005
+              ? `cut ${after(cut.wait)} and let go ${after(parts.wait)}`
+              : parts
+                ? `cut and let go ${after(parts.wait)}`
+                : cut
+                  ? `cut ${after(cut.wait)}`
+                  : '';
+          const followed = sets.length
+            ? ` The one command set off the rest, as the hardware's did: ${called(below)} ${did}, as the record had it; the crew had no say in it.`
+            : ` Until ${called(below)} is let go.`;
           said.push({
             t: s.t,
             title: 'Hot staging',
-            text: `${cap(called(k.stage))} lit with ${called(k.stage - 1)} still on, as it flew: its jet strikes the deflector on ${called(k.stage - 1)}’s top and leaves through the lattice, so ${(100 * hotShare[k.stage]!).toFixed(0)} per cent of its push reaches the stack until ${called(k.stage - 1)} is let go. The top is taken to stand ${hots[k.stage]!.endures.value} s of it (${hots[k.stage]!.endures.confidence})`,
+            text: `${cap(called(k.stage))} lit with ${called(below)} still on, as it flew: its jet strikes the deflector on ${called(below)}’s top and leaves through the open joint, so ${(100 * hotShare[k.stage]!).toFixed(0)} per cent of its push reaches the stack.${followed} The top is taken to stand ${hots[k.stage]!.endures.value} s of it (${hots[k.stage]!.endures.confidence})`,
           });
-        else if (nothing && !s.held)
+        } else if (nothing && !s.held)
           said.push({
             t: s.t,
             title: 'Lit in free fall',
@@ -606,13 +656,23 @@ export function stagedVehicle(
           });
       } else if (k.kind === 'cut') craft = act(plan, craft, { cut: id.engine }, s.t, s.held).state;
       else if (k.kind === 'separate' && craft.joints[id.joint] && !Number.isFinite(craft.joints[id.joint]!.loose)) {
-        // the command that lets it go shuts its engines down where the plan has no cut of their own (they stop at its separation)
+        // the command that lets it go shuts its engines down where the plan has no cut of their own (they stop at its
+        // separation); and a stage let go of the one above it by a hand, always: both staging signals cut the stage they
+        // let go (the R-7's core, the Titan's first stage), so the hardware never let one go burning. (The record's own
+        // sequence cuts each such stage before it lets it go; the spacecraft's own joint is as it was.)
         const own = seq.stages[k.stage]!;
-        if (own.cut === null && own.speed === null && !own.orbit) craft = act(plan, craft, { cut: id.engine }, s.t, s.held).state;
+        if ((hand && k.stage < last) || (own.cut === null && own.speed === null && !own.orbit))
+          craft = act(plan, craft, { cut: id.engine }, s.t, s.held).state;
         craft = act(plan, craft, { separate: id.joint }, s.t, s.held).state;
       }
     };
-    for (const k of c.steps ?? []) doing(k);
+    for (const k of c.steps ?? []) doing(k, true);
+    // what the staging sequence a hand set off has due now (with what it set off at this instant)
+    while (chain.length && chain[0]!.at <= s.t + 1e-9) {
+      const [x, ...rest] = chain;
+      chain = rest;
+      doing(x!.step, true);
+    }
     for (const f of failed) {
       craft = act(plan, craft, { cut: ids[f.i]!.engine }, s.t, s.held).state;
       said.push({ t: s.t, title: 'Shut down', text: f.words });
@@ -628,7 +688,10 @@ export function stagedVehicle(
       }
     }
     const settled = settle({ ...s, ...viewOf(craft) }, craft, said);
-    return { ...s, craft: settled.craft, ...viewOf(settled.craft), parted: settled.parted, said };
+    const out: StagedState = { ...s, craft: settled.craft, ...viewOf(settled.craft), parted: settled.parted, said };
+    if (chain.length) out.chain = chain;
+    else delete out.chain;
+    return out;
   };
 
   /** The lever's settings for each stage written into the hands' schedule, where they differ from what it holds now. */
@@ -818,6 +881,19 @@ export function stagedVehicle(
     const step = e.at && e.do.length === 1 ? stepOf(e.do[0]!) : null;
     return step ? [{ step, at: e.at!.value, label: e.label, event: e.id }] : [];
   });
+  /**
+   * What a stage lit into the one below sets off when a hand lights it (`setsOff`): that stage's cut and separation in the
+   * record's sequence, each so long after the record's lighting as the record had it, none before it.
+   */
+  const chains = stages.map((_, i): { wait: number; step: Step }[] => {
+    const lit = hots[i] ? sequence.find((k) => k.step.kind === 'ignite' && k.step.stage === i) : undefined;
+    if (!lit) return [];
+    return sequence.flatMap((k) =>
+      (k.step.kind === 'cut' || k.step.kind === 'separate') && k.step.stage === i - 1
+        ? [{ wait: Math.max(0, k.at - lit.at), step: k.step }]
+        : [],
+    );
+  });
 
   const aboard = (s: StagedState, centre: number): { t: number; r: Vec3; v: Vec3 } => {
     const arm = scale(turn(s.q, X), centre);
@@ -893,6 +969,15 @@ export function stagedVehicle(
       return { ...s, carry: s.landed || s.parted || s.broke ? 0 : carry };
     },
     mass: (s, at = s.t) => massAt(s, at),
+    unitMass: (s, i, at = s.t) => unitMass(s, i, at),
+    firing(s) {
+      for (let i = 1; i < stages.length; i++) {
+        const hot = hots[i];
+        if (hot && burning(s, i) && firesInto(s, i, s.t)) return { stage: i, left: hot.endures.value - s.scorch[i]!, endures: hot.endures };
+      }
+      return null;
+    },
+    setsOff: (i) => chains[i] ?? [],
     separationSpeed,
     left: (s) =>
       stages.map((st, i) =>

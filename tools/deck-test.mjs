@@ -3,7 +3,7 @@
 // every key shown a button that does what the key does, nothing in the control block hidden, overlapping or (on touch)
 // under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, Vostok 1 taken over in
 // the ascent with real keys: turned by W and staged by Space, and the throttle on a ballistic flight and one into orbit.
-//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=leaving|touch|apollo-escape|apollo-escape-replay|throttle|by-hand for one section; SR_FLIGHTS=gatv-5003,atda for some flights)
+//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=staging|leaving|touch|apollo-escape|apollo-escape-replay|throttle|by-hand for one section; SR_FLIGHTS=gatv-5003,atda for some flights)
 import { launch, open, url as urlOf } from './browser.mjs';
 
 const url = urlOf(process.argv.slice(2));
@@ -93,9 +93,11 @@ const layout = (page) =>
     };
   });
 
-for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
+// (SR_ONLY=staging: of the sections at each size, staging by hand alone)
+const staging = process.env.SR_ONLY === 'staging';
+for (const [w, h, touch] of process.env.SR_ONLY && !staging ? [] : SIZES) {
   const seen = {};
-  for (const [id, steps] of Object.entries(FLIGHTS)) {
+  for (const [id, steps] of staging ? [] : Object.entries(FLIGHTS)) {
     // (SR_FLIGHTS=a,b: only the flights whose ids hold one of these)
     if (process.env.SR_FLIGHTS && !process.env.SR_FLIGHTS.split(',').some((part) => id.includes(part))) continue;
     const where = `${id} at ${w}`;
@@ -463,17 +465,53 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
     if (r.card || r.core !== 'Gone')
       fail(where, `lit at its moment it did not part clean: core "${r.core}", card "${r.card.slice(0, 80)}"`);
     console.log(`  ${where}: hot staging at 299 s: "${r.notes.slice(0, 90)}…", the core ${r.core}`);
-    // a minute early
+    // a minute early: the one command lights the third stage and cuts and lets go the core with it, as the hardware's did
     await again('a minute early');
     await page.keyboard.press('Space');
     await run(240);
     await ask('step:ignite:2');
     await run(250);
     r = await read();
-    if (!/Broke up on the launch vehicle/.test(r.card) || !/estimated/.test(r.card))
-      fail(where, `lit a minute early, no breakup card: "${r.card.slice(0, 120)}"`);
-    await shot('hot-early-card');
-    console.log(`  ${where}: lit at 240 s: ${r.phase}; "${r.card.slice(0, 160)}…"`);
+    if (r.card || r.core !== 'Gone' || !/as the hardware/.test(r.notes))
+      fail(
+        where,
+        `lit a minute early, the core not let go with it: core "${r.core}", card "${r.card.slice(0, 120)}", notes "${r.notes.slice(0, 120)}"`,
+      );
+    await shot('hot-early');
+    console.log(`  ${where}: lit at 240 s: the core ${r.core}, no card`);
+    // lit with the strap-ons on, at four times: the core is let go but pressed on and its top burns; the prompt says how
+    // long it has, and Space is not held back by its guard (a second's press in real time is four in flight)
+    await again('lit with the strap-ons on');
+    await page.keyboard.press('Space');
+    await run(100);
+    await ask('step:ignite:2');
+    await page.evaluate(() => window.sr.clock.setRate(4));
+    await run(100.5);
+    r = await read();
+    if (!/is due now · [\d.]+ s before the core’s top gives/.test(r.prompt))
+      fail(where, `lit with the strap-ons on, the prompt does not say what is due: "${r.prompt}"`);
+    await shot('hot-strap-ons-due');
+    await page.keyboard.press('Space');
+    await run(106);
+    r = await read();
+    const strapOns = await page.evaluate(() => {
+      const c = window.sr.cockpit;
+      const run = c.run.sheds?.get('stage:0/B');
+      return { gone: c.state.stages[0].gone, mass: run?.shedder.release.mass ?? null, record: run?.shedder.def.mass.value ?? null };
+    });
+    if (r.card || r.core !== 'Gone' || !(strapOns.gone < 101.5))
+      fail(
+        where,
+        `lit with the strap-ons on, Space at 4x did not drop them in time: ${JSON.stringify(strapOns)}, card "${r.card.slice(0, 120)}"`,
+      );
+    if (!(strapOns.mass > strapOns.record + 5000))
+      fail(where, `the strap-ons dropped at 100 s leave at the record's leftover mass: ${JSON.stringify(strapOns)}`);
+    if (/Spacecraft contact|Impact breakup/.test(r.notes))
+      fail(where, `the strap-ons striking each other is said to be the spacecraft's: "${r.notes.slice(0, 200)}"`);
+    console.log(
+      `  ${where}: lit at 100 s with the strap-ons on, Space at 4x dropped them at ${strapOns.gone.toFixed(2)} s (${strapOns.mass.toFixed(0)} kg each); notes "${r.notes.slice(0, 120)}"`,
+    );
+    await page.evaluate(() => window.sr.clock.setRate(1));
     // the fairing at max q, the core early
     await again('the fairing at max q');
     await page.keyboard.press('Space');
@@ -527,8 +565,33 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
     r = await read();
     if (!/descent module separated/.test(r.notes)) fail(where, `aborted at 200 s, the modules not parted: "${r.notes}"`);
     else console.log(`  ${where}: aborted at 200 s, the descent module separated`);
-    // Gemini 3's record gives no mode of escape: the abort is not offered, and X says why (its seats are not in its data)
+    // Gemini 3's staging signal by hand half a minute early: the one command lights the second stage, cuts the first and
+    // lets it go; and the first stage let go burning by hand is cut by its letting go and parts at once
     await goTo('usa/gemini/gt-3');
+    await page.keyboard.press('Space');
+    await run(120);
+    await ask('step:ignite:1');
+    await run(123);
+    r = await read();
+    const first = await page.evaluate(() => window.sr.cockpit.state.stages[0]);
+    if (r.card || !(first.gone < 121) || !(first.to <= first.gone))
+      fail(where, `Gemini 3 staged by hand at 120 s: ${JSON.stringify(first)}, card "${r.card.slice(0, 120)}"`);
+    else
+      console.log(
+        `  ${where}: Gemini 3 staged by hand at 120 s: the first stage cut at ${first.to.toFixed(2)} s and gone at ${first.gone.toFixed(2)} s`,
+      );
+    await again('Gemini 3’s first stage let go burning');
+    await page.keyboard.press('Space');
+    await run(100);
+    await ask('step:separate:0');
+    await run(101);
+    r = await read();
+    const loose = await page.evaluate(() => window.sr.cockpit.state.stages[0]);
+    if (/still pushing/.test(r.notes) || !(loose.gone < 100.5))
+      fail(where, `Gemini 3's first stage let go burning at 100 s: ${JSON.stringify(loose)}, notes "${r.notes}"`);
+    else console.log(`  ${where}: Gemini 3's first stage let go burning at 100 s parted at once`);
+    // Gemini 3's record gives no mode of escape: the abort is not offered, and X says why (its seats are not in its data)
+    await again('Gemini 3 abort');
     await page.keyboard.press('Space');
     await run(30);
     const offered = await page.evaluate(() => !document.querySelector('[data-do=abort]')?.disabled);
@@ -615,6 +678,7 @@ for (const [w, h, touch] of process.env.SR_ONLY ? [] : SIZES) {
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     await ctx.close();
   }
+  if (staging) continue;
   // the same panels in the same corners on both flights
   const [a, b] = Object.values(seen);
   for (const p of ['nav', 'main', 'sys']) {

@@ -1093,7 +1093,8 @@ export class OrbitDeck extends Deck {
     const t = this.clock.t;
     const now = this.now() / 1000;
     if (this.state && t < this.state.t - TICK) return void this.clock.play(true); // (looking back: run on)
-    if (now - this.eventAt < GUARD) return;
+    // (the guard is a finger's, in real time: not while a stage fires into a joined one, whose top burns in flight time)
+    if (now - this.eventAt < GUARD && !this.firing) return;
     const flotation = this.flight.flies?.uprighting;
     if (flotation && this.run?.afloat && t >= this.run.duration) {
       if (t < (this.run.afloat.inflation?.at ?? Infinity)) {
@@ -1161,6 +1162,12 @@ export class OrbitDeck extends Deck {
         return true;
       }) ?? null
     );
+  }
+
+  /** On this flight's own vehicle, a stage firing into the one it stands on, still joined, now (stagedlive.ts `firing`). */
+  private get firing(): ReturnType<StagedVehicle['firing']> {
+    const s = this.mine !== null ? this.state : null;
+    return s && !s.broke && !s.parted && !s.landed ? this.vehicleOf().firing(s) : null;
   }
 
   private vehicleOf(): StagedVehicle {
@@ -1494,9 +1501,21 @@ export class OrbitDeck extends Deck {
       const unit = burning ? burning.engine.thrust.vacuum.value * (burning.throttle ? along(burning.throttle, when) : 1) : undefined;
       const finalStage = s.parted && when === s.parted.t && stage === stages.length - 1;
       const samples = finalStage ? [{ ...this.vehicleOf().sample(s, this.centre), v: s.parted!.v }] : (run.samples as LiveSample[]);
-      const release = orbitalRelease(plan, def, samples, when, unit, finalStage ? s.parted!.stageMass : undefined);
+      // (a stage's own body leaves with what it had not burned, whenever that is: the record's leftover is the record's)
+      const mass = finalStage
+        ? s.parted!.stageMass
+        : stage >= 0 && this.ownBody(d, stage)
+          ? this.vehicleOf().unitMass(s, stage, when)
+          : undefined;
+      const release = orbitalRelease(plan, def, samples, when, unit, mass);
       if (release) run.sheds?.add(release);
     });
+  }
+
+  /** Whether a drop is stage `i`'s own body (each of its nodes the body's): it leaves with what that stage had not burned. */
+  private ownBody(drop: { nodes: readonly string[] }, i: number): boolean {
+    const nodes = stagesOf(this.recordPlan)[i]?.body.nodes ?? [];
+    return drop.nodes.length > 0 && drop.nodes.every((n) => nodes.includes(n));
   }
 
   /** A digit on the lock: the code in order frees the hand controls, once the spacecraft is alone in orbit. */
@@ -2711,8 +2730,15 @@ export class OrbitDeck extends Deck {
     this.root.classList.toggle('waiting', waiting);
     this.root.classList.toggle('thrusting', burning.length > 0 && t > 0);
     const code = String(record.manual?.code?.value ?? '');
+    // (a stage firing into a joined one: what the staging sequence a hand set off has still to do, or, nothing pending, the
+    // next step due now and how long the top below has left)
+    const firing = !alone ? this.firing : null;
+    const owed = !alone && this.mine !== null ? this.state?.chain?.[0] : undefined;
+    const owedLabel = owed && this.vehicleOf().sequence.find((k) => JSON.stringify(k.step) === JSON.stringify(owed.step))?.label;
+    const scorched = firing ? short(stagesOf(plan)[firing.stage - 1]!.body.label).toLowerCase() : '';
     const due =
       (!this.sequence && this.mine !== null && step && !alone && t >= this.dueAt(step.step)) ||
+      (firing !== null && !owed && step !== null) ||
       (descending && !auto && descent !== null && this.descentDue(descent.id, t));
     const prompt = this.cells.get('prompt')!;
     const touch = matchMedia('(hover: none), (pointer: coarse)').matches;
@@ -2737,15 +2763,19 @@ export class OrbitDeck extends Deck {
                 ? hot
                   ? 'Next: hot staging, as it flew'
                   : `As flown: ${takes}`
-                : due && step
-                  ? `${step.label} is due${hot ? ' · hot staging' : ''}`
-                  : !this.sequence && step
-                    ? `Next: ${step.label.charAt(0).toLowerCase()}${step.label.slice(1)} ${this.whenIntended(step)}${hot ? ' · hot staging' : ''}`
-                    : hot
-                      ? 'Next: hot staging, as it flew'
-                      : this.guidance
-                        ? 'Guidance flying · steer to lean its aim'
-                        : 'Hands only · steer while an engine burns'
+                : owed && owedLabel
+                  ? `Hot staging: ${owedLabel.charAt(0).toLowerCase()}${owedLabel.slice(1)} in ${Math.max(0, owed.at - t).toFixed(1)} s, by its sequence`
+                  : firing && step
+                    ? `${step.label} is due now · ${Math.max(0, firing.left).toFixed(1)} s before the ${scorched}’s top gives`
+                    : due && step
+                      ? `${step.label} is due${hot ? ' · hot staging' : ''}`
+                      : !this.sequence && step
+                        ? `Next: ${step.label.charAt(0).toLowerCase()}${step.label.slice(1)} ${this.whenIntended(step)}${hot ? ' · hot staging' : ''}`
+                        : hot
+                          ? 'Next: hot staging, as it flew'
+                          : this.guidance
+                            ? 'Guidance flying · steer to lean its aim'
+                            : 'Hands only · steer while an engine burns'
               : descending && (!auto || this.downMine !== null)
                 ? !descent
                   ? t >= this.over()
@@ -2796,7 +2826,21 @@ export class OrbitDeck extends Deck {
     const on = s ? !Number.isFinite(s.stages[step.stage]!.from) && !Number.isFinite(s.stages[step.stage - 1]!.gone) : true;
     if (!below || !on) return null;
     const lower = short(below.body.label).toLowerCase();
-    return `hot staging, as it flew. It is lit with the ${lower} still under it, its fire through the open lattice onto the deflector on the ${lower}’s top, and then the ${lower} is let go. Not for long: the ${lower}’s top is taken to stand ${hot.endures.value} s of it (${hot.endures.confidence})`;
+    // (what the one command set off after it, as the record had it: stagedlive.ts `setsOff`)
+    const sets = this.vehicleOf().setsOff(step.stage);
+    const after = (k: Step['kind']) => sets.find((x) => x.step.kind === k)?.wait;
+    const [cut, parts] = [after('cut'), after('separate')];
+    const when = (w: number) => (w < 0.005 ? 'at once' : `${w.toFixed(1)} s later`);
+    // (its letting go cuts it too, where the record has no cut of its own before it)
+    const then =
+      cut !== undefined && parts !== undefined && Math.abs(cut - parts) >= 0.005
+        ? `cut ${when(cut)} and let go ${when(parts)}`
+        : parts !== undefined
+          ? `cut and let go ${when(parts)}`
+          : cut !== undefined
+            ? `cut ${when(cut)}`
+            : '';
+    return `hot staging, as it flew: one command lit it with the ${lower} still under it, its fire out through the open joint onto the deflector on the ${lower}’s top${then ? `, and the ${lower} was ${then}, as the record has it; the crew had no say in it. Lit early by hand, the same follows` : ''}. Not for long: the ${lower}’s top is taken to stand ${hot.endures.value} s of it (${hot.endures.confidence})`;
   }
 
   /** When the record has a step, s (a stage cut on its velocity: its recorded cutoff). */

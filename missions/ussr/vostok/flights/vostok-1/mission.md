@@ -708,7 +708,9 @@ third stage; the greatest loads 4.4 g before the strap-ons' cutoff and 4.2 g bef
 
 **What is flown, and why not more.** Taken in: the third stage's cutoff check and the injection at 677.08 s (the flown
 cutoff, 676.35 s, holds against it), the events' times (`core` at 306.25 s, `third` at 321.42 s, `orbit` at 677.08 s), and the
-core's cutoff now labelled `estimated` (the documents put its main command at about 313 s, not recorded). **Not flown yet**,
+core's cutoff now labelled `estimated` (the documents put its main command at about 313 s, not recorded). The third stage's
+lighting and the core's separation, still flown at Siddiqi's 300 s, were labelled documented until November 2026 although
+the documents' figure is 321.42 s: both are `estimated` now, a label and not a figure moved. **Not flown yet**,
 and recorded in each input's source:
 
 - **The core's documented timing.** Flown with full thrust to 306.25 s and the final stage to 313.25 s, the core runs dry at

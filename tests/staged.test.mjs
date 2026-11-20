@@ -426,6 +426,8 @@ const UNDOCUMENTED = {
     'stages.1.propellant',
     'stages.1.throttle',
     'stages.2.hot',
+    // (Siddiqi's “about 300 s”, flown because the documents' 321.42 s does not fly yet: mission.md, "The 2011 documents")
+    'stages.2.ignition',
     'stages.2.propellant',
     'stages.2.start',
   ],

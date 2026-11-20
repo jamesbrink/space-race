@@ -174,14 +174,13 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'orbital' && f.site)
     const sv = stagedVehicle(flight.plan, site, dated, sea, x);
     const pilot = stagedPilot(sv, x, site, dated, sea, { guidance: true, sequence: true, prescribed });
     let s = sv.start();
+    // (the stages the record lights on the pad, as the deck lights them: until November 2026 the first two, whatever they
+    // were, which lit a Titan's second stage on the pad into its first)
     s = sv.tick(s, {
       pitch: 0,
       yaw: 0,
       roll: 0,
-      steps: [
-        { kind: 'ignite', stage: 0 },
-        { kind: 'ignite', stage: 1 },
-      ],
+      steps: seq.stages.flatMap((k, i) => (k.from <= 0 ? [{ kind: 'ignite', stage: i }] : [])),
     });
     const last = seq.stages.length - 1;
     let cut = null;

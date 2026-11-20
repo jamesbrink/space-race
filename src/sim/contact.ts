@@ -15,6 +15,15 @@ export interface Impact {
   broken?: readonly string[];
   activeBroken?: boolean;
   activeReleased?: string;
+  /** Between two things let go, or one of them and what stands at the site: the vehicle and the spacecraft were not struck. */
+  detached?: boolean;
+}
+
+/** How the deck titles a contact: one between pieces let go is said to be so, never the spacecraft's; a hard one, a breakup. */
+export function impactTitle(hit: Impact): string {
+  const breakup = Boolean(hit.activeBroken || hit.broken?.length);
+  if (hit.detached) return breakup ? 'Detached hardware breakup' : 'Detached hardware contact';
+  return breakup ? 'Impact breakup' : 'Spacecraft contact';
 }
 
 export interface ContactElement {

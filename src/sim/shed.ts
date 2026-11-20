@@ -936,6 +936,7 @@ export class Sheds {
           hits.push({
             on: `${da.on}/${db.on}`,
             name: `${da.name} and ${db.name}`,
+            detached: true,
             broken: breakAt(hit, from + hit.after, [a, b]),
             t: from + hit.after,
             speed: hit.speed,
@@ -954,6 +955,7 @@ export class Sheds {
         hits.push({
           on: `${def.on}/${hit.on}`,
           name: `${def.name} and ${hit.name.charAt(0).toLowerCase()}${hit.name.slice(1)}`,
+          detached: true,
           broken: breakAt(hit, hit.t, [run]),
           t: hit.t,
           speed: hit.speed,

@@ -872,12 +872,20 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   thrust stays pressed on and pushes on until its push falls (stagedlive.ts `settle`, `loose` and `gone`; vehicle.ts
   `loose`, so Freedom 7's capsule let go at T+100 rides the Redstone to its cutoff and its engine is not cut by it). A
   stage's own separation command shuts its engines where the record has them stop at its separation (the strap-ons'
-  integrator command, the core's); what it takes along below it keeps burning. A drop that `covers` the spacecraft (the
+  integrator command, the core's), and a hand's letting go of a stage under another always does, as both staging
+  signals did (the Titan's first stage, which the record cuts on its own before it lets it go: the hardware could not
+  let one go burning); what it takes along below it keeps burning, and the spacecraft's own joint is as above. A drop that `covers` the spacecraft (the
   fairing) keeps it in until it has gone. *Hot staging* (`StageRecord.hot`, `hotStage`): an engine lit while the stage it
   stands on is joined fires into its top; only what escapes the joint's open side pushes, by its sine below the level
   (Block E's from the model's estimated geometry), and each second at full thrust is counted against what the top
   stands (`endures`, estimated); past it the tank
-  under it fails and the stack breaks up (`Broke`, by `scorch`). *The structure* (`ascent.limits`, by loads.ts's rule,
+  under it fails and the stack breaks up (`Broke`, by `scorch`). Where the hardware's staging was one command (the
+  R-7's «Наддув», the Titan's staging signal), a hand lighting the upper stage sets off the rest of it: the stage below
+  cut and let go at the record's own intervals from the lighting (`StagedVehicle.setsOff`, pending in
+  `StagedState.chain`: Vostok 1's record has all three at 300 s, Gemini 3's the cut at once and the separation 0.68 s
+  on), early or not; the other steps can still be asked out of order (a part's menu), with what follows. While a jet
+  plays on a joined stage (`StagedVehicle.firing`) the deck's prompt says what is due now and the seconds the top has
+  left, and Space is not held back by its guard, which is a finger's in real time while the top burns in flight time. *The structure* (`ascent.limits`, by loads.ts's rule,
   as `body.limits` on a ballistic flight): bending (q alpha) and the load along the axis, both
   estimated; past either for half a second or at half again at once, it breaks up. Broken up, every engine stops and
   every stage comes apart, the deck's card says by what figure against which limit and its confidence, and what the
@@ -896,12 +904,13 @@ Before is what it did ahead of `sim/staging.ts`.
 
 | Vostok 1 (stagedlive.ts) | Allowed | Before | The hardware | Now, and from what |
 | --- | --- | --- | --- | --- |
-| Light the third stage on the pad | any time | 54.5 kN more for 379 s, with nothing to pay: perigee -2,933 km | jet into the core's top under its deflector | 27 % of its push reaches the stack; the core's top burns through at 5 s and it breaks up (estimated: `hot`) |
-| Light it a minute early (240 s) | any time | free extra thrust: perigee -590 km | as above | breaks up at T+245 s, 5.0 s against 5 s (estimated); the card says so |
-| Light it a second before the core goes (299 s) | any time | perigee -206 km | hot staging, as planned (start 311.74, the core's main command 312.74) | the same: 1.0 s on the core's top, no harm; said where offered |
+| Light the third stage on the pad | any time | 54.5 kN more for 379 s, with nothing to pay: perigee -2,933 km | jet into the core's top under its deflector | 27 % of its push reaches the stack; the one command cuts the core and lets it go, but the strap-ons press it on: its top burns through at 5 s and it breaks up (estimated: `hot`) |
+| Light it with the strap-ons on (100 s) | any time | (before November 2026) breaks up at T+105 s however soon the strap-ons were dropped: Space waited 1.5 s of real time, six of flight at 4x | «Наддув» could not come before the strap-ons went | the core cut and let go but pressed on by the strap-ons; the prompt says their drop is due now and the seconds the core's top has left, and Space is heard at once. Dropped at 102 s the core goes with them, 2.0 s on its top; left, it breaks up at T+105 s |
+| Light it a minute early (240 s) | any time | free extra thrust: perigee -590 km; (before November 2026) broke up at T+245 s, the core's cut and separation left to the record's 300 s | one command: the third stage lit, the core cut and let go | the core cut and let go with it at once, as Vostok 1's record has the three; the third stage flies on alone, a minute early |
+| Light it a second before the core goes (299 s) | any time | perigee -206 km | hot staging, as planned (start 311.74, the core's main command 312.74) | the core cut and let go with it at once (the record's three are at one instant), no harm; said where offered |
 | Relight a stage once cut (any, 10 and 12 s) | any time | ignored, said nothing | one-shot pyrotechnics; the first two only from the pad | refused and said (`start`: documented for the first two, estimated for Block E) |
 | Cut every engine at T+10 | any time | falls back, lands at 81 m/s | falls back, tumbles | breaks up at 19.5 s falling tail first, q alpha 4.1 kPa rad (estimated limit) |
-| Drop the strap-ons at 60 s | any time | thrust and mass leave; it flies on and lands at 1,367 m/s | the separation command shuts them | the same; it breaks up by bending at 131 s as it falls |
+| Drop the strap-ons at 60 s | any time | thrust and mass leave; it flies on and lands at 1,367 m/s | the separation command shuts them | the same; it breaks up by bending at 131 s as it falls. Each leaves at what it weighs then (24 t at 60 s; until November 2026 the record's 5.3 t leftover, whenever it went), and in that air they meet each other within seconds (at 80 s up to 12 m/s): said as detached hardware's contact, not the spacecraft's |
 | Drop the core with the strap-ons on (60 s) | any time | everything below Block E gone at once, thrust and all | the strap-ons still burning push the lot against Block E | the core shuts, the strap-ons keep it pressed on until they go at 119.5 s (`pressed`) |
 | Drop the fairing at max q (60 s) or on the pad | any time | no consequence: 800 kg less carried, perigee -171 km | two hinged halves made to open in thin air | the same flight, and said: 48 kPa against 1 kPa (estimated); where the halves went: not modelled |
 | Separate the spacecraft at 60, 140 or 400 s | any time | parted at once, inside the fairing or under thrust | held in by the fairing; pressed on by Block E | held while the fairing is on and while anything pushes; parts at Block E's cutoff, 676.4 s |
