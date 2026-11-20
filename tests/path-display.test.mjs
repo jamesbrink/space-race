@@ -120,3 +120,36 @@ test('changing the selection hides the old meshes, marker layer and readout whil
   assert.deepEqual(path.laidOut, []);
   assert.equal(readout, null);
 });
+
+test('the prediction starts from the point the simulator flies, not where the vehicle is drawn (issue #186)', () => {
+  // (a launch vehicle's sample: its datum, which the stack's forces move, and the spacecraft's centre 90 m up its axis,
+  // where it is drawn: orbitdeck.ts hands the datum on as `flies`)
+  const datum = [6_500_000, 0, 0];
+  const centre = [6_500_090, 0, 0];
+  for (const [flies, from] of [
+    [datum, datum],
+    [undefined, centre],
+  ]) {
+    const asked = [];
+    const path = pausedDisplay(12, 'manual');
+    Object.assign(path, {
+      sample: { t: 20, r: datum, centre, ...(flies ? { flies } : {}), v: [0, 7800, 0], mass: 1, riding: false, escaping: false, out: null },
+      shown: null,
+      job: null,
+      doneAt: -Infinity,
+      want: () => ({ key: '20|manual', plan: 'manual' }),
+      source: { predict: (start) => (asked.push(start), { run: () => false, result: { from: 20 } }) },
+    });
+    path.tick();
+    assert.equal(asked.length, 1);
+    assert.deepEqual(asked[0].r, from, flies ? 'from the point it flies' : 'with none given, from its centre');
+  }
+  // (and the curve on show is held to that point: a prediction made from the datum still stands with the flight on it)
+  const path = pausedDisplay(12, 'manual');
+  const c = { n: 2, t: Float64Array.of(0, 100), r: Float64Array.of(...datum, ...datum), v: Float64Array.of(0, 0, 0, 0, 0, 0) };
+  path.camera = null;
+  path.at3 = new Float64Array(3);
+  const s = { t: 20, r: datum, centre, flies: datum, v: [0, 0, 0] };
+  assert.equal(FlightPath.prototype.holds.call(path, { curve: c, result: { outcome: 'impact', kind: 'coast' } }, s), true);
+  assert.equal(FlightPath.prototype.holds.call(path, { curve: c, result: { outcome: 'impact', kind: 'coast' } }, { ...s, flies: undefined }), false);
+});

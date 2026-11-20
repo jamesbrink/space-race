@@ -503,7 +503,14 @@ export interface PathSample {
   escaping: boolean;
   out: string | null;
   landed: boolean;
+  /** Where the vehicle is drawn from, where that is not `r` (a spacecraft's centre of mass, on the stack or alone): the line flown and the map take it. */
   centre?: Vec3;
+  /**
+   * The point its simulator flies, where that is neither `centre` nor `r` would say: on a launch vehicle the stack's own
+   * (its datum, `r`), which the stack's forces move, while it is drawn from the spacecraft's centre up its axis. The
+   * prediction starts from it and is held to it (`fliesOf`), so the path is the live state's own future.
+   */
+  flies?: Vec3;
   /** The long axis (the body's +X) in the frame, where the sample says how it lies. */
   axis?: Vec3;
   /** The parachute out, as the live state has it (filling, or torn). */
@@ -549,6 +556,9 @@ export interface PathSource {
    */
   intended?(): readonly RefSample[];
 }
+
+/** The point a sample's simulator flies (`PathSample.flies`), which the path predicts from and holds to. */
+const fliesOf = (s: PathSample): Vec3 => s.flies ?? s.centre ?? s.r;
 
 const clock = (seconds: number): string => {
   const s = Math.max(0, Math.round(seconds));
@@ -1405,7 +1415,7 @@ export class FlightPath {
     if (!this.job && this.shown?.key !== want.key && performance.now() - this.doneAt >= EVERY) {
       const start = {
         t: s.t,
-        r: s.centre ?? s.r,
+        r: fliesOf(s),
         v: s.v,
         mass: s.mass,
         riding: s.riding,
@@ -1501,7 +1511,7 @@ export class FlightPath {
     const at = this.at3;
     const vel = [0, 0, 0];
     curveAt(c, s.t, at, 0, 0, vel);
-    const r = s.centre ?? s.r;
+    const r = fliesOf(s);
     const dr = Math.hypot(at[0]! - r[0], at[1]! - r[1], at[2]! - r[2]);
     const dv = Math.hypot(vel[0]! - s.v[0], vel[1]! - s.v[1], vel[2]! - s.v[2]);
     // (the line starts at the vehicle: the curve must pass within a metre of the flight, whatever the eye)
@@ -1903,7 +1913,7 @@ export class FlightPath {
     // how far the flight has left the curve on show, and the one it is eased from: each is drawn carried with it by that
     // much (a path flown under guidance is held to its programme instead, and made again as soon as the flight leaves it)
     for (let x: Shown | null = shown; x; x = x.was) {
-      if (x.result.kind === 'guided' || !departure(x.curve, s.t, s.centre ?? s.r, s.v, x.left)) x.left.fill(0);
+      if (x.result.kind === 'guided' || !departure(x.curve, s.t, fliesOf(s), s.v, x.left)) x.left.fill(0);
       x.leftAt = s.t;
     }
     let now = Math.min(t1, Math.max(t0, s.t - this.shift));

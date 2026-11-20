@@ -1249,7 +1249,10 @@ read gives enough of to fly (issue #10).
   between two steps, which is what is drawn, keeps to the integrator's path within a centimetre), every step ending on
   the flier's next instant (nothing a flier is changes within a step), each step a rung of a ladder of quarter octaves
   so that two starts a hair apart take the same steps, each height and the ground found by flying the step again to the
-  last bit of the instant it crosses them. A prediction moves with its start as the physics does and no more: nothing it
+  last bit of the instant it crosses them. It starts from the point the vehicle's own simulator flies, which is where
+  the live state is: on the launch vehicle the stack's datum, not the spacecraft's centre up its axis where it is drawn
+  (path.ts `PathSample.flies`, orbitdeck.ts `show`; started 90 m up a Saturn V, a stack cut in orbit came down 9 km
+  from where its path said, issue #186). A prediction moves with its start as the physics does and no more: nothing it
   counts changes, and a figure moves by under a part in 1e9 or smoothly (tests/perturbed.test.mjs, each captured
   prediction from a start six micrometres out either way and in a frame turned a nanoradian; issue #30). The air's two marks are its own and every vehicle's: the first 0.05 g felt
   coming down once nothing burns and no burn is to come (placed between the steps either side of it), and the greatest
