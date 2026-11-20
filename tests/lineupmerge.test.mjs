@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { BESIDE, backFacingMarkings, CORNERS, drawn, join, PAINTS, paintMaterial, paintOf } from '../src/app/lineup/merge.ts';
-import { keyOf } from '../src/app/lineup/shelf.ts';
+import { keyOf, Shelf } from '../src/app/lineup/shelf.ts';
 import { floorPlates, sharedPaint, showPlates, showSharedPaint } from '../src/app/lineup/stand.ts';
 import { Looks } from '../src/viewer/look.ts';
 
@@ -40,6 +40,31 @@ test('shared coarse paint batches only visible copies at rest, using their trans
     batch.getMatrixAt(i, matrix);
     assert.ok(matrix.equals(mesh.matrixWorld));
   });
+});
+
+test('different lineup files share matching painted buffers until the last owner leaves', async (t) => {
+  t.mock.method(THREE.FileLoader.prototype, 'loadAsync', async (url) => Uint8Array.of(Number(url)).buffer);
+  const shelf = new Shelf(async (_bytes, url) => {
+    const color = url === '3' ? 'red' : 'white';
+    const geometry = new THREE.BoxGeometry();
+    if (url === '4') geometry.index.array.reverse();
+    return new THREE.Group().add(new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color })));
+  });
+  const take = (url) => shelf.take(url, false, { key: '', of: () => null });
+  const roots = await Promise.all(['1', '2', '3', '4'].map(async (url) => (await take(url)).root));
+  const [first, second, repainted, reversed] = roots.map((root) => root.children[0].geometry);
+  assert.equal(first, second);
+  assert.notEqual(first, repainted);
+  assert.notEqual(first, reversed);
+  let disposals = 0;
+  first.addEventListener('dispose', () => disposals++);
+  shelf.give(roots[0]);
+  await Promise.resolve();
+  assert.equal(disposals, 0);
+  for (const root of roots.slice(1)) shelf.give(root);
+  await Promise.resolve();
+  assert.equal(disposals, 1);
+  assert.notEqual((await take('1')).root.children[0].geometry, first);
 });
 
 test('the shared plate draw keeps each visible stand’s scale, tint and back-to-front order', () => {

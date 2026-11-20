@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { drawn, type Joined, join } from './merge.ts';
+import { drawn, type Joined, join, type Piece } from './merge.ts';
 
 /**
  * What the Lineup has fetched, each file once (lineup/scene.ts). Two vehicles may stand on the same file: two flights
@@ -99,7 +99,56 @@ function keptOf(joined: Joined): Set<THREE.Material> {
   return out;
 }
 
+/** Coarse paint pieces can be identical across different files. Match the encoded corners,
+ * their winding and their paint table before sharing the buffers (and instancing their draws). */
+class PaintBuffers {
+  private readonly buckets = new Map<string, Map<THREE.BufferGeometry, number>>();
+  private readonly keys = new Map<THREE.BufferGeometry, string>();
+
+  take(piece: Piece): void {
+    const g = piece.geometry;
+    // joinPaint always writes normalized short positions, signed byte normals, byte paint and an index.
+    const arrays = (geometry: THREE.BufferGeometry) => [
+      geometry.index!.array,
+      geometry.getAttribute('position').array,
+      geometry.getAttribute('normal').array,
+      geometry.getAttribute('paint').array,
+    ];
+    const data = arrays(g);
+    const key = JSON.stringify([piece.paints, ...data.map((a) => a.length)]);
+    const bucket = this.buckets.get(key) ?? new Map<THREE.BufferGeometry, number>();
+    for (const [held, users] of bucket) {
+      if (arrays(held).every((a, i) => a.constructor === data[i]!.constructor && a.every((value, j) => value === data[i]![j]))) {
+        bucket.set(held, users + 1);
+        piece.geometry = held;
+        g.dispose();
+        return;
+      }
+    }
+    bucket.set(g, 1);
+    this.buckets.set(key, bucket);
+    this.keys.set(g, key);
+  }
+
+  give(g: THREE.BufferGeometry): void {
+    const key = this.keys.get(g);
+    if (key !== undefined) {
+      const bucket = this.buckets.get(key)!;
+      const remaining = bucket.get(g)! - 1;
+      if (remaining) {
+        bucket.set(g, remaining);
+        return;
+      }
+      bucket.delete(g);
+      if (!bucket.size) this.buckets.delete(key);
+      this.keys.delete(g);
+    }
+    g.dispose();
+  }
+}
+
 export class Shelf {
+  private readonly paint = new PaintBuffers();
   /** Each URL's bytes on their way (only while they are: then their key is known and they are let go). */
   private readonly fetching = new Map<string, Promise<{ key: string; bytes: ArrayBuffer }>>();
   /** Each URL's key, once its bytes have been seen. */
@@ -152,6 +201,7 @@ export class Shelf {
           const nodes = craft.of(level);
           const raw = rawBytes(level);
           const joined = join(level, nodes, byPart, craft.beside);
+          if (!byPart) for (const piece of joined.pieces) if (piece.paints) this.paint.take(piece);
           // (what was joined was never sent to the GPU: its geometry and materials go, but for what its own pieces keep)
           const kept = keptOf(joined);
           const keptGeometry = new Set(joined.pieces.filter((p) => p.object).map((p) => p.geometry));
@@ -192,7 +242,7 @@ export class Shelf {
     if (!held || --held.users > 0) return;
     this.made.delete(key!);
     void held.made.then((made) => {
-      for (const piece of made.joined.pieces) piece.geometry.dispose();
+      for (const piece of made.joined.pieces) this.paint.give(piece.geometry);
       letGo(keptOf(made.joined), true);
     });
   }
