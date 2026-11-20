@@ -1365,13 +1365,17 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'apollo-escape-replay') {
       const { cockpit, stage, clock } = window.sr;
       clock.pause();
       clock.seek(0.4);
+      // (an escape off the pad is flown whole at once and never ticks: it is at stake all the same, and kept)
+      const stakes = cockpit.stakes;
       cockpit.save();
       const kept = JSON.parse(localStorage.getItem(`space-race.run:${id}`));
+      if (!kept) return { stakes, kept: false };
       const tape = JSON.parse(kept.run);
       const abort = tape.entries.filter((entry) => entry[0] === 'c' && entry[5] === 'abort').at(-1);
       const run = stage.show.ascent.flown();
-      return { held: abort.slice(6), events: run.events, duration: run.duration };
+      return { stakes, kept: true, held: abort.slice(6), events: run.events, duration: run.duration };
     }, id);
+    if (!saved.kept) throw new Error(`${where}: the escape off the pad was not kept (at stake: ${saved.stakes})`);
     if (JSON.stringify(saved.held) !== JSON.stringify(['White_Room_Pivot', 0.92]))
       fail(where, `the command tape omitted the held pad pose: ${JSON.stringify(saved.held)}`);
     await page.goto(`${url}#${id}/site/pad`);

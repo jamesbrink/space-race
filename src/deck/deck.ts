@@ -817,6 +817,13 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   protected abstract fresh(): void;
   /** How many ticks the simulator has flown on this run (tape.ts checks each entry against it). */
   protected abstract get ticks(): number;
+  /**
+   * Whether the run has left its pad untouched: flown a tick, or (a kind's own) set going some other way, as an escape off
+   * the pad unlit is flown whole at once and never ticks. Until then nothing is at stake (`stake`).
+   */
+  protected get begun(): boolean {
+    return this.ticks > 0;
+  }
   /** The run's state as one string, exactly (tape.ts `pack`): a run flown again must come to the same. */
   protected abstract print(): string;
   /** The kind's switches (guidance, the sequencer, ...): read, or set before a run is stood on the pad. */
@@ -978,7 +985,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     const over = this.on && this.runOver;
     return {
       // (by hand from the start, a run is at stake once it is flown: one still standing on its pad untouched is not)
-      byHand: this.byHand && this.ticks > 0,
+      byHand: this.byHand && this.begun,
       over,
       since: over && this.endedAt !== null ? (performance.now() - this.endedAt) / 1000 : 0,
       saved: !this.unsaved && runs.usable(),
