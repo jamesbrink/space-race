@@ -50,9 +50,11 @@ export interface SoyuzRecord extends Omit<VostokRecord, 'orbit' | 'retro' | 'ent
   /**
    * Two of the ship's three modules in orbit, kg: the orbital module (БО) and the instrument and propulsion module (ПАО); the
    * third, the descent module with its crew (СА), is `entry.mass`. The three sum to `mass`: where the sources' do not, the
-   * instrument module is what is left, and says so.
+   * instrument module is what is left, and says so. Where the orbital module was let go in orbit before the braking burn
+   * (`parted`, s from liftoff: it stayed up, and the burn was made without it), it goes then; left out, it goes with the
+   * instrument module as the modules part.
    */
-  modules: { orbital: Measure; instrument: Measure };
+  modules: { orbital: Measure; instrument: Measure; parted?: Measure };
   engine: SoyuzEngine;
   /** Each burn in orbit before the braking burn, in order. */
   burns: SoyuzBurn[];

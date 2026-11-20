@@ -14,6 +14,10 @@ import {
   soyuzGallery,
   soyuzGallerySpecs,
 } from '../../vehicles/gallery.ts';
+import { AREAS } from '../../vehicles/soyuz-7kok-flown.ts';
+import { commanded, soyuzChuteLooks, soyuzCommands, soyuzFlies } from '../../vehicles/soyuz-flies.ts';
+import { soyuzPlan } from '../../vehicles/soyuz-plan.ts';
+import { orbital as ORBITAL } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const HARDWARE = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.8';
@@ -231,6 +235,21 @@ tower.detail =
 vehicle.seats![0]!.figure = 'crew';
 vehicle.seats![1]!.figure = 'engineer';
 
+// what a hand can ask of each part in flight, said with what did each thing on the day (vehicles/soyuz-flies.ts)
+vehicle.parts = commanded(
+  vehicle.parts,
+  soyuzCommands({
+    parted: 'the sequence did, minutes after the burn',
+    crew: 'Lazarev and Makarov',
+    cover: `its barometric switch, ${(ORBITAL.ejection.altitude.value / 1000).toFixed(1)} km`,
+  }),
+);
+/** The descent module's parachutes as drawn, at their areas as the record has them. */
+const CHUTES = soyuzChuteLooks([
+  { name: 'drogue parachute', area: AREAS.drogue },
+  { name: 'main parachute', area: AREAS.main },
+]);
+
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-12',
   nation: 'USSR',
@@ -304,6 +323,15 @@ export const flight: Flight = {
     },
   ],
   motors: [],
+  // the flight as flown from its record: the 11A511's ascent on its steering law, the record's burns in orbit, the braking
+  // burn, the guided entry and the descent (orbital.ts; mission.md), through the day's air over the pad
+  plan: { ...soyuzPlan(ORBITAL), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on the 11A511 type’s instants to the orbit Siddiqi’s table gives. The orbit is raised on the fifth revolution in two burns to the 326 by 345 km TASS gave, the orbital module is let go in orbit before the braking burn, and Lazarev and Makarov come down in their Sokol-K suits in the descent module on its own lift (mission.md).',
+  flies: soyuzFlies(ORBITAL, CHUTES, {
+    orbital: ['OrbitalModule', 'LksaCamera', 'DockingCollar', 'DockingProbe', 'Igla'],
+    instrument: ['ServiceModule', 'InfraredVertical', 'WhipAntennaLeft', 'WhipAntennaRight'],
+  }),
   models: [
     onSoyuzPad(vehicle, TURN, TAIL),
     soyuzPad,

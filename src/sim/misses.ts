@@ -245,6 +245,13 @@ const CORRECTION_S3 =
 const ACROSS_S3 =
   'The braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), and so is lit some eleven minutes before the record’s 09:45:05 (679 s from the published orbit, 658 s from the pad): after four days the run is that far along its track ahead of the record’s clock, its period a few seconds short of the record’s on each of its 64 revolutions (the approach and the correction as flown here). Lit so much earlier, it comes down on a track the Earth has turned under less: the cross-track miss is that time on the Earth’s turning at 50 degrees north. Not adjusted';
 
+/** Soyuz 10's braking burn, timed for the landing place, and the place it is held to. */
+const ACROSS_S10 =
+  'The braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), and is lit about three minutes after the record’s 01:59 (TASS, to the minute), the run a little behind the record’s clock after two days, flown with only one of the record’s corrections (the 17 s of 01:34; the correction by hand of the 23rd and Igla’s firings have no impulse on any record read). The track the run’s orbit has over Kazakhstan that night passes to the south-east of the place, which is itself worked from TASS’s «120 km north-west of Karaganda» (MPK has north-east), not a published point. Not adjusted';
+/** Soyuz 12's braking burn, timed for the landing place, the record having no instant of its own for it. */
+const ACROSS_S12 =
+  'The braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`): the record has no instant for it, and Soyuz 10’s 41 min from the burn to the ground is taken. The run’s orbit after the raise holds TASS’s within a few kilometres, and on it the burn is lit some 816 s before that taken instant; lit so much earlier it comes down on a track the Earth has turned under less, to the north-east of McDowell’s point (itself queried, to a tenth of a degree). Not adjusted';
+
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -1264,6 +1271,54 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         by: -740.2,
         slack: 60,
         why: 'Beregovoy is on the ground 740 s before the record’s 10:25:03. The braking burn is timed for the place he came down at (sim/plan.ts `LandingAim`): on the run from the pad it is lit 658 s before the record’s 09:45:05, the run being that far along its track ahead of the record’s clock after four days, and everything after it comes as much earlier; from the burn to the ground it takes 82 s less than the record’s 40 min, on the parting at Soyuz 1’s planned interval and the lift held up throughout (both assumed). Not adjusted',
+        short: 'the burn timed for the landing place',
+      },
+    },
+  }),
+  // Soyuz 10 and 12: from the pad and from their published orbits (each flight's mission.md, "Against the record")
+  'ussr/soyuz/soyuz-10': inUnits({
+    coast: {
+      crossTrack: {
+        by: 89_177,
+        slack: 5_000,
+        why: `From the published orbit it comes down 89 km across the track. ${ACROSS_S10}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    ascent: {},
+    shown: {
+      crossTrack: {
+        by: 111_565,
+        slack: 5_000,
+        why: `From the pad it comes down 112 km across the track. ${ACROSS_S10}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    descent: {},
+  }),
+  'ussr/soyuz/soyuz-12': inUnits({
+    coast: {
+      crossTrack: {
+        by: 169_570,
+        slack: 5_000,
+        why: `From the published orbit it comes down 170 km across the track. ${ACROSS_S12}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    ascent: {},
+    shown: {
+      crossTrack: {
+        by: 208_657,
+        slack: 5_000,
+        why: `From the pad it comes down 209 km across the track. ${ACROSS_S12}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    descent: {
+      'module.at': {
+        by: -570.6,
+        slack: 60,
+        why: 'Lazarev and Makarov are on the ground 571 s before the record’s 14:33:48. The braking burn is timed for the place they came down at (sim/plan.ts `LandingAim`), and lit 816 s before the instant taken for it (Soyuz 10’s 41 min before the touchdown: the record has none of its own); from the burn to the ground the run takes 45 min, from an orbit 100 km higher than Soyuz 10’s, on Soyuz 11’s planned burn and parting and the lift held up (all assumed). Not adjusted',
         short: 'the burn timed for the landing place',
       },
     },

@@ -220,11 +220,16 @@ for (const f of vostoks.filter((x) => 'modules' in recordFrom(x))) {
       assert.equal(lit.do.find((a) => 'ignite' in a).flown, b.deltaV);
       assert.ok(b.off.value < o.retro.on.value);
     }
-    // the orbital and the instrument modules go together, the descent module left at the record's mass
-    assert.deepEqual(
-      k.parting.do.flatMap((a) => ('separate' in a ? [a.separate] : [])),
-      ['orbital-module', 'modules'],
-    );
+    // the orbital and the instrument modules go together, the descent module left at the record's mass; or the orbital
+    // module first, in orbit at its own instant before the braking burn, where the record has it so
+    const parted = k.parting.do.flatMap((a) => ('separate' in a ? [a.separate] : []));
+    if (o.modules.parted) {
+      assert.deepEqual(parted, ['modules']);
+      const off = plan.events.find((e) => e.do.some((a) => 'separate' in a && a.separate === 'orbital-module'));
+      assert.equal(clockAt(plan, off), o.modules.parted.value);
+      assert.ok(o.modules.parted.value < o.retro.on.value, 'before the braking burn');
+      assert.equal(byId(c.joints, 'orbital-module').at, o.modules.parted);
+    } else assert.deepEqual(parted, ['orbital-module', 'modules']);
     assert.equal(byId(c.bodies, 'orbital-module').mass, o.modules.orbital);
     assert.equal(byId(c.bodies, 'instrument').mass, o.modules.instrument);
     assert.ok(

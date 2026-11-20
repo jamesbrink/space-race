@@ -33,6 +33,8 @@ const FLIGHTS = {
   'ussr/soyuz/soyuz-3': ['Ignition', 'Drop the strap-ons'],
   'ussr/soyuz/soyuz-1': ['Ignition', 'Drop the strap-ons'],
   'ussr/soyuz/soyuz-4': ['Ignition', 'Drop the strap-ons'],
+  'ussr/soyuz/soyuz-10': ['Ignition', 'Drop the strap-ons'],
+  'ussr/soyuz/soyuz-12': ['Ignition', 'Drop the strap-ons'],
   ...Object.fromEntries(
     ['gatv-5002', 'gatv-5003', 'gatv-5004', 'atda', 'gatv-5005', 'gatv-5006', 'gatv-5001'].map((id) => [
       `usa/gemini/${id}`,

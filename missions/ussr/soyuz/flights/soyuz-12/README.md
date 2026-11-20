@@ -40,12 +40,33 @@ loss of the station they had trained to visit. [RGANTD, *Flight of the Urals*](h
   [Afanasyev and Vorontsov, flight chronology](https://epizodsspace.airbase.ru/bibl/mpk/mpk.pdf) ·
   [Siddiqi, appendix Table IB](https://www.nasa.gov/wp-content/uploads/static/history/SP-4408pt2.pdf)
 
+## The flight as flown
+
+From [mission.md](mission.md). The ascent is flown on the 11A511 of the 7K-T era (the type's table with Block I 166 kg
+lighter, the uprating MPK records sized from the 7K-T's 6,700 kg, not from this flight) and on Soyuz 3's instants: Block I
+is cut on the orbit at 531.8 s with 23 kg left, level at 193 km. The orbit is raised on the fifth revolution in two burns,
+at the perigee and the apogee, each of the impulse that joins the published orbits: **326.5 by 342.2 km, 90.9 min** where
+TASS gave 326 by 345 km, 91 min. The orbital module is let go in orbit before the braking burn, at McDowell's instant (it
+stayed up until January 1974). The braking burn, timed for the landing place, brings Lazarev and Makarov down in their
+Sokol-K suits on the descent module's own lift: at most **3.05 g**, the parachute system at 7.5 km, on the ground at
+3.4 m/s **209 km across the track** from McDowell's point and 571 s early. Every miss is recorded in src/sim/misses.ts,
+nothing adjusted.
+
+What the run does not do:
+
+- The raise as it was made: how many burns and when are on no record read; two at the apsides are flown.
+- The braking burn's instant, length and parting: the record has none, and Soyuz 10's and Soyuz 11's are taken.
+- The descent control system's rolls: the lift is held up throughout.
+- The suits' depressurisation test, the LKSA photography, the faults of the second day and the approach and orientation
+  thrusters.
+- The escape tower without its shroud flies the earlier tower's mass and instant.
+
 ## Gallery
 
 Inspect the 11A511 launcher, the battery-powered ferry, the LKSA-3 camera, and the two suited
 cosmonauts at the Sirius controls. The slider opens the fairing, deploys the reconstructed
 antennas, and later spreads the three modules for inspection.
-The flight deck is pending. [Spacecraft record](spacecraft.md)
+[Spacecraft record](spacecraft.md)
 
 ![Soyuz 12 spacecraft assembled for its independent orbital flight](../../../../../docs/readme/soyuz-12/orbital-configuration.jpg)
 

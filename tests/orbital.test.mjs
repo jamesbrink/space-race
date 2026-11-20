@@ -545,6 +545,35 @@ INPUTS['ussr/soyuz/soyuz-4'] = [
   ['ejection', 'altitude'],
 ];
 
+// Soyuz 10's: the injection's instant (Soyuz 3's interval before its separation, assumed) and place (estimated), the braking burn's length (Soyuz 11's planned 187 s, assumed) and the impulse
+// worked from it, the parting (Soyuz 11's planned interval, assumed), the descent module's disc (derived), the parachute
+// system's height (the type's in 1971, assumed) and the landing place (worked from TASS's 120 km north-west of Karaganda)
+INPUTS['ussr/soyuz/soyuz-10'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['injection', 'at'],
+  ['retro', 'off'],
+  ['retro', 'deltaV'],
+  ['entry', 'separation'],
+  ['entry', 'area'],
+  ['ejection', 'altitude'],
+  ['landing', 'latitude'],
+  ['landing', 'longitude'],
+];
+
+// Soyuz 12's: as Soyuz 10's, but the burn's instant too (lit as long before the touchdown as Soyuz 10's, assumed), and its
+// parachute system's height and landing place are its own (documented)
+INPUTS['ussr/soyuz/soyuz-12'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['injection', 'at'],
+  ['retro', 'on'],
+  ['retro', 'off'],
+  ['retro', 'deltaV'],
+  ['entry', 'separation'],
+  ['entry', 'area'],
+];
+
 test('there is an orbital flight to fly', () => {
   assert.ok(orbiters.length > 0);
 });

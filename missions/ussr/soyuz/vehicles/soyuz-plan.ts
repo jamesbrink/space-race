@@ -3,7 +3,8 @@
  * on the 11A511's figures and the ship's). The launch vehicle, its sequence, the braking burn's chain, the descent and its
  * bodies are written as every flight on an R-7 has them (vostok-plan.ts `vostokPlan`, given the record in its own shape),
  * and what a Soyuz has beyond a Vostok is laid on that plan here, in data:
- * - three modules: the orbital module, let go with the instrument and propulsion module as the modules part;
+ * - three modules: the orbital module, let go with the instrument and propulsion module as the modules part, or in orbit
+ *   before the braking burn where the record has it so (`modules.parted`);
  * - one engine, the main engine on the instrument module, drawing on one load of propellant for every burn in orbit and
  *   for the braking burn (`EngineDef.tanks`: what the burns before it used is not there for it, orbital.ts `shipOf`);
  * - each burn in orbit, as Gemini's manoeuvres are flown (orbital.ts `movesOf`): turned to its attitude, lit with its
@@ -55,11 +56,13 @@ export function soyuzPlan(o: SoyuzRecord): FlightPlan {
   c.bodies.splice(c.bodies.indexOf(instrument), 0, orbital);
   for (const j of c.joints) if (j.covers?.includes('instrument')) j.covers = [ORBITAL_MODULE, ...j.covers];
   const modules = byId(c.joints, 'modules');
+  const parted = o.modules.parted;
+  if (parted && parted.value >= o.retro.on.value) throw new Error('the orbital module let go in orbit goes before the braking burn');
   c.joints.splice(c.joints.indexOf(modules), 0, {
     id: ORBITAL_MODULE,
     label: 'The orbital module let go',
     gone: [ORBITAL_MODULE],
-    at: o.entry.separation,
+    at: parted ?? o.entry.separation,
   });
 
   // the descent module: its own lift at its trim, flown while a bank is held (orbital.ts `shipPush`)
@@ -118,7 +121,7 @@ export function soyuzPlan(o: SoyuzRecord): FlightPlan {
   plan.attitude.splice(aim, 0, ...burns, ...banks);
 
   // the events: each burn turned to, lit with its impulse, cut and left to itself; the braking attitude at the record's
-  // instant; the orbital module let go as the modules part; the entry banked
+  // instant; the orbital module let go as the modules part (or in orbit before the burn); the entry banked
   const timed = (id: string, label: string, at: Measure, does: EventDef['do']): EventDef => ({
     id,
     label,
@@ -139,7 +142,13 @@ export function soyuzPlan(o: SoyuzRecord): FlightPlan {
   delete oriented.record;
   plan.events.splice(plan.events.indexOf(oriented), 0, ...moves);
   const parting = byId(plan.events, 'modules');
-  parting.do = [{ separate: ORBITAL_MODULE }, ...parting.do];
+  if (parted) {
+    // let go in orbit at its own instant, among the burns before the braking burn
+    const first = plan.events.indexOf(moves[0] ?? oriented);
+    const later = plan.events.findIndex((e, i) => i >= first && (e.at?.value ?? -Infinity) > parted.value);
+    const off = timed(ORBITAL_MODULE, 'The orbital module let go', parted, [{ separate: ORBITAL_MODULE }]);
+    plan.events.splice(later < 0 ? plan.events.indexOf(oriented) : later, 0, off);
+  } else parting.do = [{ separate: ORBITAL_MODULE }, ...parting.do];
   plan.events.splice(
     plan.events.indexOf(parting) + 1,
     0,
