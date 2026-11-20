@@ -1,6 +1,8 @@
 import type { Part, ViewDef } from '../../../../../src/types.ts';
 import { cm, lift, nodes, part, probePort, sm } from '../../../apollo/vehicles/stack-gallery.ts';
 
+import * as common from '../../vehicles/csm-gallery.ts';
+
 export const port = probePort(116);
 export const command: Part[] = [
   cm(
@@ -22,13 +24,7 @@ export const command: Part[] = [
     'The outward-opening hatch served both launch-pad entry and the crew’s attempted repair from the spacecraft.',
     'Weitz stood in the open hatch while Kerwin held his legs and Conrad flew alongside the workshop. The crew tried to free the solar wing with a pole tool. It remained jammed until a later spacewalk.',
   ),
-  cm(
-    'CabinStructure',
-    'Cabin pressure vessel',
-    'A domed pressure vessel enclosed the three couches and the working space beneath them.',
-    'The outline follows the shared Block II structure. Skylab’s handbook shows the centre couch folded aside to reach the lower equipment bay and docking tunnel.',
-    true,
-  ),
+  common.cabinStructure,
   cm(
     'CabinWindows',
     'Cabin windows',
@@ -42,13 +38,7 @@ export const command: Part[] = [
     'The shock-absorbing supports carried landing loads to the pressure vessel. Pins released the centre couch for folding during orbital operations. The reconstruction shows the launch position.',
     true,
   ),
-  cm(
-    'MainConsole',
-    'Main display console',
-    'The main panels placed flight, guidance and spacecraft systems controls in reach from the couches.',
-    'The exhibit uses the later Block II panel geometry as its reference. The Skylab handbook records dedicated descent-battery selection on panel 5. Individual Skylab switch legends are incomplete.',
-    true,
-  ),
+  common.mainConsole,
   cm(
     'FlightDirectorIndicators',
     'Flight director attitude indicators',
@@ -56,20 +46,8 @@ export const command: Part[] = [
     'Conrad had to hold the spacecraft beside the jammed solar wing during the stand-up EVA. The display and gyro-ball detail are from the common Apollo installation and show a fixed attitude.',
     true,
   ),
-  cm(
-    'DSKYFrontWeb',
-    'Guidance computer display and keyboard',
-    'The crew entered verb and noun commands at the guidance computer keyboard.',
-    'A magnified view exposes individual keys, bezels and display windows. The Skylab Operations Handbook shows the DSKY above the lower equipment bay.',
-    true,
-  ),
-  cm(
-    'ConsoleEquipment',
-    'Control-panel instruments',
-    'Switch guards, annunciators and meters fill the panels facing the crew.',
-    'Skylab used station power during the docked stay and carried separate batteries for its return. Positions of the instruments shown are assumed from the later Block II console. Their readings are static.',
-    true,
-  ),
+  common.dsky,
+  common.consoleEquipment,
   cm(
     'CabinEquipmentBays',
     'Navigation and equipment bays',
@@ -77,13 +55,7 @@ export const command: Part[] = [
     'For the first visit the crew brought emergency sunshades and tools aboard. The optics and equipment bays follow common Block II hardware. The packed parasol lies under the couches.',
     true,
   ),
-  cm(
-    'WaterDispenser',
-    'Drinking-water pistol',
-    'The water pistol was clipped underneath the main panels.',
-    'The crew could extend its coiled hose to 108 inches. A second valve in the grip supplied a spray for fighting a cabin fire. The pistol and its clip use the shared Apollo reconstruction.',
-    true,
-  ),
+  common.waterDispenser,
   cm(
     'ForwardCompartment',
     'Forward tunnel and recovery compartment',
@@ -101,15 +73,7 @@ export const command: Part[] = [
     ),
     moves: [lift(2, 52), { kind: 'slide', node: port.piston, by: [0, port.captureTravel.value, 0], from: 0.56, to: 0.7 }],
   },
-  part(
-    'ForwardShield',
-    'Forward heat shield',
-    'Spacecraft',
-    1,
-    57,
-    'The forward shield covered the parachutes during atmospheric entry.',
-    'Jettison exposed the recovery gear for deployment above the Pacific. The ring opening accommodates the Skylab docking probe.',
-  ),
+  common.forwardShield,
   part(
     'HeatShield',
     'Aft heat shield',
@@ -128,27 +92,9 @@ export const service: Part[] = [
     'Six radial sectors surrounded the service propulsion engine and its central equipment tunnel.',
     'The workshop ferry had different requirements from a lunar spacecraft. Sector I carried extra thruster propellant and batteries, and the core held an extra water tank.',
   ),
-  sm(
-    'PropellantStorageModule',
-    'Auxiliary thruster propellant module',
-    'A compact rack in sector I could feed all four reaction-control quads.',
-    'The Skylab handbook specifies five oxidizer vessels and four fuel vessels, each 38.819 inches long and at most 12.64 inches across. Three helium spheres supplied pressure. Tank arrangement and rack details within the sector are estimated.',
-    true,
-  ),
-  sm(
-    'DescentBatteries',
-    'Three descent batteries',
-    'Three 500 ampere-hour silver-zinc batteries could power the spacecraft on its return from the station.',
-    'The fuel cells could be shut down after docking. Each battery held twenty cells and weighed about 250 pounds. The cases, terminals and mounts represent the pack in bay I. Their exact shapes are estimated.',
-    true,
-  ),
-  sm(
-    'ServiceWaterTank',
-    'Service-module water tank',
-    'An additional water tank occupied the centre section below the helium vessel.',
-    'The fuel cells made water as they generated current. Surplus water could be routed to this tank instead of being dumped. Its envelope and fitting locations are estimated from the handbook section drawing.',
-    true,
-  ),
+  common.propellantStorageModule,
+  common.descentBatteries,
+  common.serviceWaterTank,
   sm(
     'ServicePower',
     'Fuel cells and cryogenic tanks',
@@ -156,38 +102,16 @@ export const service: Part[] = [
     'CSM-116 retained the units designated 1 and 3. The two cells continued operating until June 14, twenty days after launch. Thermal tape on electrical radiators 1, 5 and a quarter of panel 4 kept their cooling water warm enough to protect a line in the umbilical.',
     true,
   ),
-  sm(
-    'ServiceSumpTanks',
-    'Service propulsion sump tanks',
-    'The main engine drew fuel and oxidizer from a pair of sump tanks.',
-    'The lunar spacecraft’s two additional storage tanks and intertank transfer lines were absent. One long sump vessel occupied sector II, the other sector V.',
-    true,
-  ),
-  sm(
-    'ServiceHelium',
-    'Service propulsion helium tank',
-    'A single spherical vessel supplied helium to pressurize the service propulsion tanks.',
-    'The Skylab handbook’s section drawing places the sphere above the service-module water tank. Its dimensions are assumed from common Apollo SPS hardware.',
-    true,
-  ),
-  sm(
-    'ServiceEngine',
-    'Service propulsion engine',
-    'The gimballed main engine changed the spacecraft’s orbit and later began the trip home.',
-    'The injector, chamber, actuators and long nozzle use the common Apollo service propulsion installation. The engine remained with the service module at separation.',
-  ),
+  common.serviceSumpTanks,
+  common.serviceHelium,
+  common.serviceEngine,
   sm(
     'ReactionControl',
     'Reaction-control quads',
     'Four clusters of four jets controlled attitude and manoeuvred the spacecraft beside Skylab.',
     'The extra propellant module in sector I supplemented the quads’ own supplies. During the inspection and repair attempt, Conrad used these jets to position the spacecraft relative to the stranded workshop.',
   ),
-  sm(
-    'VHFAntennas',
-    'VHF scimitar antennas',
-    'Two low-profile antennas stood on opposite sides of the service module.',
-    'Their curved ceramic housings gave the antennas their scimitar name. Switching antennas provided coverage around the spacecraft. Their sections follow Skylab handbook figure 2.8-32, with estimated dimensions.',
-  ),
+  common.vhf,
 ];
 
 export const csmViews: ViewDef[] = [
@@ -207,50 +131,5 @@ export const csmViews: ViewDef[] = [
     isolate: true,
     from: [0.8, 0.13, -0.6],
   },
-  {
-    id: 'propellant-module',
-    label: 'Thruster propellant module',
-    nodes: ['PropellantStorageModule'],
-    isolate: true,
-    onSelect: true,
-    from: [0.78, 0.35, -0.6],
-  },
-  {
-    id: 'descent-batteries',
-    label: 'Descent batteries',
-    nodes: ['DescentBatteries'],
-    isolate: true,
-    onSelect: true,
-    from: [0.65, 0.51, -0.63],
-  },
-  {
-    id: 'centre-section',
-    label: 'Centre section',
-    nodes: ['ServiceHelium', 'ServiceWaterTank', 'ServiceEngine'],
-    isolate: true,
-    from: [0.7, 0.09, 0.71],
-  },
-  { id: 'sector-iv', label: 'Fuel cells and reactants', nodes: ['ServicePower'], isolate: true, from: [-0.77, 0.18, 0.64] },
-  { id: 'hatch', label: 'Crew hatch', nodes: ['SideHatch'], isolate: true, from: [-0.85, -0.53, 0.1], span: 1.75 },
-  { id: 'probe', label: 'Skylab docking probe', nodes: [port.part], isolate: true, from: [1, 0.82, 0.4], span: 1.55 },
-  {
-    id: 'console',
-    label: 'Main console',
-    nodes: ['MainConsole', 'ConsoleEquipment', 'FlightDirectorIndicators', 'DSKYFrontWeb'],
-    isolate: true,
-    from: [0.3, -1, 0],
-  },
-  { id: 'navigation', label: 'Navigation station', nodes: ['CabinEquipmentBays'], isolate: true, from: [1, 0.5, 0.3] },
-  {
-    id: 'water',
-    label: 'Drinking-water pistol',
-    nodes: ['WaterDispenser'],
-    isolate: true,
-    from: [0.45, 0.3, -1],
-    span: 0.36,
-    onSelect: true,
-  },
-  { id: 'dsky', label: 'Computer keyboard', nodes: ['DSKYFrontWeb'], from: [0.3, -1, 0] },
-  { id: 'couches', label: 'Crew couches', nodes: ['CrewCouches'], span: 2.1, from: [-1, 0.8, 0.6] },
-  { id: 'sps', label: 'Service engine', nodes: ['ServiceEngine'], from: [-1, -0.35, 1] },
+  ...common.equipmentViews,
 ];

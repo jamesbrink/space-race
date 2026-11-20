@@ -18,7 +18,7 @@ HEIGHT = 2681.859
 
 
 def build():
-    groups = saturn_ib.build(skylab=True)
+    groups = saturn_ib.build(skylab_serial=206)
     sa206_equipment.build()
     apollo_csm.build(OFFSET, spacecraft=116)
     launch_escape.build(OFFSET, HEIGHT, boardable=True)

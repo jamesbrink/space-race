@@ -233,7 +233,7 @@ def second_stage(parent, metal, warm, dark, *, spheres_per_bank=4):
     finish(equipment, "SIVB_HeliumSpheres", metal, parent)
 
 
-def build(groups, *, spheres_per_bank=4):
+def build(groups, *, spheres_per_bank=4, s150=False):
     if not interior():
         return
     metal = material("saturn-interior-alloy", (0.63, 0.67, 0.68), 0.55, 0.47, double_sided=True)
@@ -241,7 +241,7 @@ def build(groups, *, spheres_per_bank=4):
     dark = material("saturn-thrust-frame", (0.32, 0.36, 0.38), 0.55, 0.6, double_sided=True)
     first_stage(groups["FirstStageTankStructure"], metal, warm, dark)
     second_stage(groups["SecondStageTankStructure"], metal, warm, dark, spheres_per_bank=spheres_per_bank)
-    instrument_bay(groups["InstrumentUnitEquipment"], dark, metal)
+    instrument_bay(groups["InstrumentUnitEquipment"], dark, metal, s150)
 
 
 def engine_case(mesh, centre, axis, length, radius):
@@ -317,7 +317,7 @@ def j2_engine(parent, bell_mat, alloy, exit_radius, rim):
     finish(mesh, "J2_PumpsStartTankAndManifolds", alloy, root)
 
 
-def instrument_bay(parent, dark, metal):
+def instrument_bay(parent, dark, metal, s150):
     """Unroll the three sectors of SA-205's IU. Trace the component envelopes in checklist Fig. 11."""
     # The source is the flattened inside view. Coordinates below are the printed envelope centres
     # and sizes, read in pixels on a 1535x1193 rendering of PDF p.177; depths and finishes estimated.
@@ -414,6 +414,10 @@ def instrument_bay(parent, dark, metal):
     }
     for unit, items in known.items():
         for x, y, w, h in items:
+            # Leave the S-IU-208 detector, adjacent recorder and gas-supply bays
+            # to its own experiment. The SA-205 drawing describes different contents.
+            if s150 and ((unit == 601 and 480 < x < 725) or (unit == 602 and x < 485)):
+                continue
             depth = 7 if w > 42 else 4
             box(cases, unit, x, y, w, h, depth, 126.8 - depth / 2)
     finish(plates, "IU_ColdPlateSupports", metal, parent, cut=True)

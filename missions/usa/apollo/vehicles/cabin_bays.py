@@ -89,8 +89,7 @@ def shade(groups, station):
 
     bpy.context.view_layer.update()
     names = ("CabinStructure", "MainConsole", "FlightDirectorIndicators", "ConsoleEquipment", "DSKYFrontWeb", "CrewCouches", "CabinEquipmentBays")
-    if "ParasolCanister" in groups:
-        names += ("ParasolCanister",)
+    names += tuple(name for name in ("ParasolCanister", "BackupParasol", "RateGyroPackages") if name in groups)
     inside = cabin_shade.meshes_under(*(groups[name] for name in names))
     solid = [obj for obj in inside if not cabin_shade.is_seen_through(obj)]
     lamps = []

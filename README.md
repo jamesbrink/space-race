@@ -9,8 +9,8 @@ the historical record. Each spacecraft and its launch vehicle is modelled from d
 stands at its launch site as that site was that morning, under that day's Sun, Moon and weather, and
 can be flown from liftoff to landing: as it was flown, or by your own hand.
 
-**43 crewed flights so far, Vostok 1 (April 1961) to Soyuz T-2 (June 1980).** All 43 have a Gallery and a Launch site.
-Sixteen can fly from launch, and six others have orbital chapters. The seven uncrewed Gemini targets can be flown too, from Complex 14 on their Atlas: the two lost ones as the record had them fail.
+**44 crewed flights so far, Vostok 1 (April 1961) to Soyuz T-2 (June 1980).** All 44 have a Gallery, and 43 have a Launch site.
+Twenty can fly from launch, and six others have orbital chapters. The seven uncrewed Gemini targets can be flown too, from Complex 14 on their Atlas: the two lost ones as the record had them fail.
 
 ### [Open it: jamesbrink.online/space-race](https://jamesbrink.online/space-race/)
 
@@ -109,6 +109,7 @@ happened, the timeline, the sources, and the notes on its hardware.
 | [Apollo 16, *Casper* and *Orion*](missions/usa/apollo/flights/apollo-16/README.md) | 16 Apr 1972 | Young, Mattingly, Duke | Saturn V | ● | ● | · |
 | [Apollo 17, *America* and *Challenger*](missions/usa/apollo/flights/apollo-17/README.md) | 7 Dec 1972 | Cernan, Evans, Schmitt | Saturn V | ● | ● | · |
 | [Skylab 2, CSM-116](missions/usa/skylab/flights/skylab-2/README.md) | 25 May 1973 | Conrad, Kerwin, Weitz | Saturn IB | ● | ● | · |
+| [Skylab 3, CSM-117](missions/usa/skylab/flights/skylab-3/README.md) | 28 Jul 1973 | Bean, Garriott, Lousma | Saturn IB | ● | · | · |
 | [Soyuz 12, *Ural*](missions/ussr/soyuz/flights/soyuz-12/README.md) | 27 Sep 1973 | Lazarev, Makarov | Soyuz 11A511 | ● | ● | · |
 | [Soyuz 16, *Buran*](missions/ussr/soyuz/flights/soyuz-16/README.md) | 2 Dec 1974 | Filipchenko, Rukavishnikov | Soyuz-U 11A511U | ● | ● | · |
 | [Soyuz T-2, *Yupiter*](missions/ussr/soyuz/flights/soyuz-t-2/README.md) | 5 Jun 1980 | Malyshev, Aksyonov | Soyuz-U 11A511U | ● | ● | · |
