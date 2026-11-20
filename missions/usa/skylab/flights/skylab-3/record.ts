@@ -10,6 +10,15 @@ const duration = 59 * 86400 + 11 * 3600 + 9 * 60 + 4;
 // Ascent uses range time in MPR-SAT-FE-73-5, §§2, 4 and 18. JSC-08662 §§2, 7.7 and 12
 // and NASA's Astronautics and Aeronautics, 1973, pp. 224–229, record the crew events.
 export const timeline: Flight['timeline'] = [
+  // Prelaunch T-times use range time. FER §3.3 records the two-minute hold at countdown T−15.
+  // Ingress is scheduled (SL-3 press kit, p. 20). MC1, 3, 4, 6 and 8 are launch-day reports.
+  { t: -9720, event: 'Scheduled start of crew ingress into CSM-117' },
+  { t: -69 * 60, event: 'Launch Control reports the boost-cover hatch pulled shut and the white-room connections being removed' },
+  { t: -47 * 60, event: 'Access arm 9 starts moving to its twelve-degree standby position' },
+  { t: -37 * 60, event: 'Launch Control reports that the closeout crew has cleared the pad' },
+  { t: -17 * 60, event: 'Countdown clock holds at T−15 minutes to align liftoff with the workshop orbit' },
+  { t: -15 * 60, event: 'Terminal countdown resumes at 06:55:50 EDT' },
+  { t: -300, event: 'Access arm 9 starts its final withdrawal' },
   { t: -3.1, event: 'Engine start command goes to the S-IB' },
   { t: 0.3, event: 'First motion of SA-207 on Pad 39B' },
   { t: 0.48, event: 'The flight computer senses the instrument-unit umbilical disconnect' },
