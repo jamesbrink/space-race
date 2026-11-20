@@ -4,7 +4,7 @@ from math import cos, pi, sin
 
 from mathutils import Matrix
 
-from lc39.night_launch import vent_disconnect, xenon_banks  # noqa: E402
+from lc39.night_launch import skylab_floods, vent_disconnect, xenon_banks  # noqa: E402
 from lc39.saturn_ib_launcher import launch_pedestal, pedestal_accessories, service_lines  # noqa: E402
 from sitelib import P, Parts, beam, box, fine, handrail, hull, lattice, obox, plate, stair_rails, stairs, truss, use  # noqa: E402
 from srlib import FT, material  # noqa: E402
@@ -229,7 +229,7 @@ def purge_console(parts):
         trim.tube(P(2.71, y, 1.3), P(2.71, y, 0.05), 0.135 * FT)
 
 
-def arms(parts, detailed, skylab=False):
+def arms(parts, detailed, skylab=False, side_hinge=False):
     # Service envelopes approximated from the Saturn V flight manual, section VIII.
     for i, (level, tip) in enumerate(
         ((68, 16.65), (132, 16.65), (150, 16.65), (175, 16.65), (215, 16.65), (245, 10.9), (276, 10.9), (304, 6.5), (320, 8)), 1
@@ -245,15 +245,44 @@ def arms(parts, detailed, skylab=False):
         name = "Service_Arm_1A" if skylab and i == 5 else f"Service_Arm_{i}"
         z = DECK + level
         # An outboard bearing keeps the parked truss clear of both tower columns.
-        parts.node(name, origin=(55, 0, z))
-        box(parts("Umbilical_Tower", "steel"), (54.5, -1.5, z - 1.4), (60.5, 1.5, z - 0.45))
+        # For the recorded 180-degree sweep the crew arm's hinge lies outside the tower's side face.
+        hy = -21.5 if side_hinge and i == 9 else 0
+        parts.node(name, origin=(55, hy, z))
+        if hy:
+            beam(parts("Umbilical_Tower", "steel"), (55, hy, z - 1.65), (60.5, -15.5, z - 1.65), 1.3)
+        else:
+            box(parts("Umbilical_Tower", "steel"), (54.5, -1.5, z - 1.4), (60.5, 1.5, z - 0.45))
         if i == 9:
             # The arm leaves level 320. The lower hatch sill on the flown CSM exhibits is 326.4 ft
             # above the engine exits. The rise and its stair arrangement are reconstructed.
             floor = parts(name, "deck")
-            box(parts("Umbilical_Tower", "deck"), (55, -2.8, z - 0.35), (59.4, 2.8, z + 0.03))
-            truss(parts(name, "red"), lambda k, x: (x, (-3, 3, 3, -3)[k], z + (0, 0, 8.4, 8.4)[k]), [30, 42.5, 55], 0.39, 0.22)
-            box(floor, (30, -2.8, z + 0.19), (54.95, 2.8, z + 0.44))
+            if hy:
+                # The stationary walkway passes outside the tower corner upright and enters the open front
+                # of level 320. Its final tread stays below the moving heel for the whole 180-degree sweep.
+                stationary = parts("Umbilical_Tower", "deck")
+                box(stationary, (53, -16, z - 0.80), (58, -5.5, z - 0.40))
+                hull(
+                    stationary,
+                    [
+                        [(x, y, z + h + up) for x, y, up in ((58, -10.5, 0), (59.3, -10.5, 1.24), (59.3, -5.5, 1.24), (58, -5.5, 0))]
+                        for h in (-0.80, -0.40)
+                    ],
+                )
+                hull(
+                    stationary,
+                    [[(x, y, z + h) for x, y in ((53, -16), (55, -24.4), (60.5, -24.4), (60.5, -20.5), (58, -16))] for h in (-0.80, -0.40)],
+                )
+            else:
+                box(parts("Umbilical_Tower", "deck"), (55, -2.8, z - 0.35), (59.4, 2.8, z + 0.03))
+            # The spans run back from the top of the stairs to the side-mounted pivot.
+            truss(parts(name, "red"), lambda k, x: (x, (-3, 3, 3, -3)[k] + hy * (x - 30) / 25, z + (0, 0, 8.4, 8.4)[k]), [30, 42.5, 55], 0.39, 0.22)
+            if hy:
+                hull(
+                    floor,
+                    [[(x, y + hy * (x - 30) / 25, z + h) for x, y in ((30, -2.8), (54.95, -2.8), (54.95, 2.8), (30, 2.8))] for h in (0.19, 0.44)],
+                )
+            else:
+                box(floor, (30, -2.8, z + 0.19), (54.95, 2.8, z + 0.44))
             # On the detailed launchers the landing sits one step below the opening leaves.
             landing = 5.97 if detailed else 6.4
             stairs(floor, (30, 0, z + 0.44), (12, 0, z + landing), 5.5)
@@ -264,6 +293,13 @@ def arms(parts, detailed, skylab=False):
             thickness = 0.32 if detailed else 0.34
             if skylab:
                 thickness = 0.30  # 6 mm relief beneath the floor for SA-206's solid cells.
+            if hy:
+                # The closeout crew takes up the panels between white room and spacecraft
+                # (SL-III MC1/1). Model the removable threshold stowed on edge in the vestibule.
+                edge = 10.6
+                parts.node("White_Room_Bridgeplate", name, origin=(edge, 0, z + landing))
+                box(parts("White_Room_Bridgeplate", "deck"), (sill, -2.65, z + landing - 0.22), (edge - 0.03, 2.65, z + landing))
+                sill = edge
             box(floor, (sill, -3, z + landing - thickness), (12, 5.9, z + landing))
             room = parts(name, "white")
             for y in (-3.1, 5.7):
@@ -517,6 +553,8 @@ def build(
     level200_purge=False,
     night_launch=False,
     skylab=False,
+    side_hinge=False,
+    pad_b_floodlights=False,
 ):
     use(FT)
     parts = Parts(
@@ -526,7 +564,7 @@ def build(
                     "xenon": material("lamp-flood-xenon", (0.91, 0.94, 1.0), 0.02, 0.13),
                     "mirror": material("chrome-reflector", (0.88, 0.89, 0.9), 0.95, 0.13),
                 }
-                if night_launch
+                if night_launch or pad_b_floodlights
                 else {}
             ),
             "concrete": material("concrete-hardstand", (0.55, 0.53, 0.49), 0, 0.91),
@@ -553,9 +591,11 @@ def build(
         holddowns(parts)
         tail_masts(parts)
     tower(parts, detailed, pedestal_bridge=skylab)
-    arms(parts, detailed, skylab)
+    arms(parts, detailed, skylab, side_hinge)
     if skylab:
         service_lines(parts, DECK)
+    if pad_b_floodlights:
+        skylab_floods(parts)
     if level200_purge:
         purge_console(parts)
     if arm2_quench:

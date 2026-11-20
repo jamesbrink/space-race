@@ -1,4 +1,4 @@
-"""First-visit Skylab launch garments. Centimetres and placement estimates against the flown suits; see a7lb.md."""
+"""Skylab A7LB launch garments. Centimetres and placement estimates against the flown suits; see a7lb.md."""
 
 import math
 import sys

@@ -10,7 +10,7 @@ const [stack] = flight.models;
 const experiments = ['XRayExperiment', 'XRayGasSupply', 'XRayRecorder'];
 test('the Skylab 3 gallery seats the second visiting crew and puts its flight hardware on the right plinth', () => {
   assert.equal(lacks(flight, 'gallery'), null);
-  assert.ok(lacks(flight, 'site'));
+  assert.equal(lacks(flight, 'site'), null);
   assert.ok(lacks(flight, 'fly'));
   const frames = framesOf(new URL(`../public/${stack.url}`, import.meta.url));
   const spacecraft = craftNodes(headingsOf(stack), (node) => frames.box(node)?.lo[1]);
@@ -67,3 +67,24 @@ for (const level of ['', '.lod1', '.lod2']) {
     }
   });
 }
+
+test('the Skylab 3 site opens for ingress with the three visiting astronauts assigned to their launch couches', () => {
+  const crew = flight.models.filter((model) => model.walker);
+  assert.deepEqual(
+    crew.map((person) => person.name),
+    ['Bean', 'Garriott', 'Lousma'],
+  );
+  assert.deepEqual(
+    stack.seats.map((seat) => seat.figure),
+    crew.map((person) => person.id),
+  );
+  assert.equal(flight.opens.at, stack.seats[0].open[0]);
+  assert.equal(flight.weather.observed.at, flight.launch);
+  for (const person of crew) {
+    for (const level of ['', '.lod1', '.lod2']) {
+      const file = new URL(`../public/${person.url.replace('.glb', level + '.glb')}`, import.meta.url);
+      assert.ok(framesOf(file).point(`Torso_${person.name}`));
+      assert.ok(materialsUnder(file, 'Torso').includes('skylab-ii-insignia'));
+    }
+  }
+});
