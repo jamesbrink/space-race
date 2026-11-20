@@ -397,8 +397,8 @@ the subject is a small panel elsewhere in the spacecraft.
 
 ## To look at it
 
-`/#usa/mercury/mr-3-freedom-7`, `/#usa/mercury/mr-4-liberty-bell-7`, `/#ussr/vostok/vostok-1`, `/#ussr/vostok/vostok-2`, `/#usa/mercury/ma-6-friendship-7`, `/#usa/mercury/ma-7-aurora-7`, `/#usa/mercury/ma-8-sigma-7`, `/#usa/mercury/ma-9-faith-7`, `/#usa/gemini/gt-3`, `/#usa/gemini/gt-4`, `/#usa/gemini/gt-5`, `/#usa/gemini/gt-7`, `/#usa/gemini/gt-6a`, `/#usa/gemini/gt-8`, `/#usa/gemini/gt-9a` or `/#usa/apollo/apollo-7`
-(Gemini 8 to 12 fly their docking chapter). While developing, `/?fixture#test/fixture/vehicle-only`
+`/#usa/mercury/mr-3-freedom-7`, `/#usa/mercury/mr-4-liberty-bell-7`, `/#ussr/vostok/vostok-1`, `/#ussr/vostok/vostok-2`, `/#usa/mercury/ma-6-friendship-7`, `/#usa/mercury/ma-7-aurora-7`, `/#usa/mercury/ma-8-sigma-7`, `/#usa/mercury/ma-9-faith-7`, `/#usa/gemini/gt-3`, `/#usa/gemini/gt-4`, `/#usa/gemini/gt-5`, `/#usa/gemini/gt-7`, `/#usa/gemini/gt-6a`, `/#usa/gemini/gt-8`, `/#usa/gemini/gt-9a`, `/#usa/apollo/apollo-7` or `/#usa/apollo/apollo-11`
+(Gemini 8 to 12 fly their docking chapter; Apollo 11's Fly ends with the translunar injection). While developing, `/?fixture#test/fixture/vehicle-only`
 shows the flight that is only a vehicle (`tests/fixtures/vehicle-only`), through `only.ts`.
 `sr.gallery` is the handle; `sr.gallery.stage` its stage. `pnpm test:places` (`tools/places-test.mjs`, with `pnpm dev`
 running) goes between the places with slow loads and real keys and checks what is promised above. `tools/shot.mjs out.png

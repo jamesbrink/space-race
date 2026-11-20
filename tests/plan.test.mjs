@@ -11,7 +11,8 @@ import { ballisticOf } from '../src/sim/fly.ts';
 import { downOf } from '../src/sim/descent.ts';
 import { coastEvents, coastOf, movesOf, shipOf } from '../src/sim/orbital.ts';
 import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
-import { byHand, drawnFrom, givenUp, movedTo, schedule, sequenceOf, stagesOf } from '../src/sim/staged.ts';
+import { act, startCraft } from '../src/sim/craft.ts';
+import { byHand, drawnFrom, givenUp, guidanceOf, movedTo, schedule, sequenceOf, stagesOf } from '../src/sim/staged.ts';
 import { HARDWARE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { dayOf } from './ballistic.mjs';
 import { recordFrom } from './records.mjs';
@@ -524,6 +525,75 @@ const gemini = {
   ],
   checks: [],
 };
+
+const saturns = orbital.filter((f) => 'sivb' in recordFrom(f));
+for (const f of saturns) {
+  const o = recordFrom(f);
+  const plan = f.plan;
+  const c = craftOf(plan);
+  test(`${f.id}: the Saturn V plan carries the record's figures: five F-1s, five J-2s, the S-IVB twice on one tank, the injection on its own law`, () => {
+    assert.equal(c.mass, o.liftoff);
+    assert.ok(Math.abs(bodiesMass(plan) - o.liftoff.value) < 5, `the bodies sum to the record's first-motion mass: ${bodiesMass(plan)}`);
+    const stages = stagesOf(plan);
+    assert.deepEqual(
+      stages.map((s) => [s.engine.id, s.count]),
+      [
+        ['f1-centre', 1],
+        ['f1-outboard', 4],
+        ['j2-centre', 1],
+        ['j2-outboard', 4],
+        ['sivb-j2', 1],
+        ['sivb-tli', 1],
+      ],
+    );
+    assert.equal(stages[0].engine.thrust.seaLevel, o.sic.f1.thrust);
+    assert.equal(stages[0].tank.load, o.sic.propellant.load);
+    assert.equal(stages[2].engine.thrust.vacuum, o.sii.centre.thrust);
+    assert.equal(stages[4].engine.thrust.vacuum, o.sivb.first.thrust);
+    assert.equal(stages[5].engine.thrust.vacuum, o.sivb.second.thrust);
+    // (the S-IVB's two burns: one J-2 under two names, drawing on one tank)
+    assert.equal(stages[4].tank, stages[5].tank);
+    assert.deepEqual(stages[4].shares, [4, 5]);
+    assert.equal(stages[5].engine.again, 'sivb-j2');
+    const seq = sequenceOf(plan);
+    assert.equal(seq.stages[0].cut, o.sic.centreCut.value);
+    assert.equal(seq.stages[1].cut, o.sic.outboardCut.value);
+    assert.equal(seq.stages[2].cut, o.sii.centre.cut.value);
+    assert.equal(seq.stages[3].cut, o.sii.outboard.cut.value);
+    assert.ok(seq.stages[4].orbit, 'the first burn cut by its guidance on the orbit reached');
+    assert.equal(seq.stages[5].speed.value, o.sivb.second.speed.value, 'the injection cut on its speed');
+    assert.equal(seq.stages[5].from, o.sivb.second.ignition.value);
+    assert.equal(seq.stages[5].joint, null, 'the S-IVB is let go of by nothing: the run ends at its second cutoff');
+    // (the drops: the aft interstage and the tower, each let go at the record's instant)
+    assert.deepEqual(
+      seq.drops.map((d) => [d.joint, d.at]),
+      [
+        ['sii-skirt', o.sii.skirt.at.value],
+        ['les-jettison', o.les.at.value],
+      ],
+    );
+    const law = guidanceOf(plan);
+    assert.equal(law.injection.engine, 'sivb-tli');
+    assert.equal(law.injection.target, o.sivb.second.target);
+    assert.equal(law.target.at, 'sivb-cutoff');
+    // nothing burns in the coast and nothing comes down: it is bound for the Moon, which pulls on it
+    assert.equal(coastOf(plan).on, Number.POSITIVE_INFINITY);
+    assert.equal(downOf(plan), null);
+    assert.deepEqual(plan.gravity, { central: 'earth', terms: ['j2', 'moon'] });
+    assert.equal(plan.record.bound, o.bound);
+  });
+
+  test(`${f.id}: the S-IVB's J-2 cannot be lit again while it burns, and is once it is cut`, () => {
+    let s = startCraft(plan);
+    s = act(plan, s, { ignite: 'sivb-j2' }, 600, false).state;
+    const twice = act(plan, s, { ignite: 'sivb-tli' }, 650, false);
+    assert.deepEqual(twice.refused, [{ action: { ignite: 'sivb-tli' }, why: 'burning', engine: 'sivb-j2' }]);
+    s = act(plan, s, { cut: 'sivb-j2' }, 700, false).state;
+    const again = act(plan, s, { ignite: 'sivb-tli' }, 9_000, false);
+    assert.deepEqual(again.refused, []);
+    assert.equal(act(plan, again.state, { ignite: 'sivb-j2' }, 9_100, false).refused[0].why, 'burning');
+  });
+}
 
 test('the plan says a Gemini: two stages on their own tanks, hot staging, translation thrusters, a lifting entry', () => {
   assert.deepEqual(problems(gemini), []);

@@ -120,6 +120,10 @@ export function downVerdict(
   const why: string[] = [];
   const days = (s: number) => (s / 86_400).toFixed(1);
   if (!down || !d) {
+    // (a flight flown to its injection and no further: on its way, not an orbit that decays)
+    const bound = plan.record?.bound;
+    if (bound)
+      return { how: `On its way to ${bound.for}: the run ends with its last burn`, why: [bound.next], survivable: null, against: '' };
     const supplies = plan.record?.supplies;
     const lasts =
       decayed === undefined

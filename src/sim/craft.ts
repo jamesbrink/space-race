@@ -40,7 +40,9 @@ export type Refusal =
   | { action: Action; why: 'gone' }
   | { action: Action; why: 'starts'; count: number }
   | { action: Action; why: 'ground' }
-  | { action: Action; why: 'solid' };
+  | { action: Action; why: 'solid' }
+  /** The same chambers are burning already, as another of the plan's engines (`EngineDef.again`). */
+  | { action: Action; why: 'burning'; engine: string };
 
 /** What a trigger reads of the flight now. */
 export interface Sense {
@@ -130,10 +132,14 @@ export function act(plan: FlightPlan, s: CraftState, action: Action, t: number, 
     const def = l.engine.get(action.ignite);
     const e = s.engines[action.ignite];
     if (!def || !e) return { state, refused };
+    // (the same chambers under another of the plan's names, the one this lights again or the one lighting this again)
+    const same = [...(def.again ? [def.again] : []), ...[...l.engine.values()].filter((x) => x.again === def.id).map((x) => x.id)];
+    const burningAs = same.find((id) => lit(s, id, t));
     if (!aboard(s, def.body, t)) refused.push({ action, why: 'gone' });
     else if (lit(s, action.ignite, t)) {
       // burning already
-    } else if (e.starts >= def.starts.count) refused.push({ action, why: 'starts', count: def.starts.count });
+    } else if (burningAs) refused.push({ action, why: 'burning', engine: burningAs });
+    else if (e.starts >= def.starts.count) refused.push({ action, why: 'starts', count: def.starts.count });
     else if (def.starts.ground && !held && e.starts === 0) refused.push({ action, why: 'ground' });
     else state = { ...s, engines: { ...s.engines, [action.ignite]: { ...e, lit: t, out: Infinity, starts: e.starts + 1 } } };
   } else if ('cut' in action) {

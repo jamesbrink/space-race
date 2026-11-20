@@ -5,11 +5,15 @@ import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { APOLLO11_THRUST } from '../../vehicles/propulsion.ts';
 import { cm, doors, escapeParts, lift, nodes, part, probePort, rocket, sm, specification } from '../../vehicles/stack-gallery.ts';
+import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
+import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
 import { eagleModel, eaglePort, eagleStackParts, eagleViews } from './eagle.ts';
+import { orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const inch = 0.0254;
 const kit = 'NASA Apollo 11 Press Kit, spacecraft and launch vehicle descriptions';
+const PLAN = saturnVPlan(orbital);
 const report = 'Apollo 11 Mission Report MSC-00171, table 3-I';
 const elapsed = (h: number, m: number, s: number) => h * 3600 + m * 60 + s;
 const lm = 'Lunar module · Eagle';
@@ -344,6 +348,8 @@ export const flight: Flight = {
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39A_EDT,
   weather: WEATHER,
+  plan: { ...PLAN, aloft: WEATHER.aloft },
+  flies: saturnVFlies(PLAN),
   crew: ['Neil A. Armstrong', 'Michael Collins', 'Edwin E. Aldrin Jr.'],
   summary:
     'Armstrong and Aldrin landed Eagle in the Sea of Tranquility while Collins orbited in Columbia. The descent stage stayed on the Moon as the two men lifted off to rejoin him.',

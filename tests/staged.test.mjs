@@ -8,6 +8,7 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { saturnVPlan } from '../missions/usa/apollo/vehicles/saturn-v-plan.ts';
 import { geminiTitanPlan } from '../missions/usa/gemini/vehicles/gemini-titan-plan.ts';
 import { targetPlan } from '../missions/usa/gemini/vehicles/target-plan.ts';
 import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
@@ -31,6 +32,7 @@ import {
   sequenceOf,
   stagesOf,
   steer,
+  targetStageOf,
 } from '../src/sim/staged.ts';
 import { stagedVehicle } from '../src/sim/stagedlive.ts';
 import { P0 } from '../src/world/bodies.ts';
@@ -54,6 +56,45 @@ const where = (f) => [siteFrame(f.site), frameOf(f), f.site.seaLevel.value];
  * 2's are Vostok 1's and every instant of the ascent besides, its record having none of its own (its mission.md).
  */
 const UNDOCUMENTED = {
+  // Apollo 11's (saturn-v-plan.ts's record): the stages' masses and propellant, sums of the mass tables' rows; the F-1s'
+  // figures derived from the stage's burn and the type's exit; the S-II's means and its mixture-ratio shift; the S-IVB's
+  // second burn's early flow; the pushes apart, the steering and the attitude jets, the turn to the injection's attitude, the
+  // pitch programme read off a figure and the roll worked from the azimuths, the drag and the stack's area in orbit, the
+  // command module's mass
+  'usa/apollo/apollo-11': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.guidance.programme',
+    'ascent.guidance.roll',
+    'ascent.rarefied.area',
+    'ascent.rarefied.drag',
+    'ascent.steering',
+    'csm.cm',
+    'les.mass',
+    'les.motor.burn',
+    'les.motor.thrust',
+    'sic.f1.exitArea',
+    'sic.f1.isp',
+    'sic.f1.thrust',
+    'sic.mass',
+    'sic.propellant.load',
+    'sic.propellant.usable',
+    'sic.push',
+    'sii.mass',
+    'sii.outboard.isp',
+    'sii.outboard.shift.after',
+    'sii.outboard.thrust',
+    'sii.propellant.load',
+    'sii.propellant.usable',
+    'sii.push',
+    'sivb.jets',
+    'sivb.mass',
+    'sivb.propellant.load',
+    'sivb.propellant.usable',
+    'sivb.second.align',
+    'sivb.second.shift.before',
+  ],
   // The Gemini targets' (target-plan.ts's record): the Atlas SLV-3's impulses (two derived from the report's weights, the
   // sustainer's the MA-5's), its masses derived from the weights, the Agena's impulse (the 8247's, secondary), the shroud's
   // mass (the standard Agena's), the targets' drag where they fall and in orbit, and the ascent's drag, pitch-over, turn and
@@ -845,6 +886,8 @@ const UNDOCUMENTED = {
 /** An ascent check's figure: an event's field ('core.speed'), or the summary's. */
 const ascentValue = (run) => (id) => {
   const [event, field] = id.split('.');
+  // (where a stage lit again in orbit stopped: staged.ts `Ascended.injected`)
+  if (event === 'injection') return run.injected?.[field];
   return field ? run.at[event]?.[field] : run.summary[id];
 };
 
@@ -1028,6 +1071,45 @@ function titanInputs(f, o, whole) {
   });
 }
 
+/**
+ * A Saturn V's ascent inputs that are not documented (saturn-v-plan.ts's record: its three stages, their engines, propellant
+ * and staging, the tower, the S-IVB's two burns and the injection's law, the ascent's law, drag and steering), listed, and
+ * what each is worth, both laws solved afresh each time on the plan `saturnVPlan` writes from a changed copy. Each is
+ * weighed at the parking orbit's cutoff and at the injection's.
+ */
+function saturnInputs(f, o, whole) {
+  const read = [];
+  const walk = (x, at) => {
+    // (the coasting stack's centre of mass is the scene's and the contacts': the ascent does not read it)
+    if (!x || typeof x !== 'object' || at.endsWith('.centre')) return;
+    if ('confidence' in x && ('value' in x || 'points' in x)) {
+      if (x.confidence !== 'documented') read.push(at);
+      return;
+    }
+    for (const [key, value] of Object.entries(x)) walk(value, `${at}.${key}`);
+  };
+  for (const key of ['sic', 'sii', 'les', 'sivb', 'csm', 'ascent']) walk(o[key], key);
+  walk({ liftoff: o.liftoff }, 'record');
+  assert.deepEqual(read.sort(), UNDOCUMENTED[f.id], 'the inputs that are not documented, by flight (UNDOCUMENTED)');
+  const [site, dated, sea] = where(f);
+  const base = whole.ascent;
+  const weigh = (label, change) => {
+    const copy = structuredClone(o);
+    change(copy);
+    const plan = saturnVPlan(copy);
+    const a = ascend(plan, site, dated, sea, steer(plan, site, dated, sea));
+    console.log(
+      `  #   ${label.padEnd(58)} first cutoff ${(a.summary.cutoffAt - base.summary.cutoffAt).toFixed(1).padStart(6)} s; injection ${(a.injected.at - base.injected.at).toFixed(1).padStart(6)} s, ${(a.injected.mass - base.injected.mass).toFixed(0).padStart(6)} kg`,
+    );
+  };
+  console.log('  #   what a change in an input moves (both laws solved afresh each time):');
+  weigh('the drag curve x 1.3 (estimated)', (c) => c.ascent.drag.forEach((d) => d.curve.points.forEach((p) => (p[1] *= 1.3))));
+  weigh('the S-IC tilted half a degree further from a minute up', (c) =>
+    c.ascent.guidance.programme.points.forEach((p) => p[0] >= 60 && (p[1] += 0.5)),
+  );
+  weigh('the F-1s 1 % less thrust and flow (derived)', (c) => (c.sic.f1.thrust.value *= 0.99));
+}
+
 test('there is an orbital flight whose ascent can be flown', () => {
   assert.ok(flown.length > 0);
 });
@@ -1200,6 +1282,7 @@ for (const f of part(flown)) {
       return;
     }
     if ('payload' in o) return targetInputs(f, o, whole);
+    if ('sivb' in o) return saturnInputs(f, o, whole);
     if ('atlas' in o) return atlasInputs(f, o, whole);
     if ('titan' in o) return titanInputs(f, o, whole);
     const read = [];
@@ -1403,7 +1486,8 @@ for (const f of part(flown)) {
       const parted = p.events.find((e) => e.kind === 'separation');
       const cut = p.events.find((e) => e.kind === 'cutoff');
       assert.ok(cut && p.kind === 'guided', `from T+${t0}: the last cutoff is on the path`);
-      assert.ok(Math.abs(cut.t - whole.ascent.stops.at(-1)) < 0.5, 'cutoff agrees with the batch run');
+      // (the cutoff the law aims at: the last stage's, or the orbit's where a stage is lit again after it)
+      assert.ok(Math.abs(cut.t - whole.ascent.stops[targetStageOf(f.plan)]) < 0.5, 'cutoff agrees with the batch run');
       if (guidance.attached && !parted) continue; // The predictor ends after one orbit; the stack stays attached into its second.
       if (!Number.isFinite(seq.stages.at(-1).sep)) continue; // (the last stage is the spacecraft: an Agena, let go of by nothing)
       assert.ok(parted, `from T+${t0}: the parting is on the path`);

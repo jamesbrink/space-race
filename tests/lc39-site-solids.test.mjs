@@ -107,7 +107,10 @@ for (const [flight, serial, firstMotion] of flights) {
   const stack = flight.models.find((model) => model.id === 'vehicle');
   const solidsOf = (model) => decodeSolids(readFileSync(new URL(`models/${flight.id}/${model.id}.solid.bin`, base)));
 
-  test(`${flight.id} open hatch passes a shoulder-width probe from the white room and the closed hatch stops it`, () => {
+  // (a stack the flight flies is its hull in the simulator, not a structure standing at the site: its hatches are not struck)
+  test(`${flight.id} open hatch passes a shoulder-width probe from the white room and the closed hatch stops it`, {
+    skip: flight.flies?.model === stack.id ? 'flown: its solids are its hull' : false,
+  }, () => {
     const poses = [countdownModel(pad, solidsOf(pad)), countdownModel(stack, solidsOf(stack))];
     const [opens, shuts] = stack.seats[0].open;
     const from = [4, 99.8, 0];

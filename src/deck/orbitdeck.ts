@@ -113,6 +113,7 @@ import {
 } from './deck.ts';
 import type { NavSample } from './navball.ts';
 import { pack } from './tape.ts';
+import { termsOf } from '../sim/core/gravity.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (an orbital plan whose ascent is flown on a steering law): the deck
@@ -389,7 +390,13 @@ export class OrbitDeck extends Deck {
   predict(start: { t: number; r: Vec3; v: Vec3; mass: number }, points?: number, underGuidance = false): Predictor | null {
     const site = siteFrame(this.flight.site);
     const sea = this.flight.site.seaLevel.value;
-    const where = { site, seaLevel: sea, frame: this.frame };
+    // (the Moon and the Sun where the plan names them, `FlightPlan.gravity`: a path bound for the Moon drawn as it goes)
+    const where = {
+      site,
+      seaLevel: sea,
+      frame: this.frame,
+      ...(this.flight.plan?.gravity ? { gravity: termsOf(this.flight.plan.gravity, this.frame) } : {}),
+    };
     const options = points ? { points } : {};
     if (this.state?.broke && start.t >= this.state.broke.t - 1e-9) return null; // (in pieces: nothing to predict)
     const plan = this.planned ?? (this.free && this.fired === null ? this.givenUp() : this.recordPlan);
@@ -2798,7 +2805,9 @@ export class OrbitDeck extends Deck {
                         ? `Next: the ${this.burnName.toLowerCase()} by the action, or at ${this.wall(coast.on)}`
                         : coast.on === Number.POSITIVE_INFINITY && !downOf(plan)
                           ? orbit && el.a * (1 - el.e) > ball + 100_000
-                            ? 'In orbit: it stays up'
+                            ? record.bound
+                              ? `On its way to ${record.bound.for}: the run ends here`
+                              : 'In orbit: it stays up'
                             : 'Short of orbit: it falls to the sea'
                           : 'The descent is automatic';
     if (prompt.textContent !== text) prompt.textContent = text;
@@ -2909,7 +2918,7 @@ export class OrbitDeck extends Deck {
     // how it ended for him, in the record's terms (sim/verdict.ts downVerdict), and how long an orbit that stays up lasts
     const plan = this.flownPlan ?? this.recordPlan;
     let decayed: number | undefined;
-    if (stays) {
+    if (stays && !record.bound) {
       if (this.lasts?.of !== whole)
         this.lasts = {
           of: whole,
@@ -2934,7 +2943,7 @@ export class OrbitDeck extends Deck {
           : ` ${who} ${many ? 'do' : 'does'} not live, by the limits taken.`;
     // the record's own landings: each body's time (its check) and the place the record gives
     const when = (id: string) => plan.checks.find((c) => c.of === 'descent' && c.id === `${id}.at`);
-    const landing = record.landing!;
+    const landing = record.landing;
     const { on } = landsOf(plan);
     const landings = [
       ...(downOf(plan)?.bodies.slice(0, 2) ?? []).flatMap((b) => {
@@ -2942,7 +2951,12 @@ export class OrbitDeck extends Deck {
         return c ? [`${c.label} at ${this.wall(c.value)}`] : [];
       }),
       // (the place in the record's words, in the sea or near a place on land as the flight's data says: verdict.ts `landsOf`)
-      `the landing${landing.near ? ` ${on === 'sea' ? 'in' : on === 'land' ? 'near' : 'at'} ${landing.near}` : ''}, ${degrees(landing.latitude.value, 'N', 'S')} ${degrees(landing.longitude.value, 'E', 'W')}${on === 'sea' || !record.ground ? '' : `, ${record.ground.value.toFixed(0)} m above the sea`}`,
+      // (a flight the run does not bring down, a target or one bound for the Moon, has no landing of the record's to set beside it)
+      ...(landing
+        ? [
+            `the landing${landing.near ? ` ${on === 'sea' ? 'in' : on === 'land' ? 'near' : 'at'} ${landing.near}` : ''}, ${degrees(landing.latitude.value, 'N', 'S')} ${degrees(landing.longitude.value, 'E', 'W')}${on === 'sea' || !record.ground ? '' : `, ${record.ground.value.toFixed(0)} m above the sea`}`,
+          ]
+        : []),
     ].join('; ');
     const show = (unit: string, x: number) =>
       unit === 'm' ? `${(x / 1000).toFixed(1)} km` : unit === 's' ? this.wall(x) : `${x.toFixed(unit === 'deg' ? 2 : 1)} ${unit}`;
@@ -2960,12 +2974,12 @@ export class OrbitDeck extends Deck {
       .join('');
     const mine = this.mine !== null || this.fired !== null || this.downMine !== null || this.free;
     el.innerHTML = `
-      <h3>${stays ? 'Still in orbit' : this.mine !== null ? 'Down, on your own flight' : this.downMine !== null ? 'Down, on your own descent' : this.fired !== null ? 'Down, by your own braking burn' : this.burnByHand ? 'Down, as flown on the day: the braking burn by hand' : 'Down, as the automatic system flew it'}</h3>
+      <h3>${stays ? (record.bound ? `On its way to ${record.bound.for}` : 'Still in orbit') : this.mine !== null ? 'Down, on your own flight' : this.downMine !== null ? 'Down, on your own descent' : this.fired !== null ? 'Down, by your own braking burn' : this.burnByHand ? 'Down, as flown on the day: the braking burn by hand' : 'Down, as the automatic system flew it'}</h3>
       <p class="cockpit-why"><b>${v.how}.</b>${lives}${mine ? ` Not the flight of ${this.day}.` : ''}</p>
       <p class="cockpit-why">${v.why.join(' ')}</p>
       ${this.impactSummary()}
       ${v.against ? `<p class="cockpit-why">${v.against}</p>` : ''}
-      <p class="cockpit-why">${this.flight.callsign} as recorded: ${landings}.</p>
+      ${landings ? `<p class="cockpit-why">${this.flight.callsign} as recorded: ${landings}.</p>` : ''}
       ${
         rows
           ? `<table class="dated">

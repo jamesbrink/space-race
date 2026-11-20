@@ -14,7 +14,8 @@ const file = (model, level = '') => new URL('../public/' + model.url.replace('.g
 test('Apollo 11 opens the two Gallery exhibits and uses the launch couch assignments', () => {
   assert.equal(lacks(flight, 'gallery'), null);
   assert.equal(lacks(flight, 'site'), null);
-  assert.ok(lacks(flight, 'fly'));
+  // (flown from the pad through the translunar injection: missions/usa/apollo/vehicles/saturn-v-plan.ts)
+  assert.equal(lacks(flight, 'fly'), null);
   assert.deepEqual(
     stack.seats.map((s) => s.label),
     ['Armstrong’s left couch', 'Aldrin’s centre couch', 'Collins’s right couch'],
