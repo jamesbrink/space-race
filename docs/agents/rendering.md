@@ -293,8 +293,9 @@ rules are the screen's, the same for every path, never tuned to a flight:
   frame's worth of the rate asked for, never by the wall's clock; the deck flies in whole ticks, so the flight there
   is the same however it got there); every view is taken up from the far one, so what was looked at before does not
   carry into it (a rig takes up a view near it as it stands); what is drawn is measured with the stage frozen
-  (`Stage.frozen`: the vehicle drawn where the flight is, nothing kept of an earlier frame, the sky drawn but its stars
-  held back, since a pixel-wide point moves from pixel to pixel at a nudge of the camera) once the prediction on
+  (`Stage.frozen`: the vehicle drawn where the flight is, nothing kept of an earlier frame, the camera where it is going
+  at once as with motion off, the sky drawn but its stars held back, since a pixel-wide point moves from pixel to pixel
+  at a nudge of the camera) once the prediction on
   show is the one for that instant, its ease over and the line sampled for the camera as it stands; and the line's
   motion as the clock runs is measured on a page clock that gives every frame a sixtieth of a second
   (`performance.now` and the frames' times, switched on round the measure), so a loaded machine sees the frames a fast

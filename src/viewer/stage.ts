@@ -2380,8 +2380,13 @@ export class Stage {
       this.attend();
     } else {
       if (!this.cam.ownsLens && this.walk.lens(dt)) this.dirty = true; // after a walk the lens closes again over half a second
-      // the camera: the rig in charge moves, and says where the view is from (the near plane is fitted after, fitDepth)
+      // the camera: the rig in charge moves, and says where the view is from (the near plane is fitted after, fitDepth); on a
+      // frozen stage at once, as if motion were off (`Cameras.calm`), so a still scene is drawn the same twice: the aim
+      // eased under a panel that had changed size went on turning the view for seconds after it was frozen (path test, "pad")
+      const calm = this.cam.calm;
+      if (this.frozen && !calm) this.cam.calm = true;
       this.cam.update(dt);
+      if (this.frozen && !calm) this.cam.calm = false;
       this.camStepped += dt;
       this.shadows.steerFocus(dt);
       this.onFoot.emerge();
