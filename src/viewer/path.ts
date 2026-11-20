@@ -1983,8 +1983,10 @@ export class FlightPath {
       end.over = was.over + (end.over - was.over) * mix;
     }
     // On the map an orbit is drawn whole: on past the curve's end along the stretch of it already flown, a revolution
-    // later, back to the vehicle (`round`: the curve's span, s). It does not stop short of the vehicle, nor go out.
-    const round = this.mapped && shown.frame === 'orbit' && shown.result.outcome === 'orbit' && this.shift === 0 && now > t0 ? t1 - t0 : 0;
+    // later, back to the vehicle (`round`: the curve's span, s). It does not stop short of the vehicle, nor go out. (The
+    // vehicle drawn at the curve's very start too, as it is under thrust, where every prediction is made from the instant
+    // on show: then the curve is the revolution, and nothing of it is gone round again.)
+    const round = this.mapped && shown.frame === 'orbit' && shown.result.outcome === 'orbit' && this.shift === 0 ? t1 - t0 : 0;
     if (round) {
       end.to = now + round;
       end.over = 0;
