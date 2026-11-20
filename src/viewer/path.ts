@@ -862,7 +862,7 @@ export class FlightPath {
   private now = 0;
   private shift = 0;
   private sampledFor = '';
-  private readonly keyNow = new Float64Array(20).fill(Number.NaN);
+  private readonly keyNow = new Float64Array(21).fill(Number.NaN);
   private readonly markAt = new Float64Array(3);
   private marks: Mark[] = [];
   /** On the map: the vehicle's own marker, and with `others` each other body's (laid out with the path's, never a chip). */
@@ -1998,6 +1998,9 @@ export class FlightPath {
     put(17, this.vessel.z);
     put(18, flown?.n ?? 0);
     put(19, flown ? flown.t[flown.n - 1]! : 0);
+    // (and whether the line flown is drawn, which is sampled only then: its strength is set as the frame is drawn, after
+    // this, so the eye gone out in one frame from where it is not drawn left it unsampled with nothing else to move, issue #179)
+    put(20, this.flownAsAhead || this.drawn.flownOpacity > 0 ? 1 : 0);
     // the markers where the line has them now
     const a = this.markAt;
     const from = this.at3;
@@ -2488,6 +2491,7 @@ export class FlightPath {
     const key = this.keyNow;
     const values = [eye.x, eye.y, eye.z, e.x, e.y, e.z, e.w, m[0]!, m[5]!, m[8]!, m[9]!, camera.near, this.lineSize.y, now, 1];
     values.push(this.vessel.x, this.vessel.y, this.vessel.z, flown?.n ?? 0, flown ? flown.t[flown.n - 1]! : 0);
+    values.push(this.flownAsAhead || this.drawn.flownOpacity > 0 ? 1 : 0);
     let same = this.sampledFor === 'bare';
     for (let i = 0; i < values.length; i++) {
       if (key[i] !== values[i]) same = false;
