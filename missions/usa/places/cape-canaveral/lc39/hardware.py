@@ -4,6 +4,7 @@ from math import cos, pi, sin
 
 from mathutils import Matrix
 
+from lc39.night_launch import vent_disconnect, xenon_banks  # noqa: E402
 from sitelib import P, Parts, beam, box, fine, handrail, hull, lattice, obox, plate, stair_rails, stairs, truss, use  # noqa: E402
 from srlib import FT, material  # noqa: E402
 
@@ -497,10 +498,18 @@ def intertank_carrier(parts):
             beam(parts(parent, "deck/pipe_support"), (x + 0.12, y, z + 0.48), (x + 0.12, y, z + 2.11), 0.19)
 
 
-def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_valve=False, ecs_room=False, level200_purge=False):
+def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_valve=False, ecs_room=False, level200_purge=False, night_launch=False):
     use(FT)
     parts = Parts(
         {
+            **(
+                {
+                    "xenon": material("lamp-flood-xenon", (0.91, 0.94, 1.0), 0.02, 0.13),
+                    "mirror": material("chrome-reflector", (0.88, 0.89, 0.9), 0.95, 0.13),
+                }
+                if night_launch
+                else {}
+            ),
             "concrete": material("concrete-hardstand", (0.55, 0.53, 0.49), 0, 0.91),
             "earth": material("earth-sand", (0.4, 0.35, 0.27), 0, 0.95),
             "brick": material("ceramic-flame-chute", (0.36, 0.28, 0.23), 0.05, 0.89),
@@ -529,5 +538,8 @@ def build(pad, *, detailed=False, arm2_quench=False, intertank_lox=False, rp1_va
         quench_valve(parts)
     if intertank_lox:
         intertank_carrier(parts)
+    if night_launch:
+        xenon_banks(parts)
+        vent_disconnect(parts)
     parts.build()
     return "Mobile launcher: 160 by 135 ft base, 445 ft to crane on pad pedestals"
