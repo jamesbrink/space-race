@@ -11,7 +11,8 @@ const file = (model, level) => new URL('../public/' + model.url.replace('.glb', 
 test('Apollo 12 offers the two Gallery exhibits, three couches and two standing stations', () => {
   assert.equal(lacks(flight, 'gallery'), null);
   assert.equal(lacks(flight, 'site'), null);
-  assert.ok(lacks(flight, 'fly'));
+  // (flown from the pad through the translunar injection: missions/usa/apollo/vehicles/saturn-v-plan.ts)
+  assert.equal(lacks(flight, 'fly'), null);
   assert.deepEqual(
     flight.models.map((m) => m.id),
     ['vehicle', 'intrepid', 'pad', 'crew', 'pilot', 'lmp'],

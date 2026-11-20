@@ -97,7 +97,7 @@ interface Countdown {
   intertankLatch?: number;
   firstMotion?: number;
   terminalConfidence?: 'assumed' | 'documented';
-  holdDowns?: 'as-506' | 'as-507' | 'as-508' | 'as-509' | 'as-510' | 'as-511' | 'as-512';
+  holdDowns?: 'as-503' | 'as-505' | 'as-506' | 'as-507' | 'as-508' | 'as-509' | 'as-510' | 'as-511' | 'as-512';
 }
 
 const cover508 =
@@ -116,6 +116,18 @@ const installations: Record<NonNullable<Countdown['holdDowns']> | 'common', Inst
   common: {
     tail: 'Two stood west of the engine opening and one to the east. Their steel supports and umbilical housings are simplified.',
     hold: 'Each holds a fitting at the foot of the first stage until release. Their geometry is reconstructed.',
+  },
+  // (AS-503 stood on ML-1 at Pad A, as AS-506 did seven months later: the July 1969 build is taken for December 1968)
+  'as-503': {
+    pad: 'a-1969-07',
+    tail: 'At liftoff the umbilical carriers drew back and the masts swung upright. From plate separation to retraction mast 1-2 took 2.62 s, mast 3-2 2.77 s and mast 3-4 2.54 s. Their individual breakaway instants are not recorded.',
+    hold: 'All four released at T+0.27 s, pneumatically. No. 2 dropped slowly enough that its backup explosive nut link fired, with no effect on the release. The linkage and hood travel are reconstructed.',
+    mastStrokes: { '1_2': 2.62, '3_2': 2.77, '3_4': 2.54 },
+  },
+  'as-505': {
+    pad: 'b-1969-05',
+    tail: 'At liftoff the umbilical carriers drew back and the masts swung upright. Retraction was normal and all the protective hoods closed properly. The individual transit times are estimated.',
+    hold: 'All four released pneumatically at T+0.25 s. The linkage and hood travel are reconstructed.',
   },
   'as-506': {
     pad: 'a-1969-07',
@@ -206,10 +218,12 @@ export function mobileLauncher(
   const as510 = holdDowns === 'as-510';
   const as511 = holdDowns === 'as-511';
   const as512 = holdDowns === 'as-512';
-  const laterLauncher = holdDowns !== undefined && holdDowns !== 'as-506';
+  // (the two launchers dated before Apollo 11's: their sources are the SA-504 manual's and their own evaluations')
+  const earlier = holdDowns === 'as-503' || holdDowns === 'as-505';
+  const laterLauncher = holdDowns !== undefined && holdDowns !== 'as-506' && !earlier;
   const manualSerial = as510 || as511 || as512 ? '510' : as508 ? '508' : '507';
   const manual = laterLauncher ? `Saturn V Flight Manual SA-${manualSerial}, section VIII, figure 8-8.` : MANUAL;
-  const evaluation = `AS-${holdDowns?.slice(3) ?? '506'} Flight Evaluation Report, §${as511 || as512 ? '3.5.1' : '3.6.1'}.`;
+  const evaluation = `AS-${holdDowns?.slice(3) ?? '506'} Flight Evaluation Report, §${as511 || as512 ? '3.5.1' : holdDowns === 'as-503' ? '3.6' : '3.6.1'}.`;
   const armSchedule = `SA-${manualSerial} Flight Manual, figure 8-20. Nominal end of the retract-and-lock interval.`;
   const configuration = installations[holdDowns ?? 'common'];
   // Layout along the common countdown slider. Inflight sweeps share its final nine seconds.
@@ -358,14 +372,18 @@ export function mobileLauncher(
     confidence: laterLauncher ? 'documented' : 'assumed',
     source: laterLauncher
       ? `SA-${manualSerial} Flight Manual, §VIII, p. 8-8. Hydraulic carrier and mast operation. ${evaluation}`
-      : 'SA-504 Flight Manual, §VIII, p. 8-8: hydraulic carrier and mast operation assumed for ML-1. AS-506 evaluation §3.6.1 records normal retraction.',
+      : earlier
+        ? `SA-504 Flight Manual, §VIII, p. 8-8: hydraulic carrier and mast operation assumed for ML-${number}. ${evaluation} Normal retraction recorded.`
+        : 'SA-504 Flight Manual, §VIII, p. 8-8: hydraulic carrier and mast operation assumed for ML-1. AS-506 evaluation §3.6.1 records normal retraction.',
   };
   const hoodClosure: Machine = {
     kind: 'door',
     confidence: 'estimated',
     source: laterLauncher
       ? `SA-${manualSerial} Flight Manual, §VIII, figure 8-7. Hood motion and sound estimated for ML-${number}.`
-      : 'AS-506 Flight Evaluation Report, §§3.6.1 and 3.6.3. The protective hoods swing shut. Closure sound approximated.',
+      : earlier
+        ? `SA-504 Flight Manual, §VIII, figure 8-7. ${evaluation} The protective hoods swing shut. Hood motion and sound estimated for ML-${number}.`
+        : 'AS-506 Flight Evaluation Report, §§3.6.1 and 3.6.3. The protective hoods swing shut. Closure sound approximated.',
   };
   const release = hinges.flatMap((axis, index): Move[] => {
     const arm = index + 1;
@@ -379,7 +397,8 @@ export function mobileLauncher(
         from: firstMotion,
         to: firstMotion + 0.5,
       },
-      ...(arm === 1 && !laterLauncher
+      // (on Apollo 11 film showed No. 1's hood stay open)
+      ...(arm === 1 && holdDowns === 'as-506'
         ? []
         : [
             {

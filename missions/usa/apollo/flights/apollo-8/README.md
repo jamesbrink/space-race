@@ -27,3 +27,27 @@ This flight opens in the Gallery and appears to scale in the Lineup. Its seats, 
 At [Pad 39A](../../../places/cape-canaveral/lc-39.md), select the white room to see the access arm at the command module. The mobile launcher is ML-1. At liftoff the computed Sun was at azimuth 121.4° and elevation 6.8°. The Moon was below the horizon at azimuth 110.8° and elevation −17.5°. A cold front had passed the afternoon before. At range zero Kennedy reported four tenths cirrus of unknown height and 16 km visibility. The northwest pad pole measured 5.1 m/s from the north. The cirrus is drawn at an estimated 9,000 m; ERA5 supplies the surrounding hours and the air aloft. [AS-503 flight evaluation, appendix A and table A-1](https://www.ibiblio.org/apollo/Documents/lvfea-AS503-Apollo8.pdf) · [Weather inputs](weather.ts)
 
 The site opens at the start of that boarding window. At T−56 min 23 s, launch control reported the white room moving into its 12° standby position. [NASA launch-day commentary](https://www.nasa.gov/wp-content/uploads/2026/01/as08-pao.pdf)
+
+## Fly
+
+Fly takes the flight deck at the pad: SA-503 under your hands from ignition through the translunar injection. On entry
+guidance (G) and the sequencer (B) are off and Hold is on: you light the five F-1s, steer on the outboard engines' gimbals
+(Hold keeping the attitude your keys leave), cut the centre and the four, let the S-IC go, light the S-II, drop its aft
+interstage and the escape tower, cut the S-II's five J-2s together (AS-503's centre engine was not cut early) and stage again, light the S-IVB into the parking orbit, and light it once more for
+the injection. Each act does what the hardware would: a stage let go under thrust stays pressed on, an engine lit into a
+closed interstage breaks the stack up, the J-2 cannot be lit again while it burns, and the stack in orbit turns only as
+fast as the S-IVB's small attitude jets allow. With G and B on, the record's ascent (its S-IC programme, its guidance's
+closed loop, its events at their times) makes the parking orbit and the injection. The run, and how it compares with the
+record, is in [mission.md](mission.md), from MSFC's flight evaluation of SA-503 (MPR-SAT-FE-69-1).
+
+The flight ends with the injection: the stack, whole, LTA-B still in the adapter, coasts on toward the Moon, which pulls on it. What came
+next is not flown.
+
+## What is not flown or is simplified
+
+- Nothing after the S-IVB's second cutoff: the command and service modules' separation, the S-IVB with LTA-B sent past the Moon into orbit about the Sun, the lunar orbit and the return. The stack coasts on whole.
+- The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV (press kit 68-208, pp. 12 and 27).
+- The S-IC holds the record on this flight's own pitch programme, but the S-II falls short of the record's speed and
+  height and the S-IVB makes up the difference, cutting 11 to 15 seconds late (mission.md, `MISSES`); the iterative
+  guidance is a linear tangent in each of its two burns; the engines' starts and cutoff transients, the tower clearance
+  yaw, the S-IVB's boil-off in orbit and the J-2's cutoff impulse at the injection are not flown.

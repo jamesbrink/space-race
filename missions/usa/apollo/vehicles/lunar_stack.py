@@ -32,19 +32,8 @@ def bearing_lugs(stage, serial):
         lug.build(f"SIC{serial}_BearingLug_{i + 1}", paint, root, smooth=False)
 
 
-def build(serial, csm, lm, adapter):
-    saturn_v.build(
-        lunar_module=partial(lunar_module.build, spacecraft=lm),
-        adapter_number=adapter,
-        aps_serial=serial if serial >= 511 else None,
-        impact_radio=serial if serial in (508, 509, 510, 511, 512) else None,
-    )
-    if serial in (507, 508, 509, 510, 511, 512):
-        saturn_v.sii_external_equipment(serial - 500, ullage=serial < 510)
-    if serial in (509, 510, 511, 512):
-        saturn_v.pogo_accumulator(serial - 500)
-    if serial in (510, 511, 512):
-        saturn_v.sic_retrorockets(serial - 500)
+def index_on_launcher(serial):
+    """The stack as it stood on its mobile launcher: its bearing lugs at positions I to IV, the first stage indexed over them."""
     # MSFC-MAN-504 fig. 8-7 as seen on ML-1: north toward the tower, engine 1 northeast.
     # Index the complete first stage together so its engine fairings stay over the outboard bells.
     bearing_lugs(bpy.data.objects["SaturnFirstStage"], serial)
@@ -59,6 +48,22 @@ def build(serial, csm, lm, adapter):
         "SecondStageTankStructure",
     ):
         bpy.data.objects[part].rotation_euler.z = math.radians(-45)
+
+
+def build(serial, csm, lm, adapter):
+    saturn_v.build(
+        lunar_module=partial(lunar_module.build, spacecraft=lm),
+        adapter_number=adapter,
+        aps_serial=serial if serial >= 511 else None,
+        impact_radio=serial if serial in (508, 509, 510, 511, 512) else None,
+    )
+    if serial in (507, 508, 509, 510, 511, 512):
+        saturn_v.sii_external_equipment(serial - 500, ullage=serial < 510)
+    if serial in (509, 510, 511, 512):
+        saturn_v.pogo_accumulator(serial - 500)
+    if serial in (510, 511, 512):
+        saturn_v.sic_retrorockets(serial - 500)
+    index_on_launcher(serial)
     lunar_module.check_stowed_gear()
     apollo_csm.build(saturn_v.CSM_OFFSET, spacecraft=csm)
     launch_escape.build(saturn_v.CSM_OFFSET, saturn_v.HEIGHT, boardable=True)

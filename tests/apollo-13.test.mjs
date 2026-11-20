@@ -35,7 +35,7 @@ test('Apollo 13 opens at Pad A on ML-3 and dates the crew and closeout operation
   const earlier = apollo10.models.find((model) => model.id === 'pad');
   assert.equal(pad.name, 'Mobile launcher 3');
   assert.equal(earlier.name, pad.name);
-  assert.match(earlier.url, /pad-b\.glb$/);
+  assert.match(earlier.url, /pad-b-1969-05\.glb$/);
   assert.equal(
     earlier.parts.some((part) => part.node === 'Substation'),
     false,

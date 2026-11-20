@@ -28,9 +28,12 @@ test('a fire without a nozzle record uses the neutral display fallback', () => {
 const FALLBACK = {
   'usa/apollo/apollo-7': ['h1-inboard', 'h1-outboard', 'sivb-j2', 'sps'],
   // (the F-1's and the J-2's chamber pressures and expansions are not yet in a Saturn V record)
+  'usa/apollo/apollo-8': ['f1-centre', 'f1-outboard', 'j2-centre', 'j2-outboard', 'sivb-j2', 'sivb-tli'],
+  'usa/apollo/apollo-10': ['f1-centre', 'f1-outboard', 'j2-centre', 'j2-outboard', 'sivb-j2', 'sivb-tli'],
   'usa/apollo/apollo-11': ['f1-centre', 'f1-outboard', 'j2-centre', 'j2-outboard', 'sivb-j2', 'sivb-tli'],
   'usa/apollo/apollo-13': ['f1-centre', 'f1-outboard', 'j2-centre', 'j2-outboard', 'sivb-j2', 'sivb-tli'],
   'usa/apollo/apollo-14': ['f1-centre', 'f1-outboard', 'j2-centre', 'j2-outboard', 'sivb-j2', 'sivb-tli'],
+  'usa/apollo/apollo-12': ['f1-centre', 'f1-outboard', 'j2-centre', 'j2-outboard', 'sivb-j2', 'sivb-tli'],
   'usa/gemini/gt-3': ['forward-thrusters', 'aft-thrusters'],
   'usa/gemini/gt-4': ['forward-thrusters', 'aft-thrusters'],
   'usa/gemini/gt-5': ['aft-thrusters'],

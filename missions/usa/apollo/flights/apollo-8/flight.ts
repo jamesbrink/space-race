@@ -5,12 +5,16 @@ import { lc39Crew } from '../../crew/lc39.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { CSM103_THRUST, SA503_THRUST } from '../../vehicles/propulsion.ts';
+import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
+import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
+import { orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const IN = 0.0254;
 const FT = 12 * IN;
 const kit = 'NASA Apollo 8 press kit 68-208, ';
 const record = 'NASA SP-4029, Apollo 8 mission summary';
+const PLAN = saturnVPlan(orbital);
 const cabin = blockIICabin(3871); // SA-503 forward SLA station above the F-1 exits (3709 in) + XA1000 − XA838.
 
 // Selected-part cards keep the drawing units. The Specs tab converts their dimensional figures to SI.
@@ -440,6 +444,8 @@ export const flight: Flight = {
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   site: LC39A,
   weather: WEATHER,
+  plan: { ...PLAN, aloft: WEATHER.aloft },
+  flies: saturnVFlies(PLAN),
   crew: ['Frank Borman', 'James A. Lovell Jr.', 'William A. Anders'],
   summary:
     'The first people to orbit the Moon flew there in a command and service module. Inside the adapter beneath them rode an instrumented steel cylinder. They circled the Moon ten times before turning for home.',
@@ -685,6 +691,8 @@ export const flight: Flight = {
       parts: boardingHatches(parts, boarding),
     },
     mobileLauncher(1, {
+      holdDowns: 'as-503',
+      firstMotion: 0.33,
       ingress: boarding[0],
       parkedBy: -3383,
       pao: 'Apollo 8 launch-day PAO commentary, crew insertion and prelaunch countdown.',

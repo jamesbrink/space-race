@@ -10,6 +10,7 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { thirdOf } from '../src/sim/core/gravity.ts';
 import { ballisticOf, fly } from '../src/sim/fly.ts';
 import { heightsBall, trackedState } from '../src/sim/orbital.ts';
 import { turn } from '../src/sim/rigid.ts';
@@ -39,8 +40,10 @@ const gravity = (r) => scale(r, -GM / length(r) ** 3);
  * the mean of the two places), against what the samples say was pushing (the load an accelerometer reads, the greater of
  * the pair and their neighbours, half as much again, and 0.3 m/s^2 for J2 and the air between samples), and the change in
  * place less the mean velocity's. Two samples at one instant are an impulse: their velocities' step is returned apart.
+ * `third`: the pull of the bodies the plan names besides the Earth (core/gravity.ts `thirdOf`: the Moon on a flight bound
+ * for it), taken as gravity too.
  */
-function unexplained(samples) {
+function unexplained(samples, third = null) {
   let worst = { dv: 0, dr: 0, at: 0 };
   const steps = [];
   for (let i = 1; i < samples.length; i++) {
@@ -52,7 +55,9 @@ function unexplained(samples) {
     }
     const g = Math.max(a.g, b.g, samples[i - 2]?.g ?? 0, samples[i + 1]?.g ?? 0);
     const allowed = 1.5 * g * G0 + 0.3;
-    const free = scale(add(gravity(a.r), gravity(b.r)), dt / 2);
+    const free = third
+      ? scale(add(add(gravity(a.r), third(a.r, a.t)), add(gravity(b.r), third(b.r, b.t))), dt / 2)
+      : scale(add(gravity(a.r), gravity(b.r)), dt / 2);
     const dv = (length(sub(sub(b.v, a.v), free)) - 0.02) / (allowed * dt);
     const dr = length(sub(sub(b.r, a.r), scale(add(a.v, b.v), dt / 2))) / ((allowed + 10) * dt * dt + 0.5);
     if (dv > worst.dv) worst = { ...worst, dv, at: b.t };
@@ -108,8 +113,8 @@ for (const f of part(orbital)) {
   test(`${f.designation}: one state from the pad to the ground, changed only by gravity and what the run says pushes it`, () => {
     whole = orbitalFlown(f);
     const push = pushOf(plan);
-    const ascent = unexplained(whole.ascent.samples);
-    const coast = unexplained(whole.coast.samples);
+    const ascent = unexplained(whole.ascent.samples, thirdOf(plan.gravity, frame));
+    const coast = unexplained(whole.coast.samples, thirdOf(plan.gravity, frame));
     console.log(
       `  #   ${f.id}: the most unexplained, as a share of what the samples allow: ascent ${ascent.worst.dv.toFixed(3)} in velocity (T+${ascent.worst.at.toFixed(1)}), ${ascent.worst.dr.toFixed(3)} in place; coast ${coast.worst.dv.toFixed(3)}, ${coast.worst.dr.toFixed(3)}; ${whole.ascent.samples.length} and ${whole.coast.samples.length} samples`,
     );

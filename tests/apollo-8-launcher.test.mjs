@@ -25,13 +25,16 @@ for (const suffix of ['', '.lod1', '.lod2']) {
     const adapter = frames.box('SpacecraftAdapter');
     const ballast = frames.box('LunarTestArticle');
 
+    // (the first stage and its engines stand indexed on the launcher, turned about the axis: lunar_stack.py
+    // `index_on_launcher`; their spans are measured in their own frames)
+    const fins = frames.box('SaturnFirstStage', 'SaturnFirstStage');
     for (const axis of [0, 2]) {
-      close(first.hi[axis] - first.lo[axis], spec('S-IC fin span'), 'opposed fins');
+      close(fins.hi[axis] - fins.lo[axis], spec('S-IC fin span'), 'opposed fins');
       close(taper.hi[axis] - taper.lo[axis], spec('S-IC body diameter'), 'wide end of taper');
       close(ring.hi[axis] - ring.lo[axis], spec('S-IVB body diameter'), 'instrument ring');
     }
     for (let engine = 1; engine <= 5; engine++) {
-      const bell = frames.box(`F1_Mount_${engine}`);
+      const bell = frames.box(`F1_Mount_${engine}`, `F1_Mount_${engine}`);
       for (const axis of [0, 2]) close(bell.hi[axis] - bell.lo[axis], spec('F-1 maximum nozzle exit diameter'), 'F-1 mouth');
     }
     // The outboard engines stand out on the thrust posts and every engine reaches up to the foot of the

@@ -830,8 +830,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   (`Guidance.lost`: the tilt in the launch plane against time, in place of the law). The failures are the hardware's, not the sequence's: flown by hand with the guidance and the sequencer off, GATV-5002's engine still shuts down 0.91 s after whoever lights it (plan.ts `EngineDef.fails`), and GATV-5004's stack turns as the record has it until control was regained at 150 s whatever the hands do (`Guidance.lost.until`; sim/stagedlive.ts `stagedPilot`; tests/target-failures.test.mjs). What the records do not give is said
   in each flight's orbital.ts and README, not flown: 5002's breakup and pieces, 5004's turn to the north.
 - **A Saturn V leaves its orbit for the Moon** (missions/usa/apollo/vehicles/saturn-v-plan.ts, written from each flight's
-  record, `SaturnVRecord`). Its ascent is a stated law as every flight's: the S-IC's tilt programme flown open (Apollo 11's
-  read off its flight evaluation's Fig. 10-4), then the linear tangent from the instant the iterative guidance began,
+  record, `SaturnVRecord`). Its ascent is a stated law as every flight's: the S-IC's tilt programme flown open (each flight's
+  read off a figure of its own flight evaluation), then the linear tangent from the instant the iterative guidance began,
   solved for the parking orbit's cutoff, which is the law's target stage and not the last (staged.ts `targetStageOf`,
   `Guidance.target.at`). The S-IVB is lit again in orbit as a stage of its own on the tank its first burn drew on
   (`EngineDef.again`: one J-2, which sim/craft.ts will not light while it burns), so what it burns is worked from its own
