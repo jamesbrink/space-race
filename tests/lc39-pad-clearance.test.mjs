@@ -141,10 +141,11 @@ for (const [flight, serial, firstMotion] of flights) {
         assert.ok(visor.to >= carrier.to && visor.to - carrier.from <= 4, mast);
       }
     }
-    // AS-509/510 §3.6.1 and AS-511 §3.5.1 time each mast from plate separation to full retraction.
+    // AS-509/510 §3.6.1 and AS-511/512 §3.5.1 time each mast from plate separation to full retraction.
     const mastStrokes = {
       509: { '1_2': 2.168, '3_2': 2.496, '3_4': 2.131 },
       510: { '1_2': 2.307, '3_2': 2.151, '3_4': 2.688 },
+      512: { '1_2': 2.76, '3_2': 1.98, '3_4': 2.685 },
       511: { '1_2': 2.649, '3_2': 2.292, '3_4': 2.505 },
     }[serial];
     if (mastStrokes) {
