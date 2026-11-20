@@ -11,6 +11,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { geminiTitanPlan } from '../missions/usa/gemini/vehicles/gemini-titan-plan.ts';
 import { targetPlan } from '../missions/usa/gemini/vehicles/target-plan.ts';
 import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
+import { soyuzPlan } from '../missions/ussr/soyuz/vehicles/soyuz-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import { downOf } from '../src/sim/descent.ts';
 import { apparentBy, guided, spacecraft } from '../src/sim/fliers.ts';
@@ -775,6 +776,38 @@ const UNDOCUMENTED = {
     'stages.2.mass',
     'stages.2.start',
   ],
+  // Soyuz 3's: the 11A511's own masses and engines (documented, its type's table) but the empty blocks (derived) and Block I
+  // without its aft section (derived); the R-7's drag, law, limits, steering and throttles (estimated, the 8K72K's); the escape
+  // tower's instant (the type's interval, assumed) and the head block's split between the tower and the fairing (estimated);
+  // the last escape mode's end (derived from the separation)
+  'ussr/soyuz/soyuz-3': [
+    'ascent.aborts.3.until',
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    'ascent.drops.0.at',
+    'ascent.drops.0.mass',
+    'ascent.drops.1.mass',
+    'ascent.drops.1.q',
+    'ascent.drops.2.mass',
+    'ascent.guidance.kick',
+    'ascent.guidance.target.climb',
+    'ascent.guidance.vertical',
+    'ascent.limits.axial',
+    'ascent.limits.qAlpha',
+    'ascent.steering.authority',
+    'stages.0.dry',
+    'stages.0.ignition',
+    'stages.0.throttle',
+    'stages.1.dry',
+    'stages.1.ignition',
+    'stages.1.throttle',
+    'stages.2.dry',
+    'stages.2.hot',
+    'stages.2.mass',
+    'stages.2.start',
+  ],
   // Voskhod 2's: Voskhod 1's but its instants, which are the crew's (documented), and the airlock's jettison (estimated)
   'ussr/voskhod/voskhod-2': [
     'ascent.drag.0.area',
@@ -1105,7 +1138,8 @@ for (const f of part(flown)) {
       );
   });
 
-  if (f.id.startsWith('ussr/'))
+  // (a ball that rights itself in the air: a Vostok's or a Voskhod's; a Soyuz's descent module flies on its own lift)
+  if (plan.craft[0].bodies.some((b) => b.aero?.passiveSphere))
     test(`${f.designation}: the sphere keeps its inertial pose when the attitude jets leave`, () => {
       const ship = shipOf(shown.plan ?? f.plan),
         samples = recordSamples(shown.plan ?? f.plan, shown, where(f)[1], 0, () => [1e11, 0, 0]);
@@ -1188,7 +1222,8 @@ for (const f of part(flown)) {
       change(copy);
       let s;
       try {
-        const plan = vostokPlan(copy);
+        // (a Soyuz's record is an R-7 flight's with its ship's own: soyuz-plan.ts)
+        const plan = 'modules' in copy ? soyuzPlan(copy) : vostokPlan(copy);
         s = ascend(plan, site, dated, sea, steer(plan, site, dated, sea)).summary;
       } catch (e) {
         console.log(`  #   ${label.padEnd(58)} ${e.message}`);

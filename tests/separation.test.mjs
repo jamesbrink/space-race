@@ -22,13 +22,15 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
     const carrier = flight.plan.craft[0].joints.some((j) => j.id === 'target-separation');
     const ids = carrier
       ? ['booster-latch', 'target-separation']
-      : flight.id.startsWith('ussr/')
-        ? ['stage:1', 'modules']
-        : flight.id.includes('/gemini/')
-          ? ['staging-nuts', 'equipment-section-release', 'retro-section-release']
-          : flight.id === 'usa/apollo/apollo-7'
-            ? ['sib-separation', 'les-jettison', 'cm-sm-separation', 'forward-shield-jettison']
-            : ['booster-latch', 'retropack-straps'];
+      : flight.id.includes('/soyuz/')
+        ? ['stage:1', 'escape-tower', 'modules', 'orbital-module']
+        : flight.id.startsWith('ussr/')
+          ? ['stage:1', 'modules']
+          : flight.id.includes('/gemini/')
+            ? ['staging-nuts', 'equipment-section-release', 'retro-section-release']
+            : flight.id === 'usa/apollo/apollo-7'
+              ? ['sib-separation', 'les-jettison', 'cm-sm-separation', 'forward-shield-jettison']
+              : ['booster-latch', 'retropack-straps'];
     for (const on of ids) {
       const body = run.sheds.get(on);
       const index = flight.flies.drops.findIndex((d) => d.on === on);
@@ -90,7 +92,7 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
       assert.ok(pack.shedder.def.push.value > 0, 'the coil spring drives the pack off once the straps part');
     });
   }
-  if (flight.id.includes('/voskhod/')) {
+  if (flight.plan.craft[0].bodies.some((b) => b.id === 'aft-section')) {
     test(`${flight.designation}: the aft skirt releases three sectors around the engine`, () => {
       const run = orbitalRecord(flight);
       const pieces = ['1', '2', '3'].map((id) => run.sheds.get(`aft-section/${id}`));

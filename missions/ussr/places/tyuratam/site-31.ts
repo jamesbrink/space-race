@@ -1,5 +1,6 @@
 import type { ModelDef, Part, SiteDef } from '../../../../src/types.ts';
 import { TYURATAM } from './place.ts';
+import { launchSystemFalls } from './site-1.parts.ts';
 import { soyuzPad, soyuzTower } from './soyuz-pad.ts';
 
 const map = 'OpenStreetMap way 392622243, outline of Pad 31/6. The rocket axis is estimated from the centre of the deck.';
@@ -65,12 +66,16 @@ export const site31Pad: ModelDef = {
       'The train came level with the concrete deck at the edge of the excavation.',
       'A circular opening lets the tail hang below the deck. The outline follows the mapped platform; the supports and the shape of the earth cut are estimated.',
     ),
-    hardware(
-      'LaunchRing',
-      'Four support trusses',
-      'The four green trusses cradle the rocket above the opening.',
-      'The reconstructed R-7 family support assembly is shared with Site 1. Site 31’s individual fittings and orientation against the rocket are assumed.',
-    ),
+    {
+      ...hardware(
+        'LaunchRing',
+        'Four support trusses',
+        'The four green trusses cradle the rocket above the opening.',
+        'The reconstructed R-7 family support assembly is shared with Site 1. Site 31’s individual fittings and orientation against the rocket are assumed. As the rocket rises the four trusses fall back and the guides at its tail drop away, at Site 1’s times (places/tyuratam/site-1.parts.ts).',
+      ),
+      // the supports and guides falling back as the rocket rises, Site 1's: the same system, turned the same
+      clocked: launchSystemFalls(),
+    },
     soyuzTower('North', 'Site 31'),
     soyuzTower('South', 'Site 31'),
   ],

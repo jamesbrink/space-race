@@ -463,7 +463,13 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
       ...(o.supplies ? { supplies: o.supplies.days } : {}),
       ...(d ? { ground: d.ground, ...(d.torn ? { torn: d.torn } : {}), ...(d.automatic ? { automatic: d.automatic } : {}) } : {}),
       ...(o.manual
-        ? { manual: { code: o.manual.code, parting: o.manual.parting, ...(o.manual.periods ? { periods: o.manual.periods } : {}) } }
+        ? {
+            manual: {
+              ...(o.manual.code ? { code: o.manual.code } : {}),
+              parting: o.manual.parting,
+              ...(o.manual.periods ? { periods: o.manual.periods } : {}),
+            },
+          }
         : {}),
       ...(a?.aborts ? { aborts: a.aborts } : {}),
       ...(a?.centre ? { centre: a.centre } : {}),

@@ -196,6 +196,52 @@ for (const f of vostoks) {
   });
 }
 
+/** The Soyuz records (soyuz-record.ts: an R-7 flight's with its ship's `modules`, its main engine and its burns). */
+for (const f of vostoks.filter((x) => 'modules' in recordFrom(x))) {
+  const o = recordFrom(f);
+  const plan = f.plan;
+  const c = craftOf(plan);
+  test(`${f.id}: one main engine on one load makes every burn in orbit and the braking burn; three modules part; the descent module lifts`, () => {
+    const k = coastEvents(plan);
+    assert.equal(k.burn.body, 'instrument');
+    assert.equal(k.burn.tanks.length, 1);
+    assert.equal(byId(c.tanks, k.burn.tanks[0]).load, o.engine.propellant);
+    assert.equal(k.burn.thrust.vacuum, o.engine.thrust);
+    assert.equal(k.burn.starts.count, o.engine.starts.count);
+    // each burn of the record: turned, lit with its own impulse, cut, on the same engine, before the braking burn
+    const moves = movesOf(plan);
+    assert.deepEqual(
+      moves.map((m) => [m.engine, m.on, m.off]),
+      o.burns.map((b) => [k.burn.id, b.on.value, b.off.value]),
+    );
+    for (const b of o.burns) {
+      const lit = eventOf(plan, b.id);
+      assert.equal(lit.do.find((a) => 'ignite' in a).flown, b.deltaV);
+      assert.ok(b.off.value < o.retro.on.value);
+    }
+    // the orbital and the instrument modules go together, the descent module left at the record's mass
+    assert.deepEqual(
+      k.parting.do.flatMap((a) => ('separate' in a ? [a.separate] : [])),
+      ['orbital-module', 'modules'],
+    );
+    assert.equal(byId(c.bodies, 'orbital-module').mass, o.modules.orbital);
+    assert.equal(byId(c.bodies, 'instrument').mass, o.modules.instrument);
+    assert.ok(
+      Math.abs(o.modules.orbital.value + o.modules.instrument.value + o.entry.mass.value - o.mass.value) < 1e-6,
+      'the three modules are the ship',
+    );
+    // its lift at its trim, held from the bank's instant
+    const module = c.bodies.find((b) => b.aero);
+    assert.equal(module.aero.lift, o.entry.lift);
+    assert.equal(module.aero.passiveSphere, undefined);
+    const bank = eventOf(plan, 'entry-bank');
+    assert.equal(clockAt(plan, bank), o.entry.banked.value);
+    assert.equal(plan.attitude.find((a) => a.id === 'banked-attitude').hold.bank, o.entry.bank);
+    // the braking attitude stays the last aim, turned to at the record's instant
+    assert.equal(clockAt(plan, eventOf(plan, 'braking-attitude')), o.retro.turned.value);
+  });
+}
+
 for (const f of atlases) {
   const o = recordFrom(f);
   const plan = f.plan;

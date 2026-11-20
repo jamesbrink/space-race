@@ -149,7 +149,7 @@ export const BLOCK_I: Omit<Hardware, 'ignition'> = {
  * that), so the run cuts it on the state it has flown, when the orbit it is on has the record's period, and the record's
  * instant of the cutoff is a figure it is held to.
  */
-const BLOCK_I_CUT: NonNullable<StageRecord['orbit']> = {
+export const BLOCK_I_CUT: NonNullable<StageRecord['orbit']> = {
   confidence: 'assumed',
   source:
     'the R-7’s way, taken for the 11A57: the last stage shut down by the control system’s integrator on the velocity its flight task set ' +

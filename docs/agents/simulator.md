@@ -367,6 +367,15 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     the bank. Mercury's and the Vostoks' plans have neither, and fly what they flew before to the last bit. Given up
     (staged.ts `givenUp`, the hands free) the manoeuvres are too; a hand fires the record's next one along the long axis
     (`movedTo`, its impulse and length the record's; on the deck, Space before the coast's burn).
+  - A Soyuz's: missions/ussr/soyuz/vehicles/soyuz-plan.ts `soyuzPlan`, from its record (the flight's orbital.ts: a
+    `SoyuzRecord`, soyuz-record.ts, an R-7 flight's record with the ship's own). It is `vostokPlan` of the record in the R-7
+    flights' shape (the 11A511's stages, the sequence, the braking burn's chain, the descent's bodies), with the ship laid on
+    as data: the orbital module a body of its own, let go with the instrument and propulsion module as the modules part;
+    the main engine (`skd`) on the instrument module with a tank, so every burn in orbit (`burns`, flown as manoeuvres,
+    orbital.ts `movesOf`, each with its impulse) and then the braking burn draw on one load; and the descent module's lift at
+    its trim, held at the record's bank from its instant (`Hold.bank`). A rendezvous is flown as burns (the target is not in
+    the plan). tests/plan.test.mjs holds it to the record as a Vostok's and as a Soyuz's; tests that fly a changed record fly
+    `soyuzPlan` of it (`'modules' in record`).
   - A stage's body, engine, tank and joint are `stage:<i>` in a Vostok's plan; a descent parachute is `<body>/<name>`.
   - `BodyDef` and `TankDef` figures are one unit's; a body of `count` units is `count` times them, as the batch flies it (a dropped stage is `count * (mass - burned)`).
   - Several stages can draw on one tank (staged.ts `Stage.shares`, the tank on its own body, `holder`): it runs dry for all of

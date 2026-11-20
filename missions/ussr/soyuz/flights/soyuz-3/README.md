@@ -35,6 +35,29 @@ planned to meet Komarov. [Energia corporate history, pp. 157–195](https://test
   3 days, 22 hours, 50 minutes and 45 seconds.
   [Kamanin's diary, 30 October](https://militera.lib.ru/db/kamanin_np/68.html) · [Mishin's diary and other sources](../../../../../docs/sources.md#soyuz-3-gallery) · [Afanasyev and Vorontsov, *The First Soyuz Spacecraft*](https://epizodsspace.airbase.ru/bibl/mpk/mpk.pdf)
 
+## The flight as flown
+
+From [mission.md](mission.md). The ascent is flown on the 11A511's own figures (its table of masses, loads and engines)
+and Mishin's instants for this vehicle, Block I cut by the guidance where the orbit reached has the published one: at
+531.5 s where the record has its cutoff command at 527.67, with 51 kg of its 22.7 t left, level at 183.5 km. The
+rendezvous with Soyuz 2 is not flown: the approach's burns are flown as one along the motion, of the impulse that takes the
+insertion orbit to the size TASS gave after the approaches, and then the record's two firings of the main engine on the
+28th and 29th. The braking burn of 149 s and 95 m/s, tail first, is timed for the landing place, and the descent module flies
+its entry on its own lift held up: at most **3.0 g** (the type's "not more than 3 to 4"), the parachute system at 7 km,
+the soft-landing engines at a metre, on the ground at 3.4 m/s **170 km across the track** from the record's landing and
+740 s early, the burn having been lit eleven minutes before the record's to come down level with the place after
+four days. Every miss is recorded in src/sim/misses.ts, nothing adjusted. Beregovoy lands in the descent module, as every
+Soyuz crew did.
+
+What the run does not do:
+
+- The rendezvous: Soyuz 2 is not in the plan, and the approach to within 30 to 40 m, the 180° roll that defeated it and
+  the propellant it cost are told, not flown.
+- The descent control system's rolls, which steered the range: the lift is held up throughout.
+- The reserve parachute system, the escape tower's own escape before 157 s and the fairing's before 161 s, which the
+  deck names and does not fly.
+- The heat shield goes as the main parachute comes out, not at 3 km.
+
 ## Gallery
 
 The exhibit shows spacecraft No. 10 on an early 11A511. The spacecraft view brings the ship

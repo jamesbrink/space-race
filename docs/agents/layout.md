@@ -41,7 +41,13 @@ missions/                             the record: one folder per nation, program
                                       voskhod-11a57-flown.ts, the 11A57 as the orbital simulator flies it (`stages11A57`, `ascent11A57`, Block I);
                                       voskhod-ship.ts, the Voskhod as it comes down (the cover, the canopies, the soft-landing rocket, the crew aboard);
                                       voskhod-flies.ts, what a Voskhod flight's parts do in flight; a Voskhod's record is a `VostokRecord`;
-                                      vostok-flies.ts, what a Vostok flight's parts do in flight)
+                                      vostok-flies.ts, what a Vostok flight's parts do in flight;
+                                      soyuz-record.ts, a Soyuz's record (`SoyuzRecord`: an R-7 flight's with its modules,
+                                      its main engine, its burns in orbit and a lifting entry); soyuz-plan.ts, its plan (`soyuzPlan`:
+                                      vostokPlan's, with the ship's own laid on); soyuz-11a511-flown.ts, the 11A511 as flown (`stages11A511`,
+                                      `ascent11A511`: its table's blocks, the escape tower, its stations); soyuz-7kok-flown.ts, the 7K-OK as
+                                      flown (the main engine, the descent module's air, its parachutes and soft-landing engines, the crew
+                                      aboard); soyuz-flies.ts, what a Soyuz flight's parts do in flight)
     vehicles/cabin.ts                 a programme's seat and cabin (`CabinDef`): its instruments, lamps and controls, for every flight of the type
     vehicles/reference/               source-derived data a vehicle module reads at build time (Apollo's: survey outlines as JSON,
                                       the DSKY's front web and panes as .json.gz), each with its source's hash, and the

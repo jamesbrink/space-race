@@ -123,6 +123,17 @@ export const SUPPORTS_GO: [from: number, to: number] = [0.7, 2.6];
 const GUIDE_FALL = -25;
 const GUIDES_GO: [from: number, to: number] = [0.3, 2.3];
 /**
+ * The launch system's four supports and four guides falling back as the rocket rises, on the clock from launch: each support
+ * about its hinge on the ring, its head going outward (documented that they do; the angle read off a photograph of the
+ * launch; the times off film of the later system); each guide about its foot on the cage, its tip going down (documented
+ * for the later system that they fall away; the angle estimated). The same system at every pad of the type built here (Site 31's
+ * is Site 1's, turned the same).
+ */
+export const launchSystemFalls = (): Move[] => [
+  ...SUPPORT_AT.map((az, i) => outward(`Support_${i + 1}`, az, SUPPORT_FALL, ...SUPPORTS_GO, BY.weights)),
+  ...SUPPORT_AT.map((az, i) => outward(`Guide_${i + 1}`, az, GUIDE_FALL, ...GUIDES_GO, BY.weights)),
+];
+/**
  * The railway fillers (tank_cars.py): each is drawn off west along its own track, its east bogie following the track's
  * line (tracks.ts `wayWest`: the same line the model's rails are laid along and the land paints, its bends curved).
  */
@@ -524,10 +535,7 @@ export function site1Parts(day: Site1Day): Part[] {
       // each support about its hinge on the ring, its head going outward (documented that they do; the angle read off a
       // photograph of the launch; the times off film of the later system); each guide about its foot on the cage, its
       // tip going down (documented for the later system that they fall away; the angle estimated)
-      clocked: [
-        ...SUPPORT_AT.map((az, i) => outward(`Support_${i + 1}`, az, SUPPORT_FALL, ...SUPPORTS_GO, BY.weights)),
-        ...SUPPORT_AT.map((az, i) => outward(`Guide_${i + 1}`, az, GUIDE_FALL, ...GUIDES_GO, BY.weights)),
-      ],
+      clocked: launchSystemFalls(),
     },
     ...(day.fillers ? [fillers] : []),
     {

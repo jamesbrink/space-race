@@ -222,6 +222,14 @@ const FLIGHTS = {
     orbit: [1400, 50_000],
     coast: 1400,
   },
+  // (four days: the escape tower and the fairing, Block I, the approach to Soyuz 2 flown as one burn, a day, the correction
+  // of the 28th, the braking burn timed for the landing place, the parting, the guided entry, the parachute and the ground)
+  s3: {
+    id: 'ussr/soyuz/soyuz-3',
+    instants: [5, 60, 150, 300, 540, 1300, 3000, 86_400, 188_800, 338_400, 338_600, 339_200, 339_600, 340_200, 340_600],
+    orbit: [3000, 86_400],
+    coast: 3000,
+  },
   // (the Gemini targets: the Atlas, its verniers alone, the Agena's coast and its burn, the first orbit; the two lost ones
   // to the sea)
   g5003: { id: 'usa/gemini/gatv-5003', instants: [5, 60, 131, 200, 305, 340, 450, 600, 3000, 8000], orbit: [3000, 8000], coast: 3000 },
