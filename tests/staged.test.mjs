@@ -1853,7 +1853,8 @@ for (const f of part(flown)) {
     // every input the ascent reads that is not documented, by where it is in the record (the Vostok module's own, which
     // vostokPlan writes the plan from): a new one must be added here
     const o = recordFrom(f);
-    if (o === plan) {
+    // (a Saturn IB's record, saturn-ib-record.ts, is held by its plan's digitized pitch as the plan was before it had one)
+    if (o === plan || 'sib' in o) {
       const copy = structuredClone(plan);
       const law = guidanceOf(copy);
       const [site, dated, sea] = where(f);
