@@ -1,7 +1,7 @@
 // The pad and rocket are separate assets. Check their decoded triangles together in the site frame.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { Box3, BufferAttribute, BufferGeometry, Matrix4, Ray, Vector3 } from 'three';
+import { Box3, BufferAttribute, BufferGeometry, DoubleSide, Matrix4, Ray, Vector3 } from 'three';
 import { MeshBVH } from 'three-mesh-bvh';
 import { Exploder } from '../src/viewer/explode.ts';
 import { sliderAt } from '../src/world/sequence.ts';
@@ -76,6 +76,79 @@ for (const [flight, serial, firstMotion] of flights) {
         assert.deepEqual([...problems], []);
       });
     }
+  if (serial === 206) {
+    test(`${flight.id} eight S-IB fins meet the pedestal bearings at every detail level`, async () => {
+      const ft = 0.3048;
+      for (const level of levels) {
+        const site = await surfaces(pad, level);
+        const rocket = await surfaces(stack, level);
+        site.pose(-1);
+        rocket.pose(-1);
+        // Each moving saddle bears on the sloping aft edge of its own fin. Cast from
+        // opposite sides of the interface to measure the seating gap.
+        const fins = rocket.meshes.filter((mesh) => mesh.object.name.startsWith('SIB_Fin_'));
+        function height(meshes, start, direction) {
+          let distance = Infinity;
+          for (const mesh of meshes) {
+            const frame = mesh.object.matrixWorld;
+            const ray = new Ray(start.clone(), direction.clone()).applyMatrix4(frame.clone().invert());
+            const hit = mesh.geo.boundsTree.raycastFirst(ray, DoubleSide);
+            if (hit) distance = Math.min(distance, start.distanceTo(hit.point.applyMatrix4(frame)));
+          }
+          return distance;
+        }
+        for (let i = 0; i < 8; i++) {
+          const angle = (i * Math.PI) / 4;
+          const radius = 20 * ft;
+          const bottom = stack.position[1] + (111.369 - (radius / 0.0254 - 134.2) * (50 / 110)) * 0.0254;
+          const spot = new Vector3(radius * Math.cos(angle), bottom - 0.01, -radius * Math.sin(angle));
+          const fin = spot.y + height(fins, spot, new Vector3(0, 1, 0));
+          spot.y += 0.02;
+          const bearings = site.meshes.filter((mesh) => mesh.object.parent?.name === `Holddown_Link_${i + 1}`);
+          const seat = spot.y - height(bearings, spot, new Vector3(0, -1, 0));
+          assert.ok(Math.abs(fin - seat) < 0.002, `fin ${i + 1}${level}: ${fin} m, bearing ${seat} m`);
+        }
+      }
+    });
+    test(`${flight.id} releases all eight links and four pedestal masts on their own hinges`, async () => {
+      const moves = pad.parts.flatMap((part) => part.clocked ?? []);
+      const nodes = [
+        ...Array.from({ length: 8 }, (_, i) => `Holddown_Link_${i + 1}`),
+        'Fuel_Mast',
+        'LOX_Mast',
+        'Cable_Mast_II',
+        'Cable_Mast_IV',
+      ];
+      for (const level of levels) {
+        const { gltf } = await readGlb(file(pad, level));
+        const root = hierarchy(gltf);
+        const motion = new Exploder(root, pad.parts);
+        for (const name of nodes) {
+          const move = moves.find((m) => m.node === name);
+          const node = root.getObjectByName(name);
+          assert.ok(node && move, name);
+          if (name.startsWith('Holddown_Link_')) {
+            // KSC Postlaunch Report §6.41 and SA-206 flight manual §VII: commit
+            // at +0.020, nominal 140 ms to the last retraction, before first motion.
+            assert.equal(move.from, 0.02);
+            assert.ok(Math.abs(move.to - move.from - 0.14) < 1e-6 && move.to < firstMotion, name);
+          } else if (name.startsWith('Cable_Mast_')) {
+            // The cable connections held until approximately four inches of vehicle rise.
+            assert.ok(move.from > firstMotion && move.from < move.to, name);
+          } else {
+            assert.equal(move.from, firstMotion, name);
+          }
+          motion.clock(move.from);
+          const initial = node.quaternion.clone();
+          motion.clock(move.to);
+          assert.ok(node.quaternion.angleTo(initial) > 0.1, name);
+          motion.clock(flight.opens.at);
+          assert.ok(node.quaternion.angleTo(initial) < 1e-6, name);
+        }
+      }
+    });
+    continue;
+  }
   test(`${flight.id} rests on its launcher at four bearing points between its F-1 engines at every detail level`, async () => {
     // Viewer +X is north at Pad A, +Z east. MSFC-MAN-504 figure 8-7 numbers position I in the east.
     const directions = [

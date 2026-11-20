@@ -1,15 +1,17 @@
 import type { Flight, Motor } from '../../../../../src/types.ts';
 import { blockIICabin } from '../../../apollo/vehicles/cabin.ts';
+import { boardingHatches } from '../../../apollo/vehicles/hatch.ts';
 import { nodes } from '../../../apollo/vehicles/stack-gallery.ts';
+import { LC39B } from '../../../places/cape-canaveral/lc-39.ts';
+import { sl2Ingress as ingress, sa206Elevation, skylabLauncher } from '../../../places/cape-canaveral/lc39-skylab.ts';
+import { launchCrew } from './crew.ts';
 import { command, csmViews, port, service } from './csm116.ts';
 import { specs, timeline } from './record.ts';
 import { launcher, SA206_THRUST, stackViews } from './sa206.ts';
+import { WEATHER } from './weather.ts';
 
 // MSFC-MAN-206, fig. 1-1. CM Xc zero in SA-206 vehicle stations, inches.
 const cabin = blockIICabin(2196.859);
-// Gallery seats are available independently of the clock. The pad access window is estimated.
-const ingress: [number, number] = [-2 * 3600, -3600];
-
 const lbf = 4.4482216152605;
 const handbook = 'Skylab Operations Handbook, CSM 116–118, vol. I';
 const spacecraftMotors: Motor[] = [
@@ -67,6 +69,9 @@ export const flight: Flight = {
   launchVehicle: 'Saturn IB · SA-206',
   launch: '1973-05-25T13:00:00Z',
   launchSite: 'Launch Complex 39B, Kennedy Space Center',
+  site: LC39B,
+  weather: WEATHER,
+  opens: { at: ingress[0], model: 'pad', view: 'launcher' },
   crew: ['Charles Conrad Jr.', 'Joseph P. Kerwin', 'Paul J. Weitz'],
   summary:
     'Eleven days after Skylab reached orbit with its sunshield torn away and one remaining solar wing jammed, Conrad, Kerwin and Weitz followed in CSM-116. They shaded the overheated workshop, freed the wing and brought their spacecraft back after 28 days.',
@@ -83,20 +88,23 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Skylab 2 · Saturn IB',
       url: 'models/usa/skylab/skylab-2/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
+      position: [0, sa206Elevation, 0],
       cutaway: true,
       ...cabin,
       cabin: { ...cabin.cabin, within: [...cabin.cabin.within, 'WaterDispenser', 'ParasolCanister'] },
       dockingPorts: [port],
       seats: [
-        { node: 'Seat_Commander', label: 'Conrad’s left couch', from: 'SideHatch', open: ingress },
-        { node: 'Seat_CommandModulePilot', label: 'Kerwin’s centre couch', from: 'SideHatch', open: ingress },
-        { node: 'Seat_LunarModulePilot', label: 'Weitz’s right couch', from: 'SideHatch', open: ingress },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Conrad’s left couch', from: 'SideHatch', open: ingress },
+        { node: 'Seat_CommandModulePilot', figure: 'science-pilot', label: 'Kerwin’s centre couch', from: 'SideHatch', open: ingress },
+        { node: 'Seat_LunarModulePilot', figure: 'pilot', label: 'Weitz’s right couch', from: 'SideHatch', open: ingress },
       ],
       scale: '223.5 ft / 68.12 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
       views: [{ id: 'launcher', label: 'Saturn IB', nodes: nodes(launcher) }, ...csmViews, ...stackViews],
-      parts: [...command, ...service, ...launcher],
+      parts: boardingHatches([...command, ...service, ...launcher], ingress, { openBy: ingress[0], coverClosedBy: -58 * 60 }),
     },
+    skylabLauncher,
+    ...launchCrew,
   ],
 };
