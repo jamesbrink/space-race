@@ -1,7 +1,8 @@
 /**
  * A Saturn V flight's plan (sim/plan.ts), written from its record (saturn-v-record.ts `SaturnVRecord`, the flight's
  * orbital.ts): the S-IC's five F-1s, the centre cut early; the S-II's five J-2s, its centre cut as the flight had it and the
- * four outboard shifting their mixture ratio; the S-II's aft interstage let go at the second plane and the escape tower
+ * four outboard shifting their mixture ratio, cut at the record's instant or, where the record has them cut by the stage's
+ * depletion sensors, when the run's own propellant is spent (`siiSpent`: an S-II that lost its centre early burns longer); the S-II's aft interstage let go at the second plane and the escape tower
  * after it; the S-IVB's first burn to the parking orbit, cut by its guidance on the orbit reached; the coast, the stack held
  * level by the S-IVB's own attitude jets; and the S-IVB lit again for the translunar injection, steered by a law of its
  * own (sim/orbital.ts `Guidance.injection`) and cut by its guidance on its speed. The ascent is the stated law, as every
@@ -26,7 +27,7 @@ import type {
   ThrusterSet,
   Trigger,
 } from '../../../../src/sim/plan.ts';
-import { P0 } from '../../../../src/world/bodies.ts';
+import { G0, P0 } from '../../../../src/world/bodies.ts';
 import { cmAero } from './command-module-aero.ts';
 import type { F1Figures, J2Figures, MixtureShift, SaturnVRecord } from './saturn-v-record.ts';
 
@@ -121,6 +122,36 @@ function j2(
 
 const at = (time: Measure): Trigger[] => [{ time: time.value }];
 
+/**
+ * When the S-II's propellant is spent, s from liftoff: its usable load over what its five J-2s draw, the centre to its cut
+ * and the four to the end, each at its thrust over its impulse (sim/staged.ts `flowOf`) and its share after the
+ * mixture-ratio shift. The instant sim/staged.ts `schedule` finds the tank dry at with no cut of the four's own
+ * (tests/plan.test.mjs holds the two together): where the record has the four cut by the stage's depletion sensors
+ * (`sii.outboard.spent`), the run cuts them here and not at the record's instant.
+ */
+export function siiSpent(o: SaturnVRecord): number {
+  const s2 = o.sii;
+  const flow = (f: J2Figures) => f.thrust.value / (G0 * f.isp.value);
+  const shift = s2.outboard.shift;
+  // what one engine burns from the ignition to t, over its flow: the seconds, each at its share
+  const held = (t: number) => {
+    const a = s2.ignition.value;
+    if (t <= a) return 0;
+    if (!shift) return t - a;
+    const s = shift.at.value;
+    return shift.before.value * Math.max(0, Math.min(t, s) - a) + shift.after.value * Math.max(0, t - Math.max(a, s));
+  };
+  const burned = (t: number) => flow(s2.centre) * held(Math.min(t, s2.centre.cut.value)) + 4 * flow(s2.outboard) * held(t);
+  const load = s2.propellant.usable.value;
+  let [lo, hi] = [s2.ignition.value, s2.ignition.value + 3600];
+  for (let k = 0; k < 60; k++) {
+    const mid = (lo + hi) / 2;
+    if (burned(mid) < load) lo = mid;
+    else hi = mid;
+  }
+  return lo;
+}
+
 /** What leaves, as a body of its own (sim/shed.ts): the model's stretch of the stack, its radius, and a shell's figures for the rest. */
 function shed(on: string, name: string, mass: Measure, from: number, to: number, radius: number, forward = false): ShedBody {
   const a = derived(from * IN, MODEL);
@@ -149,6 +180,24 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
   const s1 = o.sic;
   const s2 = o.sii;
   const s3 = o.sivb;
+  // (the four cut by the stage's depletion sensors, where the record has it so: at the run's own instant of it, and what the
+  // instrument unit timed from that cutoff at the record's intervals after it: each event's instant is then the run's, derived,
+  // and the record's is a figure in its source and in the checks)
+  const spent = s2.outboard.spent ? siiSpent(o) : null;
+  const cutAt =
+    spent === null
+      ? s2.outboard.cut
+      : derived(
+          spent,
+          `the S-II's usable propellant spent (saturn-v-plan.ts siiSpent), where the record has the four cut ${s2.outboard.spent}: its instant, ${s2.outboard.cut.value} s (${s2.outboard.cut.source}), a figure the run is held to`,
+        );
+  const fromCut = (m: Measure): Measure =>
+    spent === null
+      ? m
+      : derived(
+          spent + m.value - s2.outboard.cut.value,
+          `the S-II's outboard cutoff as the run has it, and the record's ${(m.value - s2.outboard.cut.value).toFixed(2)} s after it to this, as the instrument unit timed it from that cutoff: the record's instant, ${m.value} s (${m.source}), a figure the run is held to`,
+        );
   const bodies: BodyDef[] = [
     { id: 'sic', label: 'S-IC, the first stage', count: 1, mass: s1.mass, nodes: ['SaturnFirstStage'] },
     { id: 'sii-skirt', label: 'S-II aft interstage', count: 1, mass: s2.skirt.mass, nodes: ['LowerInterstage'] },
@@ -182,7 +231,7 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
       id: 'sii-separation',
       label: 'S-II/S-IVB separation',
       gone: ['sii'],
-      at: s2.separation,
+      at: fromCut(s2.separation),
       push: s2.push,
       closed: { engines: ['sivb-j2', 'sivb-tli'] },
     },
@@ -266,9 +315,9 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
     event('sii-centre-cutoff', `S-II centre engine cutoff${s2.centre.why ? ` (${s2.centre.why})` : ''}`, s2.centre.cut, [
       { cut: 'j2-centre' },
     ]),
-    event('sii-outboard-cutoff', 'S-II outboard engines cutoff', s2.outboard.cut, [{ cut: 'j2-outboard' }]),
-    event('sii-separation', 'S-II/S-IVB separation', s2.separation, [{ separate: 'sii-separation' }]),
-    event('sivb-ignition', 'S-IVB ignition', s3.first.ignition, [{ ignite: 'sivb-j2' }]),
+    event('sii-outboard-cutoff', 'S-II outboard engines cutoff', cutAt, [{ cut: 'j2-outboard' }]),
+    event('sii-separation', 'S-II/S-IVB separation', fromCut(s2.separation), [{ separate: 'sii-separation' }]),
+    event('sivb-ignition', 'S-IVB ignition', fromCut(s3.first.ignition), [{ ignite: 'sivb-j2' }]),
     // (the guidance's own cutoff: where the orbit reached is the published one; the record's instant is a figure the run is held to)
     event('sivb-cutoff', 'S-IVB cutoff: parking orbit', s3.first.cutoff, [{ cut: 'sivb-j2' }], [{ orbit: 'published' }]),
     event('tli-ignition', 'S-IVB lit again: translunar injection', s3.second.ignition, [{ ignite: 'sivb-tli' }]),

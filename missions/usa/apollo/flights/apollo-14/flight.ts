@@ -4,9 +4,12 @@ import { lc39Crew } from '../../crew/lc39.ts';
 import { WEATHER } from './weather.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
+import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
+import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
 import { escapeParts, nodes, rocket, specification } from '../../vehicles/stack-gallery.ts';
 import { antaresModel, antaresPort, antaresStackParts, antaresStackViews } from './antares.ts';
 import { kittyCommand, kittyPort, kittyService, kittyViews } from './kitty-hawk.ts';
+import { orbital } from './orbital.ts';
 import { APOLLO14_THRUST, stackViews, launcher } from './sa509.ts';
 
 const elapsed = (h: number, m: number, s: number) => h * 3600 + m * 60 + s;
@@ -20,6 +23,7 @@ const boarding: [number, number] = [-elapsed(3, 0, 0), -elapsed(2, 40, 0)];
 const weatherHold = elapsed(0, 40, 2); // AS-509 Flight Evaluation Report, §3.3.
 const coverCloseout = -elapsed(1, 30, 0) - weatherHold;
 const cabin = blockIICabin(3871);
+const PLAN = saturnVPlan(orbital);
 
 export const flight: Flight = {
   id: 'usa/apollo/apollo-14',
@@ -35,6 +39,8 @@ export const flight: Flight = {
   site: LC39A,
   opens: { at: boarding[0], model: 'pad', view: 'launcher' },
   weather: WEATHER,
+  plan: { ...PLAN, aloft: WEATHER.aloft },
+  flies: saturnVFlies(PLAN),
   crew: ['Alan B. Shepard Jr.', 'Stuart A. Roosa', 'Edgar D. Mitchell'],
   summary:
     'Roosa docked Kitty Hawk with Antares on the sixth attempt. Shepard and Mitchell landed in the Fra Mauro highlands and pulled a two-wheeled cart toward Cone Crater. Roosa photographed the Moon from orbit while they worked on the surface.',

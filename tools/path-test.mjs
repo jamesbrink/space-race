@@ -176,6 +176,20 @@ const FLIGHTS = {
     orbit: [3000],
     coast: 3000,
   },
+  // (the S-IC, the S-II to its oxygen's depletion, the parking orbit on the azimuth the weather hold moved, the injection)
+  a14: {
+    id: 'usa/apollo/apollo-14',
+    instants: [5, 60, 135, 164, 200, 463, 555, 570, 701, 3000, 8900, 9000, 9200, 9270, 12_000, 40_000, 120_000],
+    orbit: [3000],
+    coast: 3000,
+  },
+  // (the S-II's centre lost at 330 s and its four burning on to their oxygen's depletion, the S-IVB longer to the orbit, the injection)
+  a13: {
+    id: 'usa/apollo/apollo-13',
+    instants: [5, 60, 135, 163, 200, 330, 540, 590, 600, 750, 3000, 9300, 9400, 9600, 9700, 12_000, 40_000, 120_000],
+    orbit: [3000],
+    coast: 3000,
+  },
   // (three revolutions: staging, insertion, the first burn by day, the night, the third burn, retrofire, the entry banked, the drogue, the main)
   gt3: {
     id: 'usa/gemini/gt-3',

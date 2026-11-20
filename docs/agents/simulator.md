@@ -843,7 +843,13 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   held by the upper stage's own attitude jets (`ThrusterSet.coasting`: they turn it with nothing burning, at their own
   authority; stagedlive.ts `steering`), and the coast and the stack between its burns fly the Moon as a third body
   (`FlightPlan.gravity`, core/gravity.ts `thirdOf`, added to the step and not to what an accelerometer reads). Nothing after
-  the injection is flown: the stack coasts on whole, three days, as a coast with no burn does. A start the stack comes
+  the injection is flown: the stack coasts on whole, three days, as a coast with no burn does. Where a record has the S-II's
+  four outboard engines cut by its oxygen depletion sensors (`sii.outboard.spent`: Apollo 13's, whose centre engine shut
+  itself down 132 s early, and 14's), the plan cuts them when the run has spent the stage's usable propellant
+  (saturn-v-plan.ts `siiSpent`, the instant `schedule` finds the tank dry) and times the separation and the S-IVB's start
+  from that cutoff at the record's intervals, as the instrument unit's time base 4 did: those events' instants are the
+  run's, derived, and the record's are figures in their sources and checks. An ascent check `<event>.stop` holds when the
+  run itself stopped the engine an event cuts (staged.ts `stopOf`). A start the stack comes
   down from before its cutoff (eight degrees of pitch-over on a heavy first stage) is halved and bisected to one in the
   air before Newton's method (`steer`); every earlier flight's start is in the air and is not touched.
 - **The descent can be given by hand** (orbital.ts `DescentHands`, staged.ts `flyOn`). Its events are the record's data:

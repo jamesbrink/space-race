@@ -32,6 +32,7 @@ import {
   sequenceOf,
   stagesOf,
   steer,
+  stopOf,
   targetStageOf,
 } from '../src/sim/staged.ts';
 import { stagedVehicle } from '../src/sim/stagedlive.ts';
@@ -72,6 +73,77 @@ const UNDOCUMENTED = {
     'ascent.steering',
     'csm.cm',
     'les.mass',
+    'les.motor.burn',
+    'les.motor.thrust',
+    'sic.f1.exitArea',
+    'sic.f1.isp',
+    'sic.f1.thrust',
+    'sic.mass',
+    'sic.propellant.load',
+    'sic.propellant.usable',
+    'sic.push',
+    'sii.mass',
+    'sii.outboard.isp',
+    'sii.outboard.shift.after',
+    'sii.outboard.thrust',
+    'sii.propellant.load',
+    'sii.propellant.usable',
+    'sii.push',
+    'sivb.jets',
+    'sivb.mass',
+    'sivb.propellant.load',
+    'sivb.propellant.usable',
+    'sivb.second.align',
+    'sivb.second.shift.before',
+  ],
+  // Apollo 13's, as Apollo 11's but for the escape tower's mass, which its mass table gives (Table 16-9); the S-II's usable
+  // propellant less the gas drawn off it to pressurize its tanks, its four outboard engines cut when the run has spent it
+  'usa/apollo/apollo-13': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.guidance.programme',
+    'ascent.guidance.roll',
+    'ascent.rarefied.area',
+    'ascent.rarefied.drag',
+    'ascent.steering',
+    'csm.cm',
+    'les.motor.burn',
+    'les.motor.thrust',
+    'sic.f1.exitArea',
+    'sic.f1.isp',
+    'sic.f1.thrust',
+    'sic.mass',
+    'sic.propellant.load',
+    'sic.propellant.usable',
+    'sic.push',
+    'sii.mass',
+    'sii.outboard.isp',
+    'sii.outboard.shift.after',
+    'sii.outboard.thrust',
+    'sii.propellant.load',
+    'sii.propellant.usable',
+    'sii.push',
+    'sivb.jets',
+    'sivb.mass',
+    'sivb.propellant.load',
+    'sivb.propellant.usable',
+    'sivb.second.align',
+    'sivb.second.shift.before',
+  ],
+  // Apollo 14's, as Apollo 13's, and the command and service modules' mass, its spacecraft's less the rest (Table 16-9's rows
+  // sum 2 kg short of its spacecraft)
+  'usa/apollo/apollo-14': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.guidance.kick',
+    'ascent.guidance.programme',
+    'ascent.guidance.roll',
+    'ascent.rarefied.area',
+    'ascent.rarefied.drag',
+    'ascent.steering',
+    'csm.cm',
+    'csm.mass',
     'les.motor.burn',
     'les.motor.thrust',
     'sic.f1.exitArea',
@@ -1037,10 +1109,12 @@ const UNDOCUMENTED = {
 };
 
 /** An ascent check's figure: an event's field ('core.speed'), or the summary's. */
-const ascentValue = (run) => (id) => {
+const ascentValue = (run, plan) => (id) => {
   const [event, field] = id.split('.');
   // (where a stage lit again in orbit stopped: staged.ts `Ascended.injected`)
   if (event === 'injection') return run.injected?.[field];
+  // (when the run itself stopped the engine an event cuts: staged.ts `stopOf`)
+  if (field === 'stop') return stopOf(plan, run, event);
   return field ? run.at[event]?.[field] : run.summary[id];
 };
 
@@ -1250,7 +1324,15 @@ function saturnInputs(f, o, whole) {
     const copy = structuredClone(o);
     change(copy);
     const plan = saturnVPlan(copy);
-    const a = ascend(plan, site, dated, sea, steer(plan, site, dated, sea));
+    let a;
+    try {
+      a = ascend(plan, site, dated, sea, steer(plan, site, dated, sea));
+    } catch (e) {
+      // (the S-IVB's one tank, both burns on it, can run dry before the injection's speed: say so rather than weigh it)
+      if (!/injection never stopped/.test(e.message)) throw e;
+      console.log(`  #   ${label.padEnd(58)} ${e.message}`);
+      return;
+    }
     console.log(
       `  #   ${label.padEnd(58)} first cutoff ${(a.summary.cutoffAt - base.summary.cutoffAt).toFixed(1).padStart(6)} s; injection ${(a.injected.at - base.injected.at).toFixed(1).padStart(6)} s, ${(a.injected.mass - base.injected.mass).toFixed(0).padStart(6)} kg`,
     );
@@ -1412,7 +1494,7 @@ for (const f of part(flown)) {
   });
 
   test(`${f.designation}: the ascent against the record; every miss is recorded`, () => {
-    holdChecks(checksOf('ascent'), ascentValue(whole.ascent), missesOf(f.id, 'ascent'), { name: `${f.designation}, ascent` });
+    holdChecks(checksOf('ascent'), ascentValue(whole.ascent, f.plan), missesOf(f.id, 'ascent'), { name: `${f.designation}, ascent` });
   });
 
   test(`${f.designation}: the coast flown on from the ascent against the record; every miss is recorded`, () => {
