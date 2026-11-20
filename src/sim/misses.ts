@@ -221,6 +221,14 @@ const GT6A_RETRO =
 const GT6A_ENTRY =
   'The retrofire is timed by guidance for the landing place along the track (sim/plan.ts `LandingAim`), 277 s before the record’s instant, the run being that far from the real ship along its orbit after a day (the terminal phase, braking, station keeping and separation are not flown as made). The ground track at that instant passes west of the place, and the bank is held 55° to the left throughout, as Schirra held it until the computer took over, whose commands, left and right against an overshoot, are not read. Nothing adjusted';
 
+/** Soyuz 3's approach to Soyuz 2, flown as one burn (its orbital.ts `burns`), and the correction after it. */
+const APPROACH_S3 =
+  'The approach to Soyuz 2 is not flown: its burns, Igla’s and Beregovoy’s, are not on any record read one by one, and are flown as one burn along the motion at 11:55 on 26 October whose impulse grows the orbit from the size Siddiqi’s table gives for the insertion to the size TASS gave on the 27th. That is the orbit’s size and not its shape: a single burn so far round from the perigee raises both apsides, where the record’s orbit after the approaches has its perigee 4 km lower and its apogee 30 km higher than the insertion’s. Not adjusted';
+const CORRECTION_S3 =
+  'The correction of 28 October is flown at an estimated instant in the middle of the 36th orbit with the impulse worked from Mishin’s table of what the main engine could still give, to the ten metres a second.';
+const ACROSS_S3 =
+  'The braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`), and so is lit some eleven minutes before the record’s 09:45:05 (679 s from the published orbit, 658 s from the pad): after four days the run is that far along its track ahead of the record’s clock, its period a few seconds short of the record’s on each of its 64 revolutions (the approach and the correction as flown here). Lit so much earlier, it comes down on a track the Earth has turned under less: the cross-track miss is that time on the Earth’s turning at 50 degrees north. Not adjusted';
+
 export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   'usa/mercury/mr-3-freedom-7': {
     whole: {
@@ -1065,6 +1073,70 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       crossTrack: { by: -170_672, slack: 15_000, why: `It comes down 171 km to the left of where the ship landed. ${GT6A_ENTRY}` },
     },
     descent: {},
+  }),
+  // Soyuz 3: the record from the pad and from its published orbit (missions/ussr/soyuz/flights/soyuz-3/mission.md, "Against the record")
+  'ussr/soyuz/soyuz-3': inUnits({
+    coast: {
+      'approached.apogee': {
+        by: -15_218,
+        slack: 1_000,
+        why: `At 18:50 on 27 October its apogee is 236.8 km where TASS has 252, its perigee 182.8 where TASS has 179. ${APPROACH_S3}`,
+        short: 'the approach flown as one burn',
+      },
+      'correction.apogee': {
+        by: -10_774,
+        slack: 1_000,
+        why: `After the correction of 28 October its apogee is 233.4 km where Mishin has 244.2 (TASS 244), its perigee 204.0 where he has 199.4. ${APPROACH_S3} ${CORRECTION_S3}`,
+        short: 'the approach flown as one burn',
+      },
+      'correction.period': {
+        by: -16.38,
+        slack: 2,
+        why: `It goes round in 88.54 min after the correction where Mishin has 88.81: 16 s against a tolerance of 15. ${APPROACH_S3} ${CORRECTION_S3}`,
+        short: 'the approach flown as one burn',
+      },
+      crossTrack: {
+        by: 145_567,
+        slack: 5_000,
+        why: `It comes down 146 km across the track. ${ACROSS_S3}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    ascent: {},
+    shown: {
+      'approached.apogee': {
+        by: -16_679,
+        slack: 1_000,
+        why: `From the pad: its apogee 235.3 km at 18:50 on 27 October where TASS has 252. ${APPROACH_S3}`,
+        short: 'the approach flown as one burn',
+      },
+      'correction.apogee': {
+        by: -11_621,
+        slack: 1_000,
+        why: `From the pad: its apogee 232.6 km after the correction where Mishin has 244.2. ${APPROACH_S3} ${CORRECTION_S3}`,
+        short: 'the approach flown as one burn',
+      },
+      'correction.period': {
+        by: -15.96,
+        slack: 2,
+        why: `From the pad: 88.54 min after the correction where Mishin has 88.81. ${APPROACH_S3} ${CORRECTION_S3}`,
+        short: 'the approach flown as one burn',
+      },
+      crossTrack: {
+        by: 169_669,
+        slack: 5_000,
+        why: `From the pad it comes down 170 km across the track. ${ACROSS_S3}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    descent: {
+      'module.at': {
+        by: -740.2,
+        slack: 60,
+        why: 'Beregovoy is on the ground 740 s before the record’s 10:25:03. The braking burn is timed for the place he came down at (sim/plan.ts `LandingAim`): on the run from the pad it is lit 658 s before the record’s 09:45:05, the run being that far along its track ahead of the record’s clock after four days, and everything after it comes as much earlier; from the burn to the ground it takes 82 s less than the record’s 40 min, on the parting at Soyuz 1’s planned interval and the lift held up throughout (both assumed). Not adjusted',
+        short: 'the burn timed for the landing place',
+      },
+    },
   }),
   'ussr/voskhod/voskhod-1': inUnits({
     coast: {

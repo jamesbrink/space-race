@@ -26,8 +26,8 @@ The Soyuz 3 gallery uses the shared [early 7K-OK geometry](../soyuz-1/spacecraft
   or reconstruct the target ship, the two ships' relative attitude, or the timing of the lamps.
 - Most type details carry over from No. 4, including the stations of the modules, the folded
   solar assemblies, the antenna mechanisms and the major exterior fittings. The covers suggest
-  the recovery system. The revised chutes, deployment mechanism and landing motors are not
-  simulated.
+  the recovery system. In flight the drogue, the main parachute and the four soft-landing engines are flown from the
+  type's figures ([mission.md](mission.md)); the deployment mechanism and the reserve system are not modelled.
 - No serial-specific cockpit installation drawing was found. The individual suit tailoring, cabin
   controllers, couch liners, stowage and orbital-room arrangements are reconstructed. The seated
   figure is a generic face with a 1.80 m stature, following Beregovoy's account of his fit in

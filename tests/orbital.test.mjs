@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { geminiTitanPlan } from '../missions/usa/gemini/vehicles/gemini-titan-plan.ts';
 import { mercuryAtlasPlan } from '../missions/usa/mercury/vehicles/mercury-atlas-plan.ts';
+import { soyuzPlan } from '../missions/ussr/soyuz/vehicles/soyuz-plan.ts';
 import { vostokPlan } from '../missions/ussr/vostok/vehicles/vostok-plan.ts';
 import {
   aimOf,
@@ -42,9 +43,18 @@ const all = await Promise.all(
 // the vent and dump before it, are the run from the pad's; begun at the published orbit with neither it is not that
 // flight's coast, and is held in staged.test.mjs and apollo-7-flight.test.mjs)
 const orbiters = all.filter((f) => f.plan?.kind === 'orbital' && f.site && Number.isFinite(coastOf(f.plan).on) && !f.plan.target);
-/** The plan a record is written into: a Vostok's (vostok-record.ts, `stages`) or a Mercury-Atlas's (mercury-atlas-plan.ts, `atlas`). */
+/**
+ * The plan a record is written into: a Vostok's (vostok-record.ts, `stages`), a Soyuz's (soyuz-record.ts: `stages` and its
+ * `modules`), a Mercury-Atlas's (mercury-atlas-plan.ts, `atlas`) or a Gemini-Titan's (`titan`).
+ */
 const planOf = (orbital) =>
-  'atlas' in orbital ? mercuryAtlasPlan(orbital) : 'titan' in orbital ? geminiTitanPlan(orbital) : vostokPlan(orbital);
+  'atlas' in orbital
+    ? mercuryAtlasPlan(orbital)
+    : 'titan' in orbital
+      ? geminiTitanPlan(orbital)
+      : 'modules' in orbital
+        ? soyuzPlan(orbital)
+        : vostokPlan(orbital);
 /** The coast of a flight's plan, or of the plan of its record with an input changed. */
 const fly = (f, orbital) => flyOrbit(orbital ? planOf(orbital) : f.plan, siteFrame(f.site), frameOf(f), f.site.seaLevel.value, 10);
 /** A flight's orbital record with one input changed: for weighing inputs, never for flying the record. */
@@ -495,6 +505,16 @@ INPUTS['ussr/voskhod/voskhod-2'] = [
   ['injection', 'arc'],
   ['injection', 'anomaly'],
   ['retro', 'deltaV'],
+  ['entry', 'mass'],
+  ['entry', 'area'],
+];
+
+// Soyuz 3's: the injection's place (estimated, as every R-7 flight's), the parting (Soyuz 1's planned interval, assumed), the
+// descent module's mass (the type's, assumed) and disc (derived from its diameter)
+INPUTS['ussr/soyuz/soyuz-3'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['entry', 'separation'],
   ['entry', 'mass'],
   ['entry', 'area'],
 ];

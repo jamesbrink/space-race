@@ -229,11 +229,11 @@ export interface VostokRecord {
   heating?: Heating;
   /**
    * What a pilot could do by hand, where the spacecraft allowed it (the flight deck, orbitdeck.ts): the code that frees the
-   * hand controls, how fast the hand controller turns the spacecraft (deg/s), and the braking engine as a hand fires it:
+   * hand controls (left out: they had no lock), how fast the hand controller turns the spacecraft (deg/s), and the braking engine as a hand fires it:
    * its thrust (N) and the impulse its integrator shuts it down at (m/s), the modules parting `parting` seconds after.
    */
   manual?: {
-    code: Measure;
+    code?: Measure;
     rate: Measure;
     thrust: Measure;
     deltaV: Measure;

@@ -46,6 +46,16 @@ The core and four strap-ons take their shapes and colours from the Vostok family
 models. The short separation demonstration in the gallery shows the normal order and
 uses illustrative movement distances.
 
+## As flown
+
+The orbital simulator flies the type from its own table of figures in «Мировая пилотируемая космонавтика» (2005), p. 83:
+each block's mass, load and engine, the head block's 8,510 kg with its ship, the escape tower let go at 157 s and the
+fairing at 161 s, and the escape modes by the second ([soyuz-11a511-flown.ts](soyuz-11a511-flown.ts)). What it does not
+give is the 11A57's, the 8K72K's or estimated, and says so: the drag, the steering law, the throttles at the end of the
+strap-ons' and the core's burns, the aft section, the split of the head block between the tower and the fairing. The
+table's strap-on row prints 252 s at the ground, which its own thrusts and 313 s in vacuum do not fit on one nozzle:
+257.5 s is derived.
+
 ## What the model gets wrong or leaves out
 
 - The detailed lower stack follows the earlier R-7 model. Its engines, paint and frost remain

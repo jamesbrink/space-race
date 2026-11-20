@@ -532,9 +532,18 @@ export function orbitalRecord(flight: SitedFlight): Run {
   const ejecting = new Set(ejection?.do.flatMap((a) => ('separate' in a ? [a.separate] : [])) ?? []);
   // (and what a joint lets go that the run itself times, so long after a cut its guidance made on the state, leaves then)
   const own = partedBy(flown, whole);
-  const dropped = flight.flies!.drops.map((d) =>
-    d.on && ejecting.has(d.on) && Number.isFinite(ejected) ? ejected : (own.get(d.on?.split('/')[0] ?? '') ?? d.at),
-  );
+  // (and what the clock lets go after a braking burn guidance timed for the landing place, as much later as the burn: the
+  // modules' parting; the drop's `at` is the record's instant of it)
+  const moved = (joint: string): number | undefined => {
+    if (!whole.plan) return undefined;
+    const e = flown.events.find((x) => x.automatic && x.do.some((a) => 'separate' in a && a.separate === joint));
+    const [was, is] = [clockAt(plan, eventOf(plan, e?.id ?? '')), clockAt(flown, e)];
+    return Number.isFinite(was) && Number.isFinite(is) && was < Number.MAX_SAFE_INTEGER && is !== was ? is : undefined;
+  };
+  const dropped = flight.flies!.drops.map((d) => {
+    const joint = d.on?.split('/')[0] ?? '';
+    return d.on && ejecting.has(d.on) && Number.isFinite(ejected) ? ejected : (own.get(joint) ?? moved(joint) ?? d.at);
+  });
   const sheds = new Sheds(flown, site, flight.site.seaLevel.value, { frame: frameOf(flight) });
   for (const def of flown.craft[0]!.sheds ?? []) {
     const i = flight.flies!.drops.findIndex((d) => d.on === def.on);

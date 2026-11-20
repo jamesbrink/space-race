@@ -13,6 +13,10 @@ import {
   soyuzGallerySpecs,
   wingMoves,
 } from '../../vehicles/gallery.ts';
+import { AREAS } from '../../vehicles/soyuz-7kok-flown.ts';
+import { commanded, soyuzChuteLooks, soyuzCommands, soyuzFlies } from '../../vehicles/soyuz-flies.ts';
+import { soyuzPlan } from '../../vehicles/soyuz-plan.ts';
+import { orbital as ORBITAL } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const TASS = 'TASS communiqué, Pravda no. 301 (27 October 1968), p. 1 (preliminary orbit)';
@@ -153,6 +157,20 @@ const elapsed = (utc: string) => (Date.parse(utc) - Date.parse(launch)) / 1000;
 const duration = elapsed(landing);
 
 const vehicle = soyuzGallery('soyuz-3', 'Soyuz 3', 'Beregovoy', spacecraft, ['LowerCap']);
+// what a hand can ask of each part in flight, said with what did each thing on the day (vehicles/soyuz-flies.ts)
+vehicle.parts = commanded(
+  vehicle.parts,
+  soyuzCommands({
+    parted: 'the sequence did, minutes after the burn',
+    crew: 'Beregovoy',
+    cover: `its barometric switch, ${(ORBITAL.ejection.altitude.value / 1000).toFixed(0)} km`,
+  }),
+);
+/** The descent module's parachutes as drawn, at their areas as the record has them. */
+const CHUTES = soyuzChuteLooks([
+  { name: 'drogue parachute', area: AREAS.drogue },
+  { name: 'main parachute', area: AREAS.main },
+]);
 vehicle.scale = '49.913 m nominal stack · 11A511 type drawing · hardware detail reconstructed';
 
 const crew = soyuzWalker('crew', 'Georgiy T. Beregovoy', 'models/ussr/soyuz/soyuz-3/crew.glb', 'flight', [-48, 0, 3.5], 1.8);
@@ -234,5 +252,13 @@ export const flight: Flight = {
     },
   ],
   motors: [],
+  // the flight as flown from its record: the 11A511's ascent on its steering law, the two firings of the main engine after the
+  // rendezvous and the braking burn, the guided entry and the descent (orbital.ts; mission.md), through the day's air over the pad
+  plan: { ...soyuzPlan(ORBITAL), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on Mishin’s instants for this vehicle to the orbit Siddiqi’s table gives. The rendezvous with Soyuz 2 is not flown: ' +
+    'the ship goes round alone, the main engine fired as the record has it on 28 and 29 October, to the braking burn at 09:45:05 on 30 October, ' +
+    'and Beregovoy comes down in the descent module on its own lift (mission.md).',
+  flies: soyuzFlies(ORBITAL, CHUTES),
   models: [onSoyuzPad(vehicle, TURN, TAIL), site31Pad, crew],
 };
