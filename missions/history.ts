@@ -1029,6 +1029,17 @@ export const MILESTONES: readonly Milestone[] = [
     confidence: 'documented',
   },
   {
+    date: '1973-05-25T13:00:00Z',
+    flight: 'usa/skylab/skylab-2',
+    nation: 'USA',
+    title: 'First crew of an American space station',
+    text:
+      'Pete Conrad, Joseph Kerwin and Paul Weitz took off in an Apollo spacecraft eleven days after Skylab reached orbit. ' +
+      'The station had lost its meteoroid shield and one workshop solar wing during launch. Their cabin now carried tools and sunshades.',
+    source: 'Kennedy Space Center, Skylab Program, pp. XI-1–XI-2 (NTRS 19740015280)',
+    confidence: 'documented',
+  },
+  {
     date: '1973-09-27T12:18:16Z',
     flight: 'ussr/soyuz/soyuz-12',
     nation: 'USSR',
@@ -1633,6 +1644,24 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
         'America, as a tribute and thanks to the American people who made Apollo possible. Challenger, for the ' +
         'challenges of the future beyond Apollo.',
       source: CALLSIGNS,
+      confidence: 'documented',
+    },
+  },
+  'usa/skylab/skylab-2': {
+    flight: 'usa/skylab/skylab-2',
+    headline: 'The crew that made Skylab habitable',
+    story:
+      'From the open Apollo hatch, Weitz tried to free the workshop’s surviving solar wing while Conrad flew alongside and Kerwin held his legs. ' +
+      'The metal trapping the wing held. Once aboard, the crew pushed a folding parasol out through a scientific airlock. In its shade the workshop cooled.' +
+      '\n\n' +
+      'On 7 June Conrad and Kerwin went outside with a cable cutter on a pole. With the strip of metal cut, they pulled the wing free. ' +
+      'Power from its solar cells let the crew run experiments that had been waiting for electricity. Their Apollo brought all three back on 22 June.',
+    firsts: ['First crew of an American space station'],
+    source:
+      'Kennedy Space Center, Skylab Program, p. XI-2 (NTRS 19740015280). NASA, Skylab 2 Astronauts Deploy Jammed Solar Array During Spacewalk (2023).',
+    named: {
+      why: 'NASA counted the station itself as Skylab 1. The Apollo that brought its first crew to orbit was Skylab 2.',
+      source: 'Kennedy Space Center, Skylab Program, pp. XI-1–XI-2 (NTRS 19740015280)',
       confidence: 'documented',
     },
   },
@@ -2857,7 +2886,7 @@ export const PEOPLE: readonly Person[] = [
     born: '1930-06-02',
     died: '1999-07-08',
     nation: 'USA',
-    flights: ['usa/gemini/gt-5', 'usa/gemini/gt-11', 'usa/apollo/apollo-12'],
+    flights: ['usa/gemini/gt-5', 'usa/gemini/gt-11', 'usa/apollo/apollo-12', 'usa/skylab/skylab-2'],
     bio:
       '“Pete” Conrad, of Philadelphia and Princeton, was a Navy test pilot at Patuxent River when he was chosen in 1962. He ' +
       'flew eight days on Gemini 5, commanded Gemini 11 to a record height, and commanded Apollo 12, the second landing on the Moon.' +
@@ -2865,6 +2894,33 @@ export const PEOPLE: readonly Person[] = [
       'In 1973 he commanded the first crew of Skylab, which repaired the damaged station and saved it. He died after a motorcycle ' +
       'accident in 1999.',
     source: `${JSC_BIO}, Charles Conrad, Jr.; ${FACT_BOOK}, section 4.0`,
+    confidence: 'documented',
+  },
+  {
+    id: 'kerwin',
+    name: 'Joseph P. Kerwin',
+    born: '1932-02-19',
+    nation: 'USA',
+    flights: ['usa/skylab/skylab-2'],
+    bio:
+      'A Navy flight surgeon and aviator, Kerwin joined NASA’s first class of scientist-astronauts in 1965. ' +
+      'As Skylab’s first science pilot he could study what weeks of weightlessness did to his crewmates and to himself. ' +
+      'Outside the station he and Conrad freed the jammed solar wing that supplied power to the workshop.',
+    source: 'NASA, Biographical Data, Joseph P. Kerwin. Kennedy Space Center, Skylab Program, p. XI-2 (NTRS 19740015280).',
+    confidence: 'documented',
+  },
+  {
+    id: 'weitz',
+    name: 'Paul J. Weitz',
+    born: '1932-07-25',
+    died: '2017-10-22',
+    nation: 'USA',
+    flights: ['usa/skylab/skylab-2'],
+    bio:
+      'A Navy pilot from Erie, Pennsylvania, Weitz joined NASA in 1966. On his first flight he stood in the open Apollo hatch with a long tool ' +
+      'to try to free Skylab’s trapped solar wing. Ten years later he commanded the first flight of the space shuttle Challenger.',
+    source:
+      'NASA, Skylab, Shuttle Astronaut Paul Weitz Dies at 85 (2017). Kennedy Space Center, Skylab Program, p. XI-2 (NTRS 19740015280).',
     confidence: 'documented',
   },
   {
@@ -2992,6 +3048,23 @@ export const PROGRAMMES: readonly Programme[] = [
       'Six landings between 1969 and 1972 put twelve men on the Moon and brought back its rocks. Its hardware flew on ' +
       'in Skylab in 1973 and 1974 and in the joint flight with the Soviet Union, Apollo-Soyuz, in July 1975.',
     source: `${CHARIOTS}, pp. xiii and xiv (the plan of July 1960; Skylab; Apollo-Soyuz), p. 29 (Kennedy, 25 May 1961), p. 85 (lunar-orbit rendezvous announced 11 July 1962); ${ABTN}, pp. 14 and 94`,
+  },
+  {
+    id: 'usa/skylab',
+    name: 'Skylab',
+    nation: 'USA',
+    years: '1973–1974',
+    why:
+      'Skylab gave crews time to ask questions that a short flight could barely begin to answer. They measured how their bodies changed ' +
+      'over weeks in orbit, watched the Sun through telescopes above the atmosphere and trained instruments on the Earth.',
+    how:
+      'A Saturn V launched the uncrewed station with its workshop already fitted out inside a converted rocket stage. ' +
+      'Each crew followed separately in an Apollo command and service module on a Saturn IB. The crew docked at one end of the station ' +
+      'and lived and worked in what had been designed as a liquid hydrogen tank.',
+    legacy:
+      'The first crew repaired the station. Two more crews followed, bringing the three stays to 28, 59 and 84 days. ' +
+      'The last crew came home in February 1974. Skylab itself re-entered over the Indian Ocean and Western Australia in July 1979.',
+    source: 'NASA, Skylab mission overview. Compton and Benson, Living and Working in Space, NASA SP-4208, chapters 14–19.',
   },
   {
     id: 'usa/mercury',

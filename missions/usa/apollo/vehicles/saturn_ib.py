@@ -58,13 +58,13 @@ def cylinder(name, radius, lo, hi, mat, parent):
     return lathe_obj(name, prof([(radius, lo), (radius, hi)]), mat, parent, segs=128)
 
 
-def painted_barrel(name, lo, hi, parent, white, black, bands=()):
+def painted_barrel(name, lo, hi, parent, white, black, bands=(), *, continuous=False):
     """Paint is on the skin, not a second near-coplanar skin above it."""
     mesh = [MeshBuilder(), MeshBuilder()]
     levels = sorted({lo, hi, *[z for start, end in bands for z in (start, end) if lo < z < hi]})
     for i in range(16):
         for z0, z1 in zip(levels, levels[1:]):
-            dark = any(start <= (z0 + z1) / 2 <= end for start, end in bands) and i % 4 in (0, 1)
+            dark = any(start <= (z0 + z1) / 2 <= end for start, end in bands) and (continuous or i % 4 in (0, 1))
             mesh[int(dark)].lathe(prof([(RADIUS, z0), (RADIUS, z1)]), segs=8, arc=(TAU * i / 16, TAU * (i + 1) / 16))
     for i, m in enumerate(mesh):
         if m.faces:
@@ -102,9 +102,9 @@ def lettering(body, angle, top, radius, height, width, pitch, mat, parent, font,
     obj["paint_reference_cap_ratio"] = u_width / u_height
 
 
-def outer_tank(index, angle, white, black, parent):
+def outer_tank(index, angle, white, black, parent, *, white_fuel=False):
     """One tank skin, with its fuel-tank white marking field painted into it."""
-    fuel = index % 2 == 1
+    fuel = index % 2 == 1 and not white_fuel
     profile = [(35, structure.SIB_SKIRT_BOTTOM), (35, SIB_FIELD_LO), (35, SIB_FIELD_HI), (35, structure.SIB_SKIRT_TOP)]
     half = SIB_FIELD_ARC / (2 * 35)
     angles = sorted({TAU * i / 64 for i in range(64)} | {half, TAU - half})
@@ -122,7 +122,14 @@ def outer_tank(index, angle, white, black, parent):
     return tank
 
 
-def build():
+def build(*, skylab=False):
+    # MSFC-MAN-206 fig. 1-1, vehicle stations in inches. The upper SLA
+    # interface meets the SM aft bulkhead; the flight separation line is 1.06 in aft.
+    sib_top, interstage_top, sivb_top, iu_top, hinge_height, sla_top = (
+        (962.304, 1186.804, 1662.859, 1698.859, 1781.309, 2034.859)
+        if skylab
+        else (SIB_TOP, INTERSTAGE_TOP, SIVB_TOP, IU_TOP, IU_TOP + 7 * 12, SLA_TOP)
+    )
     white = material("saturn-white", (0.86, 0.87, 0.83), roughness=0.64)
     black = material("saturn-black", (0.025, 0.03, 0.035), roughness=0.7)
     steel = material("saturn-engine-steel", (0.22, 0.24, 0.25), metallic=0.7, roughness=0.52)
@@ -155,9 +162,19 @@ def build():
         # MSFC-MAN-206 p.4-4 dates white fuel tanks to SA-206 onward. The
         # actual SA-205 photograph S68-29781 shows red letters on white
         # fields on the BLACK fuel tanks, not on the white oxygen tanks.
-        outer_tank(i, a, white, black, sib)
-    cylinder("SIB_ThrustSkirt", SIB_TAIL_RADIUS, 32, structure.SIB_SKIRT_BOTTOM, black, sib)
-    cylinder("SIB_ForwardRing", 130, structure.SIB_SKIRT_TOP, SIB_TOP, white, sib)
+        outer_tank(i, a, white, black, sib, white_fuel=skylab)
+    if skylab:
+        # NASA KSC-72P-506 shows a light skirt with dark rectangles between the white fins.
+        skirt = cylinder("SIB_ThrustSkirt", SIB_TAIL_RADIUS, 32, 97, white, sib)
+        skirt.data.materials.append(black)
+        for polygon in skirt.data.polygons:
+            angle = math.atan2(polygon.center.y, polygon.center.x)
+            if (angle % (math.pi / 4)) / (math.pi / 4) > 0.58:
+                polygon.material_index = 1
+        cylinder("SIB_UpperThrustSkirt", SIB_TAIL_RADIUS, 97, structure.SIB_SKIRT_BOTTOM, white, sib)
+    else:
+        cylinder("SIB_ThrustSkirt", SIB_TAIL_RADIUS, 32, structure.SIB_SKIRT_BOTTOM, black, sib)
+    cylinder("SIB_ForwardRing", 130, structure.SIB_SKIRT_TOP, sib_top, white, sib)
     # MSFC Air Load Manual 1.9201, reproduced in TP-3615 Fig. 39. The type's
     # 110-in exposed planform starts slightly inside the rounded tail envelope.
     for i in range(8):
@@ -189,20 +206,40 @@ def build():
         if srlib.interior():
             structure.h1_equipment(mount, i, alloy)
     # S-IVB aft interstage surrounds its single J-2.
-    painted_barrel("Interstage_Skin", SIB_TOP, INTERSTAGE_TOP, groups["SaturnInterstage"], white, black, [(SIB_TOP + 12, INTERSTAGE_TOP - 12)])
+    painted_barrel("Interstage_Skin", sib_top, interstage_top, groups["SaturnInterstage"], white, black, [(sib_top + 12, interstage_top - 12)])
     structure.j2_engine(groups["SecondStageEngine"], steel, alloy, J2_EXIT_INNER_RADIUS, BELL_RIM)
     sivb = groups["SaturnSecondStage"]
-    painted_barrel("SIVB_Skin", INTERSTAGE_TOP, SIVB_TOP, sivb, white, black, [(INTERSTAGE_TOP, SIVB_WHITE_FIELD_LO)])
-    for i in range(2):
-        a = TAU * i / 2 + math.pi / 2
-        mesh = MeshBuilder()
-        mesh.box((24 * IN, 22 * IN, 58 * IN), Matrix.Translation(radial(136, a, INTERSTAGE_TOP + 26)))
-        mesh.build(f"SIVB_AuxiliaryPropulsion_{i}", white, sivb)
+    if skylab:
+        # S73-27095: two dark circumferential skirt bands with a white barrel between.
+        painted_barrel(
+            "SIVB_Skin",
+            interstage_top,
+            sivb_top,
+            sivb,
+            white,
+            black,
+            [(interstage_top, interstage_top + 50), (sivb_top - 60, sivb_top)],
+            continuous=True,
+        )
+    else:
+        painted_barrel("SIVB_Skin", interstage_top, sivb_top, sivb, white, black, [(interstage_top, SIVB_WHITE_FIELD_LO)])
+        for i in range(2):
+            a = TAU * i / 2 + math.pi / 2
+            mesh = MeshBuilder()
+            mesh.box((24 * IN, 22 * IN, 58 * IN), Matrix.Translation(radial(136, a, interstage_top + 26)))
+            mesh.build(f"SIVB_AuxiliaryPropulsion_{i}", white, sivb)
     # Real raised longitudinal stiffeners, sunk into the skin, with a common angular grid.
     for i in range(64):
         a = TAU * i / 64
-        for j, (lo, hi) in enumerate(((INTERSTAGE_TOP + 4, INTERSTAGE_TOP + 49), (SIVB_TOP - 60, SIVB_TOP - 5))):
-            tube(f"SIVB_Rib_{i}_{j}", radial(130, a, lo), radial(130, a, hi), 0.8, black if j == 0 and (i // 4) % 4 in (0, 1) else white, sivb)
+        for j, (lo, hi) in enumerate(((interstage_top + 4, interstage_top + 49), (sivb_top - 60, sivb_top - 5))):
+            tube(
+                f"SIVB_Rib_{i}_{j}",
+                radial(130, a, lo),
+                radial(130, a, hi),
+                0.8,
+                black if skylab or (j == 0 and (i // 4) % 4 in (0, 1)) else white,
+                sivb,
+            )
     # No guessed cable tunnels: the initial four were unsourced and covered the USA paint.
     for i in range(4):
         a = TAU * i / 4
@@ -211,29 +248,32 @@ def build():
         lettering(
             "UNITED STATES",
             fuel_angle,
-            SIB_TEXT_TOP,
+            838 if skylab else SIB_TEXT_TOP,
             35,
             SIB_CAP,
             SIB_U_WIDTH,
-            SIB_PITCH,
+            41 if skylab else SIB_PITCH,
             red,
             sib,
             font,
             centre=centre,
             word_gap=SIB_WORD_GAP,
         )
+        if skylab:
+            serial = MeshBuilder()
+            srlib.lettering(serial, srlib.Surf(35, 0, 0), "SA-206", 46, fuel_angle, 296, False, font)
+            serial.build(f"SIB_Serial_{i}", black, sib).location = (*centre, 0)
         lettering("USA", a, SIVB_TEXT_TOP, RADIUS, SIVB_CAP, SIVB_U_WIDTH, SIVB_PITCH, red, sivb, font)
-    cylinder("IU_Skin", RADIUS, SIVB_TOP, IU_TOP, black, groups["InstrumentUnit"])
+    cylinder("IU_Skin", RADIUS, sivb_top, iu_top, black, groups["InstrumentUnit"])
     sla = groups["SpacecraftAdapter"]
     # Four seven-foot aft panels and four twenty-one-foot doors (NAR
     # News Reference p. 66). Apollo 7 retained the doors on their hinges.
-    hinge_height = IU_TOP + 7 * 12
-    slope = (130 - 77) / (SLA_TOP - IU_TOP)
+    slope = (130 - 77) / (sla_top - iu_top)
     gauge = 1.75 * math.hypot(1, slope)
     for i in range(4):
         mid = TAU * i / 4
-        for moving, bottom, top in ((False, IU_TOP, hinge_height - 0.08), (True, hinge_height + 0.08, SLA_TOP)):
-            r0, r1 = 130 - slope * (bottom - IU_TOP), 130 - slope * (top - IU_TOP)
+        for moving, bottom, top in ((False, iu_top, hinge_height - 0.08), (True, hinge_height + 0.08, sla_top)):
+            r0, r1 = 130 - slope * (bottom - iu_top), 130 - slope * (top - iu_top)
             parent = group(f"SLA_Door_{i}", sla) if moving else sla
             # Place the hinge along the tangent at the middle of each petal.
             pivot = Vector(radial(r0, mid, hinge_height)) if moving else Vector()
@@ -263,5 +303,5 @@ def build():
             if obj.type == "MESH" and not obj.name.startswith("SIVB_AuxiliaryPropulsion_")
         ]
     )
-    structure.build(groups)
+    structure.build(groups, spheres_per_bank=3 if skylab else 4)
     return groups

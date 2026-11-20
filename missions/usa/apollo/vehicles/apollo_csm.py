@@ -26,6 +26,7 @@ import side_hatch
 import sm110_equipment
 import sm112_equipment
 import sm113_equipment
+import sm116_equipment
 import unitized_couch
 import window_glazing
 from srlib import IN, TAU, MeshBuilder, frame, group, lathe_obj, mark_shells, material, prof
@@ -104,11 +105,12 @@ def bell(name, origin, direction, length, radius, mat, parent):
 
 def build(offset=0, *, spacecraft=101):
     """Build top-level part nodes, translated together by offset inches."""
-    if spacecraft not in (101, 103, 104, 106, 107, 108, 109, 110, 112, 113, 114):
+    if spacecraft not in (101, 103, 104, 106, 107, 108, 109, 110, 112, 113, 114, 116):
         raise ValueError(f"Unmodelled CSM-{spacecraft}")
     sim_bay = spacecraft in (112, 113, 114)
-    lunar = spacecraft != 101
-    probe_installed = spacecraft in (104, 106, 107, 108, 109, 110, 112, 113, 114)
+    skylab = spacecraft == 116
+    later = spacecraft != 101
+    probe_installed = spacecraft in (104, 106, 107, 108, 109, 110, 112, 113, 114, 116)
     white = material("apollo-radiator-white", (0.82, 0.84, 0.80), roughness=0.65)
     silver = material("apollo-aluminium", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33)
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
@@ -162,8 +164,8 @@ def build(offset=0, *, spacecraft=101):
     # unmarked inner wall would make the apparent opening solid again.
     # The quads and engine are separate nodes and remain whole in cutaway.
     mark_shells([obj.name for obj in sm.children if obj.type == "MESH"])
-    service_tanks.build(groups["ServiceSumpTanks"], SPS_EXIT_XA)
-    service_tanks.pressurant(groups["ServiceHelium"], SPS_EXIT_XA)
+    service_tanks.build(groups["ServiceSumpTanks"], SPS_EXIT_XA, storage=not skylab)
+    service_tanks.pressurant(groups["ServiceHelium"], SPS_EXIT_XA, forward_only=skylab)
     if spacecraft == 109:
         groups["OxygenShelf"] = group("OxygenShelf")
         groups["OxygenTankTwoCore"] = group("OxygenTankTwoCore")
@@ -183,7 +185,7 @@ def build(offset=0, *, spacecraft=101):
         for name in ("SIMBay", "SIMCameras", "ReserveHydrogen", *sensors):
             groups[name] = group(name)
         sm112_equipment.build(groups, SPS_EXIT_XA, spacecraft=spacecraft)
-    service_tanks.power(groups["ServicePower"], SPS_EXIT_XA, separate_oxygen=spacecraft == 109)
+    service_tanks.power(groups["ServicePower"], SPS_EXIT_XA, separate_oxygen=spacecraft == 109, two_cells=skylab)
     service_tanks.structure(sm, SPS_EXIT_XA)
     if spacecraft == 113:
         groups["YawActuator"] = group("YawActuator")
@@ -222,8 +224,8 @@ def build(offset=0, *, spacecraft=101):
         void,
         docking_ring=probe_installed,
     )
-    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft in (106, 107, 108, 109, 110, 112, 113, 114))
-    forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=lunar, hatch_setback=10 if probe_installed else 0)
+    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft in (106, 107, 108, 109, 110, 112, 113, 114, 116))
+    forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=later, hatch_setback=10 if probe_installed else 0)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     window_glazing.build(groups["CabinWindows"], CM_BASE, hatch_parent=hatch_leaf)
     side_hatch.register_leaf(hatch_leaf)
@@ -238,15 +240,16 @@ def build(offset=0, *, spacecraft=101):
         forward_compartment.recovery_loop(groups["RecoveryLoop"], CM_BASE)
         groups["TelemetryPower"] = group("TelemetryPower")
         console_equipment.telemetry_power(groups["TelemetryPower"], CM_BASE)
-    if spacecraft in (107, 108, 109, 110, 112, 113, 114):
+    if spacecraft in (107, 108, 109, 110, 112, 113, 114, 116):
         groups["WaterDispenser"] = group("WaterDispenser")
         cabin_bays.water_dispenser(groups["WaterDispenser"], CM_BASE, spacecraft)
-    unitized_couch.build(groups["CrewCouches"], CM_BASE, foldable=lunar)
-    if lunar:
+    unitized_couch.build(groups["CrewCouches"], CM_BASE, foldable=later)
+    if later and not skylab:
         groups["HighGainAntenna"] = group("HighGainAntenna")
         apollo8_equipment.antenna(groups["HighGainAntenna"], SM_BOTTOM)
+    if later:
         apollo8_equipment.navigation(groups["CabinEquipmentBays"], CM_BASE)
-    if probe_installed:
+    if probe_installed and not skylab:
         # Inside the right rendezvous window, visible to the LM crew (Apollo Program Summary Report, section 4.7.5).
         # Register to the reconstructed pane. Target size and standoff are estimates.
         normal = Vector((0.5163366, -0.0096678, 0.8563311))
@@ -267,8 +270,14 @@ def build(offset=0, *, spacecraft=101):
         sight = MeshBuilder()
         sight.lathe(prof([(0.24, -0.13), (0.24, 0.55), (0.55, 0.61), (0.55, 0.77), (0, 0.77)]), 24, matrix=target_pose)
         sight.build("CM104_RendezvousWindowTarget", red, groups["CabinWindows"])
+    if probe_installed:
         probe = groups["DockingProbe"] = group("DockingProbe")
         apollo_docking.command(probe, CM_BASE, silver, void)
+    if skylab:
+        for name in ("PropellantStorageModule", "DescentBatteries", "ServiceWaterTank", "VHFAntennas", "ParasolCanister"):
+            groups[name] = group(name)
+        sm116_equipment.build(groups, SPS_EXIT_XA, CM_BASE)
+        sm116_equipment.parasol(groups["ParasolCanister"], CM_BASE)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN
