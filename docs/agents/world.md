@@ -314,6 +314,27 @@ it), with a generic client name, and is deterministic, so a bake of the same sou
 - `pnpm era5:aloft [<flight id> ...]` (tools/era5-aloft.mjs): ERA5 from the ARCO-ERA5 copy on storage.googleapis.com,
   some 40 MB a flight read by HTTP range a Blosc block at a time (a whole pressure-level field is 85 MB an hour), into
   `era5/`; writes each flight's aloft.ts beside its weather.ts. A new flight's weather.ts imports it (`aloft`, `hours`).
+- `pnpm lunar:terrain [<site> ...] [--grids | --strips]` (tools/lunar-terrain.py, run with uv): LROC's NAC stereo terrain
+  models (14 to 750 MB each), LOLA's 64 ppd heights (531 MB) and four SLDEM2015 tiles (1.4 GB each), into `moon/`; writes
+  each landing site's public/lunar/<site>.terrain.bin (333 kB) and <site>.descent.bin (1.08 MB). Run it on hal9000. It
+  reads src/world/lunar-sites.json, which `pnpm lunar:sites` writes from the sites' modules: change a site there, write
+  the JSON, bake again, and the three rover sites' grids come out byte for byte unless their figures moved.
+
+**The Moon's landing sites** (missions/usa/places/moon/, `LunarSiteDef`): each Apollo LM's place is a `SiteDef` with
+`body: 'moon'`, its latitude and longitude Wagner et al. (2017) as LROC publishes them, in the mean Earth/polar axis frame
+that LOLA's and LROC's maps are in; its height the ground under the LM above the sphere of 1737.4 km (the stereo's plane
+under the pads); sea level 0 by definition; +X east, +Z south, the clock UTC. Their figures live there once:
+src/world/lunar-sites.json is written from them (`pnpm lunar:sites`; tests/lunar-sites.test.mjs fails when it is stale)
+for the Python baker and the viewer, and the rovers' sites (lunar-rover-sites.json) take their position from it.
+
+A site's ground has two parts (world/lunar-ground.ts). Round the LM, nested square grids of 2, 8, 32, 128 and 512 m, each
+128 squares a side, on the tangent plane with the curvature kept (`LunarTerrain`): the NAC stereo where it covers, LOLA
+beyond, out to 32.8 km. Along the descent, a strip 560 by 60 km of SLDEM2015 averaged to 250 m cells (`DescentStrip`): from
+520 km back along the track (powered descent began 483 to 516 km out) to 40 km past the LM, along the great circle through
+the LM on the heading flown there (`approach`). `LandingGround` is the two as one: heights over the sphere by latitude and
+longitude (`BodyGround`), the grids where they reach and the strip beyond, the one faded into the other over the grids' last 4 km and the strip's own (no step at either edge), and the land in the
+site's own frame as a site's `Ground` is asked (sim/sitecontact.ts). The stereo and the altimeter agree under each LM to a
+few metres (tests/lunar-sites.test.mjs); what is left out is in each site's .md.
 
 A model whose slider tells a sequence of events has a `sequence` (types.ts: `Keyframe`): the
 instants, in seconds from launch, at which the slider reads each value, each with confidence and

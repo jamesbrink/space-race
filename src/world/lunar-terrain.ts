@@ -1,13 +1,26 @@
-import config from './lunar-rover-sites.json' with { type: 'json' };
+import rovers from './lunar-rover-sites.json' with { type: 'json' };
+import lunar from './lunar-sites.json' with { type: 'json' };
 
-export type RoverSite = keyof typeof config.sites;
-export const ROVER_SITES = config.sites;
-export const TERRAIN_SPACING = config.spacing;
-export const TERRAIN_INTERVALS = config.intervals;
+/** A landing site on the Moon by its id: written from missions/usa/places/moon/ (tools/lunar-sites.mjs), its terrain under public/lunar/. */
+export type LunarSite = keyof typeof lunar.sites;
+export const LUNAR_SITES = lunar.sites;
+export type RoverSite = keyof typeof rovers.sites;
+/** A rover's site: where it is (`landing`, `label`: the site's own figures) and what its gallery scene shows there. */
+export const ROVER_SITES = Object.fromEntries(
+  Object.entries(rovers.sites).map(([id, rover]) => {
+    const site = lunar.sites[id as LunarSite];
+    return [id, { ...rover, landing: site.landing, label: site.name }];
+  }),
+) as { [K in RoverSite]: (typeof rovers.sites)[K] & { landing: number[]; label: string } };
+export const TERRAIN_SPACING = lunar.spacing;
+export const TERRAIN_INTERVALS = lunar.intervals;
 const side = TERRAIN_INTERVALS + 1;
 const middle = TERRAIN_INTERVALS / 2;
 
-/** Nested square grids on the landing site's tangent plane. The baker stores centimetres above the starting point. */
+/**
+ * Nested square grids on the landing site's tangent plane, centred `centre` metres east of the LM (lunar-sites.json). The baker
+ * (tools/lunar-terrain.py) stores centimetres above the grids' centre, the curvature of the horizon kept.
+ */
 export class LunarTerrain {
   readonly levels: Float32Array[];
 

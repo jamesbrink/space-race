@@ -63,7 +63,9 @@
     "front:earth": "node tools/front-earth.mjs",
     "front:moon": "node tools/front-moon.mjs",
     "globe:weather": "node tools/globe-weather.mjs",
-    "era5:aloft": "node tools/era5-aloft.mjs"
+    "era5:aloft": "node tools/era5-aloft.mjs",
+    "lunar:sites": "node tools/lunar-sites.mjs",
+    "lunar:terrain": "uv run --script tools/lunar-terrain.py"
   },
   "engines": {
     "node": ">=22.18.0"

@@ -17,11 +17,11 @@ export interface SiteDef {
   body?: string;
   /** The place the site is in (missions/<nation>/places/<place>/place.ts): its country, its usual sky, its quiet, its ground. */
   place: PlaceDef;
-  /** Degrees north, WGS 84. */
+  /** Degrees north, WGS 84 (on another body, on its own figure and in its own frame: the Moon's mean Earth/polar axis). */
   latitude: Measure;
   /** Degrees east, WGS 84: negative in the Americas. */
   longitude: Measure;
-  /** Metres above the WGS 84 ellipsoid, which is not sea level. */
+  /** Metres above the WGS 84 ellipsoid, which is not sea level (on the Moon, above its sphere of 1737.4 km). */
   height: Measure;
   /** Where mean sea level is there, metres above the ellipsoid (the geoid's height: negative where the sea is below it). */
   seaLevel: Measure;
@@ -47,6 +47,23 @@ export interface SiteDef {
   exhaust?: { way: 'pit'; toward: Measure; depth: Measure; out: Measure; width: Measure };
   /** When its floods were lit, and how they came up (viewer/lamps.ts `lampsLit`). Left out: `DUTY` there, every figure estimated. */
   lamps?: LampDuty;
+}
+
+/**
+ * A landing site on the Moon (missions/usa/places/moon/): where its lunar module stood, as a `SiteDef` on the Moon
+ * (`body: 'moon'`), and what its ground is baked from (tools/lunar-terrain.py, which reads all of it through
+ * src/world/lunar-sites.json, written from these by tools/lunar-sites.mjs).
+ */
+export interface LunarSiteDef {
+  /** Its id: the stem of its files under public/lunar/ (`<id>.terrain.bin`, `<id>.descent.bin`). */
+  id: string;
+  site: SiteDef;
+  /** The LROC NAC stereo terrain models round the LM, by area (the PDS product NAC_DTM_<area>), each laid over those before it. */
+  stereo: string[];
+  /** How far east of the LM the nested grids are centred, metres: where the rover was parked at 15 to 17, the LM itself elsewhere. */
+  centre: Measure;
+  /** The descent's ground track at the LM: the heading it was flown on there, degrees clockwise from north. The descent strip lies along it. */
+  approach: Measure;
 }
 
 /**

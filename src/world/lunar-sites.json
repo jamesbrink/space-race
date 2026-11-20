@@ -1,0 +1,63 @@
+{
+  "about": "Written by tools/lunar-sites.mjs from missions/usa/places/moon/*.ts, where each figure has its source: do not edit.",
+  "radius": 1737400,
+  "intervals": 128,
+  "spacing": [2, 8, 32, 128, 512],
+  "strip": {
+    "spacing": 250,
+    "average": 4,
+    "uprange": 520000,
+    "downrange": 40000,
+    "half": 30000
+  },
+  "sites": {
+    "tranquility": {
+      "name": "Tranquility Base",
+      "landing": [0.67416, 23.47314],
+      "height": -1927.81,
+      "approach": 268.64,
+      "centre": 0,
+      "stereo": ["APOLLO11"]
+    },
+    "ocean-of-storms": {
+      "name": "Ocean of Storms",
+      "landing": [-3.0128, -23.4219],
+      "height": -1422.77,
+      "approach": 284.2,
+      "centre": 0,
+      "stereo": ["APOLLO12"]
+    },
+    "fra-mauro": {
+      "name": "Fra Mauro",
+      "landing": [-3.64589, -17.47194],
+      "height": -1062.89,
+      "approach": 283.96,
+      "centre": 0,
+      "stereo": ["APOLLO14"]
+    },
+    "hadley": {
+      "name": "Hadley–Apennine",
+      "landing": [26.13239, 3.6333],
+      "height": -1924.23,
+      "approach": 270,
+      "centre": 12,
+      "stereo": ["APOLLO15"]
+    },
+    "descartes": {
+      "name": "Descartes Highlands",
+      "landing": [-8.9734, 15.5011],
+      "height": 8.38,
+      "approach": 270.31,
+      "centre": 12,
+      "stereo": ["APOLLO16"]
+    },
+    "taurus-littrow": {
+      "name": "Taurus–Littrow",
+      "landing": [20.1911, 30.7723],
+      "height": -2626.69,
+      "approach": 270.51,
+      "centre": 12,
+      "stereo": ["APOLLO17", "APOLLO17_1"]
+    }
+  }
+}
