@@ -9,10 +9,42 @@ wing stayed folded after separation. Problems with power and spacecraft orientat
 commission to cancel the second launch and bring Komarov down early.
 
 An automatic sequence inhibited the first planned braking burn. Komarov subsequently aligned the
-ship by hand, and reported that the braking engine ran for 146 seconds. The descent module made it
-through entry. Its drogue could not extract the main parachute, and the reserve failed to inflate
-properly. Komarov died on impact near Orsk. The commission’s explanation for why the main stayed
-packed and Chertok’s later account differ. [Challenge to Apollo, pp. 581–589](https://www.nasa.gov/wp-content/uploads/static/history/SP-4408pt2.pdf)
+ship by hand, and reported that the braking engine ran for 146 seconds. The descent module came
+through a ballistic entry. Its drogue could not pull the main parachute out of its container, and
+the reserve, caught in the drogue's shadow, did not fill. Komarov was killed when the descent module
+struck the ground near Karabulak, 65 km east of Orsk, at 06:22:52 Moscow time. The commission’s
+explanation for why the main stayed packed and Chertok’s later account differ. [Challenge to Apollo, pp. 581–589](https://www.nasa.gov/wp-content/uploads/static/history/SP-4408pt2.pdf) · [Siddiqi, “Fifty years later: Soyuz-1 revisited (part 2)”](https://www.thespacereview.com/article/3229/1) · [RKK Energia history, ch. 5](https://testpilot.ru/espace/bibl/energia-50/05.php)
+
+## The flight as flown
+
+From [mission.md](mission.md). The ascent is flown on the 11A511's own figures and, no instant of this vehicle's having been
+found, Soyuz 3's vehicle's instants: Block I is cut on the orbit at 531 s with 102 kg left, level at 200.9 km. The
+correction of the fifth orbit is flown against the motion (the middle of Mishin's 3.1 to 3.8 m/s), and the braking burn
+of the nineteenth orbit, 143.5 s, tail first, timed for the landing place. The entry is ballistic, as the record has it:
+no bank is held and the module's lift is never flown, at most 8.4 g. The parachute system starts at 7 km; the drogue comes
+out; **the main stays in its container**; the reserve comes out at 2 km in the drogue's shadow and does not fill. The
+descent module strikes the ground at **36.4 m/s**, 190 s before the record's instant and 32 km across the track from its
+point. Komarov is killed.
+
+The sources disagree on that speed: Kamanin's report from the site that day has 35 to 40 m/s (the check's figure); Siddiqi
+40; Afanasyev and Vorontsov "over 50"; the flight surgeons Bychkov and Artamoshin, as Zak gives them, 26 to 30. The run's
+36.4 is not fitted: it rests on two estimates, the height the reserve came out at and what of its drag a fouled canopy keeps
+(mission.md). On the drogue alone the module would have fallen at 58 m/s.
+
+On the flight deck the faults are the hardware's, whatever the hands do: the main stays in its container when it is given,
+and the reserve, whenever it comes out with the drogue still out, does not fill. Nothing aboard could let the drogue go (an
+emergency release for it was fitted after this flight), and no source read gives the crew a command of their own for the
+reserve: the system put it out on its own speed check. The deck's action gives the descent's steps in their order, as the
+sequence would, so the reserve comes after the drogue and fouls on it as on the day; no part's menu offers it.
+
+What the run does not do:
+
+- The folded wing changes nothing flown: the simulator has no electricity and no attitude in orbit. What it cost is in the
+  record: the ship's life on its batteries (some 23 orbits) and the entry flown ballistic.
+- The failed attempts at the braking burn on the 17th orbit, the attempts to spin the ship to the Sun and the orientation by
+  hand are told, not flown.
+- The correction is flown on the main engine alone.
+- The fire after the impact and the wreck are not shown.
 
 ## Gallery
 
@@ -29,7 +61,7 @@ whose reference stations are unspecified. [Gagarin Cosmonaut Training Center](ht
 The cabin cutaway and Komarov’s couch are reconstructed
 from period material. The gallery’s separation and solar-wing motions are illustrative.
 
-The Gallery uses studio light. The flight deck is pending.
+The Gallery uses studio light.
 
 ## Liftoff and orbit
 

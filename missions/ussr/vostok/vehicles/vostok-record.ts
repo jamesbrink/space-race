@@ -343,4 +343,12 @@ export interface DescentChute {
    */
   strength?: Measure;
   pull?: Measure;
+  /**
+   * A fault the record has, said with its source. `stays`: commanded out, it stayed in its container, so it adds no drag,
+   * takes no other's place and is never out for anything that waits on it. `fouls`: let out while another parachute of its
+   * body is still out (`by`, their names), it is caught in that one's shadow and does not fill: it streams with
+   * `DescentRecord.torn` of its drag area, as a torn canopy does. Each is the hardware's, whatever a hand gives.
+   */
+  stays?: { confidence: Confidence; source: string };
+  fouls?: { by: string[]; confidence: Confidence; source: string };
 }

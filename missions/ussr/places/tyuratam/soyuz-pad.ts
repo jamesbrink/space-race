@@ -1,6 +1,6 @@
 import type { ModelDef, Part } from '../../../../src/types.ts';
 
-import { DEG, TURN } from './site-1.parts.ts';
+import { DEG, launchSystemFalls, TURN } from './site-1.parts.ts';
 
 export function soyuzTower(side: 'North' | 'South', group: string): Part {
   const node = `${side}ServiceTower`;
@@ -109,12 +109,16 @@ export const soyuzPad: ModelDef = {
       'The tall lattice mast stands clear of the access towers.',
       'NASA image S75-32339 shows the mast behind the Soyuz installation. Its height and fittings here are assumed from the earlier Site 1 surveys.',
     ),
-    structure(
-      'LaunchRing',
-      'Support ring and arms',
-      'Four counterweighted arms held the launcher above the open deck.',
-      'The four arms supported the rocket around its lower core. The geometry below the support points follows the shared Site 1 reconstruction.',
-    ),
+    {
+      ...structure(
+        'LaunchRing',
+        'Support ring and arms',
+        'Four counterweighted arms held the launcher above the open deck.',
+        'The four arms supported the rocket around its lower core. The geometry below the support points follows the shared Site 1 reconstruction. As the rocket rises the four arms fall back and the guides at its tail drop away, at the times the Vostoks’ system has here (site-1.parts.ts).',
+      ),
+      // the supports and guides falling back as the rocket rises: the same launch system, turned the same
+      clocked: launchSystemFalls(),
+    },
     structure(
       'CommandBunker',
       'Launch control bunker',

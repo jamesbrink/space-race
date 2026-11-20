@@ -179,10 +179,13 @@ export function automatic(hands: DescentHands | undefined, t: number): boolean {
 /** The event that sets parachute `name` of body `id` out, as `DescentHands.given` names it. */
 export const chuteEvent = (id: string, name: string): string => `${id}/${name}`;
 
-/** A parachute's tearing: when, by which limit, and the dynamic pressure, Pa, and its pull, N, at that instant. */
+/**
+ * A parachute's tearing: when, by which limit (or `fouled`: let out in the shadow of another still out, it never filled), and
+ * the dynamic pressure, Pa, and its pull, N, at that instant.
+ */
 export interface DescentTear {
   t: number;
-  by: 'pressure' | 'pull';
+  by: 'pressure' | 'pull' | 'fouled';
   q: number;
   pull: number;
 }

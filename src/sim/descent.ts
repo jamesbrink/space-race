@@ -87,6 +87,9 @@ export interface DownChute {
   replaces?: ChuteDef['replaces'];
   strength?: Measure;
   pull?: Measure;
+  /** A fault of the hardware's (plan.ts `ChuteDef`): it stays in its container; or it fouls in the shadow of these, by name. */
+  stays?: ChuteDef['stays'];
+  fouls?: ChuteDef['fouls'];
 }
 
 const downs = new WeakMap<FlightPlan, Down | null>();
@@ -143,6 +146,8 @@ function makeDown(plan: FlightPlan): Down | null {
               ...(ch.replaces ? { replaces: ch.replaces } : {}),
               ...(ch.strength ? { strength: ch.strength } : {}),
               ...(ch.pull ? { pull: ch.pull } : {}),
+              ...(ch.stays ? { stays: ch.stays } : {}),
+              ...(ch.fouls ? { fouls: { ...ch.fouls, by: ch.fouls.by.map((id) => c.chutes.find((x) => x.id === id)!.label) } } : {}),
             };
           }),
         motors: c.engines
@@ -341,11 +346,16 @@ export class Descent {
     return 0.5 * (this.ctx.sky ?? STANDARD).air(h).density * length(this.airOf(q, at)) ** 2;
   }
 
-  /** Parachute `c` (the `i`th of the body) out at `t`, torn at once in more air than its cloth takes. */
+  /**
+   * Parachute `c` (the `i`th of the body) out at `t`, torn at once in more air than its cloth takes, or streaming unfilled
+   * in the shadow of one still out that it fouls on (`fouls`). One that stayed in its container (`stays`) is given and
+   * nothing comes out: no drag, nothing let go, and it is never out for what waits on it.
+   */
   private letOut(c: DownChute, i: number, q: State, h: number, t: number): void {
     const body = this.body;
     const d = this.ctx.down;
     this.out.add(i);
+    if (c.stays) return;
     this.times[c.name] = t;
     this.ctx.loose(c.event, t, q);
     // what was filling is full now, or is left behind with the seat
@@ -376,9 +386,12 @@ export class Descent {
     }
     const p = this.pressure(q, h, t);
     const tears = tearOf(p, 0, 0, { strength: c.strength?.value, torn: 0 }) !== null;
+    // (caught in the shadow of a parachute of its own body still out above it, it does not fill)
+    const fouled = !tears && (c.fouls?.by ?? []).some((n) => this.gone[n] === undefined && this.kept.has(n));
     if (tears) this.torn[c.name] = { t, by: 'pressure', q: p, pull: 0 };
+    else if (fouled) this.torn[c.name] = { t, by: 'fouled', q: p, pull: 0 };
     this.worst[c.name] = { q: p, pull: 0 };
-    this.filling = { area: c.dragArea.value * (tears ? d.torn : 1), at: t, fills: c.fills.value, name: c.name };
+    this.filling = { area: c.dragArea.value * (tears || fouled ? d.torn : 1), at: t, fills: c.fills.value, name: c.name };
     // what it takes the place of goes, with its drag
     for (const name of c.instead ?? []) {
       const area = this.kept.get(name);

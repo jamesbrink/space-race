@@ -226,6 +226,17 @@ const GT6A_RETRO =
 const GT6A_ENTRY =
   'The retrofire is timed by guidance for the landing place along the track (sim/plan.ts `LandingAim`), 277 s before the record’s instant, the run being that far from the real ship along its orbit after a day (the terminal phase, braking, station keeping and separation are not flown as made). The ground track at that instant passes west of the place, and the bank is held 55° to the left throughout, as Schirra held it until the computer took over, whose commands, left and right against an overshoot, are not read. Nothing adjusted';
 
+/** Soyuz 1's period after its correction, and its landing across the track. */
+const PERIOD_S1 =
+  'The heights of Mishin’s first orbit, 200.9 by 224.1 km, are flown as mean heights over the WGS 84 ellipsoid under the apsis (the convention where heights come without a period), and so go round in 88.36 min where Mishin has 88.62 for them: the Soviet heights were over a ball some kilometres lower (tests/orbital.test.mjs, "the heights over the mean Earth"). The correction, the middle of Mishin’s 3.1 to 3.8 m/s, takes 0.10 min off the period where his figures fall by 0.07: it stays short. Not adjusted';
+const ACROSS_S1 =
+  'The braking burn is timed for the place the module came down at (sim/plan.ts `LandingAim`), lit 190 s early on the run from the pad, on an Earth that has turned less under the orbit: the module lands level with the place and to one side of it. The ballistic entry has no lift to steer the range with. Not adjusted';
+/** Soyuz 4's corrections, and its landing across the track. */
+const SHAPE_S4 =
+  'Each of Shatalov’s corrections is flown as one push along the motion at an estimated instant (the middle of its orbit), of the impulse that takes the orbit before it to the size the record has after it: the size comes out right (the period after the fifth orbit’s holds), the shape does not, a push near the perigee raising the apogee alone. Where in its orbit each was made, and whether it was one burn, is not recorded; Siddiqi’s 207 by 237 km and Mishin’s 207.3 by 273 km after the first do not agree. Not adjusted';
+const ACROSS_S4 =
+  'The braking burn is timed for the place they came down at (sim/plan.ts `LandingAim`), lit eleven minutes early after three days, on an Earth that has turned less under the orbit; the descent control system’s rolls, which steered the range, are not flown (the lift is held up). Kamanin has the landing itself 40 km from the aim. Not adjusted';
+
 /** Soyuz 3's approach to Soyuz 2, flown as one burn (its orbital.ts `burns`), and the correction after it. */
 const APPROACH_S3 =
   'The approach to Soyuz 2 is not flown: its burns, Igla’s and Beregovoy’s, are not on any record read one by one, and are flown as one burn along the motion at 11:55 on 26 October whose impulse grows the orbit from the size Siddiqi’s table gives for the insertion to the size TASS gave on the 27th. That is the orbit’s size and not its shape: a single burn so far round from the perigee raises both apsides, where the record’s orbit after the approaches has its perigee 4 km lower and its apogee 30 km higher than the insertion’s. Not adjusted';
@@ -1094,6 +1105,104 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       crossTrack: { by: -170_672, slack: 15_000, why: `It comes down 171 km to the left of where the ship landed. ${GT6A_ENTRY}` },
     },
     descent: {},
+  }),
+  // Soyuz 1: the record from the pad and from its published orbit (missions/ussr/soyuz/flights/soyuz-1/mission.md, "Against the record")
+  'ussr/soyuz/soyuz-1': inUnits({
+    coast: {
+      'corrected.period': {
+        by: -17.73,
+        slack: 2,
+        why: `It goes round in 88.26 min after the correction of the fifth orbit where Mishin has 88.56: 18 s against a tolerance of 15. ${PERIOD_S1}`,
+        short: 'the heights read over the ellipsoid',
+      },
+    },
+    ascent: {},
+    shown: {
+      'corrected.period': {
+        by: -17.68,
+        slack: 2,
+        why: `From the pad: 88.26 min after the correction where Mishin has 88.56. ${PERIOD_S1}`,
+        short: 'the heights read over the ellipsoid',
+      },
+      crossTrack: {
+        by: -32_303,
+        slack: 3_000,
+        why: `From the pad it comes down 32 km across the track, against a tolerance of 30 (from the published orbit, 22 km). ${ACROSS_S1}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    descent: {
+      'module.at': {
+        by: -189.8,
+        slack: 30,
+        why: 'The descent module strikes the ground at 06:19:42, 190 s before the record’s 06:22:52. The braking burn is timed for the place it came down at (sim/plan.ts `LandingAim`): on the run from the pad it is lit 190 s before the record’s 05:57:15, the run being that far along its track ahead of the record’s clock after nineteen revolutions, and everything after it comes as much earlier; from the burn to the ground it takes the record’s 25 min 37 s to within a few seconds, on the planned parting and the ballistic entry. Not adjusted',
+        short: 'the burn timed for the landing place',
+      },
+    },
+  }),
+  // Soyuz 4: the record from the pad and from its published orbit (missions/ussr/soyuz/flights/soyuz-4/mission.md, "Against the record")
+  'ussr/soyuz/soyuz-4': inUnits({
+    coast: {
+      'fifth.perigee': {
+        by: -35_131,
+        slack: 1_500,
+        why: `After the correction of the fifth orbit its perigee is 171.9 km where Siddiqi has 207. ${SHAPE_S4}`,
+        short: 'a correction flown as one push',
+      },
+      'fifth.apogee': {
+        by: 31_220,
+        slack: 1_500,
+        why: `After the correction of the fifth orbit its apogee is 268.2 km where Siddiqi has 237 (Mishin, as Zak prints him, 273). ${SHAPE_S4}`,
+        short: 'a correction flown as one push',
+      },
+      'approached.perigee': {
+        by: -23_653,
+        slack: 1_500,
+        why: `After the correction of the 32nd orbit its perigee is 177.3 km where TASS has 201; its apogee, 254.1, is TASS’s 253. ${SHAPE_S4}`,
+        short: 'a correction flown as one push',
+      },
+      crossTrack: {
+        by: 83_879,
+        slack: 5_000,
+        why: `From the published orbit it comes down 84 km across the track, against a tolerance of 40. ${ACROSS_S4}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    ascent: {},
+    shown: {
+      'fifth.perigee': {
+        by: -33_416,
+        slack: 1_500,
+        why: `From the pad: its perigee 173.6 km after the correction of the fifth orbit where Siddiqi has 207. ${SHAPE_S4}`,
+        short: 'a correction flown as one push',
+      },
+      'fifth.apogee': {
+        by: 29_646,
+        slack: 1_500,
+        why: `From the pad: its apogee 266.6 km after the correction of the fifth orbit where Siddiqi has 237. ${SHAPE_S4}`,
+        short: 'a correction flown as one push',
+      },
+      'approached.perigee': {
+        by: -21_884,
+        slack: 1_500,
+        why: `From the pad: its perigee 179.1 km after the correction of the 32nd orbit where TASS has 201. ${SHAPE_S4}`,
+        short: 'a correction flown as one push',
+      },
+      crossTrack: {
+        by: 108_682,
+        slack: 5_000,
+        why: `From the pad it comes down 109 km across the track. ${ACROSS_S4}`,
+        short: 'the burn timed for the landing place',
+      },
+    },
+    descent: {
+      'module.at': {
+        by: -721.8,
+        slack: 60,
+        why: 'The crew are on the ground 722 s before the record’s 09:50:47. The braking burn is timed for the place they came down at (sim/plan.ts `LandingAim`): on the run from the pad it is lit 668 s before the record’s 09:10:48, the run being that far along its track ahead of the record’s clock after three days, and everything after it comes as much earlier; from the burn to the ground it takes 54 s less than the record’s 40 min, on Soyuz 3’s impulse (assumed) and the lift held up throughout (its start only documented). Not adjusted',
+        short: 'the burn timed for the landing place',
+      },
+    },
   }),
   // Soyuz 3: the record from the pad and from its published orbit (missions/ussr/soyuz/flights/soyuz-3/mission.md, "Against the record")
   'ussr/soyuz/soyuz-3': inUnits({

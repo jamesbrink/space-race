@@ -65,7 +65,8 @@ export interface SoyuzRecord extends Omit<VostokRecord, 'orbit' | 'retro' | 'ent
    * What comes down, once the modules have parted at `separation` (s from liftoff, the orbital and instrument modules at
    * once): the descent module's mass, its drag against Mach number on `area`, its lift over drag at the angle of attack it
    * trims at (`lift`, `trim`), and the bank its control system held its lift at from `banked`; each later bank, where the
-   * record has one, from its instant.
+   * record has one, from its instant. An entry the record has flown ballistic (its control system off, the module turning
+   * its lift every way) holds no bank: `bank` and `banked` are left out, and its lift is never flown (plan.ts `Hold.bank`).
    */
   entry: {
     separation: Measure;
@@ -74,8 +75,8 @@ export interface SoyuzRecord extends Omit<VostokRecord, 'orbit' | 'retro' | 'ent
     drag: Curve;
     lift: Curve;
     trim: Measure;
-    bank: Measure;
-    banked: Measure;
+    bank?: Measure;
+    banked?: Measure;
     banks?: { label: string; bank: Measure; at: Measure }[];
   };
   /**

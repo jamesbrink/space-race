@@ -231,6 +231,22 @@ const FLIGHTS = {
   },
   // (four days: the escape tower and the fairing, Block I, the approach to Soyuz 2 flown as one burn, a day, the correction
   // of the 28th, the braking burn timed for the landing place, the parting, the guided entry, the parachute and the ground)
+  // (Soyuz 1: the correction of the fifth orbit, a day, the braking burn of the 19th, the parting, the ballistic entry, the
+  // drogue and the reserve fouled in its shadow, the ground)
+  s1: {
+    id: 'ussr/soyuz/soyuz-1',
+    instants: [5, 60, 150, 300, 540, 3000, 27_600, 60_000, 94_900, 95_200, 95_700, 96_000, 96_300, 96_450],
+    orbit: [3000, 60_000],
+    coast: 3000,
+  },
+  // (Soyuz 4: the correction of the fifth orbit, the day, the 32nd's, the docked hours unflown, the braking burn, the parting,
+  // the guided entry, the parachute and the ground)
+  s4: {
+    id: 'ussr/soyuz/soyuz-4',
+    instants: [5, 60, 150, 300, 540, 3000, 21_700, 86_400, 167_500, 254_400, 254_600, 255_200, 255_600, 256_000, 256_700],
+    orbit: [3000, 86_400],
+    coast: 3000,
+  },
   s3: {
     id: 'ussr/soyuz/soyuz-3',
     instants: [5, 60, 150, 300, 540, 1300, 3000, 86_400, 188_800, 338_400, 338_600, 339_200, 339_600, 340_200, 340_600],

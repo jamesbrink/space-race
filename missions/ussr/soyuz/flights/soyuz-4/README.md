@@ -39,9 +39,30 @@ NASA translation, pp. 2–5](https://ntrs.nasa.gov/api/citations/19690007583/dow
   [Kamanin's diary, 17 January](https://militera.lib.ru/db/kamanin_np/69.html) ·
   [Afanasyev and Vorontsov, *The First Soyuz Spacecraft*, Soyuz 4/5 chapter](https://epizodyspace.ru/bibl/mpk/mpk.pdf)
 
-The Gallery uses the 173.7 × 235.3 km orbit, 51.72° inclination and 6,625 kg mass in Siddiqi’s
-orbital-flight table. NASA’s 1969 chronology records the contemporary preliminary announcement
-of 213 × 224 km. [Siddiqi, *Challenge to Apollo*, appendix, Table I](https://www.nasa.gov/wp-content/uploads/static/history/SP-4408pt2.pdf) · [NASA, *Astronautics and Aeronautics, 1969*, 14–18 January](https://www.nasa.gov/wp-content/uploads/2023/04/1969.pdf)
+The Gallery uses the 173 × 225.3 km orbit, 51.72° inclination and 6,625 kg mass in Siddiqi’s
+orbital-flight table, which is the orbit Mishin's ballistics computed for the day's window. NASA’s
+1969 chronology records the contemporary preliminary announcement of 213 × 224 km. [Siddiqi, *Challenge to Apollo*, appendix, Table I](https://www.nasa.gov/wp-content/uploads/static/history/SP-4408pt2.pdf) · [NASA, *Astronautics and Aeronautics, 1969*, 14–18 January](https://www.nasa.gov/wp-content/uploads/2023/04/1969.pdf)
+
+## The flight as flown
+
+From [mission.md](mission.md). The ascent is flown on the 11A511's own figures and, no instant of this vehicle's having been
+found, Soyuz 3's vehicle's instants: Block I is cut on the orbit at 531 s, level at 173 km. Shatalov's two corrections, on
+the fifth orbit and the 32nd, are flown as burns of the main engine along the motion, each of the impulse that takes the
+orbit before it to the size the record has after it. **The rendezvous and docking with Soyuz 5 are not flown**: Soyuz 5 is
+not in the plan. The braking burn on the 17th, Soyuz 3's 95 m/s tail first, is timed for the landing place; the descent
+module flies its entry on its own lift held up, at most 3.0 g, and comes down on its main parachute and soft-landing
+engines at 3.4 m/s, **109 km across the track** from the record's point and 722 s early, the burn having been lit eleven
+minutes before the record's. **Three come down in it**: Khrunov and Yeliseyev crossed from Soyuz 5 outside. Every miss is
+recorded in src/sim/misses.ts, nothing adjusted.
+
+What the run does not do:
+
+- The rendezvous: Igla's approach, the station-keeping at 40 m, the docking by hand, the four and a half hours docked and
+  the undocking are told, not flown.
+- The transfer: Khrunov and Yeliseyev's spacewalk is not flown, and their mass is not added to the descent module.
+- The corrections' shapes: each is one push at an estimated instant, so the orbit after it has the record's size, not its
+  perigee and apogee.
+- The descent control system's rolls, which steered the range: the lift is held up throughout.
 
 ## Gallery
 

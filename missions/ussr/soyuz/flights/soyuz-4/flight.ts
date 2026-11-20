@@ -13,6 +13,10 @@ import {
   soyuzGallerySpecs,
   wingMoves,
 } from '../../vehicles/gallery.ts';
+import { AREAS } from '../../vehicles/soyuz-7kok-flown.ts';
+import { commanded, SHIP_NODES, soyuzChuteLooks, soyuzCommands, soyuzFlies } from '../../vehicles/soyuz-flies.ts';
+import { soyuzPlan } from '../../vehicles/soyuz-plan.ts';
+import { orbital as ORBITAL } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const SIDDIQI = 'Asif A. Siddiqi, Challenge to Apollo, NASA SP-2000-4408';
@@ -178,6 +182,20 @@ vehicle.views.push({
 
 const crew = soyuzWalker('crew', 'Vladimir A. Shatalov', 'models/ussr/soyuz/soyuz-4/crew.glb', 'flight', [-48, 0, 3.5], 1.7);
 vehicle.seats![0]!.figure = crew.id;
+// what a hand can ask of each part in flight, said with what did each thing on the day (vehicles/soyuz-flies.ts)
+vehicle.parts = commanded(
+  vehicle.parts,
+  soyuzCommands({
+    parted: 'the sequence did, minutes after the burn',
+    crew: 'The crew',
+    cover: `its barometric switch, ${(ORBITAL.ejection.altitude.value / 1000).toFixed(1)} km`,
+  }),
+);
+/** The descent module's parachutes as drawn, at their areas as the record has them. */
+const CHUTES = soyuzChuteLooks([
+  { name: 'drogue parachute', area: AREAS.drogue },
+  { name: 'main parachute', area: AREAS.main },
+]);
 
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-4',
@@ -220,8 +238,8 @@ export const flight: Flight = {
       confidence: 'documented',
       note: INITIAL_ORBIT,
     },
-    { group: 'Flight', label: 'Perigee', value: 173700, unit: 'm', confidence: 'documented', note: INITIAL_ORBIT },
-    { group: 'Flight', label: 'Apogee', value: 235300, unit: 'm', confidence: 'documented', note: INITIAL_ORBIT },
+    { group: 'Flight', label: 'Perigee', value: 173000, unit: 'm', confidence: 'documented', note: INITIAL_ORBIT },
+    { group: 'Flight', label: 'Apogee', value: 225300, unit: 'm', confidence: 'documented', note: INITIAL_ORBIT },
     { group: 'Flight', label: 'Inclination', value: 51.72, unit: 'deg', confidence: 'documented', note: INITIAL_ORBIT },
     { group: 'Flight', label: 'Orbits', value: 48, unit: 'orbits', confidence: 'documented', note: INITIAL_ORBIT },
     {
@@ -235,5 +253,15 @@ export const flight: Flight = {
     { group: 'Flight', label: 'Crew at landing', value: 3, unit: 'people', confidence: 'documented', note: RECORD },
   ],
   motors: [],
+  // the flight as flown from its record: the 11A511's ascent on its steering law, Shatalov's two corrections, the braking burn
+  // and the guided entry with three aboard (orbital.ts; mission.md), through the day's air over the pad. The rendezvous,
+  // the docking with Soyuz 5 and the transfer are not flown
+  plan: { ...soyuzPlan(ORBITAL), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on Soyuz 3’s vehicle’s instants to the orbit Siddiqi’s table gives. Shatalov’s corrections of the fifth and the 32nd ' +
+    'orbits are flown as burns; the approach to Soyuz 5, the docking and the transfer by spacewalk are not flown. The braking burn on the 17th ' +
+    'and the guided entry bring three down in the descent module (mission.md).',
+  // (No. 12's orbital module carries the spacewalkers' handrails)
+  flies: soyuzFlies(ORBITAL, CHUTES, { orbital: [...SHIP_NODES.orbital, 'EvaHandrails'], instrument: SHIP_NODES.instrument }),
   models: [onSoyuzPad(vehicle, TURN, TAIL), site31Pad, crew],
 };
