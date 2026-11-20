@@ -28,6 +28,7 @@ test('a fire without a nozzle record uses the neutral display fallback', () => {
 const FALLBACK = {
   'usa/apollo/apollo-7': ['h1-inboard', 'h1-outboard', 'sivb-j2', 'sps'],
   'usa/gemini/gt-3': ['forward-thrusters', 'aft-thrusters'],
+  'usa/gemini/gt-4': ['forward-thrusters', 'aft-thrusters'],
   'usa/gemini/gt-5': ['aft-thrusters'],
   // (the Agena's Bell 8247: its 45:1 expansion is documented, LMSC-A604166-2 14.2.1, but no chamber pressure was read)
   ...Object.fromEntries(
@@ -50,7 +51,7 @@ test('every ascent fire of the Mercury-Atlas and Gemini-Titan flights is drawn f
       if (!nozzle) assert.ok(neutral, `${f.id} ${fire.node} (${fire.on}) is drawn neutral: list it in FALLBACK`);
     }
   }
-  assert.equal(seen, 4 * 3 + 2 * 3, 'four Mercury-Atlas flights of three ascent fires, and Gemini-Titan 3 and 5 of three each');
+  assert.equal(seen, 4 * 3 + 3 * 3, 'four Mercury-Atlas flights of three ascent fires, and Gemini-Titan 3, 4 and 5 of three each');
 });
 
 test('the fire is as long as its supersonic core, scaled once to the A-7: Freedom 7 is left as it was', () => {

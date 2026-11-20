@@ -576,7 +576,8 @@ export interface OrbitFlown {
 
 /**
  * `plan` with everything the clock sets off from `from` on (seconds from liftoff) set off `by` seconds later: the braking
- * burn's command and what follows it, moved together. Each event keeps the record's instant (`at`); the landing is no
+ * burn's command and what follows it, moved together, and the record's readings of the orbit in that stretch with them
+ * (each check keeps its id: what it reads is the chain's). Each event keeps the record's instant (`at`); the landing is no
  * longer aimed at (it has been).
  */
 export function delayed(plan: FlightPlan, from: number, by: number): FlightPlan {
@@ -585,6 +586,7 @@ export function delayed(plan: FlightPlan, from: number, by: number): FlightPlan 
     e.when = e.when.map((w) =>
       'time' in w && w.time >= from - 1e-6 && w.time < Number.MAX_SAFE_INTEGER ? { ...w, time: w.time + by } : w,
     );
+  for (const c of out.checks) if (c.when && 'at' in c.when && c.when.at >= from - 1e-6) c.when = { ...c.when, at: c.when.at + by };
   if (out.record?.landing?.aimed) {
     const { aimed: _, ...landing } = out.record.landing;
     out.record.landing = landing;
@@ -592,10 +594,13 @@ export function delayed(plan: FlightPlan, from: number, by: number): FlightPlan 
   return out;
 }
 
-/** The earliest the braking burn's chain is set off by the clock: its command's instant where it has one, its lighting's otherwise. */
+/**
+ * The earliest the braking burn's chain is set off by the clock: its command's instant where it has one, its lighting's
+ * otherwise, or earlier where the landing it is aimed at says the chain begins earlier (`LandingAim.from`).
+ */
 function brakingFrom(plan: FlightPlan): number {
   const k = coastEvents(plan);
-  return Math.min(clockAt(plan, k.command), clockAt(plan, k.on));
+  return Math.min(clockAt(plan, k.command), clockAt(plan, k.on), plan.record?.landing?.aimed?.from?.value ?? Infinity);
 }
 
 /** How long before the braking burn's recorded command guidance works its instant, at the most, s: most of a revolution's half. */
@@ -1290,13 +1295,17 @@ export function flyOrbit(
     );
   };
   const push = (s: State, at: number): Vec3 => pushAs(s, at, at);
-  // Where the braking burn is aimed at the landing place, guidance works its instant here: after the last manoeuvre, and
-  // at most `AIMED_BEFORE` before the recorded command. Not on a flight a hand is flying down, or begun later than that.
+  // Where the braking burn is aimed at the landing place, guidance works its instant here: after the last manoeuvre before
+  // its chain (one in the chain moves with it), and at most `AIMED_BEFORE` before the chain's start. Not on a flight a hand
+  // is flying down, or begun later than that.
   const aimedLanding = plan.record?.landing?.aimed;
   const braking = Number.isFinite(on) && on < Number.MAX_SAFE_INTEGER ? brakingFrom(plan) : Infinity;
   const aimedFrom =
     aimedLanding && !hands && Number.isFinite(braking)
-      ? Math.max(braking - AIMED_BEFORE, ...moves.map((m) => (m.toward && 'station' in m.toward ? m.toward.until.value : m.off) + 1))
+      ? Math.max(
+          braking - AIMED_BEFORE,
+          ...moves.filter((m) => m.on < braking).map((m) => (m.toward && 'station' in m.toward ? m.toward.until.value : m.off) + 1),
+        )
       : Infinity;
   /** The run's own forces flown ahead with a burn, for guidance to solve one on (sim/pursuit.ts `Ahead`): the air, and the burn; steps of 1 s through it and 10 s after. */
   const flyAhead: Ahead = (s, from, to, burn) => {

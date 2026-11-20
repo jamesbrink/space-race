@@ -8,7 +8,7 @@
 //   places       the front page, Freedom 7's gallery, its launch site, a section there, Fly; Back, Back, Forward,
 //                Back, Back, Back: each lands on the place before, the last on the front page
 //   phone ways   at 390 and 820 wide: the top line's one way on, Freedom 7's gallery to its launch site to Fly and back, each
-//                a step; Gemini IV's Fly, not flown yet, is there, dimmed, and a tap says why in the notes
+//                a step; Apollo 15's Fly, not flown yet, is there, dimmed, and a tap says why in the notes
 //   old link     #pad lands on Freedom 7's site and Back leaves it at once (it is no step of its own)
 //   second craft Gemini X's gallery-only Agena can be linked and switched to, and Back restores it from the site
 //   crew gallery Gemini XII's suited crew can be linked, selected, and restored from the launch site
@@ -171,11 +171,11 @@ async function phoneWays(page) {
   const home = await arrive(page, 'gallery', MR3);
   check(home.kept && home.length === back.length + 1, `the site to the gallery: a step, and no reload (${home.hash})`);
   // a place the flight lacks: there, dimmed, and a tap says why
-  const GT4 = 'usa/gemini/gt-4';
-  await page.goto(`${url}#${GT4}/site/vehicle`);
-  await arrive(page, 'site', GT4);
+  const A15 = 'usa/apollo/apollo-15';
+  await page.goto(`${url}#${A15}/site/vehicle`);
+  await arrive(page, 'site', A15);
   const lacking = '#ui .title .ways [data-way=fly][aria-disabled=true]';
-  inLine(await box(lacking), 'Gemini IV: the way to a flight not flown yet');
+  inLine(await box(lacking), 'Apollo 15: the way to a flight not flown yet');
   check(/no trajectory/i.test((await box(lacking))?.text ?? ''), 'and it says why');
   // (Playwright waits on aria-disabled as on disabled; a finger does not)
   await page.locator(`${lacking}:visible`).click({ force: true });

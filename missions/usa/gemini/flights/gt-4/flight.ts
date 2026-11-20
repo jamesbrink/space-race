@@ -25,6 +25,9 @@ import {
   lb,
   THRUST,
 } from '../../vehicles/gemini-titan.ts';
+import { commanded, geminiCommands, geminiFlies } from '../../vehicles/gemini-flies.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
+import { orbital } from './orbital.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -419,7 +422,7 @@ const parts: PartWords[] = [
 const vehicle = lc19Vehicle(
   geminiTitanStack({
     flight: 'gt-4',
-    parts,
+    parts: commanded(parts, geminiCommands()),
     // the crew climbed in at T-100 minutes of a count that then held 1 h 16 min for the erector (On the Shoulders of
     // Titans, p. 245): 176 min before the liftoff. When the hatches were shut is not in what was read: twenty minutes
     // are allowed, estimated
@@ -717,17 +720,26 @@ export const flight: Flight = {
       {
         burnS: 152.43,
         confidence: 'documented',
-        note: `a combined ${lb(2 * THRUST.stage1Chamber.value)} lb of thrust for the two, as the nominal (${KIT}); on the day it was "higher than expected" (${GIV}, 4.1), by how much is in section 5.2, not transcribed. The burn is liftoff to the shutdown signal, 152.43 s, with the start signal 3.24 s before liftoff (Table 4-I)`,
+        note: `a combined ${lb(2 * THRUST.stage1Chamber.value)} lb of thrust for the two, as the nominal (${KIT}); on the day it was "higher than expected" (${GIV}, 4.1): 442,433 lb for the two at standard inlet conditions against 441,400 predicted (Table 5.2-II), which the flight's plan flies (orbital.ts). The burn is liftoff to the shutdown signal, 152.43 s, with the start signal 3.24 s before liftoff (Table 4-I)`,
       },
       {
         burnS: 181.32,
         // the thrust is the nominal and the burn is a difference of two documented times: the entry takes the weaker
         confidence: 'derived',
-        note: `${lb(THRUST.stage2.value)} lb of thrust at altitude, as the nominal (${KIT}); "higher than nominal" on the day (${GIV}, 4.1). The burn is the start signal at 152.43 s to the shutdown signal at 333.75 s (Table 4-I): 181.32 s`,
+        note: `${lb(THRUST.stage2.value)} lb of thrust at altitude, as the nominal (${KIT}); "higher than nominal" on the day (${GIV}, 4.1): 103,103 lb as the flight's average against 101,718 predicted (Table 5.2-III), which the flight's plan flies (orbital.ts). The burn is the start signal at 152.43 s to the shutdown signal at 333.75 s (Table 4-I): 181.32 s`,
       },
     ),
     ...thrusters('spacecraft 4'),
   ],
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-4’s own weights and engines as its mission report reduced them, on a stated steering law. ' +
+    'From the spacecraft’s separation the run shown is the published orbit begun where the simulated ascent left it: a handover, not a result. ' +
+    'The station keeping is the record’s 46 burns of the aft and forward thrusters at their instants and lengths, pointed by the pitch the platform read (estimated): ' +
+    'the up and right thrusters, and the second stage itself, are not flown. The space walk is not flown. ' +
+    'The burn before retrofire and retrofire are timed for where it came down, as the ground timed them from tracking, and the entry is flown as it was, rolling with no lift, not the closed-loop lifting entry planned (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot],
   // the place round the pad as it stood that June: as in March (places/cape-canaveral/lc19/model/1965-03.py)
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
