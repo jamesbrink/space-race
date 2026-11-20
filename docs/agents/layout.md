@@ -70,6 +70,7 @@ missions/                             the record: one folder per nation, program
     crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts; g4c-suit.parts.ts, with a Gemini man standing at Complex 19; g5c-suit.parts.ts)
     crew/<suit>_wearers.py            every wearer a suit's module names, built at every level of detail under the clearance check in one
                                       Blender run, nothing exported (sk_1_wearers.py: run it after touching sk_1.py; its header has the command)
+  usa/places/moon/                    the Apollo landing sites, each a `LunarSiteDef` (<site>.ts: its `SiteDef` on the Moon, its terrain's products, its descent's heading) and its .md; place.ts the Moon as a place, sites.ts every site and how their ground is baked
   <nation>/places/<place>/            a place on the Earth and every pad in it, shared by every flight from them (cape-canaveral, tyuratam)
     place.ts                          the place (`PlaceDef`): its region (the globe's finer maps), its usual sky, its quiet
     <site>.ts                         a pad on the Earth (`SiteDef`: lc-5.ts, lc-14.ts, lc-19.ts, site-1.ts), each figure with its confidence and source
@@ -261,8 +262,10 @@ src/
   viewer/moonrocks.ts                 the blocks lying round the front page's site: instanced, four levels of detail, each with its shadow laid on the ground
   viewer/lunar-driving-ground.ts      builds the rover's drivable surface and places the landing module and the Sun
   viewer/lunar-rover.ts               drives and steers a four-wheel lunar rover over the surveyed ground
-  world/lunar-terrain.ts              samples the triangles of the LROC and LOLA terrain under a rover's wheels
-  world/lunar-rover-sites.json        grid spacings, landing coordinates and the second excursion's lighting instant
+  world/lunar-terrain.ts              samples the triangles of the LROC and LOLA terrain under a rover's wheels (`LunarTerrain`); the landing sites and the rovers' by id
+  world/lunar-ground.ts               a landing site's ground over the Moon: the descent strip (`DescentStrip`, its file format), the grids and the strip as one (`LandingGround`), by latitude and longitude or in the site's frame
+  world/lunar-sites.json              every landing site's position, height, approach and terrain products, and the bake's grids: written by tools/lunar-sites.mjs from missions/usa/places/moon/, never by hand
+  world/lunar-rover-sites.json        what each rover's gallery scene shows at its site: its lander, which way it faces, what was unloaded, the second excursion's lighting instant
   viewer/moonsite.ts                  the altimeter's ground round the site, read whole in doubles (`SiteGround`): heights, places, how near the ground comes to the path
   viewer/space.ts                     the sky from above the air (Sun, Moon, stars) and its reflections, the Earth in them at the flight's height; the wear texture
   viewer/explode.ts                   exploded-view motion
@@ -416,7 +419,8 @@ tools/
   sound-test.mjs                      browser check of what is heard on the ground, read off `sr.sound.voices`: a car driven and got out of, a machine worked by hand, a vehicle on the clock
   drive-test.mjs                      browser check that every vehicle at every site goes forward a car's length from where it stands, or says what holds it
   front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5
-  lunar-rover-terrain.py              bakes the drivable grids at Hadley and Descartes from the NAC stereo DTMs and LOLA
+  lunar-terrain.py                    bakes each landing site's ground (`pnpm lunar:terrain`): the nested grids from the NAC stereo DTMs and LOLA, the descent strip from SLDEM2015
+  lunar-sites.mjs                     writes src/world/lunar-sites.json from the landing sites' modules (`pnpm lunar:sites`)
   front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows, the site's ground whole (`--find-site` lists the places the camera could start from)
   shot.mjs                            one screenshot of the viewer, for looking at a change
   browser.mjs                         the one browser every browser tool launches (Chrome, ANGLE's back end, headless or not, from SR_* in the environment: macOS and Linux), and the page opener, options and checks they share

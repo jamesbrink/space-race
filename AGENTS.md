@@ -38,6 +38,8 @@ pnpm globe            # bake public/globe/ again; pnpm globe:region every site's
 pnpm ephemeris        # bake public/ephemeris/de440.bin from JPL's DE440 (fetches de440s.bsp, 31 MB, once into ~/.cache)
 pnpm ut1              # bake src/world/ut1.ts, UT1 - TAI, from the IERS's EOP C01 (fetched once into ~/.cache)
 pnpm era5:aloft       # bake each flight's aloft.ts: ERA5's air over its pad at liftoff and the surface's hours round it
+pnpm lunar:sites      # write src/world/lunar-sites.json from the landing sites' modules (missions/usa/places/moon/): after a site's figure changes
+pnpm lunar:terrain    # bake each landing site's ground (public/lunar/<site>.terrain.bin, .descent.bin) from LROC's NAC stereo, LOLA and SLDEM2015 (7 GB fetched once into ~/.cache; run on hal9000)
 pnpm front:earth      # bake the front page's Earth (public/front/earth.*) from public/globe/ and the hour's cloud; pnpm front:moon its Moon
 pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
