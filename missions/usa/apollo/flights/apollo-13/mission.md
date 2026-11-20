@@ -65,6 +65,36 @@ its instrument unit, the adapter, Aquarius and Odyssey together, with the Moon p
   flown; after the injection the coast with J2 and the Moon. The S-IVB/CSM separation's tracked state (Table 4-3,
   11,198.9 s) is a tracking fix, not a check.
 
+
+## The engines' decay, the S-II's flow and its ullage motors
+
+Re-flown on 20 November 2026 with what every Saturn V record had been missing, each from this
+flight's evaluation where it gives it (orbital.ts says which, and whose figure is taken where it does not):
+
+- **The F-1s' cutoff impulse** (§5.4): each engine's thrust falls evenly from the cut to nothing over the impulse the
+  evaluation gives (the straight fall is an estimate; all of it falls before the stages part). Some 10 to 13 MN s from the
+  four at their cutoff, 13 to 14 m/s on the stack, and 3 MN s from the centre.
+- **The S-II J-2s' cutoff impulse** (§6.4: the stage's, through 5 per cent thrust, a quarter to an engine; the centre's
+  taken as one of the four's), 2 to 4 m/s. The precutoff decay of the four before the oxygen depletion signal is not
+  flown. The S-IVB's is not flown either: its guidance timed both cuts with their decay in them.
+- **The S-II's flow after its mixture-ratio shift**: a J-2 gives more impulse at the low ratio, so its flow falls by more
+  than its thrust. Held at one share, as before, the four drew some 1 to 1.4 per cent too much after the shift.
+- **Its S-II's four ullage motors (assumed as Apollo 11's), some 2.2 m/s**, given to the stack as the S-IC parts (plan.ts `JointDef.ahead`).
+
+| Against the record | Before | Now |
+| --- | --- | --- |
+| Speed at S-IC/S-II separation | −20.7 m/s | −1.8 m/s |
+| Speed at S-II/S-IVB separation | −73.4 m/s | −29.7 m/s |
+| S-II outboard cutoff (propellant spent) | −2.85 s | −2.15 s |
+| S-IVB first cutoff | +11.5 s | +5.5 s |
+
+What is left of the S-II's early dry tank is its flow before the shift: Table 6-1's figures at ESC+61 s, held over the
+high ratio's five minutes, draw some 0.3 per cent more than the stage's books (Table 16-9); the snapshot's thrust is
+kept, and its flow with it. The S-II still falls some 25 to 40 m/s behind the record at its cutoff with the stack's mass right: its
+start's rising thrust (some 3 m/s) is not flown, nor its thrust through the high ratio beyond the ESC+61 s snapshot, and
+its closed loop is the law's one linear tangent. Where the tables below and the paragraphs after them give the run's
+figures, they are the run as it now stands (tests/fixtures/figures.json).
+
 ## The run against the record
 
 Flown on the record's sequence and solved law (`flyWhole`, tests/staged.test.mjs):
@@ -72,44 +102,40 @@ Flown on the record's sequence and solved law (`flyWhole`, tests/staged.test.mjs
 | | The run | The record |
 | --- | --- | --- |
 | S-IC centre engine cutoff, 135.18 s | 42.9 km, 1,929 m/s | 43.5 km, 1,928.9 m/s (Table 4-2) |
-| S-IC/S-II separation, 164.3 s | 66.9 km, 2,734 m/s, climbing 19.0° | 68.0 km, 2,754.3 m/s, 19.383° (Table 4-3) |
+| S-IC/S-II separation, 164.3 s | 67.0 km, 2,753 m/s, climbing 19.0° | 68.0 km, 2,754.3 m/s, 19.383° (Table 4-3) |
 | Greatest dynamic pressure | 32.2 kPa at 83.1 s | 31.2 kPa at 81.3 s (Table 4-1) |
-| S-II centre engine cutoff, 330.65 s | 157.4 km, 3,877 m/s | 159.6 km, 3,919.6 m/s |
-| **S-II outboard engines cutoff** | **589.79 s** (propellant spent) | **592.64 s** (Table 2-2; predicted 558.11) |
-| S-II/S-IVB separation | 590.65 s: 187.6 km, 6,822 m/s | 593.5 s: 189.2 km, 6,895.9 m/s (Table 4-3) |
-| **S-IVB first cutoff** | **761.38 s** | **749.83 s** (Table 2-2; predicted 705.76) |
+| S-II centre engine cutoff, 330.65 s | 158.5 km, 3,899 m/s | 159.6 km, 3,919.6 m/s |
+| **S-II outboard engines cutoff** | 590.50 s (propellant spent) | **592.64 s** (Table 2-2; predicted 558.11) |
+| S-II/S-IVB separation | 188.2 km, 6,866 m/s | 593.5 s: 189.2 km, 6,895.9 m/s (Table 4-3) |
+| **S-IVB first cutoff** | 755.32 s | **749.83 s** (Table 2-2; predicted 705.76) |
 | Parking orbit | 184.1 × 185.5 km, 32.525° | 183.9 × 185.7 km, 32.525° (Table 4-5) |
-| S-IVB second cutoff | 9,695.88 s, 61,895 kg | 9,697.17 s, 62,911 kg (Tables 2-2, 16-7) |
-| Its C3 and eccentricity | −1,462,260 m²/s², 0.975804 | −1,463,628, 0.9758 (Table 4-2) |
+| S-IVB second cutoff | 9,699.5 s, 62,571 kg | 9,697.17 s, 62,911 kg (Tables 2-2, 16-7) |
+| Its C3 and eccentricity | −1,461,790 m²/s², 0.975812 | −1,463,628, 0.9758 (Table 4-2) |
 
-**The S-IC is the record's.** On SA-508's own commands it comes to the S-II within a kilometre and 21 m/s of the record,
-climbing 0.4 degrees flatter, its greatest dynamic pressure within the check. (Apollo 11's S-IC flies three degrees flat
-on its own figure: see apollo-11/mission.md.)
+**The S-IC is the record's.** On SA-508's own commands, with the F-1s' cutoff decay flown, it comes to the S-II within a
+kilometre and 2 m/s of the record, climbing 0.4 degrees flatter, its greatest dynamic pressure within the check. (Apollo
+11's S-IC flies 1.8 degrees flat on its own figure: see apollo-11/mission.md.)
 
 **The early centre cutoff costs what it cost the record, and the run makes it up as the vehicle did.** With four
-engines from 330.65 s the S-II burns 421.8 s from mainstage against the record's 424.6 (34.5 s more than predicted), and
-the S-IVB's guidance burns on until the orbit is the record's, 164.8 s against the record's 150.4 (9.3 s more than
-predicted). Both are longer than the record's
-because **the run's S-II spends its propellant 2.8 s early**: its J-2s draw at Table 6-1's figures at ESC+62 s, at the
-high mixture ratio, and after the shift at the stage's thrust share with the impulse held, which over the record's own
-times comes to 447.4 t where Table 16-9 has the mainstage and the cutoff's decay burn 444.8 t (0.6 per cent more). The
-shift to the low ratio, at which a J-2's impulse rises and its flow falls by more than its thrust's share, is not flown
-as such. The stage is let go 73 m/s slow, and the S-IVB burns 11.6 s longer than the record's to reach the same orbit. Recorded as misses
-(src/sim/misses.ts): the S-II's cutoff, its speed at separation, the S-IVB's first cutoff, and the speed at the record's
-insertion instant, at which the run's S-IVB is still burning. Not adjusted.
+engines from 330.65 s the S-II burns from mainstage until its propellant is spent, at 590.50 s against the record's
+592.64 (34.5 s more than predicted), and the S-IVB's guidance burns on until the orbit is the record's, 5.5 s longer
+than the record's. The S-II's tank is still dry 2.1 s early: after the shift its J-2s draw the low ratio's flow, but
+before it Table 6-1's ESC+62 s figures draw some 0.3 per cent more than the books over the high ratio's six minutes.
+It is let go 30 m/s slow, within the check. Recorded as misses (src/sim/misses.ts): the S-II's cutoff and the S-IVB's
+first cutoff. Not adjusted.
 
 **The injection lands on the record** by construction (its targets and its cut are the record's): what is the run's
-own is when it stops, 1.3 s early, and what it weighs then, 1,016 kg light.
+own is when it stops, 2.3 s late, and what it weighs then, 340 kg light.
 
 ## What is estimated, or not flown
 
 - The S-IC's attitude programme is traced off a figure; the iterative guidance is a linear tangent in each of its two
   burns; the tower clearance yaw (2.3 to 10.0 s) and the outboard F-1s' cant (20.6 s) are not flown.
 - The S-II's mixture-ratio shift is flown at the record's instant, not on the instrument unit's velocity increment, and
-  as one share of thrust and flow; the centre engine's oscillation itself (the pogo, ±236 psi in its chamber) is not
+  as a step in thrust and a larger one in flow (AS-503's reconstructed impulse at the low ratio, assumed); the centre engine's oscillation itself (the pogo, ±236 psi in its chamber) is not
   flown, only its cutoff.
 - The drag curve is the Saturn IB's (estimated); the steering's authority, the S-IVB's attitude jets', the separations'
   pushes and the turn to the injection's attitude are estimates (NOT FOUND), as Apollo 11's.
 - The command module's mass at launch is the mission report's after the modules parted (estimated).
-- The engines' starts and cutoff transients, and the S-IVB's boil-off and venting in orbit, are not flown.
+- The engines' starts and the S-IVB's cutoff transients (the F-1s' and the S-II's are flown, as their cutoff impulse), and the S-IVB's boil-off and venting in orbit, are not flown.
 - The aborts are said and not flown: the escape tower, Modes II, III and IV (Mode IV from 9:48, the CapCom's call).

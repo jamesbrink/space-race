@@ -80,6 +80,8 @@ const pushOf = (plan) => {
   const joint = sequenceOf(plan).stages.at(-1).joint;
   return (c.joints.find((j) => j.id === joint)?.push ?? c.sheds?.find((s) => s.on === joint)?.push)?.value ?? 0;
 };
+/** The most a step in the run's velocity can be, m/s: the last joint's push, or what a joint below it gives the stack flying on as it parts (`JointDef.ahead`: an upper stage's ullage motors). */
+const stepOf = (plan) => Math.max(pushOf(plan), ...plan.craft[0].joints.map((j) => j.ahead?.value ?? 0));
 
 /** The bearing from the pad of where a state is over, degrees from true north. */
 function bearingFrom(f, frame, r, t) {
@@ -127,7 +129,7 @@ for (const f of part(orbital)) {
       assert.ok(run.worst.dr < 1, `${what}: the place changes by more than its velocity at T+${run.worst.at}`);
       for (const s of run.steps) {
         assert.ok(s.dr < 1e-6, `${what}: a step in place at T+${s.t}`);
-        assert.ok(s.dv <= push + 1e-9, `${what}: a step of ${s.dv} m/s at T+${s.t}, where the joint pushes ${push}`);
+        assert.ok(s.dv <= stepOf(plan) + 1e-9, `${what}: a step of ${s.dv} m/s at T+${s.t}, where the joints push ${stepOf(plan)}`);
       }
     }
     // the coast begins from the state the ascent left the spacecraft in: the stack's place, and its velocity with the

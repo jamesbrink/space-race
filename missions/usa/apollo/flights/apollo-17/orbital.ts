@@ -132,6 +132,16 @@ export const orbital: SaturnVRecord = {
       8,
       `m/s: the S-IC's eight retrorockets parted the stages (the S-II's ullage motors had been deleted from AS-510 on, and the retrorockets, cut to four on AS-510, restored to eight from S-IC-11: AS-510's evaluation, §10; AS-512's, p. 15-3, likens its signal loss at the separation to prior flights' with eight). Read off ${EVAL}, Fig. 10-12: the AS-512 points rise from 15 ft at 2.5 s after outboard cutoff to 54 ft at 4.0 s, some 26 ft/s (8 m/s), the retrorockets burned out and the S-II not yet lit; how fast the run's are parted is that, taken`,
     ),
+    decay: {
+      centre: doc(
+        669_632 * LBF,
+        `${EVAL}, §5.4: the centre engine's cutoff impulse from the cutoff signal to no thrust, 669,632 lbf s (the stage's, 3,263,055)`,
+      ),
+      outboard: derived(
+        (2_593_423 * LBF) / 4,
+        `${EVAL}, §5.4: the outboard engines' cutoff impulse from the cutoff signal to no thrust, 2,593,423 lbf s, a quarter of it`,
+      ),
+    },
   },
   sii: {
     mass: derived(492_557 + 3_637, `${MASS}: the S-II and the S-II/S-IVB interstage at holddown arm release (Table 16-1)`),
@@ -178,6 +188,10 @@ export const orbital: SaturnVRecord = {
           787_009 / 920_746,
           `${EVAL}, §6.3: the stage's thrust at ESC+351 s, 787,009 lbf, over the four engines' after the centre's cutoff, 920,746 lbf`,
         ),
+        flow: assumed(
+          (787_009 / 920_746) * 0.98811,
+          `the mean of SA-509's, SA-510's and SA-511's (MPR-SAT-FE-71-1 Table 6-3, -71-2 and -72-1 Table 6-2): each one's four's flow after the shift from its propellant mass history (best estimate) between the step command and the cutoff, less the pressurizing gas at its mean rate, over their thrust's share, 0.995, 0.987 and 0.982 (an impulse 0.5, 1.3 and 1.8 per cent higher at the low ratio), taken for SA-512's (the same two-position valve; its own table not read): the flow's share is the thrust's (§6.3) times 0.98811`,
+        ),
       },
     },
     separation: doc(
@@ -188,6 +202,16 @@ export const orbital: SaturnVRecord = {
       3,
       'm/s: NOT FOUND. The S-II’s four retrorockets and the S-IVB’s two ullage motors parted the stages; §10.6.3 says only that the accelerations were nominal. Apollo 11’s estimate, taken',
     ),
+    decay: {
+      centre: assumed(
+        (121_100 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the five per cent thrust level, 121,100 lbf s: its quarter, an outboard engine's (§6.4 reads no other), taken for the centre's`,
+      ),
+      outboard: derived(
+        (121_100 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the five per cent thrust level, 121,100 lbf s, a quarter of it`,
+      ),
+    },
   },
   les: {
     motor: {

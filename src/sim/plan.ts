@@ -163,8 +163,19 @@ export interface JointDef {
   label: string;
   /** The bodies that leave when it is let go (with what else is on them); the rest fly on. */
   gone: string[];
-  /** How fast the two sides are pushed apart, m/s, shared between them by their masses. */
+  /**
+   * How fast the two sides are pushed apart, m/s. Of the spacecraft's own last joint the two share it by their masses (sim/
+   * staged.ts `partedOff`); of a joint below it, which lets a stage go from the stack, it is the stage's speed away from what
+   * flies on, given wholly to what leaves (sim/run.ts `orbitalRelease`), as its retrorockets gave it: the stack gains
+   * nothing from it (`ahead` is what it gains).
+   */
   push?: Measure;
+  /**
+   * What the stack that flies on gains as a joint below the spacecraft parts, m/s along its axis, where the record has motors
+   * of its own firing then (an upper stage's ullage motors): their impulse over the stack's mass, given at the parting (the
+   * motors' few seconds taken as one instant). Nothing where the record has none.
+   */
+  ahead?: Measure;
   /** Bodies it holds in (a fairing over the spacecraft), and the joints it keeps from parting while it is on: theirs cannot leave until it has gone. */
   covers?: string[];
   holds?: string[];
@@ -217,8 +228,22 @@ export interface EngineDef {
   impulse?: Measure;
   /** A curve of its thrust against seconds from firing, N, where one has been read: what it burns by. */
   curve?: Curve;
-  /** The least and the most it can be throttled to, as fractions of rated thrust; and the record's setting against seconds from liftoff. */
-  throttle?: { range?: [least: number, most: number]; curve?: Curve };
+  /**
+   * The least and the most it can be throttled to, as fractions of rated thrust; and the record's setting against seconds
+   * from liftoff. `flow`: the share of its rated propellant flow it draws against seconds from liftoff, where the record has
+   * that apart from its thrust's (a J-2 shifted to a lower mixture ratio gives more impulse for each kilogram, so its flow
+   * falls by more than its thrust): without it the flow follows the thrust's setting (`curve`), the impulse unchanged.
+   */
+  throttle?: { range?: [least: number, most: number]; curve?: Curve; flow?: Curve };
+  /**
+   * Its cutoff impulse, N s, one unit's, where the record gives one: what it still gives once it has been cut, from the
+   * cutoff signal to no thrust (or to its stage's parting, where that is all the record gives). Its thrust falls evenly
+   * from what it was at the cut to nothing, taking twice the impulse over that thrust (the straight fall is an estimate);
+   * it pushes while its body is on and draws nothing from the tank, what a decay burns being of the stage's residual, which
+   * leaves with it. A stage cut by its guidance on the state it reached has none here: the guidance timed its cut with its
+   * decay in it (sim/staged.ts `decayOf`).
+   */
+  decay?: Measure;
   /** How far its thrust can be turned off the axis, degrees, and where the turned thrust acts, m from the base. */
   gimbal?: { deflection: Measure; station?: Measure };
   /**

@@ -49,5 +49,5 @@ next is not flown.
 - The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV (press kit 68-208, pp. 12 and 27).
 - The S-IC holds the record on this flight's own pitch programme, but the S-II falls short of the record's speed and
   height and the S-IVB makes up the difference, cutting 11 to 15 seconds late (mission.md, `MISSES`); the iterative
-  guidance is a linear tangent in each of its two burns; the engines' starts and cutoff transients, the tower clearance
+  guidance is a linear tangent in each of its two burns; the engines' starts and the S-IVB's cutoff transients, the tower clearance
   yaw, the S-IVB's boil-off in orbit and the J-2's cutoff impulse at the injection are not flown.

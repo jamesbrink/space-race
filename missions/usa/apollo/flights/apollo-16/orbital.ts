@@ -36,6 +36,17 @@ const SII_ISP = (425.2 + 423.1 + 424.5 + 424.7) / 4;
 const SII_LOAD = 383_073 + 737 + 72_713 + 111;
 const SII_LEFT = 637 + 787 + 1_184 + 123;
 const SII_GAS = 1_896 - 136 + (758 - 44);
+/** The S-II's propellant in its tanks and sump at the mixture-ratio step command and at the outboard cutoff (Table 6-2, engine flowmeter integration: the best estimate), kg. */
+const SII_AT_STEP = (100_376 + 23_639) * LB;
+const SII_AT_OECO = (1_405 + 2_612) * LB;
+/**
+ * The four's flow after the shift as a share of their rated flow (Table 6-1): what the tanks lost from the step to the cutoff
+ * (494.5 to 559.54 s) less the pressurizing gas at its mean rate over the burn (from the start command, 164.2 s), over the four's.
+ */
+const SII_LOW_FLOW =
+  ((SII_AT_STEP - SII_AT_OECO) / (559.54 - 494.5) - SII_GAS / (559.54 - 164.2)) / ((4 * SII_THRUST * LBF) / (G0 * SII_ISP));
+/** Their thrust's share after it (§6.3). */
+const SII_LOW_FLOW_THRUST = 787_380 / 923_267;
 /** The S-IVB's second burn: its mainstage propellant (Table 16-7) and the flow at the 5.0 mixture ratio (Table 7-2), kg and kg/s. */
 const SECOND_BURNED = 88_334 - 14_951;
 const SECOND_FLOW = (399.98 + 81.49) * LB;
@@ -123,6 +134,13 @@ export const orbital: SaturnVRecord = {
       10,
       `m/s: ${EVAL}, Fig. 10-14 and §10.6.1: S-IC-11 was the first S-IC to part on eight retromotors fired 1.7 s after the outboard cutoff (S-IC-10 had four), the S-II carrying no ullage motors; how long they burned and their impulse could not be found from the data. The separation distance the figure reconstructs from the S-IC's longitudinal acceleration grows at some 34 ft/s between 2.6 and 3.0 s after the cutoff, read off the page against its grid, and slows to some 26 ft/s by 4 s; its greatest rate taken`,
     ),
+    decay: {
+      centre: doc(775_690 * LBF, `${EVAL}, §5.4: the centre engine's cutoff impulse from the cutoff signal to no thrust, 775,690 lbf s`),
+      outboard: derived(
+        (2_700_932 * LBF) / 4,
+        `${EVAL}, §5.4: the outboard engines' cutoff impulse from the cutoff signal to no thrust, 2,700,932 lbf s, a quarter of it`,
+      ),
+    },
   },
   sii: {
     mass: derived(493_536 + 3_653, `${MASS}: the S-II and the S-II/S-IVB interstage at holddown arm release (Table 16-1)`),
@@ -166,6 +184,10 @@ export const orbital: SaturnVRecord = {
           787_380 / 923_267,
           `${EVAL}, §6.3: the stage's thrust at ESC+351 s, 787,380 lbf, over the four engines' after the centre's cutoff, 923,267 lbf`,
         ),
+        flow: derived(
+          SII_LOW_FLOW,
+          `${EVAL}, Table 6-2: the four's flow after the shift from the stage's propellant mass history (engine flowmeter integration, the best estimate): what the tanks lost from the step command to the outboard cutoff over that time, less the pressurizing gas at its mean rate over the burn (${SII_GAS} kg, above), over the four's rated flow at ESC+61 s: ${SII_LOW_FLOW.toFixed(4)}, against the thrust's ${(SII_LOW_FLOW_THRUST).toFixed(4)} (an impulse ${(100 * (SII_LOW_FLOW_THRUST / SII_LOW_FLOW - 1)).toFixed(1)} per cent higher at the low ratio; SA-509 to SA-511's books give 0.5 to 1.8)`,
+        ),
       },
     },
     separation: doc(
@@ -176,6 +198,16 @@ export const orbital: SaturnVRecord = {
       3,
       'm/s: NOT FOUND. The S-II’s retrorockets and the S-IVB’s two ullage motors parted the stages (§10.6.3: both fired, the dynamics normal). Apollo 14’s estimate (Apollo 11’s), taken',
     ),
+    decay: {
+      centre: assumed(
+        (143_360 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 5 per cent thrust level, 143,360 lbf s: its quarter, an outboard engine's (§6.4 reads no other), taken for the centre's`,
+      ),
+      outboard: derived(
+        (143_360 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 5 per cent thrust level, 143,360 lbf s, a quarter of it`,
+      ),
+    },
   },
   les: {
     motor: {

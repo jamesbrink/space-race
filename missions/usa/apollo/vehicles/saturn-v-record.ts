@@ -29,12 +29,21 @@ export interface J2Figures {
 
 /**
  * A mixture-ratio shift (the propellant utilisation valve stepped): the engine's thrust and flow before it and after it, each
- * as a share of the figures given for it, and when, s from liftoff. The impulse is taken as unchanged by it.
+ * as a share of the figures given for it, and when, s from liftoff. Where the record has the flow after it apart from the
+ * thrust (`flow`: from the stage's propellant mass history, or an impulse it gives at the low ratio), the engine draws that
+ * share and its impulse after the shift is the thrust's share over it; without it the impulse is taken as unchanged.
  */
 export interface MixtureShift {
   at: Measure;
   before: Measure;
   after: Measure;
+  flow?: Measure;
+}
+
+/** What one engine of each kind still gives once cut (plan.ts `EngineDef.decay`): its cutoff impulse, N s. */
+export interface Decays {
+  centre: Measure;
+  outboard: Measure;
 }
 
 export interface SaturnVRecord {
@@ -50,8 +59,15 @@ export interface SaturnVRecord {
     centreCut: Measure;
     outboardCut: Measure;
     separation: Measure;
-    /** How fast the stages were pushed apart at the first plane (the S-IC's retrorockets, the S-II's ullage motors), m/s. */
+    /** How fast the stages were pushed apart at the first plane (the S-IC's retrorockets), m/s: the S-IC's speed away from the stack. */
     push: Measure;
+    /**
+     * The S-II's ullage motors' whole impulse, N s, where it carried them: fired as the stages parted, they pushed the stack
+     * that flew on, which gains it over its mass then (plan.ts `JointDef.ahead`, derived in saturn-v-plan.ts).
+     */
+    ullage?: Measure;
+    /** The F-1s' cutoff impulse, one engine's, where the record gives it. */
+    decay?: Decays;
   };
   /**
    * The second stage with the S-II/S-IVB interstage on it, at first motion; its aft interstage, let go at the second plane;
@@ -71,6 +87,8 @@ export interface SaturnVRecord {
     outboard: J2Figures & { cut: Measure; shift?: MixtureShift; spent?: string };
     separation: Measure;
     push: Measure;
+    /** The J-2s' cutoff impulse, one engine's, where the record gives it. */
+    decay?: Decays;
   };
   /** The launch escape tower with its boost cover: its mass, when it was let go, and the motor that pulled it clear. */
   les: { mass: Measure; at: Measure; motor: { thrust: Measure; burn: Measure } };

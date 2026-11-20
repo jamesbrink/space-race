@@ -45,7 +45,7 @@ next is not flown.
 - The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV (abort boundaries assumed from Apollo 11's press kit, p. 78: Apollo 12's has no table of them).
 - The S-IC holds the record on this flight's own pitch programme, but the S-II falls short of the record's speed and
   height and the S-IVB makes up the difference, cutting 11 to 15 seconds late (mission.md, `MISSES`); the iterative
-  guidance is a linear tangent in each of its two burns; the engines' starts and cutoff transients, the tower clearance
+  guidance is a linear tangent in each of its two burns; the engines' starts and the S-IVB's cutoff transients, the tower clearance
   yaw, the S-IVB's boil-off in orbit and the J-2's cutoff impulse at the injection are not flown.
 - The two lightning discharges, at 36.5 and 52 seconds, are not flown. They dropped the fuel cells off the spacecraft's
   buses and cost its platform its attitude reference; the launch vehicle's guidance flew on unharmed and the trajectory stayed close to the

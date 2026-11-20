@@ -115,6 +115,20 @@ export const orbital: SaturnVRecord = {
       5,
       'm/s: NOT FOUND. The S-IC’s eight retrorockets and the S-II’s eight ullage motors parted the stages; how fast is not in the evaluation. Apollo 11’s estimate, taken',
     ),
+    decay: {
+      centre: assumed(
+        682_522 * LBF,
+        `AS-509's (MPR-SAT-FE-71-1, §5.4: 682,522 lbf s from the cutoff signal to no thrust), taken: §5.4 has SA-508's decay normal and gives no figure`,
+      ),
+      outboard: assumed(
+        (2_664_436 * LBF) / 4,
+        `AS-509's (MPR-SAT-FE-71-1, §5.4: 2,664,436 lbf s for the four from the cutoff signal to no thrust), a quarter of it, taken: §5.4 gives no figure for SA-508's`,
+      ),
+    },
+    ullage: assumed(
+      4 * 373_206,
+      `the S-II's four ullage motors at their nominal impulse over the effective burn, 373,206 N s each (AS-503's evaluation, MPR-SAT-FE-69-1, Table 12-3), taken: SA-508's S-II carried them (they were deleted from AS-510, MPR-SAT-FE-71-2 §10.6) and §10.6 has the separation as planned`,
+    ),
   },
   sii: {
     mass: derived(487_944 + 3_665, `${MASS}: the S-II and the S-II/S-IVB interstage at holddown arm release (Table 16-1)`),
@@ -163,6 +177,10 @@ export const orbital: SaturnVRecord = {
           689_491 / 924_762,
           `${EVAL}, §6.3: the stage's thrust at ESC+421.6 s, 689,491 lbf, over the four engines' after the centre's cutoff, 924,762 lbf`,
         ),
+        flow: assumed(
+          (689_491 / 924_762) * (4159.0 / 4214.9),
+          `AS-503's evaluation (MPR-SAT-FE-69-1), Table 6-3: the S-II's reconstructed stage impulse at the low mixture ratio, 4,214.9 N s/kg, against 4,159.0 at the high, taken for SA-508's (the same valve): the flow's share is the thrust's (§6.3) times the one over the other`,
+        ),
       },
     },
     separation: doc(
@@ -173,6 +191,16 @@ export const orbital: SaturnVRecord = {
       3,
       'm/s: NOT FOUND. The S-II’s four retrorockets and the S-IVB’s two ullage motors parted the stages. Apollo 11’s estimate, taken',
     ),
+    decay: {
+      centre: assumed(
+        (193_024 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 3 per cent thrust level, 193,024 lbf s: its quarter, an outboard engine's (§6.4 reads no other: the centre was cut 262 s before the four), taken for the centre's`,
+      ),
+      outboard: derived(
+        (193_024 * LBF) / 4,
+        `${EVAL}, §6.4: the stage's cutoff impulse through the 3 per cent thrust level, 193,024 lbf s, a quarter of it`,
+      ),
+    },
   },
   les: {
     motor: {

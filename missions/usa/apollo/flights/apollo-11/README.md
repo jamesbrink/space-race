@@ -38,5 +38,5 @@ flown.
   past the Moon, the lunar orbit, the landing and the return. The stack coasts on whole.
 - The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV (press kit, p. 78).
 - The S-IC flies flatter than the record on the record's own attitude commands (mission.md); the iterative guidance is a
-  linear tangent in each of its two burns; the engines' starts and cutoff transients, the tower clearance yaw, the S-IVB's
+  linear tangent in each of its two burns; the engines' starts and the S-IVB's cutoff transients, the tower clearance yaw, the S-IVB's
   boil-off in orbit and the J-2's cutoff impulse at the injection are not flown.

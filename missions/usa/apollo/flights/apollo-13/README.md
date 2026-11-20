@@ -43,7 +43,7 @@ failure two days out, the lifeboat in Aquarius and the return round the Moon are
   record's to the same orbit.
 - The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV.
 - The S-IC flies a pitch programme traced off the evaluation's Fig. 9-4; the iterative guidance is a linear tangent in
-  each of its two burns; the mixture-ratio shift is at the record's instant; the engines' starts and cutoff transients,
+  each of its two burns; the mixture-ratio shift is at the record's instant; the engines' starts and the S-IVB's cutoff transients,
   the tower clearance yaw and the S-IVB's boil-off in orbit are not flown.
 
 ## Hardware notes

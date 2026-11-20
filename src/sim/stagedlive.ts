@@ -55,6 +55,7 @@ import {
   type AscentSummary,
   airOf,
   atCutoff,
+  decayOf,
   flowOf,
   guidanceOf,
   integral,
@@ -69,6 +70,7 @@ import {
   stackOf,
   injectionOf,
   targetStageOf,
+  type Stage,
 } from './staged.ts';
 import { CLOSED_ENDURES, hotStage, pressed } from './staging.ts';
 import type { Curve, Measure } from '../types.ts';
@@ -218,6 +220,8 @@ export interface StagedVehicle {
   throttle(state: StagedState, i: number, at?: number): number;
   /** The spacecraft's share of its final joint's separation speed for these two masses, m/s. */
   separationSpeed(kept: number, gone: number): number;
+  /** What stage `i`, cut and its body still on, still gives at `at` as its thrust decays (staged.ts `decayOf`), N, in air of `pressure`. */
+  decay(state: StagedState, i: number, at: number, pressure: number): number;
   /** The record's sequence of steps, in order, with the instants the record has them (a stage cut on its velocity: its recorded cutoff), each the plan's `event`. */
   readonly sequence: readonly { step: Step; at: number; label: string; event: string }[];
   /**
@@ -266,6 +270,25 @@ function capped(curve: Curve | undefined, k: number, a: number, b: number): Curv
     points.push([x, Math.min(y, k)]);
   }
   return { points, confidence: curve?.confidence ?? 'estimated', source: 'a throttle held under a hand’s lever' };
+}
+
+/**
+ * The share of a stage's rated flow it draws from `a` to `b` with its thrust held under a hand's lever at `k`, as a curve:
+ * its throttle capped (`capped`), times its flow's share over its thrust's where the record has the two apart
+ * (`Stage.drawn`); just the capped throttle where it has not.
+ */
+function drawnUnder(st: Pick<Stage, 'throttle' | 'drawn'>, k: number, a: number, b: number): Curve {
+  const thrust = capped(st.throttle, k, a, b);
+  if (st.drawn === st.throttle || !st.drawn) return thrust;
+  const at = (c: Curve | undefined, x: number) => (c ? alongCurve(c, x) : 1);
+  const xs = [...new Set([...thrust.points.map((p) => p[0]), ...st.drawn.points.map((p) => p[0]).filter((x) => x > a && x < b)])].sort(
+    (p, q) => p - q,
+  );
+  const points = xs.map((x): [number, number] => {
+    const rated = at(st.throttle, x);
+    return [x, rated > 0 ? (alongCurve(thrust, x) * at(st.drawn, x)) / rated : 0];
+  });
+  return { points, confidence: thrust.confidence, source: 'a flow held under a hand’s lever' };
 }
 
 /** A flight's staged vehicle, ready to be flown. `site`, `frame` and `seaLevel` as staged.ts `ascend`'s; `x` the law's solution, for its plane. */
@@ -377,7 +400,7 @@ export function stagedVehicle(
     if (!hand?.length) return stack.burned(i, from, to);
     if (to <= from) return 0;
     const piece = (a: number, b: number, k: number) =>
-      k >= 1 ? stack.burned(i, a, b) : stack.flows[i]! * integral(capped(stages[i]!.throttle, k, a, b), a, b);
+      k >= 1 ? stack.burned(i, a, b) : stack.flows[i]! * integral(drawnUnder(stages[i]!, k, a, b), a, b);
     let sum = 0;
     let a = from;
     let k = handAt(hand, from);
@@ -480,6 +503,27 @@ export function stagedVehicle(
   const hotShare = hots.map((h) => (h ? hotStage(h) : 1));
   const joined = (s: StagedState, i: number, at: number) => i > 0 && s.stages[i - 1]!.gone > at;
   const firesInto = (s: StagedState, i: number, at: number) => hotShare[i] !== 1 && joined(s, i, at);
+  /**
+   * What stage `i`, cut and its body still on, still gives as its thrust decays (staged.ts `decayOf`), N, from what the hands
+   * had it at when it stopped. Not a push that holds a stage let go pressed on (`settle`): what parted the stages was let
+   * go against it, its retrorockets the joint's `push`.
+   */
+  const decayPush = (s: StagedState, i: number, at: number, pressure: number, as = at): number => {
+    const st = s.stages[i]!;
+    if (!Number.isFinite(st.from) || st.gone <= as) return 0;
+    const cut = stop(s, i);
+    if (!(cut > st.from) || as < cut) return 0;
+    const share = throttleAt(s, i, cut);
+    const d = decayOf(stages[i]!, share);
+    if (!d || at >= cut + d.lasts) return 0;
+    return nozzleThrust(
+      stages[i]!.count,
+      stages[i]!.engine.thrust.vacuum.value,
+      share * (1 - (at - cut) / d.lasts),
+      stack.areas[i]!,
+      pressure,
+    );
+  };
   /** What stage `i` pushes the stack with, N: its thrust in this air, less what a joint below takes of it, with what burns and what is joined as from instant `as`. */
   const pushOf = (s: StagedState, i: number, at: number, pressure: number, as = at): number => {
     if (!burning(s, i, as)) return 0;
@@ -498,7 +542,7 @@ export function stagedVehicle(
     const here = air(st, at);
     let thrust = 0;
     stages.forEach((_, i) => {
-      thrust += pushOf(s, i, at, here.air.pressure, as);
+      thrust += pushOf(s, i, at, here.air.pressure, as) + decayPush(s, i, at, here.air.pressure, as);
     });
     // (the last stage, stopped and still on: what it lets out pushes the stack along its axis, as staged.ts `ascend` has it)
     const top = s.stages[last]!;
@@ -746,7 +790,12 @@ export function stagedVehicle(
       }
     }
     const settled = settle({ ...s, ...viewOf(craft) }, craft, said);
-    const out: StagedState = { ...s, craft: settled.craft, ...viewOf(settled.craft), parted: settled.parted, said };
+    // (a joint below the spacecraft parted now with motors of its own firing: what the stack flying on gains, `JointDef.ahead`)
+    let v = s.v;
+    for (const j of def.joints)
+      if (j.ahead && settled.craft.joints[j.id]?.gone === s.t && !Number.isFinite(s.craft.joints[j.id]?.gone ?? Infinity))
+        v = add(v, scale(turn(s.q, X), j.ahead.value));
+    const out: StagedState = { ...s, v, craft: settled.craft, ...viewOf(settled.craft), parted: settled.parted, said };
     if (chain.length) out.chain = chain;
     else delete out.chain;
     return out;
@@ -1061,6 +1110,7 @@ export function stagedVehicle(
     },
     setsOff: (i) => chains[i] ?? [],
     separationSpeed,
+    decay: (s, i, at, pressure) => decayPush(s, i, at, pressure),
     left: (s) =>
       stages.map((st, i) =>
         Number.isFinite(s.stages[i]!.gone)
@@ -1234,7 +1284,7 @@ export function stagedPilot(
 export function leftAfter(plan: FlightPlan, i: number, from: number, to: number): number {
   const st = stagesOf(plan)[i]!;
   const flow = flowOf(st.engine);
-  return st.count * Math.max(0, st.load - flow * integral(st.throttle, from, to));
+  return st.count * Math.max(0, st.load - flow * integral(st.drawn, from, to));
 }
 
 /**
