@@ -30,3 +30,19 @@ The driving surface uses a 2 m stereo strip around Challenger and the 5 m Taurus
 - [CSM-114 America](../../vehicles/csm-114.md)
 - [LM-12 Challenger](../../vehicles/lm-12.md)
 - [LRV-3](../../vehicles/lrv-3.md)
+
+## Launch site · Pad 39A
+
+Enter the [launch site](https://jamesbrink.online/space-race/#usa/apollo/apollo-17/site/pad) on the evening of 6 December. Walk from the south approach, take Mobile Launcher 3’s elevator to the 320-foot level and cross arm 9 into the white room. Cernan took the left couch first, Schmitt the right and Evans the centre. The exhibit opens at 19:13 EST, the scheduled start of ingress. Pressure-hatch timing is estimated. By the original T−1:22, Launch Control reported the purge complete and the boost cover closed. [Apollo 17 press kit, pp. 18–19](https://science.nasa.gov/wp-content/uploads/2023/09/Apollo_17.pdf) · [NASA’s account and white-room photograph](https://www.nasa.gov/history/50-years-ago-apollo-17-lights-up-the-night-sky-on-its-way-to-the-moon/) · [Launch commentary, tape 1/1](https://www.nasa.gov/wp-content/uploads/2026/01/as17-pao.pdf)
+
+Arm 9 withdrew before the original 21:53 EST launch attempt. At T−30 seconds the sequencer stopped because it had missed the command to pressurize the third-stage oxygen tank. The tank had been pressurized manually. The crew stayed aboard while the arm returned to 12° standby. During the recycled count Launch Control confirmed it was there. It withdrew for the second time before the 00:33 EST launch. The clock follows elapsed wall time through both holds. The arm’s exact travel times are estimated from the calls. [Launch commentary, tapes 15/1, MC17/1 and MC29/1](https://www.nasa.gov/wp-content/uploads/2026/01/as17-pao.pdf) · [NASA timeline with UTC event times](https://www.nasa.gov/wp-content/uploads/static/history/SP-4029/Apollo_17i_Timeline.htm)
+
+At range zero both the Sun and Moon were well below the horizon. The Sun was at elevation −82.6° and azimuth 36.8° true, the Moon at −79.3° and 287.0°. The ground wind tower reported two tenths stratocumulus at 792 m, five tenths cirrus at 7,925 m and 11 km visibility. The northwest pad pole measured 4.1 m/s from 005°. The vehicle passed through thin cirrus. The site uses the measured launch conditions and ERA5 data for the surrounding hours and upper air. [AS-512 flight evaluation, appendix A, table A-1](https://ntrs.nasa.gov/citations/19730025089)
+
+![SA-512 floodlit at Pad A and the white room connected, retracted and back at standby](../../../../../docs/readme/apollo-17-pad.webp)
+
+Inspect the xenon searchlights from the hardstand and the hydrogen vent disconnect on arm 7. Launch Control described 72 twenty-kilowatt lamps and two sixty-kilowatt searchlight banks. The hardware note distinguishes the recorded installation from the reconstructed lamp positions and beam shapes. [Mobile Launcher 3 on 7 December 1972](../../../places/cape-canaveral/lc-39.md#apollo-17-at-pad-a-december-7-1972)
+
+### Clearance and boarding
+
+The exported pad and SA-512 were checked together at all nine combinations of mesh detail at 665 countdown poses covering boarding, safing, both outward swings and launch release. During the first 12° of travel the white-room deck clears America’s closed boost-cover shell by at least 9.72 mm in the model, allowing for motion between samples. A separate check compares the baked structures with the rocket at 2,619 poses. It also verifies the open-hatch passage and the full fin span through the first 150 m of the cleared launch path. The four bearings support the vehicle until hold-down release. [Pad geometry and reconstruction limits](../../../places/cape-canaveral/lc-39.md#apollo-17-at-pad-a-december-7-1972) · [Launch suits and markings](../../crew/a7l.md#apollo-17-launch-garments)

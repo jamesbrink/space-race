@@ -452,3 +452,20 @@ test('SA-511 opens under the low cumulus and west wind measured at Pad 39A', asy
   assert.equal(day.visibility, 16000);
   assert.equal(day.map, 'cape-canaveral.1972-04-16');
 });
+
+test('SA-512 has the two observed cloud layers and the northwest light pole wind at midnight launch', async () => {
+  const flight = await load('usa/apollo/flights/apollo-17/flight.ts');
+  const day = dayOf(flight);
+  assert.equal(flight.weather.observed.at, flight.launch);
+  assert.equal(day.cumulus, null);
+  assert.equal(flight.weather.middle.cover.value, 0.2);
+  assert.equal(day.deck.cover, deckPatches(0.2));
+  assert.equal(day.deck.height, 792);
+  assert.equal(day.high.cover, 0.5);
+  assert.equal(day.high.height, 7925);
+  assert.equal(day.high.veil, false);
+  assert.equal(day.wind.speed, 4.1);
+  assert.equal(flight.weather.wind.from.value, 5);
+  assert.equal(day.visibility, 11000);
+  assert.equal(day.map, 'cape-canaveral.1972-12-07');
+});

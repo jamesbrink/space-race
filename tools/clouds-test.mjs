@@ -47,6 +47,7 @@ const FLIGHTS = [
   'usa/apollo/apollo-14',
   'usa/apollo/apollo-15',
   'usa/apollo/apollo-16',
+  'usa/apollo/apollo-17',
 ].filter((f) => !only || f === only);
 const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */
@@ -110,6 +111,28 @@ function install() {
           p.uniforms.uClouds.value = 0;
         }
       : render;
+  };
+  // A night cloud can be dark everywhere. Read the production sheet shader’s opacity directly,
+  // so the near/far check can distinguish an unlit sheet from a hole. Restore the scene before crossings.
+  T.nightSheet = (kind) => {
+    const mat = p.output.material;
+    if (mat.uniforms.uTrueSun.value.y >= -0.1) return null;
+    const original = mat.fragmentShader;
+    const start = 'void main() {';
+    if (!original.includes(start)) throw new Error('clouds: missing output pass main');
+    mat.fragmentShader = original.replace(
+      start,
+      `${start}
+      vec3 ray = viewRay(vUv);
+      float d = sceneDistance(texture(tDepth, vUv).x, ray);
+      float opacity = sheet(normalize(uTurn * ray), ${kind}, d, 1e9, 0.0).a;
+      oOutput = vec4(vec3(opacity), 1.0); return;`,
+    );
+    mat.needsUpdate = true;
+    return () => {
+      mat.fragmentShader = original;
+      mat.needsUpdate = true;
+    };
   };
   /** The march's result as it stands, with what it was marched from. */
   T.snap = () => {
@@ -248,8 +271,8 @@ for (const id of FLIGHTS) {
   check(day.cumulus !== null || day.deck !== null || day.high !== null, `${name}: the flight’s weather is on screen`);
   // (the layers as clouds.ts has them: SHEET_DEPTH)
   const layers = [
-    ...(day.deck !== null ? [{ sheet: 'the middle deck', lo: day.deck, hi: day.deck + 300 }] : []),
-    ...(day.high !== null ? [{ sheet: 'the high cloud', lo: day.high - 400, hi: day.high + 400 }] : []),
+    ...(day.deck !== null ? [{ kind: 0, sheet: 'the middle deck', lo: day.deck, hi: day.deck + 300 }] : []),
+    ...(day.high !== null ? [{ kind: 1, sheet: 'the high cloud', lo: day.high - 400, hi: day.high + 400 }] : []),
   ];
   console.log(
     `${name}: cumulus ${day.cumulus ? `${day.cumulus.base}-${day.cumulus.top} m` : 'none'}; sheets ${layers.map((l) => `${l.sheet} ${l.lo}-${l.hi} m`).join(', ') || 'none'}`,
@@ -429,10 +452,11 @@ for (const id of FLIGHTS) {
         const farGap = Math.min(2000, room - 1);
         const nearGap = Math.min(300, farGap / 2);
         const got = await page.evaluate(
-          async ([lo, hi, el, farGap, nearGap]) => {
+          async ([lo, hi, el, farGap, nearGap, kind]) => {
             const T = window.cloudsTest;
+            const restore = T.nightSheet(kind);
             // (straight down or up the middle of the view is one line, near or far: the same place of the sheet, and the
-            // same of everything behind it. So only the middle is compared, at places 230 m apart over 1.6 km.)
+            // same of everything behind it. At night sample a wider area to find separate patches and sheaves.)
             const middle = (im) => {
               let s = 0;
               for (let dy = -2; dy <= 2; dy++)
@@ -442,28 +466,42 @@ for (const id of FLIGHTS) {
                 }
               return s / 25;
             };
+            const spacing = restore ? 2100 : 230;
             let bright = 0,
-              lost = 0;
+              lost = 0,
+              pairs = 0,
+              max = 0;
             for (let i = -3; i <= 3; i++)
               for (let j = -3; j <= 3; j++) {
                 const look = async (gap) => {
-                  await T.at(230 * i + 11, T.y(el < 0 ? hi + gap : lo - gap), 230 * j + 7, el);
+                  await T.at(spacing * i + 11, T.y(el < 0 ? hi + gap : lo - gap), spacing * j + 7, el);
                   return middle(T.grab());
                 };
                 const far = await look(farGap),
                   near = await look(nearGap);
-                if (far < 170) continue;
+                pairs++;
+                max = Math.max(max, far, near);
+                if (far < (restore ? 55 : 170)) continue;
                 bright++;
                 if (near < far - 40) lost++;
               }
-            return { bright, lost };
+            restore?.();
+            return { bright, lost, pairs, max, opacity: Boolean(restore) };
           },
-          [layer.lo, layer.hi, el, farGap, nearGap],
+          [layer.lo, layer.hi, el, farGap, nearGap, layer.kind],
         );
+        // From below, the cel look gives high cloud a wash only when it covers more than half the sky.
+        if (got.opacity && look === 'cel' && el > 0 && layer.kind === 1 && (flight.weather.high?.cover.value ?? 0) <= 0.5) {
+          check(
+            got.pairs === 49 && got.max === 0,
+            `${where}: scattered high cloud seen from below leaves the cel sky clear at all ${got.pairs} near/far pairs (maximum opacity ${got.max.toFixed(1)} of 255)`,
+          );
+          continue;
+        }
         const share = got.lost / Math.max(got.bright, 1);
         check(
-          got.lost <= 1 || share < 0.1,
-          `${where}: ${layer.sheet} from ${side} it, near and far: ${got.lost} of ${got.bright} places of cloud from ${farGap.toFixed(0)} m gone from ${nearGap.toFixed(0)} m (${(100 * share).toFixed(1)} %)`,
+          (!got.opacity || got.bright > 0) && (got.lost <= 1 || share < 0.1),
+          `${where}: ${layer.sheet} from ${side} it, near and far${got.opacity ? ' by night opacity' : ''}: ${got.lost} of ${got.bright} places of cloud from ${farGap.toFixed(0)} m gone from ${nearGap.toFixed(0)} m (${(100 * share).toFixed(1)} %)`,
         );
       }
       // and crossed straight up at a vehicle's speed, looking level and down: nothing steps. Where a frame changes from

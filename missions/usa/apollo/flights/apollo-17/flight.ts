@@ -1,4 +1,7 @@
 import type { Flight } from '../../../../../src/types.ts';
+import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
+import { launchCrew } from './crew.ts';
+import { WEATHER } from './weather.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { roverModel } from '../../vehicles/rover-gallery.ts';
@@ -12,9 +15,9 @@ const lb = 0.45359237;
 const report = 'Apollo 17 Mission Report JSC-07904, table 3-I, elapsed from range zero, excluding the mission clock update';
 const masses = 'JSC-07904, table A-II, weights at transposition and docking';
 // Press kit p. 18 scheduled boarding 2 h 40 before the original launch time. Range zero followed the scheduled time by 2 h 40.
-// Closing strokes approximate the closeout interval. The gallery does not reconstruct the terminal holds.
+// Pressure hatch closure is estimated. Launch Control tape 1/1 reported the boost cover closed by the original T−1:22.
 const boarding: [number, number] = [-elapsed(5, 20, 0), -elapsed(4, 25, 0)];
-const coverCloseout = -elapsed(4, 0, 0);
+const coverCloseout = -elapsed(4, 2, 0);
 const cabin = blockIICabin(3871);
 
 export const flight: Flight = {
@@ -28,6 +31,9 @@ export const flight: Flight = {
   launchVehicle: 'Saturn V · SA-512',
   launch: '1972-12-07T05:33:00Z',
   launchSite: 'Launch Complex 39A, Kennedy Space Center',
+  site: LC39A,
+  opens: { at: boarding[0], model: 'pad', view: 'launcher' },
+  weather: WEATHER,
   crew: ['Eugene A. Cernan', 'Ronald E. Evans', 'Harrison H. Schmitt'],
   summary:
     'Cernan and Schmitt drove through the Taurus–Littrow valley from Challenger. In lunar orbit Evans used America’s cameras, radar sounder, ultraviolet spectrometer and infrared scanner, then recovered three film cassettes on the way home.',
@@ -37,8 +43,15 @@ export const flight: Flight = {
     { label: 'Recovery', value: 'Pacific Ocean · 19 December 1972' },
   ],
   timeline: [
+    { t: boarding[0], event: 'Scheduled crew ingress into America, Cernan first, followed by Schmitt and Evans' },
+    { t: coverCloseout, event: 'Launch Control has reported the cabin purge complete and the boost protective cover closed' },
+    { t: -elapsed(2, 42, 47), event: 'The ground sequencer misses the S-IVB oxygen tank pressurization command' },
     { t: -elapsed(2, 40, 30), event: 'At the original T−30 seconds, the ground sequencer stops the count' },
-    { t: 0.6, event: 'SA-512 lifts off from Kennedy in darkness' },
+    { t: -elapsed(1, 35, 19), event: 'The recycled countdown resumes at T−22 minutes' },
+    { t: -elapsed(1, 21, 19), event: 'The count enters a second hold at T−8 minutes while controllers verify the workaround' },
+    { t: -480, event: 'The final count resumes at T−8 minutes' },
+    { t: 0.24, event: 'SA-512 first moves as the four hold-down arms release' },
+    { t: 0.63, event: 'The instrument-unit umbilical disconnects as SA-512 lifts off in darkness' },
     { t: elapsed(0, 11, 53), event: 'SA-512 reaches Earth parking orbit' },
     { t: elapsed(3, 12, 37), event: 'S-IVB restarts for translunar injection' },
     { t: elapsed(3, 42, 29), event: 'America separates and turns to face Challenger' },
@@ -101,15 +114,15 @@ export const flight: Flight = {
       id: 'vehicle',
       name: 'Apollo 17 · Saturn V',
       url: 'models/usa/apollo/apollo-17/vehicle.glb',
-      backdrop: 'studio',
+      backdrop: 'ground',
       cutaway: true,
       dockingPorts: [americaPort, challengerPort],
       ...cabin,
       cabin: { ...cabin.cabin, within: [...cabin.cabin.within, 'WaterDispenser'] },
       seats: [
-        { node: 'Seat_Commander', label: 'Cernan’s left couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_CommandModulePilot', label: 'Evans’s centre couch', from: 'SideHatch', open: boarding },
-        { node: 'Seat_LunarModulePilot', label: 'Schmitt’s right couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_Commander', figure: 'crew', label: 'Cernan’s left couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_CommandModulePilot', figure: 'pilot', label: 'Evans’s centre couch', from: 'SideHatch', open: boarding },
+        { node: 'Seat_LunarModulePilot', figure: 'lmp', label: 'Schmitt’s right couch', from: 'SideHatch', open: boarding },
       ],
       scale: '363 ft / 110.64 m to the escape tower tip',
       slider: ['Assembled', 'Taken apart'],
@@ -128,6 +141,18 @@ export const flight: Flight = {
       }),
     },
     challengerModel,
+    mobileLauncher(3, {
+      holdDowns: 'as-512',
+      ingress: boarding[0],
+      parkedBy: -elapsed(3, 24, 30),
+      pao: 'Kennedy Launch Control, 6–7 December 1972, tapes MC7/1, 15/1, MC17/1 and MC29/1. Countdown and wall-clock times are related by the two terminal holds.',
+      intertankClear: -17,
+      forwardRetract: -16.2,
+      firstMotion: 0.24,
+      terminalSource:
+        'AS-512 Flight Evaluation Report, tables 2-1 and 2-2 and §3.5.1. NASA SP-4029 Apollo 17 timeline gives first motion to hundredths. Preflight arm stroke endpoints use the nominal Saturn V sequence.',
+    }),
+    ...launchCrew,
     roverModel(17),
   ],
 };
