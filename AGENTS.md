@@ -1,7 +1,7 @@
 # Working notes for agents in this repo
 
 SPACE RACE: every crewed spacecraft and its launch vehicle, modelled to scale in Blender and shown
-in three.js. The catalog includes 43 crewed flights and seven Gemini target launches. Each has a Gallery and a Launch site. The last three Apollo flights also have drivable lunar rovers. The six Mercury, six Vostok and two Voskhod flights, Gemini 3, 4, 5, 6A and 7, Apollo 7 and the seven Gemini targets (the two lost ones as the record had them fail) can be flown from launch.
+in three.js. The catalog includes 44 crewed flights and seven Gemini target launches. Each has a Gallery. All except Skylab 3 have a Launch site. The last three Apollo flights also have drivable lunar rovers. The six Mercury, six Vostok and two Voskhod flights, Gemini 3, 4, 5, 6A and 7, Apollo 7 and the seven Gemini targets (the two lost ones as the record had them fail) can be flown from launch.
 The goal is a
 simulator in which you fly the USA's, the USSR's and later programmes from the historical record to the present, so **the models and the
 numbers have to be right, and where they are not yet right the repo has to say so**.

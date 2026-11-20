@@ -1040,6 +1040,15 @@ export const MILESTONES: readonly Milestone[] = [
     confidence: 'documented',
   },
   {
+    date: '1973-09-25',
+    flight: 'usa/skylab/skylab-3',
+    nation: 'USA',
+    title: 'First crew to spend 59 days in space',
+    text: 'After three spacewalks and nearly two months aboard Skylab, the second crew splashed down in the Pacific. USS New Orleans recovered the capsule and its crew.',
+    source: 'Skylab Mission Report, Second Visit, JSC-08662, §2. NASA Historical Data Book, volume III, table 2-50.',
+    confidence: 'documented',
+  },
+  {
     date: '1973-09-27T12:18:16Z',
     flight: 'ussr/soyuz/soyuz-12',
     nation: 'USSR',
@@ -1662,6 +1671,21 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
     named: {
       why: 'NASA counted the station itself as Skylab 1. The Apollo that brought its first crew to orbit was Skylab 2.',
       source: 'Kennedy Space Center, Skylab Program, pp. XI-1–XI-2 (NTRS 19740015280)',
+      confidence: 'documented',
+    },
+  },
+  'usa/skylab/skylab-3': {
+    flight: 'usa/skylab/skylab-3',
+    headline: 'Two thruster leaks prompted rescue preparations',
+    story:
+      'On the way to Skylab, the crew saw droplets streaming past a window. One of the service module’s four thruster groups was leaking oxidizer. A second group developed a leak while the crew was docked. At Kennedy, preparations began for another Apollo to bring the astronauts home.' +
+      '\n\n' +
+      'Engineers established how CSM-117 could return with the remaining thrusters. The crew stayed on, and Garriott and Lousma installed a twin-pole sunshade above the parasol that the first crew had deployed. Bean, Garriott and Lousma returned in their own spacecraft on 25 September.',
+    firsts: ['First crew to spend 59 days in space'],
+    source: 'Skylab Mission Report, Second Visit, JSC-08662, §§2 and 7. Kennedy Space Center, Skylab Program, p. XI-3.',
+    named: {
+      why: 'NASA designated the flight Skylab 3. The crew’s patch says Skylab II because it was the second expedition to the workshop.',
+      source: 'NASA, Skylab 3 mission overview and second crew emblem.',
       confidence: 'documented',
     },
   },
@@ -2476,7 +2500,7 @@ export const PEOPLE: readonly Person[] = [
     born: '1932-03-15',
     died: '2018-05-26',
     nation: 'USA',
-    flights: ['usa/apollo/apollo-12'],
+    flights: ['usa/apollo/apollo-12', 'usa/skylab/skylab-3'],
     bio:
       'A Navy pilot from Wheeler, Texas, chosen in 1963. On Apollo 12 he was lunar module pilot and the fourth ' +
       'person to walk on the Moon, beside the Surveyor III lander in the Ocean of Storms. He went back to space in 1973 ' +
@@ -2907,6 +2931,27 @@ export const PEOPLE: readonly Person[] = [
       'As Skylab’s first science pilot he could study what weeks of weightlessness did to his crewmates and to himself. ' +
       'Outside the station he and Conrad freed the jammed solar wing that supplied power to the workshop.',
     source: 'NASA, Biographical Data, Joseph P. Kerwin. Kennedy Space Center, Skylab Program, p. XI-2 (NTRS 19740015280).',
+    confidence: 'documented',
+  },
+  {
+    id: 'garriott',
+    name: 'Owen K. Garriott',
+    born: '1930-11-22',
+    died: '2019-04-15',
+    nation: 'USA',
+    flights: ['usa/skylab/skylab-3'],
+    bio: 'An electrical engineer from Enid, Oklahoma, Garriott joined NASA’s first group of scientist-astronauts in 1965. He served as science pilot on Skylab 3 and worked outside on all three spacewalks. A decade later he used his amateur radio call sign W5LFL to talk to operators on Earth from the shuttle Columbia.',
+    source: 'NASA, Owen K. Garriott, biographical data. NASA Astronaut Fact Book, Garriott.',
+    confidence: 'documented',
+  },
+  {
+    id: 'lousma',
+    name: 'Jack R. Lousma',
+    born: '1936-02-29',
+    nation: 'USA',
+    flights: ['usa/skylab/skylab-3'],
+    bio: 'A Marine Corps aviator from Michigan, Lousma joined NASA in 1966. On Skylab 3 he worked with Garriott to assemble two long poles outside the station and stretch the new sunshade over the workshop. In 1982 he commanded Columbia on its third orbital test flight.',
+    source: 'NASA, Jack Robert Lousma, biographical data. Skylab Mission Report, Second Visit, JSC-08662, §2.',
     confidence: 'documented',
   },
   {

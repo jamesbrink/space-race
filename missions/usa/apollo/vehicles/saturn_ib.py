@@ -122,7 +122,8 @@ def outer_tank(index, angle, white, black, parent, *, white_fuel=False):
     return tank
 
 
-def build(*, skylab=False):
+def build(*, skylab_serial=None):
+    skylab = skylab_serial is not None
     # MSFC-MAN-206 fig. 1-1, vehicle stations in inches. The upper SLA
     # interface meets the SM aft bulkhead; the flight separation line is 1.06 in aft.
     sib_top, interstage_top, sivb_top, iu_top, hinge_height, sla_top = (
@@ -261,7 +262,7 @@ def build(*, skylab=False):
         )
         if skylab:
             serial = MeshBuilder()
-            srlib.lettering(serial, srlib.Surf(35, 0, 0), "SA-206", 46, fuel_angle, 296, False, font)
+            srlib.lettering(serial, srlib.Surf(35, 0, 0), f"SA-{skylab_serial}", 46, fuel_angle, 296, False, font)
             serial.build(f"SIB_Serial_{i}", black, sib).location = (*centre, 0)
         lettering("USA", a, SIVB_TEXT_TOP, RADIUS, SIVB_CAP, SIVB_U_WIDTH, SIVB_PITCH, red, sivb, font)
     cylinder("IU_Skin", RADIUS, sivb_top, iu_top, black, groups["InstrumentUnit"])
@@ -303,5 +304,5 @@ def build(*, skylab=False):
             if obj.type == "MESH" and not obj.name.startswith("SIVB_AuxiliaryPropulsion_")
         ]
     )
-    structure.build(groups, spheres_per_bank=3 if skylab else 4)
+    structure.build(groups, spheres_per_bank=3 if skylab else 4, s150=skylab_serial == 207)
     return groups
