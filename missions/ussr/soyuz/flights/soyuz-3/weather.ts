@@ -1,4 +1,4 @@
-import { doc, estimated } from '../../../../../src/measure.ts';
+import { assumed, doc, estimated } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
 import { ALOFT, HOURS } from './aloft.ts';
 
@@ -32,8 +32,8 @@ export const WEATHER: DayWeather = {
     note: 'The altocumulus over the stratocumulus (a sixth okta) is not drawn: the viewer has one layered deck. By 12:00 UTC Kazalinsk had four oktas of small cumulus at the 1,250 m class and no deck.',
   },
   wind: {
-    from: doc(320, `${KAZALY}, ${HOUR}; 320° at 03:00 too. ${ARALSK}, 06:00 UTC: 340°. At the site not measured`),
-    speed: doc(7.2, `${KAZALY}, ${HOUR}: 7.2 m/s (3.1 at 03:00, 5.1 at 12:00); ${ARALSK} 5.1 m/s at 06:00`),
+    from: assumed(320, `${KAZALY}, ${HOUR}; 320° at 03:00 too. ${ARALSK}, 06:00 UTC: 340°. At the site not measured`),
+    speed: assumed(7.2, `${KAZALY}, ${HOUR}: 7.2 m/s (3.1 at 03:00, 5.1 at 12:00); ${ARALSK} 5.1 m/s at 06:00`),
   },
   visibility: estimated(20000, `Kazaly reports 20 km, its furthest mark, at 09:00 UTC (${ISD}); Aralsk 20 km at 06:00. Taken as 20 km`),
   haze: estimated(1500, 'not recorded: the dry air of the steppe, taken as the Vostoks’ and Voskhods’, to thin over 1.5 km'),

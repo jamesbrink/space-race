@@ -1,4 +1,4 @@
-import { doc, estimated } from '../../../../../src/measure.ts';
+import { assumed, estimated } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
 import { ALOFT, HOURS } from './aloft.ts';
 
@@ -21,8 +21,8 @@ export const WEATHER: DayWeather = {
   },
   // no cloud: Zhosaly, Kazaly and Kzyl-Orda report a clear sky (no oktas) at 12:00 and 15:00 UTC
   wind: {
-    from: doc(90, `${ZHOSALY}, ${HOUR}; 110° at 12:00. ${KAZALY} 090°, ${KZYLORDA} 070°. At the site not measured`),
-    speed: doc(3, `${ZHOSALY}, ${HOUR}: 3 m/s (5 at 12:00); ${KAZALY} 3 m/s, ${KZYLORDA} 4 m/s`),
+    from: assumed(90, `${ZHOSALY}, ${HOUR}; 110° at 12:00. ${KAZALY} 090°, ${KZYLORDA} 070°. At the site not measured`),
+    speed: assumed(3, `${ZHOSALY}, ${HOUR}: 3 m/s (5 at 12:00); ${KAZALY} 3 m/s, ${KZYLORDA} 4 m/s`),
   },
   visibility: estimated(
     50000,

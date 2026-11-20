@@ -1,4 +1,4 @@
-import { doc, estimated } from '../../../../../src/measure.ts';
+import { assumed, doc, estimated } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
 import { ALOFT, HOURS } from './aloft.ts';
 
@@ -34,8 +34,8 @@ export const WEATHER: DayWeather = {
     depth: estimated(0.2, 'not recorded: a few filaments, thin'),
   },
   wind: {
-    from: doc(90, `${ZHOSALY}, ${HOUR}; 050° at 09:00. ${KAZALY}: 020° at 06:00, 050° at 09:00. At the site not measured`),
-    speed: doc(4.1, `${ZHOSALY}, ${HOUR}: 4.1 m/s, the same at 09:00 and at Kazaly`),
+    from: assumed(90, `${ZHOSALY}, ${HOUR}; 050° at 09:00. ${KAZALY}: 020° at 06:00, 050° at 09:00. At the site not measured`),
+    speed: assumed(4.1, `${ZHOSALY}, ${HOUR}: 4.1 m/s, the same at 09:00 and at Kazaly`),
   },
   visibility: estimated(50000, `50 km at Zhosaly and Kazaly at ${HOUR} (${ISD}), the furthest either reports. Taken as 50 km`),
   haze: estimated(1500, 'not recorded: the dry air of the steppe, taken as the Vostoks’ and Voskhods’, to thin over 1.5 km'),

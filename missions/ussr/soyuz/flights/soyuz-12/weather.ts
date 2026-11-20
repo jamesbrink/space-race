@@ -1,4 +1,4 @@
-import { doc, estimated } from '../../../../../src/measure.ts';
+import { assumed, doc, estimated } from '../../../../../src/measure.ts';
 import type { DayWeather } from '../../../../../src/types.ts';
 import { ALOFT, HOURS } from './aloft.ts';
 
@@ -33,8 +33,8 @@ export const WEATHER: DayWeather = {
     note: 'Coded CL 5, stratocumulus, eight oktas: a grey overcast. The thickness of the deck is not recorded.',
   },
   wind: {
-    from: doc(200, `${ZHOSALY}, ${HOUR}; 200° from 09:00 to 15:00. ${KZYLORDA} 230°, ${KAZALY} 270°. At the site not measured`),
-    speed: doc(6, `${ZHOSALY}, ${HOUR}: 6 m/s; ${KZYLORDA} 4 m/s, ${KAZALY} 1 m/s`),
+    from: assumed(200, `${ZHOSALY}, ${HOUR}; 200° from 09:00 to 15:00. ${KZYLORDA} 230°, ${KAZALY} 270°. At the site not measured`),
+    speed: assumed(6, `${ZHOSALY}, ${HOUR}: 6 m/s; ${KZYLORDA} 4 m/s, ${KAZALY} 1 m/s`),
   },
   visibility: estimated(
     50000,
