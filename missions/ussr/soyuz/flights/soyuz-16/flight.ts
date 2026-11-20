@@ -4,6 +4,10 @@ import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { soyuzPad } from '../../../places/tyuratam/soyuz-pad.ts';
 import { soyuzWalker } from '../../crew/walkout.ts';
 import { CRAFT, descent, moduleTravel, onSoyuzPad, orbital, service, soyuzGallery, soyuzGallerySpecs } from '../../vehicles/gallery.ts';
+import { AREAS } from '../../vehicles/soyuz-7kok-flown.ts';
+import { commanded, soyuzChuteLooks, soyuzCommands, soyuzFlies } from '../../vehicles/soyuz-flies.ts';
+import { soyuzPlan } from '../../vehicles/soyuz-plan.ts';
+import { orbital as ORBITAL } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const HARDWARE = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.9';
@@ -241,6 +245,21 @@ upper.detail =
 vehicle.seats![0]!.figure = 'crew';
 vehicle.seats![1]!.figure = 'engineer';
 
+// what a hand can ask of each part in flight, said with what did each thing on the day (vehicles/soyuz-flies.ts)
+vehicle.parts = commanded(
+  vehicle.parts,
+  soyuzCommands({
+    parted: 'the sequence did, minutes after the burn',
+    crew: 'Filipchenko and Rukavishnikov',
+    cover: `its barometric switch, ${(ORBITAL.ejection.altitude.value / 1000).toFixed(0)} km`,
+  }),
+);
+/** The descent module's parachutes as drawn, at their areas as the record has them. */
+const CHUTES = soyuzChuteLooks([
+  { name: 'drogue parachute', area: AREAS.drogue },
+  { name: 'main parachute', area: AREAS.main },
+]);
+
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-16',
   nation: 'USSR',
@@ -322,6 +341,16 @@ export const flight: Flight = {
     },
   ],
   motors: [],
+  // the flight as flown from its record: the 11A511U's ascent on its steering law, the record's corrections in orbit, the
+  // docking ring let go, the braking burn, the guided entry and the descent (orbital.ts; mission.md), through the day's air
+  plan: { ...soyuzPlan(ORBITAL), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on the Soyuz-U’s own engines to the orbit Siddiqi’s table gives. The orbit is made the 225 km circle of the joint flight in two burns on the 17th and 18th revolutions, the docking ring is shot off on 7 December, and Filipchenko and Rukavishnikov come down in their Sokol-K suits in the descent module on its own lift (mission.md). Flown live through the day’s winter jet, the stack breaks up at T+57: its bending load passes the R-7’s estimated limit by a per cent. Soyuz 16 did not; the estimate, not the flight, is believed short.',
+  flies: soyuzFlies(ORBITAL, CHUTES, {
+    orbital: ['OrbitalModule', 'ApasCollar', 'ApasCaptureRing', 'RendezvousTarget', 'VhfAntennas'],
+    instrument: ['ServiceModule', 'InfraredVertical', 'SolarLeft', 'SolarRight'],
+    jettisoned: [{ id: 'test-ring', nodes: ['TestDockingRing'] }],
+  }),
   models: [
     onSoyuzPad(vehicle, TURN, TAIL),
     soyuzPad,

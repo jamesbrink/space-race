@@ -574,6 +574,36 @@ INPUTS['ussr/soyuz/soyuz-12'] = [
   ['entry', 'area'],
 ];
 
+// Soyuz 16's: as Soyuz 12's, its braking burn's length its own (Spacefacts, documented) but put after a start that is assumed,
+// and its parachute system's height the type's (assumed)
+INPUTS['ussr/soyuz/soyuz-16'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['injection', 'at'],
+  ['retro', 'on'],
+  ['retro', 'off'],
+  ['retro', 'deltaV'],
+  ['entry', 'separation'],
+  ['entry', 'area'],
+  ['ejection', 'altitude'],
+];
+
+// Soyuz T-2's: as Soyuz 16's, its braking burn's length read off "three to four minutes" (estimated) and its landing place
+// worked from "200 km south-east of Dzhezkazgan" (derived)
+INPUTS['ussr/soyuz/soyuz-t-2'] = [
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['injection', 'at'],
+  ['retro', 'on'],
+  ['retro', 'off'],
+  ['retro', 'deltaV'],
+  ['entry', 'separation'],
+  ['entry', 'area'],
+  ['ejection', 'altitude'],
+  ['landing', 'latitude'],
+  ['landing', 'longitude'],
+];
+
 test('there is an orbital flight to fly', () => {
   assert.ok(orbiters.length > 0);
 });

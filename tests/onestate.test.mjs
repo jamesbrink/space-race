@@ -22,6 +22,7 @@ import { frameOf } from '../src/world/earthframe.ts';
 import { step as orbitStep } from '../src/world/orbit.ts';
 import { add, DEG, dot, enuAxes, length, scale, siteFrame, sub } from '../src/world/frames.ts';
 import { meanOf, periodsOf } from '../src/world/meanelements.ts';
+import { missesOf } from './misses.mjs';
 import { part } from './part.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -240,6 +241,18 @@ for (const f of part(orbital)) {
       steps: sequenceOf(plan).stages.flatMap((st, i) => (st.from <= 0 ? [{ kind: 'ignite', stage: i }] : [])),
     });
     while (s.t < 120 && !s.broke && !s.landed) s = v.tick(s, pilot);
+    // (a breakup the live vehicle meets in the day's air that the record's flight did not, recorded with its reason in
+    // src/sim/misses.ts, run `aloft`: held to its instant, and failed if it has gone away)
+    const broke = missesOf(f.id, 'aloft').breakup;
+    if (broke) {
+      assert.ok(s.broke, `a breakup at T+${broke.by} is recorded (src/sim/misses.ts, aloft): the live vehicle now flies on; take it out`);
+      assert.ok(
+        Math.abs(s.t - broke.by) <= broke.slack,
+        `it breaks up at T+${s.t.toFixed(1)}, where its miss has T+${broke.by} ± ${broke.slack}`,
+      );
+      console.log(`  #   MISSES the live vehicle breaks up at T+${s.t.toFixed(1)} (${s.broke.text}): ${broke.why}`);
+      return;
+    }
     assert.ok(!s.broke && !s.landed, 'the live vehicle is flying at T+120');
     const live = bearingFrom(f, frame, s.r, s.t);
     console.log(

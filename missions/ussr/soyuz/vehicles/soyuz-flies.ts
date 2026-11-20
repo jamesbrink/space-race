@@ -103,6 +103,10 @@ export function soyuzChuteLooks(areas: { name: string; area: Measure }[]): Chute
 export interface ShipNodes {
   orbital: string[];
   instrument: string[];
+  /** The main engine's bell, whose fire burns from it, and its exit radius, m: the KTDU-35's (`KTDU_Bell0`, 230 mm) unless the ship's is another. */
+  engine?: { node: string; radius: number };
+  /** What the ship let go in orbit (the record's `ascent.drops` of that id: Soyuz 16's docking ring), and the model's nodes that are it. */
+  jettisoned?: { id: string; nodes: string[] }[];
 }
 /** The 7K-OK's as soyuz_7kok.py builds Soyuz 3. */
 export const SHIP_NODES: ShipNodes = {
@@ -130,7 +134,7 @@ export function soyuzFlies(orbital: SoyuzRecord, chutes: ChuteDef[], ship: ShipN
       ...BOOSTERS.map(([letter]) => ({ node: `RD107_${letter}_Bells`, on: 'stage:0', burns: 'kerosene-lox' as const })),
       { node: 'RD108_Bells', on: 'stage:1', burns: 'kerosene-lox' },
       { node: 'RD0110_Bells', on: 'stage:2', burns: 'kerosene-lox' },
-      { node: 'KTDU_Bell0', radius: 0.23, on: SKD, burns: 'amine-nitric' },
+      { node: ship.engine?.node ?? 'KTDU_Bell0', radius: ship.engine?.radius ?? 0.23, on: SKD, burns: 'amine-nitric' },
     ],
     drops: [
       // each by the plan's joint that lets it go (vostok-plan.ts: a stage's is `stage:<i>`); each strap-on a body of its own
@@ -144,6 +148,8 @@ export function soyuzFlies(orbital: SoyuzRecord, chutes: ChuteDef[], ship: ShipN
       // burn, where the record has it go in orbit)
       { at: (orbital.modules.parted ?? orbital.entry.separation).value, nodes: ship.orbital, on: ORBITAL_MODULE },
       { at: orbital.entry.separation.value, nodes: ship.instrument, on: 'modules' },
+      // what the ship let go in orbit that was no part of either (Soyuz 16's docking ring), each on its own body
+      ...(ship.jettisoned ?? []).map((j) => ({ at: drop(j.id), nodes: j.nodes, on: j.id })),
       // the cover, shot off at the height the coast hands over at, and the heat shield, let go under the main parachute,
       // each comes down on its own body (a descent whose shield stayed on has no body for it, and the module keeps it)
       { at: at('cover-off'), nodes: ['SA_Parachute58'], on: 'cover', rides: [{ body: 'cover' }] },

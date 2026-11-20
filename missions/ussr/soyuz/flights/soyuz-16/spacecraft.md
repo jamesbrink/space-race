@@ -27,5 +27,6 @@ Apollo's docking module. [McDowell, *General Catalog of Artificial Space Objects
   Ring travel, panel deployment and the spread between spacecraft modules are for inspection.
 - The orbital room's interior equipment, docking control signals and atmospheric changes are
   outside the exhibit. The cabin controls and suit installation represent an estimated layout.
-- The launch stack and orbital configurations are available in the Gallery. The pad on the day
-  of launch and the flown trajectory are outside this reconstruction.
+- The launch stack and orbital configurations are available in the Gallery, the pad on the day of
+  launch at the Launch site, and the flight from the record on the flight deck ([mission.md](mission.md)). The flown model
+  lets the simulator ring go as one body; its fittings stay as drawn.

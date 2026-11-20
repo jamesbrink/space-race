@@ -198,11 +198,14 @@ export function soyuzChutes(main: Measure = MAIN_AFTER): DescentChute[] {
  * The four soft-landing engines under the heat shield, fired by the gamma-ray altimeter just over the ground: their thrust and
  * burn worked from the design's speeds, since nothing read gives them (`SOFT`).
  */
-export function softLandingEngines(ground: Measure, mass: number): DescentMotor {
+export function softLandingEngines(ground: Measure, mass: number, motors?: Measure): DescentMotor {
   const before = 6.5; // the design's speed on the main parachute (Siddiqi, p. 472)
   const after = 2.5; // what the engines were to leave of it (Siddiqi: two to three m/s)
   const decel = (before ** 2 - after ** 2) / (2 * FIRING.value);
-  const says = `NOT FOUND: four solid motors (${MPK81}: «четыре двигателя мягкой посадки (ДМП)»; ${ENERGIA}: a plate of 22 nozzles) whose thrust, impulse and burn are in nothing read. Worked from the design: the primary landing velocity "reduced to at least six and a half meters per second" and the engines to "reduce landing velocity to a final two to three meters per second" (${SIDDIQI}, p. 472), 6.5 to 2.5 m/s over the ${FIRING.value} m they fired at, an even ${decel.toFixed(1)} m/s², which is ours`;
+  const which = motors
+    ? `${motors.value} solid motors (${motors.source})`
+    : `four solid motors (${MPK81}: «четыре двигателя мягкой посадки (ДМП)»; ${ENERGIA}: a plate of 22 nozzles)`;
+  const says = `NOT FOUND: ${which} whose thrust, impulse and burn are in nothing read. Worked from the design: the primary landing velocity "reduced to at least six and a half meters per second" and the engines to "reduce landing velocity to a final two to three meters per second" (${SIDDIQI}, p. 472), 6.5 to 2.5 m/s over the ${FIRING.value} m they fired at, an even ${decel.toFixed(1)} m/s², which is ours`;
   return {
     id: 'soft-landing-engines',
     label: 'Soft-landing engines',

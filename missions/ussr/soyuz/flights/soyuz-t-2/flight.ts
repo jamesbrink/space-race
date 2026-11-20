@@ -4,6 +4,10 @@ import { SITE1 } from '../../../places/tyuratam/site-1.ts';
 import { soyuzPad } from '../../../places/tyuratam/soyuz-pad.ts';
 import { soyuzWalker } from '../../crew/walkout.ts';
 import { CRAFT, descent, moduleTravel, onSoyuzPad, orbital, service, soyuzGallery, soyuzGallerySpecs } from '../../vehicles/gallery.ts';
+import { AREAS } from '../../vehicles/soyuz-7kok-flown.ts';
+import { commanded, soyuzChuteLooks, soyuzCommands, soyuzFlies } from '../../vehicles/soyuz-flies.ts';
+import { soyuzPlan } from '../../vehicles/soyuz-plan.ts';
+import { orbital as ORBITAL } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const HERITAGE = 'David S. F. Portree, Mir Hardware Heritage, NASA RP-1357, §1.12';
@@ -230,6 +234,21 @@ upper.detail =
 vehicle.seats![0]!.figure = 'crew';
 vehicle.seats![1]!.figure = 'engineer';
 
+// what a hand can ask of each part in flight, said with what did each thing on the day (vehicles/soyuz-flies.ts)
+vehicle.parts = commanded(
+  vehicle.parts,
+  soyuzCommands({
+    parted: 'the Argon-16’s sequence did, minutes after the burn',
+    crew: 'Malyshev and Aksyonov',
+    cover: `its barometric switch, ${(ORBITAL.ejection.altitude.value / 1000).toFixed(0)} km`,
+  }),
+);
+/** The descent module's parachutes as drawn, at their areas as the record has them. */
+const CHUTES = soyuzChuteLooks([
+  { name: 'drogue parachute', area: AREAS.drogue },
+  { name: 'main parachute', area: AREAS.main },
+]);
+
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-t-2',
   nation: 'USSR',
@@ -303,6 +322,18 @@ export const flight: Flight = {
     },
   ],
   motors: [],
+  // the flight as flown from its record: the 11A511U's ascent on its steering law, the first day's raise, the orbital module
+  // let go, the braking burn, the guided entry and the descent (orbital.ts; mission.md), through the day's air over the pad.
+  // The rendezvous and docking with Salyut 6 are not flown
+  plan: { ...soyuzPlan(ORBITAL), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on the Soyuz-U to the orbit given for Soyuz T-2, and the fourth revolution’s two-impulse raise to the orbit it closed on Salyut 6 from. The station is not flown: the approach, the docking by hand and the three days docked are on the record only. The orbital module is let go before the braking burn, and Malyshev and Aksyonov come down in the descent module on its own lift (mission.md).',
+  flies: soyuzFlies(ORBITAL, CHUTES, {
+    orbital: ['OrbitalModule', 'DockingCollar', 'DockingProbe', 'Igla'],
+    instrument: ['ServiceModule', 'CombinedPropulsion', 'SolarLeft', 'SolarRight'],
+    // the 11D426's bell, 480 mm across its exit (soyuz_7kst.py)
+    engine: { node: 'KTDU426_NozzleLiner', radius: 0.24 },
+  }),
   models: [
     onSoyuzPad(vehicle, TURN, TAIL),
     soyuzPad,
