@@ -2535,7 +2535,11 @@ export class OrbitDeck extends Deck {
     // (broken up in the air it is not down: its pieces fall on, and what the figures last read stands)
     const struck = this.padImpact !== null && t >= this.padImpact.t;
     const broken = struck || Boolean(this.state?.broke && t >= this.state.broke.t - 1e-9);
-    const shown = t >= this.run.duration && !broken ? Object.assign({}, s, { down: true }) : s;
+    // (on the launch vehicle the point its simulator flies is the stack's own, `r`, its datum; the spacecraft's centre up its
+    // axis is where it is drawn from: the path predicts from the one and draws at the other, viewer/path.ts `PathSample.flies`)
+    const ended = t >= this.run.duration && !broken;
+    const stack = t < this.parting;
+    const shown = ended || stack ? Object.assign({}, s, ended ? { down: true } : {}, stack ? { flies: s.r } : {}) : s;
     for (const fn of this.watchers) fn(shown, null, news);
     const set = (id: string, text: string) => this.put(id, text);
     const el = elementsOf(s.r, s.v);
