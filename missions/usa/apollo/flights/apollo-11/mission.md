@@ -26,7 +26,7 @@ Columbia together, with the Moon pulling on it.
 - **Mass.** Everything at first motion, 2,899,008 kg (Table 20-1, the holddown arms' release at 0.30 s). The S-IC with the
   small S-IC/S-II interstage and the S-II's ullage propellant that leave with it; the S-II's aft interstage, let go at the
   second plane (192.3 s); the S-II with the S-II/S-IVB interstage; the tower, 4,042 kg (the spacecraft before and after
-  it, Table 20-3); the S-IVB with the instrument unit and the adapter; Eagle, 15,095 kg; Columbia, 28,806 kg. The bodies
+  it, Table 20-3), pulled clear by its jettison motor (33,000 lbf for a little over a second, assumed: Apollo 7's); the S-IVB with the instrument unit and the adapter; Eagle, 15,095 kg; Columbia, 28,806 kg. The bodies
   sum to the record's first-motion mass within a kilogram.
 - **The S-IC.** Five F-1s from range zero (not first motion, 0.3 s later: the simulator's clock starts with its engines),
   the centre cut at 135.20 s and the four at 161.63 s (Table 2-2). One F-1's flow is the stage's mainstage propellant

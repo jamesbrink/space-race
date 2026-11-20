@@ -70,7 +70,7 @@ import {
   injectionOf,
   targetStageOf,
 } from './staged.ts';
-import { hotStage, pressed } from './staging.ts';
+import { CLOSED_ENDURES, hotStage, pressed } from './staging.ts';
 import type { Curve, Measure } from '../types.ts';
 import { handRange } from './lever.ts';
 import { nozzleThrust } from './thrust.ts';
@@ -129,7 +129,7 @@ export interface StagedState {
   parted: null | { t: number; r: Vec3; v: Vec3; stageMass: number };
   /** Back on the ground. */
   landed: null | { t: number; speed: number };
-  /** Each stage's jet fired into the stage it stands on while joined (the joint's `hot`, plan.ts): seconds at full thrust, s. */
+  /** Each stage's jet fired into the stage it stands on while joined (the joint's `hot` or `closed`, plan.ts): seconds at full thrust, s. */
   scorch: readonly number[];
   /** The structure against `ascent.limits` (sim/loads.ts): its bending load (q alpha) and its load along the axis. */
   strain: Strain;
@@ -152,10 +152,10 @@ export interface StagedState {
   hand?: readonly (readonly (readonly [t: number, k: number])[])[];
 }
 
-/** The launch vehicle broke up: at `t`, by its bending load, its load along the axis, or a jet fired into the stage below. */
+/** The launch vehicle broke up: at `t`, by its bending load, its load along the axis, or a jet fired into the stage below (through a hot-staged joint, or into a closed one). */
 export interface Broke {
   t: number;
-  by: 'bending' | 'axial' | 'scorch';
+  by: 'bending' | 'axial' | 'scorch' | 'closed';
   /** The figure and its limit, in `unit`; the limit's confidence. */
   value: number;
   limit: number;
@@ -312,6 +312,31 @@ export function stagedVehicle(
   const byJoint = new Map(ids.map((k, i) => [k.joint, i]));
   /** What a stage lit while the one it stands on is joined fires into (staging.ts `hotStage`): the joint below's `hot`. */
   const hots = stages.map((s) => def.joints.find((j) => j.hot?.engine === s.engine.id)?.hot ?? null);
+  /** The closed joint a stage's engine stands over (the joint's `closed`, plan.ts): lit while it holds, its jet is shut in. */
+  const closedOver = stages.map((s) => def.joints.find((j) => j.closed?.engines.includes(s.engine.id)) ?? null);
+  /** Whether stage `i` stands over a closed joint that still holds at `at`, by the bodies as `bodies` has them gone. */
+  const shutIn = (bodies: Readonly<Record<string, number>>, i: number, at: number) =>
+    closedOver[i]?.gone.some((b) => (bodies[b] ?? Number.POSITIVE_INFINITY) > at) ?? false;
+  /** What a closed joint's stage below is called: the first of the bodies that leave with it still on at `at`. */
+  const shutOn = (bodies: Readonly<Record<string, number>>, i: number, at: number) => {
+    const j = closedOver[i]!;
+    const id = j.gone.find((x) => (bodies[x] ?? Number.POSITIVE_INFINITY) > at) ?? j.gone[0];
+    const b = def.bodies.find((x) => x.id === id);
+    return `the ${b ? name(b.label) : j.label}`;
+  };
+  /**
+   * What the record's sequence did between the closed joint's parting and stage `i`'s lighting, in the deck's words: the
+   * instants of the events that let it go and lit it. What barred a lighting sooner in the hardware is not read, and none
+   * is made up: a hand may light it.
+   */
+  const sequenceWords = (i: number): string => {
+    const j = closedOver[i]!;
+    const lit = plan.events.find((e) => e.do.some((a) => 'ignite' in a && a.ignite === stages[i]!.engine.id));
+    const parted = plan.events.find((e) => e.do.some((a) => 'separate' in a && a.separate === j.id));
+    if (!lit?.at || !parted?.at || lit.at.value < parted.at.value)
+      return ' The record’s sequence lit it only once the joint had gone; no interlock that barred it sooner has been read';
+    return ` The record’s sequence lit it ${(lit.at.value - parted.at.value).toFixed(1)} s after the ${name(j.label)}; no interlock that barred it sooner has been read, and a hand may do it`;
+  };
   /** The step a plan's action is, where it is one of the ascent's: a stage's engine or joint, a drop's joint. */
   const stepOf = (x: Action): Step | null => {
     if ('ignite' in x && byEngine.has(x.ignite)) return { kind: 'ignite', stage: byEngine.get(x.ignite)! };
@@ -461,6 +486,8 @@ export function stagedVehicle(
     const f = s.hand?.[i]?.length
       ? nozzleThrust(stages[i]!.count, stages[i]!.engine.thrust.vacuum.value, throttleAt(s, i, at), stack.areas[i]!, pressure)
       : stack.thrust(i, at, pressure);
+    // (shut in a closed joint: nothing lets the jet out, so its push stays inside the stack)
+    if (shutIn(s.craft.bodies, i, as)) return 0;
     return firesInto(s, i, as) ? f * hotShare[i]! : f;
   };
   /**
@@ -673,7 +700,13 @@ export function stagedVehicle(
             title: 'Hot staging',
             text: `${cap(called(k.stage))} lit with ${called(below)} still on, as it flew: its jet strikes the deflector on ${called(below)}’s top and leaves through the open joint, so ${(100 * hotShare[k.stage]!).toFixed(0)} per cent of its push reaches the stack.${followed} The top is taken to stand ${hots[k.stage]!.endures.value} s of it (${hots[k.stage]!.endures.confidence})`,
           });
-        } else if (nothing && !s.held)
+        } else if (shutIn(craft.bodies, k.stage, s.t))
+          said.push({
+            t: s.t,
+            title: 'Lit into a closed interstage',
+            text: `${cap(called(k.stage))} lit with ${shutOn(craft.bodies, k.stage, s.t)} still joined under it by a closed interstage: the interstage is not vented, so its jet is trapped against ${shutOn(craft.bodies, k.stage, s.t)}’s forward dome and none of its push reaches the stack. It stands next to nothing of it (${CLOSED_ENDURES.value} s at full thrust, ${CLOSED_ENDURES.confidence}).${sequenceWords(k.stage)}`,
+          });
+        else if (nothing && !s.held)
           said.push({
             t: s.t,
             title: 'Lit in free fall',
@@ -851,6 +884,22 @@ export function stagedVehicle(
           unit: 's',
           confidence: hot.endures.confidence,
           text: `${cap(called(i))} fired into ${called(i - 1)} for ${dose.toFixed(1)} s at full thrust, where its top is taken to stand ${hot.endures.value} s (${hot.endures.confidence}). The deflector burned through, the tank under it failed and the stack broke up at T+${next.t.toFixed(0)} s. Not modelled: what came through it, and the spacecraft’s escape from a launch vehicle breaking up`,
+        };
+    });
+    closedOver.forEach((_, i) => {
+      if (!burning(s, i, s.t) || !shutIn(s.craft.bodies, i, s.t)) return;
+      if (scorch === s.scorch) scorch = [...s.scorch];
+      const dose = scorch[i]! + throttleAt(s, i, s.t) * TICK;
+      (scorch as number[])[i] = dose;
+      if (dose > CLOSED_ENDURES.value && !broke)
+        broke = {
+          t: next.t,
+          by: 'closed',
+          value: dose,
+          limit: CLOSED_ENDURES.value,
+          unit: 's',
+          confidence: CLOSED_ENDURES.confidence,
+          text: `${cap(called(i))} fired into the closed interstage over ${shutOn(s.craft.bodies, i, s.t)} for ${dose.toFixed(2)} s at full thrust. The interstage is not vented: the jet, trapped against ${shutOn(s.craft.bodies, i, s.t)}’s forward dome, burst the interstage and the tank under it (taken to stand ${CLOSED_ENDURES.value} s, ${CLOSED_ENDURES.confidence}), and the stack broke up at T+${next.t.toFixed(0)} s.${sequenceWords(i)}. Not modelled: what came through it, and the spacecraft’s escape from a launch vehicle breaking up`,
         };
     });
     if (!lim) return scorch === s.scorch && !broke ? next : apart({ ...next, scorch, broke });

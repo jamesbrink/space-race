@@ -166,10 +166,26 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
     { id: 'cm', label: 'Command module', count: 1, mass: o.csm.cm, nodes: ['CommandModule'], aero: cmAero() },
   ];
   const joints: JointDef[] = [
-    { id: 'sic-separation', label: 'S-IC/S-II separation', gone: ['sic'], at: s1.separation, push: s1.push },
+    // (the S-II's J-2s stand in the closed interstage over the S-IC, and the S-IVB's in the one over the S-II: neither joint
+    // was hot-staged, and an engine lit above one while it holds fires into it: plan.ts `JointDef.closed`)
+    {
+      id: 'sic-separation',
+      label: 'S-IC/S-II separation',
+      gone: ['sic'],
+      at: s1.separation,
+      push: s1.push,
+      closed: { engines: ['j2-centre', 'j2-outboard'] },
+    },
     { id: 'sii-skirt', label: 'S-II aft interstage jettison', gone: ['sii-skirt'], at: s2.skirt.at },
     { id: 'les-jettison', label: 'Launch escape tower jettison', gone: ['les'], at: o.les.at },
-    { id: 'sii-separation', label: 'S-II/S-IVB separation', gone: ['sii'], at: s2.separation, push: s2.push },
+    {
+      id: 'sii-separation',
+      label: 'S-II/S-IVB separation',
+      gone: ['sii'],
+      at: s2.separation,
+      push: s2.push,
+      closed: { engines: ['sivb-j2', 'sivb-tli'] },
+    },
   ];
   const engines: EngineDef[] = [
     f1('f1-centre', 'Centre F-1', 1, s1.f1),

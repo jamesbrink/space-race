@@ -601,6 +601,47 @@ for (const [w, h, touch] of process.env.SR_ONLY && !staging ? [] : SIZES) {
     r = await read();
     if (offered || !/no mode of escape/.test(r.notes)) fail(where, `Gemini 3 at 30 s: the abort offered ${offered}, notes "${r.notes}"`);
     else console.log(`  ${where}: Gemini 3 at 30 s: no abort offered, and said so`);
+    // an upper stage lit by hand into the closed interstage over the stage below (no hot staging): the Saturn V's S-II on
+    // the S-IC and the Saturn IB's S-IVB on the S-IB. The hand may do it; the jet is shut in and the stack breaks up, and
+    // the deck says why and what the record's sequence did
+    for (const [id, stage, what] of [
+      ['usa/apollo/apollo-11', 3, 'Apollo 11’s S-II'],
+      ['usa/apollo/apollo-7', 2, 'Apollo 7’s S-IVB'],
+    ]) {
+      await goTo(id);
+      await page.keyboard.press('Space');
+      await run(100);
+      await ask(`step:ignite:${stage}`);
+      await run(102);
+      r = await read();
+      const broke = await page.evaluate(() => window.sr.cockpit.state.broke);
+      if (broke?.by !== 'closed' || !/closed interstage/.test(r.card) || !/not vented/.test(r.card) || !/no interlock/.test(r.card))
+        fail(
+          where,
+          `${what} lit at 100 s on the stage below: broke ${JSON.stringify(broke?.by)}, card "${r.card.slice(0, 160)}", notes "${r.notes.slice(0, 200)}"`,
+        );
+      else
+        console.log(
+          `  ${where}: ${what} lit at 100 s into the closed interstage broke up at T+${broke.t.toFixed(2)} s: "${r.card.slice(0, 120)}…"`,
+        );
+    }
+    // Apollo 11's escape tower let go on the record's sequence and by hand: nothing strikes it (its jettison motor pulls it
+    // clear of the stack under the S-II's thrust; tests/separation.test.mjs has it struck without the motor)
+    await goTo('usa/apollo/apollo-11');
+    await page.keyboard.press('Space');
+    await run(203);
+    r = await read();
+    const towerAsFlown = r.notes;
+    await again('Apollo 11’s tower by hand');
+    await page.keyboard.press('Space');
+    await run(185);
+    await ask('step:drop:les-jettison');
+    await run(190);
+    r = await read();
+    const towerGone = await page.evaluate(() => Number.isFinite(window.sr.cockpit.state.craft.joints['les-jettison']?.loose ?? Number.NaN));
+    if (/struck at/.test(towerAsFlown) || /struck at/.test(r.notes) || !towerGone)
+      fail(where, `Apollo 11's tower: as flown "${towerAsFlown.slice(0, 160)}", by hand (let go ${towerGone}) "${r.notes.slice(0, 160)}"`);
+    else console.log(`  ${where}: Apollo 11's tower let go as flown and by hand at 185 s, struck by nothing`);
     // Freedom 7: the capsule let go under thrust rides the booster to its cutoff
     await goTo('usa/mercury/mr-3-freedom-7');
     await page.keyboard.press('Space');

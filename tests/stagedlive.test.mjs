@@ -408,6 +408,47 @@ test('hot staging with the strap-ons on: the core is let go but they press it on
   assert.equal(dropped.v.firing(dropped.at[103]), null);
 });
 
+const APOLLO11 = rig(all.find((f) => f.id === 'usa/apollo/apollo-11'));
+const APOLLO7 = rig(all.find((f) => f.id === 'usa/apollo/apollo-7'));
+const AGENA = rig(all.find((f) => f.id === 'usa/gemini/gatv-5003'));
+/** The index in the live vehicle's stages of the stage an engine is. */
+const stageOf = (on, engine) => on.stages.findIndex((st) => st.engine.id === engine);
+
+test('an upper stage lit by hand into a closed interstage (its joint not vented) is shut in against the stage below: none of its push reaches the stack, the stack breaks up and the deck says why and what the record’s sequence did', () => {
+  const agenaParts = AGENA.plan.craft[0].joints.find((j) => j.id === 'target-separation').at.value;
+  for (const [on, engine, at, what] of [
+    [APOLLO11, 'j2-outboard', 100, 'the S-II lit on the S-IC'],
+    [APOLLO11, 'sivb-j2', 300, 'the S-IVB lit on the S-II'],
+    [APOLLO7, 'sivb-j2', 100, 'the S-IVB lit on the S-IB'],
+    [AGENA, 'agena-engine', agenaParts - 20, 'the Agena lit on its Atlas'],
+  ]) {
+    const i = stageOf(on, engine);
+    assert.ok(i > 0, `${what}: ${engine} is a stage`);
+    const {
+      v,
+      s,
+      at: seen,
+    } = asked({ on, sequence: false, asks: [{ at, steps: [{ kind: 'ignite', stage: i }] }], look: [at - 0.5, at + 0.02] });
+    const before = v.thrust(seen[at - 0.5]);
+    const lit = seen[at + 0.02];
+    assert.ok(v.burning(lit, i), `${what}: it lit`);
+    assert.ok(
+      Math.abs(v.thrust(lit) - before) < 0.05 * Math.max(before, 1e5),
+      `${what}: none of its push reaches the stack (${v.thrust(lit)} against ${before})`,
+    );
+    assert.ok(s.broke, `${what}: it broke up`);
+    assert.equal(s.broke.by, 'closed', `${what}: ${s.broke.text}`);
+    assert.ok(s.broke.t - at < 0.5 && s.broke.t >= at, `${what}: broke up at ${s.broke.t}`);
+    assert.equal(s.broke.confidence, 'estimated');
+    assert.ok(/not vented/.test(s.broke.text) && /no interlock/.test(s.broke.text), s.broke.text);
+    const note = said(s, 'Lit into a closed interstage');
+    assert.ok(note, `${what}: said so`);
+    assert.ok(/not vented/.test(note.text) && /record/.test(note.text), note.text);
+    assert.equal(s.chain, undefined, `${what}: it sets nothing else off`);
+    console.log(`# ${what} at ${at.toFixed(1)} s: ${note.text} | ${s.broke.text}`);
+  }
+});
+
 test('a stage let go of the one above it by a hand is cut by its letting go, as the staging signals cut it: the Titan’s first stage, let go burning, parts at once', () => {
   const { s } = asked({ on: TITAN, asks: [{ at: 100, steps: [{ kind: 'separate', stage: 0 }] }], until: 110 });
   assert.equal(said(s, 'Let go, still pushing'), undefined, 'not pressed on');

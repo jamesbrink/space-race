@@ -688,6 +688,8 @@ export const apollo7Plan: FlightPlan = {
           at: doc(145.6, EVENTS),
           leaves: boosterMass,
           push: estimated(1.5, 'combined first-stage retrorocket and second-stage ullage separation model'),
+          // (the S-IVB's J-2 stands in the closed interstage over the S-IB, which was not hot-staged)
+          closed: { engines: ['sivb-j2'] },
         },
         {
           id: 'les-jettison',
