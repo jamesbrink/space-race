@@ -43,7 +43,7 @@ def chest_patch(torso, parent, image_path):
     fl.emit(patch, "Torso_MissionEmblem", mat, parent)
 
 
-def garment(who, *, ev=False, a7lb=False, insignia=None):
+def garment(who, *, ev=False, a7lb=False, insignia=None, sleeve_emblems=None):
     body = fl.B
     cloth = paint("suit-beta-cloth", (0.88, 0.87, 0.81), roughness=0.9)
     dark = paint("apollo-suit-rubber", (0.04, 0.045, 0.05), roughness=0.8)
@@ -94,6 +94,8 @@ def garment(who, *, ev=False, a7lb=False, insignia=None):
     fl.emit(trunk, "Torso_BetaCloth", cloth, trunk_node)
     if insignia is not None:
         chest_patch(torso, trunk_node, insignia)
+    if sleeve_emblems is not None:
+        sleeve_emblems(arms, trunk_node)
     # Disconnects let cabin air into the garment and carry expired air back to the suit circuit.
     connections = [(-0.58, 10, outlets), (0.51, 10, inlets), (0.63, 19, ports)]
     if a7lb:
@@ -146,6 +148,9 @@ def garment(who, *, ev=False, a7lb=False, insignia=None):
             # The J-mission lunar suits had larger wrist disconnects (MSC-05161, appendix A.3.1).
             wrist_frame = wrist_frame @ Matrix.Diagonal((1.09, 1.09, 1, 1))
         rings[sign].lathe([(4.4, -1.7), (5.5, -1.7), (5.6, -0.6), (5.85, 0), (5.5, 1.4), (4.4, 1.4)], 32, matrix=wrist_frame)
+        if a7lb and not ev:
+            # The CMP cuff is drawn on the same full-sized palm as its glove. Fit both about the wrist.
+            fl.fitted(rings[sign], 0, hand)
         leg = legs[sign]
         d = leg.key_d(body.knee_at) + 4.5
         theta = leg.toward((sign * 0.6, -1, 0), d)
@@ -177,10 +182,10 @@ def fit(who, stature=None):
     fl.use(body)
 
 
-def standing(who, *, stature=None, ev=False, a7lb=False, insignia=None):
+def standing(who, *, stature=None, ev=False, a7lb=False, insignia=None, sleeve_emblems=None):
     fit(who, stature)
     fl.start()
-    garment(who, ev=ev, a7lb=a7lb, insignia=insignia)
+    garment(who, ev=ev, a7lb=a7lb, insignia=insignia, sleeve_emblems=sleeve_emblems)
     fl.rig_standing()
     return f"{who}, {'EV' if ev else 'CMP' if a7lb else 'IV'} {'A7LB' if a7lb else 'A7L'} pressure garment"
 
