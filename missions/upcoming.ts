@@ -92,4 +92,11 @@ export const upcoming: Upcoming[] = [
     line: 'Gene Cernan · Ronald Evans · Harrison Schmitt',
     launch: '1972-12-07',
   },
+  {
+    id: 'usa/skylab/skylab-4',
+    nation: 'USA',
+    name: 'Skylab 4',
+    line: 'Gerald Carr · Edward Gibson · William Pogue',
+    launch: '1973-11-16',
+  },
 ];
