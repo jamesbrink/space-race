@@ -7,6 +7,10 @@ events use ground elapsed time. The mission report rounds CSM/S-IVB separation
 to 02:55:02. Chrysler gives 02:55:02.4. [Apollo 7 Mission Report, Table 2-I](https://apollojournals.org/afj/ap07fj/pdf/a07-mission-report.pdf)
 and [Saturn AS-205/CSM-101 Postflight Trajectory, Table VI](https://apollojournals.org/afj/ap07fj/pdf/as205-postflight-traj-rep-19920075302.pdf).
 
+The flight's figures are a Saturn IB record ([orbital.ts](orbital.ts), `SaturnIBRecord` in
+[saturn-ib-record.ts](../../vehicles/saturn-ib-record.ts)); the plan is written from it by
+[saturn-ib-plan.ts](../../vehicles/saturn-ib-plan.ts), which holds what is the vehicle's.
+
 ## Launch and attached orbit
 
 The integration uses one S-IB tank for the two sets of four H-1 engines, then

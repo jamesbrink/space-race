@@ -39,6 +39,11 @@ missions/                             the record: one folder per nation, program
                                       with its centre cut as flown and its four cut at the record's instant or when the run has spent its propellant
                                       (`siiSpent`), the tower, the S-IVB's parking-orbit burn and its translunar injection on a
                                       law of its own, the coast with the Moon) and what its model sheds and burns (`saturnVFlies`);
+                                      saturn-ib-record.ts, saturn-ib-plan.ts, saturn-ib-flies.ts, a Saturn IB flight's record (`SaturnIBRecord`,
+                                      its flight's orbital.ts), the plan written from it (`saturnIBPlan`: the S-IB's eight H-1s, the S-IVB's J-2
+                                      to the orbit, the tower, the spacecraft parted, its firings in orbit as `Burn`s, the modules parted, the
+                                      entry, the Earth landing system to the sea; `localAim`, `CSM_OUTSIDE`, `CSM_MATING_HEIGHT`) and what its
+                                      model sheds and burns (`saturnIBFlies`);
                                       command-module-aero.ts, the Block II command module's trim drag (CM-107's, TN D-6725);
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,
                                       the type's specs (`SPEC`) and engines (`vostokMotors`), `along` and the azimuths;

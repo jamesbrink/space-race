@@ -829,6 +829,13 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   cut 0.91 s after its start, as the record has it; GATV-5004's Atlas follows the record's pitch once control is lost
   (`Guidance.lost`: the tilt in the launch plane against time, in place of the law). The failures are the hardware's, not the sequence's: flown by hand with the guidance and the sequencer off, GATV-5002's engine still shuts down 0.91 s after whoever lights it (plan.ts `EngineDef.fails`), and GATV-5004's stack turns as the record has it until control was regained at 150 s whatever the hands do (`Guidance.lost.until`; sim/stagedlive.ts `stagedPilot`; tests/target-failures.test.mjs). What the records do not give is said
   in each flight's orbital.ts and README, not flown: 5002's breakup and pieces, 5004's turn to the north.
+- **A Saturn IB flies to the sea** (missions/usa/apollo/vehicles/saturn-ib-plan.ts `saturnIBPlan`, written from each flight's
+  record, `SaturnIBRecord`, as Apollo 7's orbital.ts is). The vehicle is the builder's (the bodies and what each sheds, the
+  H-1s and the J-2, saturn-v-plan.ts's `j2` with its mixture-ratio shift, the service module's engine and thrusters, the
+  parachutes, the heat shield); the flight is the record's: its masses, loads and engines' figures, its sequence, its firings
+  in orbit (`Burn`: each in its own attitude, held to the record's impulse, made on another craft where it says so), the
+  craft they are made on (`target`), its entry as flown and its landing system's instants. A Skylab visit is another record
+  on it: SA-206 and SA-207 from Pad 39B's milkstool, the workshop its target once a target can be given by its orbit.
 - **A Saturn V leaves its orbit for the Moon** (missions/usa/apollo/vehicles/saturn-v-plan.ts, written from each flight's
   record, `SaturnVRecord`). Its ascent is a stated law as every flight's: the S-IC's tilt programme flown open (each flight's
   read off a figure of its own flight evaluation), then the linear tangent from the instant the iterative guidance began,

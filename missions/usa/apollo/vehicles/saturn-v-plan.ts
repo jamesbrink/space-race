@@ -76,7 +76,7 @@ function f1(id: string, label: string, count: number, f: F1Figures, decay?: Meas
 }
 
 /** A J-2 as the plan flies it, its thrust and flow held at the record's share after a mixture-ratio shift. */
-function j2(
+export function j2(
   id: string,
   label: string,
   body: string,
@@ -137,6 +137,18 @@ function j2(
 }
 
 const at = (time: Measure): Trigger[] => [{ time: time.value }];
+
+/** One of the record's events, set off by the clock at its instant unless `trigger` says otherwise: the instant is a figure the run is held to. */
+export const event = (id: string, label: string, when: Measure, does: EventDef['do'], trigger: Trigger[] = at(when)): EventDef => ({
+  id,
+  label,
+  when: trigger,
+  do: does,
+  automatic: true,
+  at: when,
+  record: { id, label },
+  source: when.source,
+});
 
 /**
  * When the S-II's propellant is spent, s from liftoff: its usable load over what its five J-2s draw, the centre to its cut
@@ -322,16 +334,6 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
       LOWER,
     ),
   ];
-  const event = (id: string, label: string, when: Measure, does: EventDef['do'], trigger: Trigger[] = at(when)): EventDef => ({
-    id,
-    label,
-    when: trigger,
-    do: does,
-    automatic: true,
-    at: when,
-    record: { id, label },
-    source: when.source,
-  });
   const events: EventDef[] = [
     event('liftoff', 'Liftoff', doc(0, 'range zero'), [{ ignite: 'f1-centre' }, { ignite: 'f1-outboard' }]),
     event('sic-centre-cutoff', 'S-IC centre engine cutoff', s1.centreCut, [{ cut: 'f1-centre' }]),
