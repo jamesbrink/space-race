@@ -911,7 +911,13 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   `StagedState.chain`: Vostok 1's record has all three at 300 s, Gemini 3's the cut at once and the separation 0.68 s
   on), early or not; the other steps can still be asked out of order (a part's menu), with what follows. While a jet
   plays on a joined stage (`StagedVehicle.firing`) the deck's prompt says what is due now and the seconds the top has
-  left, and Space is not held back by its guard, which is a finger's in real time while the top burns in flight time. *The structure* (`ascent.limits`, by loads.ts's rule,
+  left, and Space is not held back by its guard, which is a finger's in real time while the top burns in flight time.
+  *A closed joint* (`JointDef.closed`, staging.ts `CLOSED_ENDURES`): an engine over a joint that was not hot-staged (the
+  Saturn V's S-II on the S-IC and S-IVB on the S-II, the Saturn IB's S-IVB on the S-IB, an Agena on its Atlas) lit by a
+  hand while the joint holds fires into an interstage with no open side: none of its push reaches the stack, it stands
+  next to nothing of the jet (a tenth of a second at full thrust, estimated) and the stack breaks up (`Broke`, by
+  `closed`). Nothing refuses the lighting: the note and the card say what the record's sequence did (how long after the
+  joint's parting it lit the engine), and that no interlock that barred it sooner has been read. *The structure* (`ascent.limits`, by loads.ts's rule,
   as `body.limits` on a ballistic flight): bending (q alpha) and the load along the axis, both
   estimated; past either for half a second or at half again at once, it breaks up. Broken up, every engine stops and
   every stage comes apart, the deck's card says by what figure against which limit and its confidence, and what the

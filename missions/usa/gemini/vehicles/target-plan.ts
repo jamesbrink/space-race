@@ -717,6 +717,8 @@ export function targetPlan(o: TargetRecord): FlightPlan {
       push: o.separation.push,
       at: o.separation.at,
       after: derived(p.mass.value + (p.shroud?.mass.value ?? 0), `the ${p.name} as it left the Atlas`),
+      // (the Agena's engine stands in the closed booster adapter on the Atlas, which it was lit only clear of)
+      ...(p.engine ? { closed: { engines: ['agena-engine'] } } : {}),
     },
     ...(p.shroud ? [{ id: 'shroud-band', label: 'Nose shroud thrown off', gone: ['nose-shroud'], at: p.shroud.at }] : []),
   ];

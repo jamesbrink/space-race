@@ -22,8 +22,9 @@ Fly takes the flight deck at the pad: SA-506 under your hands from ignition thro
 guidance (G) and the sequencer (B) are off and Hold is on: you light the five F-1s, steer on the outboard engines' gimbals
 (Hold keeping the attitude your keys leave), cut the centre and the four, let the S-IC go, light the S-II, drop its aft
 interstage and the escape tower, cut and stage again, light the S-IVB into the parking orbit, and light it once more for
-the injection. Each act does what the hardware would: a stage let go under thrust stays pressed on, the J-2 cannot be lit
-again while it burns, and the stack in orbit turns only as fast as the S-IVB's small attitude jets allow. With G and B on,
+the injection. Each act does what the hardware would: a stage let go under thrust stays pressed on, an upper stage lit before the
+stage below is let go fires into the closed interstage and the stack breaks up, the J-2 cannot be lit again while it
+burns, and the stack in orbit turns only as fast as the S-IVB's small attitude jets allow. With G and B on,
 the record's ascent (its S-IC programme, its guidance's closed loop, its events at their times) makes the parking orbit and
 the injection. The run, and how it compares with the record, is in [mission.md](mission.md), from MSFC's flight
 evaluation of SA-506 (MPR-SAT-FE-69-9).

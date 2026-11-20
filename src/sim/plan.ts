@@ -176,6 +176,12 @@ export interface JointDef {
    * many seconds at full thrust what is below stands it.
    */
   hot?: { engine: string; open: Measure; turn: Measure; endures: Measure };
+  /**
+   * The engines above this joint, while it holds, that would fire into a closed interstage: one with no open side to let
+   * the jet out, as the hot-staged joints have (`hot`). Lit by a hand before the joint has gone, the jet is shut in against
+   * what is below and the stack breaks up (sim/staging.ts `CLOSED_ENDURES`, sim/stagedlive.ts).
+   */
+  closed?: { engines: string[] };
   /** The record's instant it parted, s from liftoff: what the drag's pieces and the checks are keyed on. */
   at?: Measure;
   /** What the record has flying on once it has parted, kg, and what left, kg: the run takes these, not its bodies' sum. */
@@ -769,6 +775,7 @@ export function problems(plan: FlightPlan): string[] {
       for (const b of [...j.gone, ...(j.covers ?? [])]) need(n.bodies, 'body', b, `joint '${j.id}'`);
       for (const h of j.holds ?? []) need(n.joints, 'joint', h, `joint '${j.id}'`);
       if (j.hot) need(n.engines, 'engine', j.hot.engine, `joint '${j.id}'`);
+      for (const e of j.closed?.engines ?? []) need(n.engines, 'engine', e, `joint '${j.id}'`);
     }
     for (const e of c.engines) {
       need(n.bodies, 'body', e.body, `engine '${e.id}'`);

@@ -156,6 +156,38 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
       );
     });
   }
+  if (flight.id === 'usa/apollo/apollo-11') {
+    test(`${flight.designation}: the tower let go on the record's sequence is struck by nothing; without its jettison motor the stack, still under thrust, runs into it`, () => {
+      /** What strikes the tower in the two seconds after it is let go, flight `f`'s record flown. */
+      const strikes = (f) => {
+        const run = orbitalRecord(f);
+        const tower = run.sheds.get('les-jettison');
+        const scene = new Sheds(f.plan, siteFrame(f.site), f.site.seaLevel.value, { frame: run.frame });
+        for (const body of run.sheds.all) scene.add(body.shedder.release);
+        const centre = (f.flies.datum ?? 0) + f.plan.record.centre.value;
+        const pose = (at) => {
+          const [a, b, k] = either(run.samples, at);
+          return { ...between(run.samples, at), t: at, q: nlerp(a.attitude, b.attitude, k), w: [0, 0, 0], mass: a.mass, station: 0 };
+        };
+        const hits = [];
+        let before = pose(tower.from);
+        for (let i = 1; i <= 100; i++) {
+          const after = pose(tower.from + i * 0.02);
+          hits.push(...scene.meet(before, after, centre, 'les-jettison').hits);
+          before = after;
+        }
+        return hits;
+      };
+      assert.deepEqual(strikes(flight), [], 'nothing strikes it on the record');
+      const plan = structuredClone(flight.plan);
+      const shed = plan.craft[0].sheds.find((s) => s.on === 'les-jettison');
+      assert.ok(shed.motors?.length, 'the tower has its jettison motor');
+      delete shed.motors;
+      const bare = strikes({ ...flight, plan });
+      assert.ok(bare.length > 0, 'without it the stack strikes the tower');
+      console.log(`# without its motor: ${bare[0].name} struck at ${bare[0].speed.toFixed(2)} m/s`);
+    });
+  }
   test(`${flight.designation}: the last stage clears the outgoing spacecraft for the first minute`, () => {
     // (a Saturn V flown to its injection and no further: the stack coasts on whole and nothing parts from it)
     if (flight.plan.record?.bound) return;

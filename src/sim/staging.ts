@@ -14,7 +14,12 @@
  *              and only by its share along the axis (the rest of its momentum the deflector and the joint's structure
  *              take, which are part of the stack: a force inside it). And the top takes the jet's heat, which it is
  *              made to stand for so long; past that it fails.
+ *   closed     an engine lit while the body it stands on is still joined by a closed interstage (no open side: the
+ *              joint's `closed`) fires into a shut volume. Nothing lets the jet out, so none of its push reaches the stack
+ *              (its momentum stays inside it), and the interstage and the dome under it stand next to nothing of it
+ *              (`CLOSED_ENDURES`): the stack breaks up.
  */
+import { estimated } from '../measure.ts';
 import type { Measure } from '../types.ts';
 import { DEG } from '../world/frames.ts';
 
@@ -31,3 +36,12 @@ export function pressed(behind: { thrust: number; mass: number }, ahead: { thrus
 export function hotStage(hot: { open: Measure; turn: Measure }): number {
   return hot.open.value * Math.sin(hot.turn.value * DEG);
 }
+
+/**
+ * How many seconds at full thrust a closed interstage and the dome under it stand of a jet fired into them: next to
+ * nothing. Estimated, from no test and no figure read.
+ */
+export const CLOSED_ENDURES: Measure = estimated(
+  0.1,
+  'a closed interstage is not vented: the jet a hot-staged joint lets out through its open side is trapped here against the lower stage’s forward dome, which was never made to stand its heat or the pressure it raises in that shut volume. No test or figure has been read; a tenth of a second at full thrust, about the time the engine’s start takes to come up, is taken for next to nothing',
+);
