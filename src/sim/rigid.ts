@@ -157,3 +157,18 @@ export function nlerp(a: Quat, b: Quat, k: number): Quat {
   const sign = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3] < 0 ? -1 : 1;
   return normalize([0, 1, 2, 3].map((i) => a[i]! + (sign * b[i]! - a[i]!) * k) as unknown as Quat);
 }
+
+/**
+ * The attitude between two samples of a run, `k` of the way from `a` to `b`. A spinning spacecraft can turn many
+ * revolutions between orbital samples: the attitude it is held at is turned evenly between the two, then the analytic
+ * angular drift from the last impact applied.
+ */
+export function attitudeBetween(
+  a: { t: number; attitude: Quat; rotation?: CoastRotation },
+  b: { t: number; attitude: Quat; rotation?: CoastRotation },
+  k: number,
+): Quat {
+  if (!a.rotation || !b.rotation) return nlerp(a.attitude, b.attitude, k);
+  const base = nlerp(multiply(a.attitude, conjugate(a.rotation.delta)), multiply(b.attitude, conjugate(b.rotation.delta)), k);
+  return multiply(base, rotateFor(a.rotation.delta, a.rotation.rates, k * (b.t - a.t)));
+}

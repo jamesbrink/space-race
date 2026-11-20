@@ -135,6 +135,9 @@ simulator.md, "The core"), to this note:
   simulation goes on as it does now.
 - Back off rails the state is handed to the live simulation as it stands at the clock's instant, so the hand-over is in
   place and velocity exactly where the coast left it.
+- A run flown ahead keeps its quiet coast the same way: only the samples its motion changed between, and the stretch
+  between two of them flown again by `coast` when something reads there (`stretches`; simulator.md, "The core"). So a
+  frame of half an hour reads the run at its instant as exactly as a frame of a sixtieth of a second does.
 
 A published orbit is mean elements, not osculating ones (`world/meanelements.ts`, GitHub issue #8). Heights, an
 inclination and a period are averages over a revolution: under J2 the osculating semi-major axis of a low orbit goes round

@@ -11,6 +11,7 @@
 //   node tools/mem-test.mjs --json out.json        keep the whole account
 //   node tools/mem-test.mjs --flight ussr/vostok/vostok-1    another flight's launch site (Freedom 7's by default): one with no
 //                                                  flight deck is held to the budget ready, late, on foot and at its peak
+//   node tools/mem-test.mjs --flight usa/gemini/gt-7    a flight of days: its JavaScript heap in flight is held too (HEAP below)
 // The page counts for itself (src/app/mem.ts, `?mem`): every texture, renderbuffer and buffer by the bytes its format
 // says, and each canvas's drawing buffer. A phone's browser kills a tab by what it holds and says nothing, and a
 // desktop browser does not reproduce the kill, so the account is the evidence and the budget is the test.
@@ -35,6 +36,15 @@ const flightId = value('flight', 'usa/mercury/mr-3-freedom-7');
  * it was, 838, 1011 and 1091 at the first three, and killed on a phone. Why these figures: rendering.md, "Memory".
  */
 export const BUDGET = { ready: 350, late: 350, foot: 400, flight: 450, aboard: 500, peak: 500 };
+
+/**
+ * The JavaScript heap the page may hold in flight and aboard, MB, as Chromium counts it (`srMem.report().heap`; WebKit
+ * says nothing, and is not held): what the GPU's budget does not see. Set by the flight of days (issue #173): Gemini
+ * VII's fourteen-day record run kept every step of its coast and held 530 MB in flight beside Gemini 3's 369; kept by
+ * how fast its motion changes (sim/rails.ts) it holds 369 in flight and 388 aboard, Gemini 3 302 and 318 measured the
+ * same day (`--flight usa/gemini/gt-7`). Why: rendering.md, "Memory".
+ */
+export const HEAP = { flight: 450 };
 
 const engine = value('browser', 'chromium') === 'webkit' ? 'webkit' : 'chromium';
 const browser = await launch({ engine });
@@ -185,10 +195,15 @@ if (!desktop && !flag('no-budget')) {
     ['aboard', of('aboard')],
     ['peak', peak.value],
   ].filter(([k, v]) => v > BUDGET[k] && (flies || (seated && k === 'aboard') || (k !== 'flight' && k !== 'aboard')));
-  if (over.length || errors.length) {
+  // the heap in flight and aboard, where the browser says what it holds
+  const heap = Math.max(0, ...stages.filter((s) => /in flight/.test(s.name)).map((s) => s.heap ?? 0));
+  const heavy = flies && heap > HEAP.flight;
+  if (over.length || errors.length || heavy) {
     for (const [k, v] of over) console.error(`over budget at ${k}: ${v.toFixed(0)} MiB, ${BUDGET[k]} allowed`);
+    if (heavy) console.error(`over budget: ${heap.toFixed(0)} MB of JavaScript heap in flight, ${HEAP.flight} allowed`);
     process.exit(1);
   }
+  if (flies && heap > 0) console.log(`heap in flight ${heap.toFixed(0)} MB, ${HEAP.flight} allowed`);
   console.log(
     `within budget: ${Object.entries(BUDGET)
       .map(([k, v]) => `${k} ${v}`)

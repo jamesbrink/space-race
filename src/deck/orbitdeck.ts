@@ -33,6 +33,7 @@ import { type Predictor, propagate } from '../sim/predict.ts';
 import { due, onRails } from '../sim/rails.ts';
 import { aboutAxis, conjugate, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
 import {
+  attend,
   attitudeBetween,
   between,
   coastContacts,
@@ -48,6 +49,7 @@ import {
   orbitalRecord,
   orbitalRelease,
   type Run,
+  shownAt,
 } from '../sim/run.ts';
 import { Sheds } from '../sim/shed.ts';
 import {
@@ -1880,6 +1882,11 @@ export class OrbitDeck extends Deck {
       // over half a minute toward the airflow (staged.ts recordSamples)
       const log = this.hand.log;
       const left = log.at(-1)!.q;
+      // (where the hand turned it in a quiet stretch the coast kept only the ends of, the samples between are made again: sim/run.ts `attend`)
+      attend(
+        samples,
+        log.map((x) => x.t),
+      );
       let i = 0;
       for (const sample of samples) {
         if (sample.riding || sample.t < log[0]!.t) continue;
@@ -2261,6 +2268,8 @@ export class OrbitDeck extends Deck {
     const samples = this.run!.samples as readonly LiveSample[];
     const [a, b, fraction] = either(samples, t);
     if (fraction === 0) return a;
+    // (a quiet stretch of the coast kept as its two ends: the sample there, flown again)
+    if (a.rails) return shownAt(samples, t);
     const { r, v } = between(samples, t);
     const centre = between(samples, t, (sample) => sample.centre).r;
     const attitude = attitudeBetween(a, b, fraction);

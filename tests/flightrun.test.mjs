@@ -97,10 +97,15 @@ for (const f of flights) {
     const checks = plan.kind === 'ballistic' ? f.checks : plan.checks;
     assert.equal(run.results.length, checks.length, `${f.id}: a row a check`);
     for (const r of run.results) assert.equal(typeof r.got, 'number', `${f.id}: ${r.id}`);
-    // the sample at an instant is the last at or before it, and the line flown is the samples
+    // the sample at an instant is the last at or before it (or, in a quiet stretch of a coast kept as its two ends, the
+    // sample at that instant itself, flown again: sim/rails.ts), and the line flown is the samples
     const mid = run.samples[Math.floor(run.samples.length / 2)];
     assert.equal(run.at(mid.t), mid);
-    assert.equal(run.at(mid.t + 1e-6), mid);
+    const just = run.at(mid.t + 1e-6);
+    if (mid.rails) {
+      assert.equal(just.t, mid.t + 1e-6);
+      assert.ok(Math.hypot(...just.r.map((x, i) => x - mid.r[i])) < 0.05, `${f.id}: a microsecond on, where it was`);
+    } else assert.equal(just, mid);
     assert.equal(run.at(-5), run.samples[0]);
     assert.equal(run.track(), run.samples);
   });

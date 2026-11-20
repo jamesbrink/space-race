@@ -7,17 +7,23 @@ import { test } from 'node:test';
 import { flight as vostok3 } from '../missions/ussr/vostok/flights/vostok-3/flight.ts';
 import { flight as vostok4 } from '../missions/ussr/vostok/flights/vostok-4/flight.ts';
 import { NEAREST_VOSTOK_3 } from '../missions/ussr/vostok/flights/vostok-4/orbital.ts';
-import { flyOrbit } from '../src/sim/orbital.ts';
+import { flyOrbit, KEPT } from '../src/sim/orbital.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { siteFrame } from '../src/world/frames.ts';
 import { EARTH } from '../src/world/bodies.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 
-/** A flight's coast, its samples' places in the frame of date, by seconds of UTC from Vostok 3's liftoff. */
+/**
+ * A flight's coast, its samples' places in the frame of date, by seconds of UTC from Vostok 3's liftoff. Every step of
+ * it kept (`KEPT`: the two are read sample against sample below, ten seconds apart).
+ */
 const coast = (f) => {
   const frame = frameOf(f);
   const from = (Date.parse(f.launch) - Date.parse(vostok3.launch)) / 1000;
-  return flyOrbit(f.plan, siteFrame(f.site), frame, f.site.seaLevel.value).samples.map((s) => ({
+  KEPT.quiet = false;
+  const flown = flyOrbit(f.plan, siteFrame(f.site), frame, f.site.seaLevel.value);
+  KEPT.quiet = true;
+  return flown.samples.map((s) => ({
     t: from + s.t,
     phase: s.phase,
     r: frame.toDate(s.r),

@@ -482,6 +482,24 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     burning, above `RAILS_FLOOR`, 120 km, nothing asked of the hands) lets the clock go to `COAST_RATES`, and `due` holds it
     at the next of the run's events and the record's instants (orbitdeck.ts `rails`). The orbital deck's coast after the
     parting is a run flown ahead (flyOrbit), so on rails it is played, not flown frame by frame;
+  - a long coast's samples, kept by how fast its motion changes (issue #173): flyOrbit flies every step as ever, and its
+    results are its steps' own, but of the samples that fall due while nothing happens (the long step above 150 km,
+    nothing burning or near, before the braking burn) it keeps one only where the velocity has changed by a fifth of
+    itself since the last kept (rails.ts `KEPT_TURN`: 31 a revolution of a low orbit, hours apart far out), at every
+    mark, and all of them within 20 s of every instant the plan's clock or the record names and of every turn the drawn
+    attitude makes (orbital.ts `attendedOf`). The sample such a stretch begins at carries what flies it again (its
+    `rails`, a `Railed`): rails.ts `stretches` coasts from it on the coast's own gravity and push by the adaptive pair,
+    keeps the pair's steps for the stretches in use, and gives a state between them by the quintic through two steps'
+    places, velocities and accelerations, with the end's miss (the pair against the fixed step: hundredths of a
+    millimetre) let in evenly so that it is the kept sample at each end exactly. **Nothing reads a run straight across
+    two samples any more**: `between` and `Run.at` (sim/run.ts) ask the stretch, `filled` puts points back for what draws
+    a line through the samples (the record's line), and `attend` makes samples again round instants something writes on
+    them at (a hand turning the ship: orbitdeck.ts `handSamples`). The samples kept are ones the run kept before, to the
+    bit, so what is read at an event is read between the same two; `KEPT.quiet` off keeps every one, which
+    tests/rails.test.mjs holds the kept run against (Vostok 1's, read at every step let go: 0.016 mm in place, the
+    record's run's centre of mass 0.025 mm). Gemini VII's fourteen days are 8,916 samples and 13 MiB where they were
+    120,998 and 156 (tests/longrun.test.mjs holds them under 12,000 and 30). A run kept less often than its long step
+    (`every` over 10 s: guidance's trial flights, read at their ends) lets nothing go;
   - G0, J2 and P0: world/bodies.ts;
   - the tear rule: loads.ts `tearOf`; the 0.05 g mark: `ENTRY_G`; a parachute's filling: `chuteArea`;
   - the apparent-velocity integrator: apparent.ts; when a load is spent: `spentAt`; one separation, along the joint's

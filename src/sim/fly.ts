@@ -60,6 +60,7 @@ import { aboard, act, type CraftState, due, lit, part, type Sense, startCraft } 
 import { keptShare } from './forces.ts';
 import { ENTRY_G } from './loads.ts';
 import type { BodyDef, ChuteDef, Craft, EngineDef, EventDef, FlightPlan, Hold, JointDef } from './plan.ts';
+import type { Railed } from './rails.ts';
 import { nozzleThrust } from './thrust.ts';
 
 /** The Earth's mean radius, m (IUGG): ranges over the ground are measured along a sphere of it. */
@@ -142,6 +143,11 @@ export interface Sample extends Doing {
   /** Position and velocity in the frame that does not turn, m and m/s. */
   r: Vec3;
   v: Vec3;
+  /**
+   * From here to the next sample is a quiet stretch of a coast whose samples were let go: what flies it again (sim/rails.ts
+   * `Railed`). Whatever reads a run between its samples asks it (sim/run.ts `between`, `Run.at`).
+   */
+  rails?: Railed<Sample>;
 }
 
 /** What the reports give figures for, as the run has them: ids match a flight's `checks`. */

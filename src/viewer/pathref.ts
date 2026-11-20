@@ -31,6 +31,8 @@ export const REF_SPEED = 0.1;
 export const REF_OFF = 2;
 /** The most points kept of a record. */
 export const REF_KNOTS = 4096;
+/** Seconds between the samples the curve is made from, at most, where the run let go of its own in a quiet coast (sim/run.ts `filled`): a coast's long step, which is what it kept before it let any go. */
+export const REF_EVERY = 10;
 /** Seconds within which engine events are one mark. */
 export const REF_TOGETHER = 20;
 /**

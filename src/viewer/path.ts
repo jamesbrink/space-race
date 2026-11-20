@@ -13,7 +13,8 @@ import {
   type Sequence,
   type Start,
 } from '../sim/predict.ts';
-import { recordOf } from '../sim/run.ts';
+import type { Sample } from '../sim/fly.ts';
+import { filled, recordOf } from '../sim/run.ts';
 import type { SitedFlight } from '../types.ts';
 import { EARTH, WGS84_A, WGS84_B } from '../world/bodies.ts';
 import { step } from '../world/orbit.ts';
@@ -56,7 +57,7 @@ import {
   unseen,
   type Words,
 } from './pathmarks.ts';
-import { apsesOf, REF_BACK, type RefMark, type RefSample, recordMarks, referenceCurve, windowOf } from './pathref.ts';
+import { apsesOf, REF_BACK, REF_EVERY, REF_KNOTS, type RefMark, type RefSample, recordMarks, referenceCurve, windowOf } from './pathref.ts';
 import type { MapOf } from './camera/rig.ts';
 import { esc } from '../util/dom.ts';
 import { capsOf, is, isTyping, modified } from '../util/keys.ts';
@@ -174,6 +175,10 @@ const FLOWN_MOST = 2048;
 const FLOWN = 1024;
 /** (a revolution of a low orbit and a little more: a flight of days is not kept whole, so its points stay close enough to draw it as a curve) */
 const FLOWN_SPAN = 6000;
+/** Seconds between the points taken into the line flown where the run let go of its own in a quiet coast (sim/rails.ts): a coast's long step. */
+const FLOWN_EVERY = 10;
+/** A run's sample as the line flown takes it: with its velocity and the stretch it begins, where the run kept only that stretch's ends. */
+type Tracked = { t: number; r: Vec3; centre?: Vec3; v?: Vec3; rails?: Sample['rails'] };
 /** The most chords of the record's line; half its core, CSS pixels; how much of it is drawn; and a dash and its gap together, CSS pixels (about: the shader says how). */
 const REF_MOST = 1024;
 const REF_CORE = 0.9;
@@ -1696,27 +1701,58 @@ export class FlightPath {
    * is no longer where it was, or the instant has gone back before it, the run is another (flown again, or from earlier)
    * and its line is taken again from the start.
    */
-  private follow(track: readonly { t: number; r: Vec3; centre?: Vec3 }[], until: number): void {
+  private follow(track: readonly Tracked[], until: number): void {
     const was = this.taken;
     const at = was.n > 0 ? track[was.n - 1] : undefined;
     const p = at ? (at.centre ?? at.r) : null;
-    if (was.n > 0 && (!at || !p || at.t !== was.t || p[0] !== was.r[0] || p[1] !== was.r[1] || p[2] !== was.r[2] || until < was.t)) {
+    if (
+      was.n > 0 &&
+      (!at || !p || at.t !== was.t || p[0] !== was.r[0] || p[1] !== was.r[1] || p[2] !== was.r[2] || until < Math.max(was.t, was.filled))
+    ) {
       this.flown.n = 0;
       was.n = 0;
+      was.filled = Number.NEGATIVE_INFINITY;
     }
+    /**
+     * Where a quiet stretch of a coast was kept as its two ends (`Sample.rails`), the points between them, flown again,
+     * as close as a coast keeps them: from `from` on, up to `to`. Not for what is too old to be kept (`FLOWN_SPAN`).
+     */
+    const fill = (a: Tracked, b: Tracked, from: number, to: number): void => {
+      if (!a.rails || !a.v || !b.v || !(b.t - a.t > FLOWN_EVERY) || to < until - 2 * FLOWN_SPAN) return;
+      const of = a.rails.of as unknown as (x: Tracked) => Vec3;
+      const [p0, p1] = [
+        { t: a.t, r: of(a), v: a.v },
+        { t: b.t, r: of(b), v: b.v },
+      ];
+      for (let k = Math.max(1, Math.floor((from - a.t) / FLOWN_EVERY) + 1); a.t + k * FLOWN_EVERY < Math.min(b.t, to + 1e-9); k++) {
+        const t = a.t + k * FLOWN_EVERY;
+        this.keep(t, a.rails.state(p0, p1, t).r);
+        was.filled = t;
+      }
+    };
     for (let i = was.n; i < track.length - 1; i++) {
       const x = track[i]!;
       if (x.t > until) break;
+      const before = i > 0 ? track[i - 1]! : undefined;
+      if (before) fill(before, x, Math.max(before.t, was.filled), x.t);
       const r = x.centre ?? x.r;
       this.keep(x.t, r);
       was.n = i + 1;
       was.t = x.t;
       was.r = r;
     }
+    // (and on from the last sample taken to the instant on show, within the stretch it begins)
+    const [last, next] = [was.n > 0 ? track[was.n - 1] : undefined, track[was.n]];
+    if (last && next && was.n < track.length - 1) fill(last, next, Math.max(last.t, was.filled), until);
     this.tracked = true;
   }
-  /** How much of the run's samples has been taken into the line flown, and the last of them (its instant and place). */
-  private readonly taken: { n: number; t: number; r: Vec3 } = { n: 0, t: Number.NEGATIVE_INFINITY, r: [0, 0, 0] };
+  /** How much of the run's samples has been taken into the line flown, the last of them (its instant and place), and how far on from it a quiet stretch has been filled. */
+  private readonly taken: { n: number; t: number; r: Vec3; filled: number } = {
+    n: 0,
+    t: Number.NEGATIVE_INFINITY,
+    r: [0, 0, 0],
+    filled: Number.NEGATIVE_INFINITY,
+  };
   /** Whether the line flown is the run's (`follow`): drawn with no live state. */
   private tracked = false;
 
@@ -2298,9 +2334,12 @@ export class FlightPath {
   private reference(): Reference | null {
     const plan = this.flight.plan;
     const run = plan ? recordOf(this.flight) : null;
-    const samples: readonly RefSample[] | undefined = this.source.intended?.() ?? run?.track();
-    if (!samples || samples.length < 2) return null;
-    if (this.ref && this.ref.of === samples && this.ref.n === samples.length) return this.ref;
+    const kept: readonly RefSample[] | undefined = this.source.intended?.() ?? run?.track();
+    if (!kept || kept.length < 2) return null;
+    if (this.ref && this.ref.of === kept && this.ref.n === kept.length) return this.ref;
+    // (what a long coast let go of its samples put back, as close as it ever kept them: the curve is kept by its curvature
+    // from them, and held to them. Not for a flight of so many days that the curve has fewer points than the run kept)
+    const samples = filled(kept as readonly Sample[], REF_EVERY, REF_KNOTS) as readonly RefSample[];
     const marks =
       run && plan ? recordMarks(run.events, (id) => eventOf(plan, id)?.do, run.samples, run.duration, EARTH.gm.value, WGS84_A) : [];
     const curve = referenceCurve(
@@ -2325,7 +2364,7 @@ export class FlightPath {
       ? { ...this.extraMark('ref', 'refAp', ''), name: REF_WORDS.apogee, rank: REF_RANK.apogee, off: true }
       : null;
     this.refKey.fill(Number.NaN);
-    this.ref = { of: samples, n: samples.length, curve, sweep: sweepOf(curve), top, marks, apses };
+    this.ref = { of: kept, n: kept.length, curve, sweep: sweepOf(curve), top, marks, apses };
     return this.ref;
   }
 

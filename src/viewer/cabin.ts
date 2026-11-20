@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { hasLeft } from '../sim/craft.ts';
-import { ballisticOf, type Sample, sampleAt } from '../sim/fly.ts';
+import { ballisticOf, type Sample } from '../sim/fly.ts';
 import { travelAt } from '../sim/mechanism.ts';
 import { heightsBall } from '../sim/orbital.ts';
 import { spacecraft } from '../sim/fliers.ts';
@@ -10,7 +10,7 @@ import type { LiveSample, VehicleState } from '../sim/vehicle.ts';
 import type { CabinDef, CabinLamp, Flight, MechanismDef, ModelDef, Signal } from '../types.ts';
 import { siteFrame, type Vec3 } from '../world/frames.ts';
 import { frameOf } from '../world/earthframe.ts';
-import { bearingOf, recordOf, recordTimes, signalsOf } from '../sim/run.ts';
+import { bearingOf, recordOf, recordTimes, shownAt, signalsOf } from '../sim/run.ts';
 import { attitudeOf, drumAt, globeTurn, type Readings, ratesOf, type Signals, scaleAt, signalsAt } from './gauges.ts';
 import { insideBy, type Shading, shadeAll, sharesOf } from './shade.ts';
 import { tier } from './tier.ts';
@@ -1039,7 +1039,7 @@ export class Cabin {
    */
   step(dt: number, t: number, jdUT: number): void {
     const record = this.live ? null : this.record();
-    const sample = this.live ? this.sample : record ? sampleAt(record.samples, t) : null;
+    const sample = this.live ? this.sample : record ? shownAt(record.samples, t) : null;
     const lifted = sample ? sample.t > 0 && (this.live || t > 0) : false;
     const r: Readings = {};
     if (sample) {
