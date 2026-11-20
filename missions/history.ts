@@ -1060,6 +1060,15 @@ export const MILESTONES: readonly Milestone[] = [
     confidence: 'documented',
   },
   {
+    date: '1974-02-08',
+    flight: 'usa/skylab/skylab-4',
+    nation: 'USA',
+    title: 'First crew to spend 84 days in space',
+    text: 'Gerald Carr, Edward Gibson and William Pogue returned from the last expedition to Skylab. Their three-month stay exceeded the previous crew’s endurance record by more than three weeks.',
+    source: 'Skylab Mission Report, Third Visit, JSC-08963, §2. NASA, Skylab 4 mission overview.',
+    confidence: 'documented',
+  },
+  {
     date: '1974-12-02T09:40:00Z',
     flight: 'ussr/soyuz/soyuz-16',
     nation: 'USSR',
@@ -1686,6 +1695,21 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
     named: {
       why: 'NASA designated the flight Skylab 3. The crew’s patch says Skylab II because it was the second expedition to the workshop.',
       source: 'NASA, Skylab 3 mission overview and second crew emblem.',
+      confidence: 'documented',
+    },
+  },
+  'usa/skylab/skylab-4': {
+    flight: 'usa/skylab/skylab-4',
+    headline: 'A comet above the solar observatory',
+    story:
+      'On Christmas Day, Carr and Pogue took cameras outside Skylab to photograph Comet Kohoutek against the dark sky. Four days later Carr and Gibson watched it from outside again as it rounded the Sun. Gibson sketched the comet as the crew remembered seeing it.' +
+      '\n\n' +
+      'All three men were on their first spaceflight. When they brought CSM-118 down in the Pacific on 8 February, each had spent longer in space on that one flight than anyone before them.',
+    firsts: ['First crew to spend 84 days in space'],
+    source: 'NASA, Skylab 4 mission overview. Skylab Mission Report, Third Visit, JSC-08963, §2.',
+    named: {
+      why: 'Skylab 4 brought the third and final crew to the station. Its insignia shows the Sun, a tree and a human figure for the three main subjects of the crew’s research.',
+      source: 'NASA, Skylab 4 mission overview and insignia.',
       confidence: 'documented',
     },
   },
@@ -2952,6 +2976,38 @@ export const PEOPLE: readonly Person[] = [
     flights: ['usa/skylab/skylab-3'],
     bio: 'A Marine Corps aviator from Michigan, Lousma joined NASA in 1966. On Skylab 3 he worked with Garriott to assemble two long poles outside the station and stretch the new sunshade over the workshop. In 1982 he commanded Columbia on its third orbital test flight.',
     source: 'NASA, Jack Robert Lousma, biographical data. Skylab Mission Report, Second Visit, JSC-08662, §2.',
+    confidence: 'documented',
+  },
+  {
+    id: 'carr',
+    name: 'Gerald P. Carr',
+    born: '1932-08-22',
+    died: '2020-08-26',
+    nation: 'USA',
+    flights: ['usa/skylab/skylab-4'],
+    bio: 'A Marine Corps pilot and mechanical engineer, Carr commanded Skylab’s final crew. He went outside the station three times, twice to observe Comet Kohoutek.',
+    source: 'NASA, Astronaut Fact Book and Skylab 4 mission overview.',
+    confidence: 'documented',
+  },
+  {
+    id: 'gibson',
+    name: 'Edward G. Gibson',
+    born: '1936-11-08',
+    nation: 'USA',
+    flights: ['usa/skylab/skylab-4'],
+    bio: 'Gibson joined NASA in 1965 as a scientist-astronaut and learned to fly during his training. As Skylab’s science pilot he worked at the solar telescope controls and observed Comet Kohoutek from outside the station.',
+    source: 'NASA, Astronaut Fact Book and Skylab 4 mission overview.',
+    confidence: 'documented',
+  },
+  {
+    id: 'pogue',
+    name: 'William R. Pogue',
+    born: '1930-01-23',
+    died: '2014-03-03',
+    nation: 'USA',
+    flights: ['usa/skylab/skylab-4'],
+    bio: 'An Air Force pilot with a master’s degree in mathematics, Pogue made both of his spacewalks on Skylab 4. On Christmas Day he and Carr photographed Comet Kohoutek from outside the workshop.',
+    source: 'NASA, Astronaut Fact Book and Skylab 4 mission overview.',
     confidence: 'documented',
   },
   {
