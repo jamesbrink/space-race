@@ -373,7 +373,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     as data: the orbital module a body of its own, let go with the instrument and propulsion module as the modules part;
     the main engine (`skd`) on the instrument module with a tank, so every burn in orbit (`burns`, flown as manoeuvres,
     orbital.ts `movesOf`, each with its impulse) and then the braking burn draw on one load; and the descent module's lift at
-    its trim, held at the record's bank from its instant (`Hold.bank`). A rendezvous is flown as burns (the target is not in
+    its trim, held at the record's bank from its instant (`Hold.bank`); an entry the record has flown ballistic (Soyuz 1's)
+    gives no bank and holds none, so its lift is never flown. A rendezvous is flown as burns (the target is not in
     the plan). tests/plan.test.mjs holds it to the record as a Vostok's and as a Soyuz's; tests that fly a changed record fly
     `soyuzPlan` of it (`'modules' in record`).
   - A stage's body, engine, tank and joint are `stage:<i>` in a Vostok's plan; a descent parachute is `<body>/<name>`.
@@ -859,7 +860,11 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   Jacchia 1971 on the days flown's 10.7 cm flux and Kp, at the place and instant), in the coast, the predicted path, `decay`
   and the descent's bodies. Every parachute is held
   to the tear rule while out (`strength`, `pull`, `descent.torn`), and fills over its `fills`, so one let out too low does
-  not fill; `downVerdict` (sim/verdict.ts) holds the pilot to `descent.crew` (a landing aboard, a landing under his canopy,
+  not fill; a fault of the hardware's the record has is the parachute's data, flown whatever a hand gives (plan.ts
+  `ChuteDef`, descent.ts `letOut`): one that `stays` in its container is given and nothing comes out (no drag, nothing let
+  go for it, never out for what waits on it, `never came out` in the verdict), and one that `fouls` on others of its body
+  still out comes out in their shadow and streams with `descent.torn` of its drag (a `DescentTear` `by: 'fouled'`, drawn
+  as a torn canopy; Soyuz 1's main and reserve); `downVerdict` (sim/verdict.ts) holds the pilot to `descent.crew` (a landing aboard, a landing under his canopy,
   the air's blast and the fastest he can be out in it, each estimated: the heat of the air on a man is not modelled), and
   a flight that stays up to `decay` (the orbit's life in the standard air on the coast's own drag, `orbitDrag`, against
   `supplies.days`). What the crew came down in and on is the flight's data (`Craft.lands`: `on`, the land or the sea of the

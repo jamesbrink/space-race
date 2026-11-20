@@ -231,13 +231,19 @@ for (const f of vostoks.filter((x) => 'modules' in recordFrom(x))) {
       Math.abs(o.modules.orbital.value + o.modules.instrument.value + o.entry.mass.value - o.mass.value) < 1e-6,
       'the three modules are the ship',
     );
-    // its lift at its trim, held from the bank's instant
+    // its lift at its trim, held from the bank's instant; an entry the record has flown ballistic holds no bank at all
     const module = c.bodies.find((b) => b.aero);
     assert.equal(module.aero.lift, o.entry.lift);
     assert.equal(module.aero.passiveSphere, undefined);
-    const bank = eventOf(plan, 'entry-bank');
-    assert.equal(clockAt(plan, bank), o.entry.banked.value);
-    assert.equal(plan.attitude.find((a) => a.id === 'banked-attitude').hold.bank, o.entry.bank);
+    if (o.entry.bank) {
+      const bank = eventOf(plan, 'entry-bank');
+      assert.equal(clockAt(plan, bank), o.entry.banked.value);
+      assert.equal(plan.attitude.find((a) => a.id === 'banked-attitude').hold.bank, o.entry.bank);
+    } else {
+      assert.equal(o.entry.banked, undefined);
+      assert.ok(!plan.events.some((e) => e.id === 'entry-bank'));
+      assert.ok(!plan.attitude.some((a) => 'bank' in a.hold), 'ballistic: no bank held, so its lift is never flown');
+    }
     // the braking attitude stays the last aim, turned to at the record's instant
     assert.equal(clockAt(plan, eventOf(plan, 'braking-attitude')), o.retro.turned.value);
   });

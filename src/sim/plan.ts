@@ -324,6 +324,13 @@ export interface ChuteDef {
   /** The most dynamic pressure its cloth takes, Pa, and the most its lines pull, N. Left out: it never tears. */
   strength?: Measure;
   pull?: Measure;
+  /**
+   * A fault of the hardware's, flown on an orbital flight's descent (descent.ts): commanded out, it stays in its container
+   * (`stays`: no drag, nothing let go for it, never out for what waits on it); or let out while one of the parachutes `by`
+   * (ids, on its body) is still out, it is caught in that one's shadow and streams unfilled, as a torn canopy (`fouls`).
+   */
+  stays?: { confidence: Confidence; source: string };
+  fouls?: { by: string[]; confidence: Confidence; source: string };
 }
 
 /** A limit the craft is held to: past it, something gives. */
@@ -791,7 +798,7 @@ export function problems(plan: FlightPlan): string[] {
     }
     for (const ch of c.chutes) {
       need(n.bodies, 'body', ch.body, `chute '${ch.id}'`);
-      for (const i of ch.instead ?? []) need(n.chutes, 'chute', i, `chute '${ch.id}'`);
+      for (const i of [...(ch.instead ?? []), ...(ch.fouls?.by ?? [])]) need(n.chutes, 'chute', i, `chute '${ch.id}'`);
     }
     for (const l of c.limits)
       if (l.at && (l.of === 'qAlpha' || l.of === 'axial') && !n.joints.has(l.at) && !n.bodies.has(l.at))

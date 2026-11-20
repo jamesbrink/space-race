@@ -1296,4 +1296,6 @@ Soyuz 1 already had tall access steelwork beside its shroud. In the photograph r
 
 The site opens with the towers upright. The clock and the pad slider can lower them to view the cleared pad. The times assigned to these working positions are illustrative. Each mission uses its own launch timestamp for the Sun and Moon and its own day's weather (the flight's weather.ts). A crew lift carries a walker from the apron to the fairing access cover at the 33.3 m level. The lift is assumed from the Soyuz 3 film at Site 31. Its position, cage, guide inclination, stops and speed are estimated. Boarding represents passage through the shroud and spacecraft hatches to the selected couch. [Space Test Pilot, reel 4](https://www.net-film.ru/en/film-57387/)
 
+As the rocket rises the four support arms fall back and the guides at its tail drop away, at the times and angles the Vostoks' system has here (`launchSystemFalls`, site-1.parts.ts; Site 31 the same): the same launch system, its moves estimated as above. The collision bakes of the five flights' pads carry them, so nothing rising strikes an arm.
+
 Auxiliary cable masts, the erector and rolling stock, support personnel, and changes to buildings outside the pad between 1967 and 1980 are omitted.

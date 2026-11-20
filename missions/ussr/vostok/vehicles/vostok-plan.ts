@@ -183,6 +183,8 @@ export function vostokPlan(o: VostokRecord): FlightPlan {
         ...(c.replaces ? { replaces: c.replaces } : {}),
         ...(c.strength ? { strength: c.strength } : {}),
         ...(c.pull ? { pull: c.pull } : {}),
+        ...(c.stays ? { stays: c.stays } : {}),
+        ...(c.fouls ? { fouls: { ...c.fouls, by: c.fouls.by.map((x) => chuteEvent(b.id, x)) } } : {}),
       }),
     ),
   );

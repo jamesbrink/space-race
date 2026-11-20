@@ -2091,7 +2091,9 @@ export class OrbitDeck extends Deck {
     if (id === coast.parting) return `Parted ${where}.`;
     if (id === coast.loose && !this.chuteOf(id).chute) return `Hatch No. 1 off and the seat out ${where}, ${(s.q / 1000).toFixed(1)} kPa.`;
     const { body, chute } = this.chuteOf(id);
+    if (chute?.stays) return 'Given: it stayed in its container.';
     const tore = body && chute ? down?.torn[body.id]?.[chute.name] : undefined;
+    if (tore?.by === 'fouled') return `Out, in the shadow of the ${chute?.fouls?.by.join(' and ')}: it streams and does not fill.`;
     if (tore && Math.abs(tore.t - t) < 1e-6) return `Out, and torn at once: ${(tore.q / 1000).toFixed(1)} kPa on its cloth.`;
     return tore ? `Out; it tears at ${this.wall(tore.t)}.` : 'Out.';
   }

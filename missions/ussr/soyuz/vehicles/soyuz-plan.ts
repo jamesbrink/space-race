@@ -8,7 +8,8 @@
  *   for the braking burn (`EngineDef.tanks`: what the burns before it used is not there for it, orbital.ts `shipOf`);
  * - each burn in orbit, as Gemini's manoeuvres are flown (orbital.ts `movesOf`): turned to its attitude, lit with its
  *   recorded impulse, cut, and left to itself again;
- * - a descent module that flies its entry on its own lift, trimmed and banked (`AeroDef.lift`, `Hold.bank`).
+ * - a descent module that flies its entry on its own lift, trimmed and banked (`AeroDef.lift`, `Hold.bank`), or, where the
+ *   record has it flown ballistic, holds no bank and flies no lift.
  * Every figure is carried over as the record has it. The ids are this module's: the main engine and its tank are `skd`,
  * the orbital module's body and joint `orbital-module`, a burn's events `<id>:turn`, `<id>` and `<id>:cut`.
  */
@@ -104,8 +105,11 @@ export function soyuzPlan(o: SoyuzRecord): FlightPlan {
     },
     source: b.attitude.source,
   }));
+  // (an entry flown ballistic holds none: its lift is never flown)
+  const { bank, banked } = o.entry;
+  if (!bank !== !banked) throw new Error('a Soyuz entry has a bank and its instant, or neither');
   const banks: AttitudeDef[] = [
-    { id: 'banked-attitude', label: 'Banked for the entry', hold: { bank: o.entry.bank }, source: o.entry.bank.source },
+    ...(bank ? [{ id: 'banked-attitude', label: 'Banked for the entry', hold: { bank }, source: bank.source }] : []),
     ...(o.entry.banks ?? []).map(
       (b, i): AttitudeDef => ({ id: `banked-attitude-${i + 2}`, label: b.label, hold: { bank: b.bank }, source: b.bank.source }),
     ),
@@ -139,7 +143,7 @@ export function soyuzPlan(o: SoyuzRecord): FlightPlan {
   plan.events.splice(
     plan.events.indexOf(parting) + 1,
     0,
-    timed('entry-bank', 'Banked for the entry', o.entry.banked, [{ attitude: 'banked-attitude' }]),
+    ...(banked ? [timed('entry-bank', 'Banked for the entry', banked, [{ attitude: 'banked-attitude' }])] : []),
     ...(o.entry.banks ?? []).map((b, i) => timed(`entry-bank-${i + 2}`, b.label, b.at, [{ attitude: `banked-attitude-${i + 2}` }])),
   );
 

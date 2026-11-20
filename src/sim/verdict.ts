@@ -227,6 +227,10 @@ function said(d: Down, crew: DescentCrew | undefined, down: DescentFlown, wall: 
   const tear = (body: string) =>
     Object.entries(down.torn[body] ?? {}).map(([name, x]) => {
       const c = d.bodies.find((b) => b.id === body)?.chutes.find((k) => k.name === name);
+      const whose = body === d.bodies[0]?.id ? `${Rode}’s` : 'The';
+      // (one that came out in the shadow of another still out: the hardware's fault, not the air's)
+      if (x.by === 'fouled')
+        return `${whose} ${name} came out at ${wall(x.t)} in the shadow of the ${c?.fouls?.by.join(' and ') ?? 'parachute above it'}, still out, and never filled (${c?.fouls?.confidence ?? 'estimated'}).`;
       const met = x.by === 'pressure' ? `${(x.q / 1000).toFixed(1)} kPa on its cloth` : `${(x.pull / 1000).toFixed(1)} kN on its lines`;
       const limit =
         x.by === 'pressure' ? `${((c?.strength?.value ?? 0) / 1000).toFixed(1)} kPa` : `${((c?.pull?.value ?? 0) / 1000).toFixed(1)} kN`;

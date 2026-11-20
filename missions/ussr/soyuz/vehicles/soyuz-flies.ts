@@ -97,11 +97,25 @@ export function soyuzChuteLooks(areas: { name: string; area: Measure }[]): Chute
 }
 
 /**
+ * The nodes of the ship's model that leave with the orbital module and with the instrument module as the modules part: each
+ * flight's model has its own fittings (Soyuz 1's has no infrared vertical or signal lamps, Soyuz 4's the spacewalk handrails).
+ */
+export interface ShipNodes {
+  orbital: string[];
+  instrument: string[];
+}
+/** The 7K-OK's as soyuz_7kok.py builds Soyuz 3. */
+export const SHIP_NODES: ShipNodes = {
+  orbital: ['OrbitalModule', 'DockingProbe', 'Igla', 'RendezvousLights'],
+  instrument: ['ServiceModule', 'InfraredVertical', 'SolarLeft', 'SolarRight'],
+};
+
+/**
  * The flight in the scene (`Flight.flies`): the stack off the pad as staged.ts flies it, and what leaves it, each flown on (the
  * record's `ascent.sheds`) or, for the cover and the heat shield, carried on its descent body. The crew stays in the descent
  * module. Every instant is the flight's own record's.
  */
-export function soyuzFlies(orbital: SoyuzRecord, chutes: ChuteDef[]): NonNullable<Flight['flies']> {
+export function soyuzFlies(orbital: SoyuzRecord, chutes: ChuteDef[], ship: ShipNodes = SHIP_NODES): NonNullable<Flight['flies']> {
   const at = (id: string) => orbital.events.find((e) => e.id === id)!.at.value;
   const drop = (id: string) => orbital.ascent!.drops.find((d) => d.id === id)!.at.value;
   // (the heat shield goes as the main parachute comes out: so long after the cover)
@@ -127,12 +141,14 @@ export function soyuzFlies(orbital: SoyuzRecord, chutes: ChuteDef[]): NonNullabl
       ...AFT_SECTORS.map((piece) => ({ at: drop('aft-section'), nodes: [`AftSection_${piece}`], on: `aft-section/${piece}` })),
       { at: orbital.stages[2]!.separation!.value, nodes: ['BlockI'], on: 'stage:2' },
       // the orbital and the instrument modules, let go together as the modules part
-      { at: orbital.entry.separation.value, nodes: ['OrbitalModule', 'DockingProbe', 'Igla', 'RendezvousLights'], on: ORBITAL_MODULE },
-      { at: orbital.entry.separation.value, nodes: ['ServiceModule', 'InfraredVertical', 'SolarLeft', 'SolarRight'], on: 'modules' },
+      { at: orbital.entry.separation.value, nodes: ship.orbital, on: ORBITAL_MODULE },
+      { at: orbital.entry.separation.value, nodes: ship.instrument, on: 'modules' },
       // the cover, shot off at the height the coast hands over at, and the heat shield, let go under the main parachute,
-      // each comes down on its own body
+      // each comes down on its own body (a descent whose shield stayed on has no body for it, and the module keeps it)
       { at: at('cover-off'), nodes: ['SA_Parachute58'], on: 'cover', rides: [{ body: 'cover' }] },
-      { at: at('cover-off') + main, nodes: ['SA_Shield'], on: 'shield', rides: [{ body: 'shield' }] },
+      ...(orbital.descent?.bodies.some((b) => b.id === 'shield')
+        ? [{ at: at('cover-off') + main, nodes: ['SA_Shield'], on: 'shield', rides: [{ body: 'shield' }] }]
+        : []),
     ],
     chutes,
     // the shock layer stands off the descent module's heat shield

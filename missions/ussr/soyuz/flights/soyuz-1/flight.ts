@@ -14,6 +14,10 @@ import {
   soyuzGallerySpecs,
   wingMoves,
 } from '../../vehicles/gallery.ts';
+import { AREAS } from '../../vehicles/soyuz-7kok-flown.ts';
+import { commanded, soyuzChuteLooks, soyuzCommands, soyuzFlies } from '../../vehicles/soyuz-flies.ts';
+import { soyuzPlan } from '../../vehicles/soyuz-plan.ts';
+import { orbital as ORBITAL } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
 const TASS = 'TASS communiqué of 23 April 1967, NASA translation ST-PR-10595, p. 1 (preliminary orbit)';
@@ -145,6 +149,25 @@ const spacecraft: Part[] = [
 
 const vehicle = soyuzGallery('soyuz-1', 'Soyuz 1', 'Komarov', spacecraft);
 vehicle.seats![0]!.figure = 'crew';
+// what a hand can ask of each part in flight, said with what did each thing on the day (vehicles/soyuz-flies.ts)
+vehicle.parts = commanded(
+  vehicle.parts,
+  soyuzCommands({
+    parted: 'the sequence did, minutes after the burn',
+    crew: 'Komarov',
+    cover: `its barometric switch, ${(ORBITAL.ejection.altitude.value / 1000).toFixed(0)} km`,
+  }),
+);
+// (no part's menu offers the reserve parachute: the system put it out on its speed check, and no source read gives the crew a
+// command of their own for it; the deck's action gives it in the sequence's order, after the drogue, which it fouls on)
+/**
+ * The descent module's parachutes as drawn, at their areas as the record has them: the drogue and the reserve, which came out
+ * (the reserve streaming in the drogue's shadow, as the run has it fouled). The main stayed in its container and is not drawn.
+ */
+const CHUTES = soyuzChuteLooks([
+  { name: 'drogue parachute', area: AREAS.drogue },
+  { name: 'reserve parachute', area: AREAS.reserve },
+]);
 
 export const flight: Flight = {
   id: 'ussr/soyuz/soyuz-1',
@@ -162,18 +185,18 @@ export const flight: Flight = {
   launchSite: 'Tyuratam (Baikonur), Site 1',
   crew: ['Vladimir M. Komarov'],
   summary:
-    'Vladimir Komarov flew the first crewed Soyuz and was to dock with a second ship. A solar wing stayed folded, the second launch was cancelled, and Komarov died when the parachutes failed during his early return.',
+    'Vladimir Komarov flew the first crewed Soyuz and was to dock with a second ship. A solar wing stayed folded and the second launch was cancelled. On the early return the main parachute stayed in its container and the reserve did not fill. Komarov was killed when the descent module struck the ground.',
   facts: [
     { label: 'Spacecraft', value: '7K-OK No. 4 · active docking probe' },
     { label: 'Call sign', value: 'Rubin (Рубин), “ruby”' },
-    { label: 'Model status', value: 'Gallery · reconstructed 7K-OK and 11A511' },
+    { label: 'Landing', value: 'Struck the ground near Karabutak, 65 km east of Orsk' },
   ],
   timeline: [
     { t: 0, event: 'Liftoff from Site 1 at Tyuratam.' },
     { t: 540, event: 'Ground control confirms spacecraft separation and orbit. The left solar wing remains stowed.' },
     { t: 84072, event: 'The first attempted braking burn is inhibited when the automatic orientation sequence fails.' },
     { t: 95078.5, event: 'Komarov reports that the braking engine shut down after a successful burn.' },
-    { t: 96540, event: 'Approximate impact time near Orsk. The main and reserve parachutes fail to arrest the descent.' },
+    { t: 96472, event: 'The descent module strikes the ground east of Orsk. Komarov is killed.' },
   ],
   specs: [
     ...soyuzGallerySpecs,
@@ -214,6 +237,19 @@ export const flight: Flight = {
     },
   ],
   motors: [],
+  // the flight as flown from its record: the 11A511's ascent on its steering law, the correction of the fifth orbit, the
+  // braking burn of the nineteenth, the entry flown ballistic and the parachutes as they failed (orbital.ts; mission.md),
+  // through the day's air over the pad
+  plan: { ...soyuzPlan(ORBITAL), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on Soyuz 3’s vehicle’s instants to the first orbit Mishin recorded; the correction of the fifth orbit and the braking burn of ' +
+    'the nineteenth as the record has them. The entry is ballistic. The main parachute stays in its container; the reserve comes out in the ' +
+    'drogue’s shadow and does not fill. Komarov is killed when the descent module strikes the ground (mission.md).',
+  // (No. 4 had neither the infrared vertical nor the signal lamps of the later ships)
+  flies: soyuzFlies(ORBITAL, CHUTES, {
+    orbital: ['OrbitalModule', 'DockingProbe', 'Igla'],
+    instrument: ['ServiceModule', 'SolarLeft', 'SolarRight'],
+  }),
   models: [
     onSoyuzPad(vehicle, TURN, TAIL),
     soyuzPad,

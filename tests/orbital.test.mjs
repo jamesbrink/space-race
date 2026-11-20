@@ -519,6 +519,32 @@ INPUTS['ussr/soyuz/soyuz-3'] = [
   ['entry', 'area'],
 ];
 
+// Soyuz 1's: the injection's instant (Soyuz 3's vehicle's, assumed) and place (estimated), the braking burn's impulse (derived
+// from its length), the descent module's mass (the type's, assumed) and disc (derived), the parachutes' height (assumed)
+INPUTS['ussr/soyuz/soyuz-1'] = [
+  ['injection', 'at'],
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['retro', 'deltaV'],
+  ['entry', 'mass'],
+  ['entry', 'area'],
+  ['ejection', 'altitude'],
+];
+
+// Soyuz 4's: the injection's instant (Soyuz 3's vehicle's, assumed) and place (estimated), the braking burn's impulse (Soyuz
+// 3's, assumed) and its end (derived from it), the descent module's mass (the type's nominal, assumed, three aboard) and
+// disc (derived), the parachutes' height (the type's, assumed)
+INPUTS['ussr/soyuz/soyuz-4'] = [
+  ['injection', 'at'],
+  ['injection', 'arc'],
+  ['injection', 'anomaly'],
+  ['retro', 'off'],
+  ['retro', 'deltaV'],
+  ['entry', 'mass'],
+  ['entry', 'area'],
+  ['ejection', 'altitude'],
+];
+
 test('there is an orbital flight to fly', () => {
   assert.ok(orbiters.length > 0);
 });
