@@ -15,6 +15,9 @@ import {
 } from '../../vehicles/gemini-targets.ts';
 import { dimensions, LB, NMI, SEDR2, thrusters, titanEngines } from '../../vehicles/gemini-titan.ts';
 import { lateVehicle } from '../../vehicles/late-vehicle.ts';
+import { geminiFlies } from '../../vehicles/gemini-flies.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
+import { INSERTION, orbital } from './orbital.ts';
 import { crewAboard, crewArrives, hatchesShut, pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -65,7 +68,8 @@ export const flight: Flight = {
         22.47,
       ),
     ],
-    fixes: [targetFix(REPORT + ', table 4.3-V, final insertion', -5844.821, 558.7, 28.5, -59.47, 983548, 25360, 0.07, 95.57)],
+    // (the Agena at its insertion, the vector the flight's plan flies its target from: orbital.ts `INSERTION`)
+    fixes: [INSERTION],
     interface: 'cone',
     target: 'GATV 5006',
     transfer: crewTransfer(
@@ -273,6 +277,16 @@ export const flight: Flight = {
     ...thrusters('spacecraft 11, as described in its mission report'),
     ...agenaMotors(),
   ],
+  // the flight as an orbit, written from its record: the Titan's two stages, the orbit, the first-revolution rendezvous made on
+  // the Agena, the docked burns, the coincident-orbit rendezvous, the retrofire and the lifting entry, each figure with its
+  // source (orbital.ts; mission.md), flown through the day's air over the pad. Fly still opens on the docking chapter (src/app/address.ts `lacks`)
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-11’s own weights and engines, from its mission report, on a stated steering law, and the coast on from the state it leaves. ' +
+    'The Agena is flown from the report’s tracking at its insertion: the first-revolution terminal phase, its corrections and the braking are solved on it as each is made; the three burns its engine made with the pair docked, to an apogee of 741.5 nautical miles and back, are flown on the ship at the pair’s impulse, and the Agena is where the pair was when they parted after the tether. ' +
+    'The coincident-orbit rendezvous is solved on it in turn; the docking, the walks and the tether are not flown, and the retrofire and the automatic entry are flown as recorded (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot],
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };

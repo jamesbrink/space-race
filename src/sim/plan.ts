@@ -44,6 +44,13 @@ export interface FlightPlan {
   aloft?: Aloft;
   /** The craft its manoeuvres in orbit are made on, where it has one (sim/pursuit.ts). */
   target?: TargetDef;
+  /**
+   * The instants, s from liftoff, at which the spacecraft let its target go after flying joined to it (docked, or held to
+   * it on a tether): from each, the target is begun again where the spacecraft is and flown on its own forces from there
+   * (orbital.ts `flyOrbit`). The pair's burns are flown on the spacecraft alone, so the target as first given never had
+   * them: after the parting it is where the pair was, and what is made on it later is made on that.
+   */
+  parted?: Measure[];
   /** The record's figures, to hold a run to: set before anything was flown. */
   checks: PlanCheck[];
   /** What the record has that is not flown from but held to or shown: the published orbit, where it came down. */
