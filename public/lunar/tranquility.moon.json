@@ -1,0 +1,42 @@
+{
+  "about": "The Moon round Tranquility Base, for the flight scene (viewer/flightmoon.ts): written by tools/front-moon.mjs --sites; do not edit.",
+  "site": "tranquility",
+  "landing": [
+    0.67416,
+    23.47314
+  ],
+  "uprange": 200000,
+  "near": {
+    "file": "tranquility.near.jpg",
+    "centre": [
+      0.8653455029298871,
+      0.5009684561848929,
+      0.014414106519160948
+    ],
+    "east": [
+      -0.5010205065188151,
+      0.8654354118289993,
+      0
+    ],
+    "north": [
+      -0.012474478211557118,
+      -0.0072217629492461735,
+      0.9998961113702033
+    ],
+    "half": 0.21262862861745602,
+    "side": 1536,
+    "metres": 481.0169002082918,
+    "low": -4900,
+    "high": 3400,
+    "at": {
+      "longitude": 30.067539165998905,
+      "latitude": 0.8258960696016919
+    },
+    "height": "tranquility.near.height.png",
+    "heightMetres": 962.0338004165836,
+    "horizon": 0.7853981633974483,
+    "colour": "tranquility.near.colour.jpg"
+  },
+  "cast": "east",
+  "data": "NASA Scientific Visualization Studio, CGI Moon Kit (E. Wright, 2019; svs.gsfc.nasa.gov/4720): colour from the Lunar Reconnaissance Orbiter Camera wide-angle mosaic, heights from the Lunar Orbiter Laser Altimeter. Public domain; credit NASA/GSFC/Arizona State University"
+}

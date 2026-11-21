@@ -129,12 +129,9 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     nextCamera: () => stage.nextCamera,
     refind: () => stage.refind(),
     mapFocus: () => {
-      const focus = stage.mapFocus();
-      if (focus)
-        ui.say(
-          RIGS.map.name,
-          focus === 'craft' ? 'Turning about the vehicle · C for the Earth' : 'Turning about the Earth · C for the vehicle',
-        );
+      const turned = stage.mapFocus();
+      const name = { craft: 'the vehicle', body: 'the Earth', moon: 'the Moon' } as const;
+      if (turned) ui.say(RIGS.map.name, `Turning about ${name[turned.focus]} · C for ${name[turned.next]}`);
     },
 
     walk: (on) => (on ? void stage.enterWalk(current.id) : stage.onFoot.exitWalk()),

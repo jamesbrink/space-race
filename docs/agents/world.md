@@ -63,7 +63,7 @@ segments, measured against the kernel at points it did not fit; public/ephemeris
 reads it). With the places it carries the Moon's orientation (`moonpa`: the three Euler angles from the ICRF to its
 principal axes, DE440's own integration of its turning and librations, from NAIF's binary PCK moon_pa_de440_200625.bpc,
 refitted within 0.02 microradians, 4 cm on its ground): `world/moon.ts principalAxes` is those axes, or Meeus's
-mean-Earth ones where DE440 is not loaded (estimated: 0.03 degrees, and the two frames 0.03 apart). The Moon's gravity
+mean-Earth ones where DE440 is not loaded (estimated: 0.03 degrees, and the two frames 0.03 apart). `meanEarthAxes` turns DE440's by the fixed offset to the mean-Earth frame the maps and the landing sites are in (Park et al. 2021, section 5.3; its order and signs found by the IAU's series, which it is within 75 m of on the ground where the principal axes are 890 m off: tests/moon.test.mjs); the flight scene's Moon is turned by it (viewer/flightmoon.ts). The Moon's gravity
 is given in them (`world/lunargravity.ts`: GRGM900C from GRAIL's tracking, cut to degree 30 by
 tools/lunar-gravity-bake.mjs, which prints what the cut leaves out: 4.8 mGal of the field's 50 at 110 km, 56 of 98 at
 15 km; summed by Cunningham's recurrence; tests/lunargravity.test.mjs). An instant may be asked in two parts

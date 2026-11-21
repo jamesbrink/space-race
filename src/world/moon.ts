@@ -19,7 +19,7 @@
 import { MOON } from './bodies.ts';
 import type { Confidence } from '../measure.ts';
 import { lunarArguments, lunarLibration, moonPosition, sunPosition } from './ephemeris.ts';
-import { cross, DEG, inertialToJ2000, type Mat3, rotate, scale, sub, unit, type Vec3 } from './frames.ts';
+import { cross, DEG, inertialToJ2000, type Mat3, multiply, rotate, scale, sub, unit, type Vec3 } from './frames.ts';
 import { centuries, nutation } from './time.ts';
 
 /** The inclination of the Moon's mean equator to the ecliptic, degrees (IAU; Meeus chapter 53). */
@@ -146,6 +146,47 @@ export function principalAxes(jdTT: number): { axes: Mat3; source: 'DE440' | 'Me
     source: 'DE440',
     confidence: 'derived',
   };
+}
+
+/**
+ * The fixed turn from the Moon's principal axes (DE440's) to its mean-Earth/polar-axis frame, the one LOLA's and LROC's maps
+ * and the landing sites are in: 67.8526, 78.6944 and 0.2785 arcseconds about +Z, +Y and +X (Park, Folkner, Williams and
+ * Boggs 2021, "The JPL planetary and lunar ephemerides DE440 and DE441", AJ 161:105, section 5.3, which the repo quotes to
+ * the arcsecond; the hundredths are as remembered of the frame kernel NAIF gives with it, not read: docs/sources.md).
+ * Turned so (the mean-Earth rows are Rz Ry Rx times the principal ones, each a turn of vectors by its angle) the frame is
+ * within 75 m on the ground of the IAU's series for the Moon (Archinal et al. 2011) from 1968 to 2020, where the principal
+ * axes themselves are 890 m from it and every other order or sign 1.2 to 1.8 km: the check, not the remembering, is what
+ * the turn stands on (tests/moon.test.mjs).
+ */
+const PA_TO_ME = ((): Mat3 => {
+  const [z, y, x] = [67.8526, 78.6944, 0.2785].map((a) => (a / 3600) * DEG) as [number, number, number];
+  const Rz: Mat3 = [
+    [Math.cos(z), -Math.sin(z), 0],
+    [Math.sin(z), Math.cos(z), 0],
+    [0, 0, 1],
+  ];
+  const Ry: Mat3 = [
+    [Math.cos(y), 0, Math.sin(y)],
+    [0, 1, 0],
+    [-Math.sin(y), 0, Math.cos(y)],
+  ];
+  const Rx: Mat3 = [
+    [1, 0, 0],
+    [0, Math.cos(x), -Math.sin(x)],
+    [0, Math.sin(x), Math.cos(x)],
+  ];
+  return multiply(Rz, multiply(Ry, Rx));
+})();
+
+/**
+ * The Moon's mean-Earth/polar-axis frame at an instant (a Julian date in TT), as the rows of a rotation from the ICRF: the
+ * frame its maps and its landing sites are in (`selenographic`). From DE440's principal axes turned by the fixed
+ * `PA_TO_ME` where it is loaded (derived); otherwise Meeus's mean-Earth axes (`moonAxes`, estimated: 0.03 degrees).
+ */
+export function meanEarthAxes(jdTT: number): { axes: Mat3; source: 'DE440' | 'Meeus'; confidence: Confidence } {
+  const pa = principalAxes(jdTT);
+  if (pa.source !== 'DE440') return pa;
+  return { axes: multiply(PA_TO_ME, pa.axes), source: 'DE440', confidence: 'derived' };
 }
 
 /** A direction in the Moon's own frame as a place on it: degrees east of the prime meridian (-180 to 180) and north of the equator. */

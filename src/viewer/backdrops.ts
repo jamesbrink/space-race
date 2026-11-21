@@ -26,6 +26,9 @@ import { checkUnits } from './units.ts';
 import { uLast } from './overlay.ts';
 import { newPlace } from './programs.ts';
 import { DECK_REACH } from './weather.ts';
+import { FlightMoon } from './flightmoon.ts';
+import { frameOf } from '../world/earthframe.ts';
+import { tier } from './tier.ts';
 import { WeatherMap } from './weathermap.ts';
 
 /** Something drawn behind the model, with a camera that copies the main one's rotation. */
@@ -119,6 +122,8 @@ export interface Setting {
   tick?: (dt: number) => void;
   /** The Earth beyond the place, to scale (globe.ts): drawn once the eye can see past the place's own ground. */
   globe?: Globe;
+  /** The Moon where it is, as a body (flightmoon.ts): drawn once the eye is out of the air, over the sky's disc of it. */
+  moon?: FlightMoon;
   /** A place's air on its day (air.ts): the haze, its clouds and their drift, which the stage's cloud pass, fires and smoke read. */
   air?: PlaceAir;
   /** And its weather's map (weathermap.ts): let go with the setting. */
@@ -440,6 +445,12 @@ const placeOf = new WeakMap<Setting, string>();
 const SKY_STEP = 4;
 /** The sunlit Earth's light on what is above the air, at full phase and filling half its sky, as a share of a clear day's sky's (backdrops.ts `space`). Estimated. */
 const EARTHSHINE = 1.7;
+/**
+ * The sunlit Moon's, on the same terms: the Earth's figure times the Moon's albedo over the Earth's (0.12 against the 0.3
+ * `EARTHSHINE` is taken at: viewer/moon.ts `ALBEDO`). Derived from an estimate. At 110 km over it the Moon fills nearly
+ * half the sky, and lights what is in the Sun's shadow with a grey a third of the Earth's from low orbit.
+ */
+const MOONSHINE = EARTHSHINE * (0.12 / 0.3);
 
 /**
  * How much of the sea-level sky's glow is left at `height` metres: the sky's blue is sunlight
@@ -612,8 +623,14 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   /** The colours of the last bake at a day's brightness: a bake is owed when they have changed by more than can be seen. */
   let bakedLook: number[] = [];
 
+  // the Moon as a body, where the flight's gravity has it (made empty: nothing of it is fetched until the eye is out of the air)
+  const moon = new FlightMoon(site, frameOf(when), import.meta.env.BASE_URL, tier().lighter, renderer.capabilities.getMaxAnisotropy());
+  /** The eye as `attend` last had it: the Moon is placed for the instant in `at`, and seen from there. */
+  const eyeAt = new THREE.Vector3();
+  let eyeFrozen = false;
   const setting: Setting = {
     backdrop: new DomeBackdrop(skyMaterial(uniforms, h, true), h.sky),
+    moon,
     environment: null as unknown as THREE.Texture, // baked below, before anyone sees it
     environmentIntensity: ENVIRONMENT,
     sunDir: new THREE.Vector3(0, 1, 0),
@@ -634,6 +651,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     simplify: (on) => {
       here.simplify?.(on);
       h.cel(on);
+      moon.simplify(on);
     },
     globe,
     air: here.air,
@@ -651,6 +669,8 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       // (the clouds' frame goes with the eye once it is far from the site, before anything of this frame is drawn: cloudframe.ts)
       const rolled = here.air.follow(eye, uCloudsLeft.value <= 0);
       const moved = globe.attend(eye, frozen) || leans || rolled;
+      eyeAt.copy(eye);
+      eyeFrozen = frozen ?? false;
       return here.attend(eye) || moved;
     },
     arrived: here.arrived,
@@ -658,7 +678,10 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     paintedAt: here.paintedAt,
     plantsClear: here.plantsClear,
     plantsOut: here.plantsOut,
-    view: here.view,
+    view: (camera) => {
+      here.view?.(camera);
+      moon.view(camera as THREE.PerspectiveCamera);
+    },
     // (under a veil the Sun is a disc in a glow some degrees across: a shadow's edge is that much softer. Estimated)
     ...(overcast ? { shadowRadius: 3 } : {}),
     ...(veil ? { shadowRadius: 1 + 2 * veil.cover * Math.min(1, veil.depth / 0.4) } : {}),
@@ -666,6 +689,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
 
   /** `fade`: milliseconds to fade the bake in over; 0 puts it in at once. */
   setting.release = () => {
+    moon.dispose();
     weather.dispose();
     reflections.dispose();
     gen.dispose();
@@ -704,7 +728,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
    * climbs or goes into the night: a share of the air is a step of half a per cent (`airAbove`). On the ground
    * (`out` 0) the ground's light is given back as it is, to the bit.
    */
-  const space = (onGround: DayLight, out: number, beam: RGB, shows: number, height: number): DayLight => {
+  const space = (onGround: DayLight, out: number, beam: RGB, shows: number, height: number, moonFill = 0): DayLight => {
     if (out <= 0) return onGround;
     const keep = 1 - out;
     // the Sun: the ground's beam (when it is the Sun's) and the beam above the air, mixed by the air
@@ -726,7 +750,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     return {
       ...onGround,
       light,
-      ambient: Math.max(onGround.ambient * keep + earthshine * out, 0.002),
+      ambient: Math.max(onGround.ambient * keep + (earthshine + moonFill) * out, 0.002),
       exposure: mixLog(onGround.exposure, exposure),
       adaptation: mixLog(onGround.adaptation, exposure / DAY_EXPOSURE),
     };
@@ -746,7 +770,8 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     const [ground, gain, starAir, height] = starsShown;
     const limit = starLimit(ground, starAir, eyeLimit);
     h.show(eyeFactor < 1 ? limit + 2.5 * Math.log10(eyeFactor) : limit, gain, starAir, height);
-    h.moon.uMoonLight.value = eyeFactor < 1 ? moonShine / eyeFactor : moonShine;
+    // (and let go where the Moon itself is drawn over it: flightmoon.ts)
+    h.moon.uMoonLight.value = (eyeFactor < 1 ? moonShine / eyeFactor : moonShine) * (1 - moon.covers);
   };
   setting.eye = (factor) => {
     eyeFactor = factor;
@@ -758,7 +783,14 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     seen();
   };
   let shownLimb = 0;
+  let shownMoon = '';
   setting.at = (jdUT, height = 0, atOnce = false) => {
+    // the Moon where it is at the instant, then seen from where the eye is now; how much of the Sun it hides from the eye,
+    // and how much of the sky's disc it covers (the light and the sky are taken up again as either changes)
+    moon.at(jdUT, 1 - airAbove(height));
+    const moonMoved = moon.attend(eyeAt, atmosphereUniforms.uAtmSunLight.value, atOnce || eyeFrozen);
+    const eclipse = moon.sunShown(eyeAt);
+    const moonKey = `${Math.round(moon.covers * 100)} ${Math.round(eclipse * 200)}`;
     // the wind at the clock's instant: a function of it, so it follows the clock with no step and a jump is shown at once
     if (recovery && recoveryWindow) {
       const share = THREE.MathUtils.smoothstep(jdUT, recoveryWindow[0]!, recoveryWindow[1]!);
@@ -805,9 +837,11 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       air === shownAir &&
       rung === shownRung &&
       cover === shownCover &&
-      limb === shownLimb
+      limb === shownLimb &&
+      moonKey === shownMoon
     )
-      return fading || arrived ? { shadows: false } : null;
+      return fading || arrived || moonMoved ? { shadows: false } : null;
+    shownMoon = moonKey;
     shownCover = cover;
     shownLimb = limb;
     shownAir = air;
@@ -822,10 +856,14 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       setting.lamps = lampsLit(when.site.lamps ?? DUTY, h.sunElevation, rate);
     }
     const onGround = dayLight(h.sunElevation, h.moonUp ? { elevation: h.moonElevation, lit: h.moonLit } : null);
-    const sunAt = sunFrom(height, eyeSun);
+    // (the Sun as it reaches the eye: past the Earth's edge and the air, and past the Moon's edge)
+    const sunAt = sunFrom(height, eyeSun).map((c) => c * eclipse) as unknown as RGB;
     setting.space = 1 - air;
-    setting.sunlit = THREE.MathUtils.smoothstep(eyeSun, dipAt - 0.27, dipAt + 0.27);
-    const light = space(onGround, 1 - air, sunAt, setting.sunlit, height);
+    setting.sunlit = THREE.MathUtils.smoothstep(eyeSun, dipAt - 0.27, dipAt + 0.27) * eclipse;
+    // the sunlit Moon's light round the eye, as the Earth's is (its share of the sky and how much of its face is lit)
+    const shine = moon.shine(eyeAt);
+    const moonFill = MOONSHINE * Math.sin(shine.radius) ** 2 * shine.lit;
+    const light = space(onGround, 1 - air, sunAt, setting.sunlit, height, moonFill);
     setting.lux = light.lux;
     setting.adapted = light.adapted;
     // The stars come out as the air above the eye thins (daysky.ts: starLimit says what of that is physical), to what the

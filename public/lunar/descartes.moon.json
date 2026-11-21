@@ -1,0 +1,42 @@
+{
+  "about": "The Moon round Descartes Highlands, for the flight scene (viewer/flightmoon.ts): written by tools/front-moon.mjs --sites; do not edit.",
+  "site": "descartes",
+  "landing": [
+    -8.9734,
+    15.5011
+  ],
+  "uprange": 200000,
+  "near": {
+    "file": "descartes.near.jpg",
+    "centre": [
+      0.9147416027854804,
+      0.37289365895289334,
+      -0.15555744677183894
+    ],
+    "east": [
+      -0.37748888874118813,
+      0.9260141137568815,
+      0
+    ],
+    "north": [
+      0.1440483912107077,
+      0.05872120771731801,
+      0.9878268475567092
+    ],
+    "half": 0.21262862861745602,
+    "side": 1536,
+    "metres": 481.0169002082918,
+    "low": -4900,
+    "high": 4800,
+    "at": {
+      "longitude": 22.178225129869286,
+      "latitude": -8.949127759346078
+    },
+    "height": "descartes.near.height.png",
+    "heightMetres": 962.0338004165836,
+    "horizon": 0.7853981633974483,
+    "colour": "descartes.near.colour.jpg"
+  },
+  "cast": "east",
+  "data": "NASA Scientific Visualization Studio, CGI Moon Kit (E. Wright, 2019; svs.gsfc.nasa.gov/4720): colour from the Lunar Reconnaissance Orbiter Camera wide-angle mosaic, heights from the Lunar Orbiter Laser Altimeter. Public domain; credit NASA/GSFC/Arizona State University"
+}

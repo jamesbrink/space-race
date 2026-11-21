@@ -1,6 +1,7 @@
 // Bakes the Moon as the front page sees it (src/viewer/moon.ts): its colour, and its relief at three sizes, finest
 // where the camera starts.
 //   node tools/front-moon.mjs [--cache <dir>] [--only colour|whole|wide|near|site] [--find-site]
+//   node tools/front-moon.mjs --sites [<landing site id> ...]    each Apollo landing site's finest map, for the flight scene (below)
 //
 // Written to public/front/:
 //   moon.colour.jpg   the whole Moon's colour, 2048 x 1024: longitude -180 at the left edge to 180, north at the top
@@ -62,8 +63,10 @@ const opt = (name, fallback) => {
 };
 const cache = opt('cache', join(homedir(), '.cache/space-race/moon'));
 const only = opt('only', null);
-const out = join(root, 'public/front');
+let out = join(root, 'public/front');
 mkdirSync(out, { recursive: true });
+/** The files' names begin with this: the front page's `moon`, a landing site's own id (`--sites`). */
+let prefix = 'moon';
 mkdirSync(cache, { recursive: true });
 /** JPEG quality of the relief: its slopes are read back as numbers, so it is kept high and its colours whole (4:4:4). */
 const QUALITY = 87;
@@ -233,9 +236,14 @@ function horizonToward(map, sun, d, z) {
   return Math.asin(most);
 }
 
+/**
+ * `sun`: the direction the finest map's cast shadows are worked out toward (a unit vector in the Moon's frame), or a
+ * function giving it for each texel's direction (a landing site's: due east there); null for a map with none.
+ */
 function bakePlane(p, map, mean = 1, sun = null) {
   const { centre, east, north, half, side } = p;
-  const third = sun ? (d, z) => Math.round(255 * Math.min(1, horizonToward(map, sun, d, z) / HORIZON)) : null;
+  const toward = typeof sun === 'function' ? sun : () => sun;
+  const third = sun ? (d, z) => Math.round(255 * Math.min(1, horizonToward(map, toward(d), d, z) / HORIZON)) : null;
   const {
     rgb,
     low,
@@ -261,7 +269,7 @@ function bakePlane(p, map, mean = 1, sun = null) {
     mean,
     third,
   );
-  const file = `moon.${p.name}.jpg`;
+  const file = `${prefix}.${p.name}.jpg`;
   writeJpeg(join(out, file), rgb, side, side, QUALITY, '4:4:4');
   console.log(`${file}  ${side} x ${side}  ${sizeOf(file)}  ${low} to ${high} m  ${p.metres.toFixed(0)} m a texel`);
   const at = selenographic(centre);
@@ -276,7 +284,7 @@ function bakePlane(p, map, mean = 1, sun = null) {
       const mean4 = (z[at4] + z[at4 + 1] + z[at4 + side] + z[at4 + side + 1]) / 4;
       bytes[j * small + i] = Math.round((255 * (mean4 - low)) / (high - low));
     }
-  const heightFile = `moon.${p.name}.height.png`;
+  const heightFile = `${prefix}.${p.name}.height.png`;
   writeGreyPng(join(out, heightFile), bytes, small, small);
   console.log(`${heightFile}  ${small} x ${small}  ${sizeOf(heightFile)}`);
   return { ...made, height: heightFile, heightMetres: 2 * p.metres, horizon: HORIZON };
@@ -333,7 +341,7 @@ function bakePlaneColour(p, file, side) {
             (raw[((j0 + 1) * w + i0) * 3 + c] * (1 - fx) + raw[((j0 + 1) * w + i1) * 3 + c] * fx) * fy,
         );
     }
-  const name = `moon.${p.name}.colour.jpg`;
+  const name = `${prefix}.${p.name}.colour.jpg`;
   writeJpeg(join(out, name), rgb, side, side, 88, '4:2:0');
   console.log(`${name}  ${side} x ${side}  ${sizeOf(name)}`);
   return name;
@@ -533,6 +541,60 @@ function bakeSite(map) {
     },
     clear: { over, least },
   };
+}
+
+/**
+ * `--sites [<id> ...]`: for each Apollo landing site (src/world/lunar-sites.json, from missions/usa/places/moon/), the finest
+ * map on a plane touching the Moon `UPRANGE` back along the way its LM came in (the site's `approach`), so that it holds the
+ * descent from where it began, 480 to 520 km out, and the ground ahead of the LM; the same size and texel as the front
+ * page's (728 km across, 481 m a texel) with its heights and its colour, written to public/lunar/<id>.moon.json,
+ * <id>.near.jpg, <id>.near.height.png and <id>.near.colour.jpg. The flight scene draws the nearest site's over the whole
+ * Moon's maps, which it shares with the front page (viewer/flightmoon.ts). Its cast shadows are worked out toward the
+ * east at every texel: every Apollo LM came down in the lunar morning with the Sun low in the east, and the shader
+ * believes them while the Sun's bearing over the map is within a few degrees of that (viewer/moon.ts).
+ */
+const UPRANGE = 200_000;
+if (args.includes('--sites')) {
+  const lunar = JSON.parse((await import('node:fs')).readFileSync(join(root, 'src/world/lunar-sites.json'), 'utf8'));
+  const asked = args.slice(args.indexOf('--sites') + 1).filter((a) => !a.startsWith('--'));
+  const ids = asked.length ? asked : Object.keys(lunar.sites);
+  out = join(root, 'public/lunar');
+  mkdirSync(out, { recursive: true });
+  const fine = heights(await source('ldem_64_uint.tif'));
+  const colour = await source('lroc_color_poles_8k.tif');
+  for (const id of ids) {
+    const s = lunar.sites[id];
+    if (!s) throw new Error(`no landing site ${id} in lunar-sites.json`);
+    prefix = id;
+    const [lat, lon] = s.landing.map((x) => x * DEG);
+    const up = [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
+    const eastOf = (d) => unit(cross([0, 0, 1], d));
+    const east = eastOf(up);
+    const north = cross(up, east);
+    // back along the approach (degrees true, the way it was flown at the LM)
+    const a = s.approach * DEG;
+    const ahead = [0, 1, 2].map((i) => Math.cos(a) * north[i] + Math.sin(a) * east[i]);
+    const b = UPRANGE / MOON_RADIUS;
+    const centre = unit(along(up, ahead, Math.cos(b), -Math.sin(b)));
+    const p = plane('near', centre, 728_000, 1536);
+    const near = bakePlane(p, fine, 1, eastOf);
+    near.colour = bakePlaneColour(p, colour, 640);
+    const meta = {
+      about: `The Moon round ${s.name}, for the flight scene (viewer/flightmoon.ts): written by tools/front-moon.mjs --sites; do not edit.`,
+      site: id,
+      landing: s.landing,
+      uprange: UPRANGE,
+      near,
+      cast: 'east',
+      data:
+        'NASA Scientific Visualization Studio, CGI Moon Kit (E. Wright, 2019; svs.gsfc.nasa.gov/4720): colour from the Lunar ' +
+        'Reconnaissance Orbiter Camera wide-angle mosaic, heights from the Lunar Orbiter Laser Altimeter. Public domain; credit ' +
+        'NASA/GSFC/Arizona State University',
+    };
+    writeFileSync(join(out, `${id}.moon.json`), `${JSON.stringify(meta, null, 2)}\n`);
+    console.log(`${id}.moon.json`);
+  }
+  process.exit(0);
 }
 
 const metaFile = join(out, 'moon.json');

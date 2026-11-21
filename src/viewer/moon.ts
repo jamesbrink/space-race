@@ -3,7 +3,7 @@ import type { Vec3 } from '../world/frames.ts';
 import { MOON_RADIUS } from '../world/moon.ts';
 import { CRATERS, EARTHSHINE, groundGlsl, LIGHT_GLSL } from './moonground.ts';
 import { MoonRocks } from './moonrocks.ts';
-import { SiteGround, type SiteMeta } from './moonsite.ts';
+import { type ApronGround, SiteGround, type SiteMeta } from './moonsite.ts';
 
 /**
  * The Moon as a body: its real ground, lit by the real Sun, seen from 40 m up to 100,000 km (the front page's, under its
@@ -65,8 +65,8 @@ import { SiteGround, type SiteMeta } from './moonsite.ts';
  * (481 m apart) is a smooth curve through them.
  */
 
-/** A relief map on a plane touching the Moon, as tools/front-moon.mjs describes it (public/front/moon.json). */
-interface PlaneMeta {
+/** A relief map on a plane touching the Moon, as tools/front-moon.mjs describes it (public/front/moon.json, public/lunar/<site>.moon.json). */
+export interface PlaneMeta {
   file: string;
   /** Its colour, where it has its own (the finest). */
   colour?: string;
@@ -141,17 +141,20 @@ const VERTEX = /* glsl */ `
   attribute float apart;   // how far this vertex is from its neighbours, metres
   uniform vec3 uEyeAt;     // the eye, in the Moon's frame, metres
   uniform mat3 uSite;      // rows: the site's east, north and up
+  uniform mat3 uCentre;    // the mesh's rings, made about +Z, turned to be about where they are wanted (the front page: as made)
+  uniform mat3 uTurn;      // from the Moon's frame to the scene's (the front page draws in the Moon's: none)
   varying vec3 vDir, vP;
   varying vec2 vQ;
   ${MAPS}
   ${RELIEF}
   void main() {
-    vDir = dir;
-    vQ = ${MOON_RADIUS.toFixed(1)} * (uSite * dir).xy;
+    vec3 d = uCentre * dir;
+    vDir = d;
+    vQ = ${MOON_RADIUS.toFixed(1)} * (uSite * d).xy;
     // from the eye: both are a few thousand kilometres or less while the ground is near enough for a metre to show
-    vec3 p = dir * (${MOON_RADIUS.toFixed(1)} + relief(dir, apart)) - uEyeAt;
+    vec3 p = d * (${MOON_RADIUS.toFixed(1)} + relief(d, apart)) - uEyeAt;
     vP = p;
-    gl_Position = projectionMatrix * vec4(mat3(viewMatrix) * p, 1.0);
+    gl_Position = projectionMatrix * vec4(mat3(viewMatrix) * (uTurn * p), 1.0);
   }`;
 
 /** The apron's: each from the site's ground, where it was put in doubles; its outer rings brought to the sphere's own heights. */
@@ -161,6 +164,7 @@ const APRON_VERTEX = /* glsl */ `
   attribute float ground;  // its height above the reference sphere, metres
   attribute float apart;
   uniform vec3 uEyeSite;   // the eye, from the site's ground, in the Moon's frame, metres
+  uniform mat3 uTurn;
   varying vec3 vDir, vP;
   varying vec2 vQ;
   ${MAPS}
@@ -172,7 +176,7 @@ const APRON_VERTEX = /* glsl */ `
     vec3 p = position - uEyeSite;
     if (meet > 0.0) p += dir * (meet * (relief(dir, apart) - ground));
     vP = p;
-    gl_Position = projectionMatrix * vec4(mat3(viewMatrix) * p, 1.0);
+    gl_Position = projectionMatrix * vec4(mat3(viewMatrix) * (uTurn * p), 1.0);
   }`;
 
 const fragment = (apron: boolean, octaves: number, grains: number): string => /* glsl */ `
@@ -183,6 +187,9 @@ const fragment = (apron: boolean, octaves: number, grains: number): string => /*
   uniform float uGain;    // the colour map's scale to the Moon's albedo
   uniform vec2 uCast;     // the cast shadows: how much they are believed (the Sun still near where they were worked out for), and the angle their byte spans
   uniform float uMade;    // whether the site's ground is known (the made ground is drawn)
+  uniform float uDetail;  // how far the finest maps are in (a flight's: they fade as they are changed for another site's)
+  uniform float uFade;    // how much of what is behind it is covered (a flight's: it comes in as the eye leaves the air)
+  uniform float uCel;     // drawn as the cel look draws: the light in flat tones
   varying vec3 vDir, vP;
   varying vec2 vQ;
   ${MAPS}
@@ -214,6 +221,8 @@ const fragment = (apron: boolean, octaves: number, grains: number): string => /*
     // (each read whether or not it counts, so that its gradient is taken evenly across where it begins)
     float wWide, wNear;
     vec2 atWide = onPlane(uWide, uRange[1].z, d, wWide), atNear = onPlane(uNear, uRange[2].z, d, wNear);
+    wWide *= uDetail;
+    wNear *= uDetail;
     n = mix(n, normalFrom(d, levelEast(uWide, d), slopes(texture(tWide, atWide).rg)), wWide);
     vec4 near = texture(tNear, atNear);
     n = mix(n, normalFrom(d, levelEast(uNear, d), slopes(near.rg)), wNear);
@@ -237,7 +246,15 @@ const fragment = (apron: boolean, octaves: number, grains: number): string => /*
       shade *= mix(1.0, lit, made);
       albedo *= 1.0 + made * bright;
     }
-    gl_FragColor = vec4(moonlight(albedo, n, d, v, uSun, shade, 0.0), 1.0);
+    vec3 sent = moonlight(albedo, n, d, v, uSun, shade, 0.0);
+    if (uCel > 0.5) {
+      // the cel look's tones (look.ts TONES: shade, a half tone, full light), by how much of the light level ground
+      // square to the Sun would send the pixel has
+      float full = dot(albedo * uSunLight, vec3(0.2126, 0.7152, 0.0722));
+      float k = dot(sent, vec3(0.2126, 0.7152, 0.0722)) / max(full, 1e-6);
+      sent = albedo * uSunLight * (k < 0.12 ? 0.04 : k < 0.45 ? 0.42 : k < 0.8 ? 0.78 : 1.0);
+    }
+    gl_FragColor = vec4(sent, uFade);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }`;
@@ -253,7 +270,10 @@ function shell(centre: Vec3, fine: number, grow: number, spokes: number): { dirs
   rings.push(all);
   // two directions across the centre's
   const c = new THREE.Vector3(centre[0], centre[1], centre[2]).normalize();
-  const a = new THREE.Vector3(0, 0, 1).cross(c).normalize();
+  const a = new THREE.Vector3(0, 0, 1).cross(c);
+  // (about the pole itself, any direction across will do)
+  if (a.lengthSq() < 1e-12) a.set(1, 0, 0);
+  a.normalize();
   const b = new THREE.Vector3().crossVectors(c, a);
   const dirs = new Float32Array(rings.length * (spokes + 1) * 3);
   const apart = new Float32Array(rings.length * (spokes + 1));
@@ -332,7 +352,7 @@ const SURFACING = 1200;
 
 /** The apron's vertices: rings about the site, each `grow` further than the last, from `first` metres to `reach`. */
 function apron(
-  site: SiteGround,
+  site: ApronGround,
   spokes: number,
   grow: number,
 ): { position: Float32Array; dirs: Float32Array; q: Float32Array; ground: Float32Array; apart: Float32Array; index: Uint32Array } {
@@ -373,33 +393,78 @@ function apron(
   return { position, dirs, q, ground, apart, index };
 }
 
+/**
+ * A landing site's finest map and its ground, for the flight scene (viewer/flightmoon.ts): its moon.json's `near` entry
+ * (tools/front-moon.mjs `--sites`), the folder its maps are in, and the ground round the site whole (the apron's).
+ */
+export interface MoonDetail {
+  id: string;
+  dir: string;
+  near: PlaneMeta;
+  ground: ApronGround;
+}
+
+/** How long a site's finest maps take to go out as another's come in, milliseconds, each way. */
+const CHANGING = 800;
+/**
+ * The flight's Moon is drawn on a coarse mesh (`COARSE`: 40,000 triangles) from where the most its relief (10 km) can
+ * lift its edge is a quarter of a pixel at a long lens, and on the fine one nearer: no edge is seen to change.
+ */
+const COARSE = { fine: 15_000, grow: 0.02, spokes: 128, beyond: 40_000_000 };
+const Z: Vec3 = [0, 0, 1];
+
 export class MoonBody {
   /** All of it: the sphere, the apron, the blocks and their shadows. */
   readonly group = new THREE.Group();
   private readonly mesh: THREE.Mesh;
   private readonly apron: THREE.Mesh;
-  private site: SiteGround | null = null;
+  /** A flight's: the sphere coarse, for far off (`COARSE`). */
+  private readonly coarse: THREE.Mesh | null = null;
+  private site: ApronGround | null = null;
+  private clear: SiteGround | null = null;
   private rocks: MoonRocks | null = null;
   private readonly uniforms: Record<string, THREE.IUniform>;
   private readonly textures: THREE.Texture[] = [];
   private arrivedAt = 0;
   private gone = false;
-  /** Where the Sun stood over the Moon when the finest map's cast shadows were worked out. */
+  /** Where the Sun stood over the Moon when the finest map's cast shadows were worked out (the front page's); or, a site's, toward the east. */
   private castFor: THREE.Vector3 | null = null;
+  private castEast = false;
   /** The bearing the blocks are laid out about, radians anticlockwise from the site's east. */
   private toward = 0;
+  /** A flight's: the site whose finest maps are drawn, the one asked for, and when the change began. */
+  private detailOf: MoonDetail | null = null;
+  private wanted: MoonDetail | null = null;
+  private changing = 0;
+  private goingAt = 0;
+  private readonly flight: boolean;
+  private readonly lighter: boolean;
+  private readonly anisotropy: number;
+  /** The near map's own textures, let go when another site's come in. */
+  private readonly nearTextures = new Set<THREE.Texture>();
 
   /**
    * `dir`: the folder its bake is in (`moon.json` and its maps: tools/front-moon.mjs). `sunLight`: the Sun's light over
-   * pi, as the Earth is given it. `lighter`: half the rings and spokes, and the maps at half size (tier.ts).
+   * pi, as the Earth is given it. `lighter`: half the rings and spokes, and the maps at half size (tier.ts). `flight`: the
+   * flight scene's Moon (viewer/flightmoon.ts): only the whole Moon's maps are read from `dir`, its finest maps and ground
+   * are a landing site's, given when it is near (`detail`), its rings are turned to be about the point under the eye, it
+   * is drawn over what is behind it by `fade`, and it has no blocks.
    */
-  constructor(dir: string, sunLight: THREE.Color, lighter: boolean, anisotropy: number) {
+  constructor(dir: string, sunLight: THREE.Color, lighter: boolean, anisotropy: number, flight = false) {
+    this.flight = flight;
+    this.lighter = lighter;
+    this.anisotropy = anisotropy;
     this.uniforms = {
       uEyeAt: { value: new THREE.Vector3() },
       uEyeSite: { value: new THREE.Vector3() },
       uSite: { value: new THREE.Matrix3() },
+      uCentre: { value: new THREE.Matrix3() },
+      uTurn: { value: new THREE.Matrix3() },
       uEarth: { value: new THREE.Vector4(1, 0, 0, 0) },
       uMade: { value: 0 },
+      uDetail: { value: 1 },
+      uFade: { value: 1 },
+      uCel: { value: 0 },
       uSun: { value: new THREE.Vector3(1, 0, 0) },
       uSunLight: { value: sunLight },
       tWhole: { value: this.keep(flat()) },
@@ -411,36 +476,39 @@ export class MoonBody {
       tNearColour: { value: this.keep(flat()) },
       uWide: { value: new THREE.Matrix3() },
       uNear: { value: new THREE.Matrix3() },
-      uRange: { value: [new THREE.Vector4(0, 0, 1, 0), new THREE.Vector4(0, 0, 1, 0), new THREE.Vector4(0, 0, 1, 0)] },
+      // (no plane until there is one: a half breadth of nothing has no texel inside it)
+      uRange: { value: [new THREE.Vector4(0, 0, 1, 0), new THREE.Vector4(0, 0, 0, 0), new THREE.Vector4(0, 0, 0, 0)] },
       uIn: { value: 0 },
       uGain: { value: 1 },
     };
     // (the finest craters and grain are left out on a lighter machine: its pixels are larger than they are)
     const [octaves, grains] = lighter ? [11, 10] : [CRATERS.octaves, 12];
-    this.mesh = new THREE.Mesh(
-      new THREE.BufferGeometry(),
-      new THREE.ShaderMaterial({
-        name: 'far-moon',
-        uniforms: this.uniforms,
-        vertexShader: VERTEX,
-        fragmentShader: fragment(false, octaves, grains),
-      }),
-    );
+    const material = (name: string, vertexShader: string, apron: boolean): THREE.ShaderMaterial => {
+      const m = new THREE.ShaderMaterial({ name, uniforms: this.uniforms, vertexShader, fragmentShader: fragment(apron, octaves, grains) });
+      // (a flight's is laid over what is behind it as it comes in: its own alpha, `uFade`)
+      if (flight) {
+        m.blending = THREE.CustomBlending;
+        m.blendSrc = THREE.SrcAlphaFactor;
+        m.blendDst = THREE.OneMinusSrcAlphaFactor;
+      }
+      return m;
+    };
+    this.mesh = new THREE.Mesh(new THREE.BufferGeometry(), material('far-moon', VERTEX, false));
     this.mesh.name = 'moon';
-    this.apron = new THREE.Mesh(
-      new THREE.BufferGeometry(),
-      new THREE.ShaderMaterial({
-        name: 'moon-apron',
-        uniforms: this.uniforms,
-        vertexShader: APRON_VERTEX,
-        fragmentShader: fragment(true, octaves, grains),
-      }),
-    );
+    this.apron = new THREE.Mesh(new THREE.BufferGeometry(), material('moon-apron', APRON_VERTEX, true));
     this.apron.name = 'moon-apron';
-    for (const [order, mesh] of [this.mesh, this.apron].entries()) {
+    const meshes = [this.mesh, this.apron];
+    if (flight) {
+      this.coarse = new THREE.Mesh(new THREE.BufferGeometry(), this.mesh.material);
+      this.coarse.name = 'moon-coarse';
+      meshes.push(this.coarse);
+    }
+    for (const [order, mesh] of meshes.entries()) {
       mesh.frustumCulled = false;
-      mesh.renderOrder = 2 + order;
+      mesh.renderOrder = 2 + Math.min(order, 1);
       mesh.visible = false;
+      // (nothing of it is picked or solid: its places are the shader's)
+      mesh.raycast = () => {};
       this.group.add(mesh);
     }
     void this.load(dir, lighter, anisotropy);
@@ -451,57 +519,65 @@ export class MoonBody {
     return texture;
   }
 
+  /** The mesh's directions and triangles into a geometry. */
+  private static shaped(geometry: THREE.BufferGeometry, made: { dirs: Float32Array; apart: Float32Array; index: Uint32Array }): void {
+    // (three wants a position to count vertices by; the shader places them itself, from the same numbers)
+    const directions = new THREE.BufferAttribute(made.dirs, 3);
+    geometry.setAttribute('dir', directions);
+    geometry.setAttribute('position', directions);
+    geometry.setAttribute('apart', new THREE.BufferAttribute(made.apart, 1));
+    geometry.setIndex(new THREE.BufferAttribute(made.index, 1));
+  }
+
+  private put(name: string, texture: THREE.Texture): void {
+    if (this.gone) return void texture.dispose();
+    const u = this.uniforms;
+    const was = u[name]!.value as THREE.Texture;
+    was.dispose();
+    this.nearTextures.delete(was);
+    u[name]!.value = this.keep(texture);
+  }
+
   private async load(dir: string, lighter: boolean, anisotropy: number): Promise<void> {
     const meta = (await (await fetch(`${dir}moon.json`)).json()) as MoonMeta;
     if (this.gone) return;
     const u = this.uniforms;
+    const ranges = u.uRange!.value as THREE.Vector4[];
+    ranges[0]!.set(meta.whole.low, meta.whole.high - meta.whole.low, 1, (2 * Math.PI * MOON_RADIUS) / meta.whole.width);
+    u.uGain!.value = ALBEDO / meta.colour.mean;
+    const most = lighter ? 1024 : 4096;
+    if (this.flight) {
+      // the whole Moon alone, its rings about +Z (turned each frame to be about the point under the eye: `place`)
+      MoonBody.shaped(this.mesh.geometry, lighter ? shell(Z, 1000, 0.008, 360) : shell(Z, 500, 0.004, 720));
+      MoonBody.shaped(this.coarse!.geometry, shell(Z, COARSE.fine, COARSE.grow, COARSE.spokes));
+      const [colour, whole] = await Promise.all([
+        picture(`${dir}${meta.colour.file}`, true, most, anisotropy),
+        picture(`${dir}${meta.whole.file}`, false, most, anisotropy),
+      ]);
+      this.put('tColour', colour);
+      this.put('tWhole', whole);
+      this.arrivedAt = performance.now();
+      if (this.wanted) void this.change(this.wanted);
+      return;
+    }
     const rows = (p: PlaneMeta): THREE.Matrix3 =>
       new THREE.Matrix3().set(p.east[0], p.east[1], p.east[2], p.north[0], p.north[1], p.north[2], p.centre[0], p.centre[1], p.centre[2]);
     u.uWide!.value = rows(meta.wide);
     u.uNear!.value = rows(meta.near);
-    const ranges = u.uRange!.value as THREE.Vector4[];
-    ranges[0]!.set(meta.whole.low, meta.whole.high - meta.whole.low, 1, (2 * Math.PI * MOON_RADIUS) / meta.whole.width);
     ranges[1]!.set(meta.wide.low, meta.wide.high - meta.wide.low, meta.wide.half, meta.wide.metres);
     ranges[2]!.set(meta.near.low, meta.near.high - meta.near.low, meta.near.half, meta.near.heightMetres ?? meta.near.metres);
     this.castFor = new THREE.Vector3(...meta.for.sun);
     (u.uCast!.value as THREE.Vector2).y = meta.near.horizon ?? Math.PI / 4;
-    u.uGain!.value = ALBEDO / meta.colour.mean;
     const s = meta.site;
     // (the Earth's bearing from the site as the bake found it: the camera looks at the Earth)
     this.toward = s.towardEarth;
-    u.uSite!.value = new THREE.Matrix3().set(
-      s.east[0],
-      s.east[1],
-      s.east[2],
-      s.north[0],
-      s.north[1],
-      s.north[2],
-      s.up[0],
-      s.up[1],
-      s.up[2],
-    );
-    const { dirs, apart, index } = lighter ? shell(meta.near.centre, 1000, 0.008, 360) : shell(meta.near.centre, 500, 0.004, 720);
-    const geometry = this.mesh.geometry;
-    // (three wants a position to count vertices by; the shader places them itself, from the same numbers)
-    const directions = new THREE.BufferAttribute(dirs, 3);
-    geometry.setAttribute('dir', directions);
-    geometry.setAttribute('position', directions);
-    geometry.setAttribute('apart', new THREE.BufferAttribute(apart, 1));
-    geometry.setIndex(new THREE.BufferAttribute(index, 1));
+    u.uSite!.value = siteRows(s);
+    MoonBody.shaped(this.mesh.geometry, lighter ? shell(meta.near.centre, 1000, 0.008, 360) : shell(meta.near.centre, 500, 0.004, 720));
     // the ground round the site, whole: the apron's heights and the blocks' are read from it
     const grid = new Int16Array(await (await fetch(`${dir}${s.file}`)).arrayBuffer());
     if (this.gone) return;
-    const site = (this.site = new SiteGround(s, grid));
-    {
-      const a = lighter ? apron(site, APRON.spokes / 2, APRON.grow ** 2) : apron(site, APRON.spokes, APRON.grow);
-      const g = this.apron.geometry;
-      g.setAttribute('position', new THREE.BufferAttribute(a.position, 3));
-      g.setAttribute('dir', new THREE.BufferAttribute(a.dirs, 3));
-      g.setAttribute('q', new THREE.BufferAttribute(a.q, 2));
-      g.setAttribute('ground', new THREE.BufferAttribute(a.ground, 1));
-      g.setAttribute('apart', new THREE.BufferAttribute(a.apart, 1));
-      g.setIndex(new THREE.BufferAttribute(a.index, 1));
-    }
+    const site = (this.site = this.clear = new SiteGround(s, grid));
+    this.shapeApron(site, lighter);
     // the blocks, about the bearing the Earth stood on at the instant the bake was for (the camera looks at the Earth)
     this.rocks = new MoonRocks(site, this.toward, lighter, {
       uEyeSite: u.uEyeSite!,
@@ -511,12 +587,6 @@ export class MoonBody {
     });
     this.group.add(this.rocks.group);
     u.uMade!.value = 1;
-    const most = lighter ? 1024 : 4096;
-    const put = (name: string, texture: THREE.Texture): void => {
-      if (this.gone) return void texture.dispose();
-      (u[name]!.value as THREE.Texture).dispose();
-      u[name]!.value = this.keep(texture);
-    };
     // what the first frame is of first: the ground under the camera, the whole Moon's colour; then the rest
     const [near, nearHeight, nearColour, colour, whole] = await Promise.all([
       picture(`${dir}${meta.near.file}`, false, most, anisotropy),
@@ -525,14 +595,91 @@ export class MoonBody {
       picture(`${dir}${meta.colour.file}`, true, most, anisotropy),
       picture(`${dir}${meta.whole.file}`, false, most, anisotropy),
     ]);
-    put('tNear', near);
-    put('tNearHeight', nearHeight);
-    put('tNearColour', nearColour);
-    put('tColour', colour);
-    put('tWhole', whole);
+    this.put('tNear', near);
+    this.put('tNearHeight', nearHeight);
+    this.put('tNearColour', nearColour);
+    this.put('tColour', colour);
+    this.put('tWhole', whole);
     this.mesh.visible = this.apron.visible = !this.gone;
     this.arrivedAt = performance.now();
-    put('tWide', await picture(`${dir}${meta.wide.file}`, false, most, anisotropy));
+    this.put('tWide', await picture(`${dir}${meta.wide.file}`, false, most, anisotropy));
+  }
+
+  /** The apron's mesh, about a site's ground. */
+  private shapeApron(site: ApronGround, lighter: boolean): void {
+    const a = lighter ? apron(site, APRON.spokes / 2, APRON.grow ** 2) : apron(site, APRON.spokes, APRON.grow);
+    const g = this.apron.geometry;
+    g.setAttribute('position', new THREE.BufferAttribute(a.position, 3));
+    g.setAttribute('dir', new THREE.BufferAttribute(a.dirs, 3));
+    g.setAttribute('q', new THREE.BufferAttribute(a.q, 2));
+    g.setAttribute('ground', new THREE.BufferAttribute(a.ground, 1));
+    g.setAttribute('apart', new THREE.BufferAttribute(a.apart, 1));
+    g.setIndex(new THREE.BufferAttribute(a.index, 1));
+    g.computeBoundingSphere();
+  }
+
+  /**
+   * A flight's: draw this landing site's finest maps and its ground (or none). The ones on show go out over `CHANGING` and
+   * these come in over as long once they are here, so no map is cut in or out.
+   */
+  detail(to: MoonDetail | null): void {
+    if (!this.flight || to?.id === this.wanted?.id) return;
+    this.wanted = to;
+    this.goingAt = performance.now();
+    if (this.arrivedAt) void this.change(to);
+  }
+
+  /** The site's id whose maps are drawn, or are coming. */
+  get detailed(): string | null {
+    return this.wanted?.id ?? null;
+  }
+
+  private async change(to: MoonDetail | null): Promise<void> {
+    const most = this.lighter ? 1024 : 4096;
+    const maps = to
+      ? await Promise.all([
+          picture(`${to.dir}${to.near.file}`, false, most, this.anisotropy),
+          picture(`${to.dir}${to.near.height}`, false, most, 1),
+          picture(`${to.dir}${to.near.colour}`, true, most, this.anisotropy),
+        ])
+      : null;
+    // (asked for another meanwhile, or let go)
+    if (this.gone || this.wanted !== to) {
+      for (const m of maps ?? []) m.dispose();
+      return;
+    }
+    // the ones on show go out first
+    while (this.detailOf && (this.uniforms.uDetail!.value as number) > 0) {
+      await new Promise((r) => setTimeout(r, 50));
+      if (this.gone || this.wanted !== to) {
+        for (const m of maps ?? []) m.dispose();
+        return;
+      }
+    }
+    const u = this.uniforms;
+    this.detailOf = to;
+    this.changing = performance.now();
+    if (!to || !maps) {
+      u.uMade!.value = 0;
+      this.site = null;
+      this.apron.visible = false;
+      return;
+    }
+    const near = to.near;
+    u.uNear!.value = new THREE.Matrix3().set(...near.east, ...near.north, ...near.centre);
+    (u.uRange!.value as THREE.Vector4[])[2]!.set(near.low, near.high - near.low, near.half, near.heightMetres ?? near.metres);
+    (u.uCast!.value as THREE.Vector2).y = near.horizon ?? Math.PI / 4;
+    this.castEast = true;
+    const names = ['tNear', 'tNearHeight', 'tNearColour'];
+    for (const [i, map] of maps.entries()) {
+      this.put(names[i]!, map);
+      this.nearTextures.add(map);
+    }
+    this.site = to.ground;
+    u.uSite!.value = siteRows(to.ground.meta);
+    this.shapeApron(to.ground, this.lighter);
+    u.uMade!.value = 1;
+    this.apron.visible = this.mesh.visible || (this.coarse?.visible ?? false);
   }
 
   get ready(): boolean {
@@ -541,12 +688,28 @@ export class MoonBody {
 
   /** How near the ground comes to an eye `over` metres above the site along the front page's path, metres; none while it is not known, or beyond what was worked out. */
   clearance(over: number): number | null {
-    return this.site?.clearance(over) ?? null;
+    return this.clear?.clearance(over) ?? null;
   }
 
   /** How many blocks lie round the site (none until its ground has arrived). */
   get blocks(): number {
     return this.rocks?.count ?? 0;
+  }
+
+  /** A flight's: how much of what is behind it is covered, 0 to 1, and whether it is drawn at all. */
+  fade(share: number): void {
+    this.uniforms.uFade!.value = share;
+    this.group.visible = share > 0;
+  }
+
+  /** A flight's: the turn from the Moon's frame to the scene's (its columns: the Moon's axes in the scene). */
+  turn(m: THREE.Matrix3): void {
+    (this.uniforms.uTurn!.value as THREE.Matrix3).copy(m);
+  }
+
+  /** The cel look: its light in flat tones. */
+  cel(on: boolean): void {
+    this.uniforms.uCel!.value = on ? 1 : 0;
   }
 
   /**
@@ -559,12 +722,24 @@ export class MoonBody {
     const toSun = (this.uniforms.uSun!.value as THREE.Vector3).set(sun[0], sun[1], sun[2]).normalize();
     const e = Math.hypot(earth[0], earth[1], earth[2]);
     (this.uniforms.uEarth!.value as THREE.Vector4).set(earth[0] / e, earth[1] / e, earth[2] / e, EARTHSHINE * earthLit);
-    // the cast shadows are the instant's: believed while the Sun is within 3 degrees of where it stood then, gone by 8
-    const moved = this.castFor ? toSun.angleTo(this.castFor) : Math.PI;
-    (this.uniforms.uCast!.value as THREE.Vector2).x = 1 - THREE.MathUtils.smoothstep(moved, (3 * Math.PI) / 180, (8 * Math.PI) / 180);
+    const cast = this.uniforms.uCast!.value as THREE.Vector2;
+    if (this.castEast) {
+      // a site's cast shadows are worked out toward the east at every texel: believed while the Sun's bearing over the map
+      // is within 3 degrees of east (the lunar morning every LM came down in), gone by 8, and never with the Sun in the west
+      const plane = this.uniforms.uNear!.value as THREE.Matrix3;
+      const r = plane.elements; // (column-major: the rows set are east, north, middle)
+      const [east, north] = [toSun.x * r[0]! + toSun.y * r[3]! + toSun.z * r[6]!, toSun.x * r[1]! + toSun.y * r[4]! + toSun.z * r[7]!];
+      const off = east > 0 ? Math.abs(Math.atan2(north, east)) : Math.PI;
+      cast.x = 1 - THREE.MathUtils.smoothstep(off, (3 * Math.PI) / 180, (8 * Math.PI) / 180);
+    } else {
+      // the cast shadows are the instant's: believed while the Sun is within 3 degrees of where it stood then, gone by 8
+      const moved = this.castFor ? toSun.angleTo(this.castFor) : Math.PI;
+      cast.x = 1 - THREE.MathUtils.smoothstep(moved, (3 * Math.PI) / 180, (8 * Math.PI) / 180);
+    }
     const k = this.arrivedAt ? Math.min(1, (now - this.arrivedAt) / SURFACING) : 0;
     let coming = k !== this.uniforms.uIn!.value;
     this.uniforms.uIn!.value = k;
+    if (this.flight) coming = this.aim(eye, now) || coming;
     if (this.site) {
       // from the site's ground, in doubles: near it the difference is a few metres, and a float holds it to a hair
       const o = this.site.origin;
@@ -577,13 +752,44 @@ export class MoonBody {
     return coming;
   }
 
+  /**
+   * A flight's, each frame: the rings turned to be about the point under the eye (so the mesh is finest where the eye is,
+   * wherever it goes round), the coarse mesh from far off and the fine one nearer, and a site's finest maps eased out
+   * and in as they are changed. True while something of that is under way.
+   */
+  private aim(eye: Vec3, now: number): boolean {
+    if (!this.arrivedAt) return false;
+    const r = Math.hypot(eye[0], eye[1], eye[2]);
+    const under = new THREE.Vector3(eye[0] / r, eye[1] / r, eye[2] / r);
+    const q = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), under);
+    (this.uniforms.uCentre!.value as THREE.Matrix3).setFromMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(q));
+    const far = r - MOON_RADIUS > COARSE.beyond;
+    this.mesh.visible = !far;
+    this.coarse!.visible = far;
+    this.apron.visible = this.site !== null && !far;
+    // the finest maps: out while another's are wanted, in once they are here
+    const u = this.uniforms.uDetail!;
+    const was = u.value as number;
+    const going = this.wanted !== this.detailOf;
+    const since = (now - this.changing) / CHANGING;
+    u.value = going
+      ? Math.min(was, Math.max(0, 1 - (now - this.goingAt) / CHANGING))
+      : this.detailOf
+        ? Math.min(1, Math.max(was, since))
+        : 0;
+    return u.value !== was;
+  }
+
   dispose(): void {
     this.gone = true;
     for (const t of this.textures) t.dispose();
-    for (const mesh of [this.mesh, this.apron]) {
-      mesh.geometry.dispose();
-      (mesh.material as THREE.Material).dispose();
-    }
+    for (const mesh of [this.mesh, this.apron, ...(this.coarse ? [this.coarse] : [])]) mesh.geometry.dispose();
+    for (const mesh of [this.mesh, this.apron]) (mesh.material as THREE.Material).dispose();
     this.rocks?.dispose();
   }
+}
+
+/** A site's east, north and up as the rows of a matrix. */
+function siteRows(s: { east: Vec3; north: Vec3; up: Vec3 }): THREE.Matrix3 {
+  return new THREE.Matrix3().set(s.east[0], s.east[1], s.east[2], s.north[0], s.north[1], s.north[2], s.up[0], s.up[1], s.up[2]);
 }

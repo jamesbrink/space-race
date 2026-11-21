@@ -69,6 +69,8 @@ export interface MapOf {
   reach: number;
   /** The furthest from the vehicle any of that is, m. */
   extent: number;
+  /** Another body to turn about, where it is drawn (the Moon: viewer/flightmoon.ts): its centre in the scene and its radius, m. */
+  moon?: { centre: THREE.Vector3; radius: number };
 }
 
 /** What a rig may ask of the world it is in. Lengths are metres in the scene's frame. */

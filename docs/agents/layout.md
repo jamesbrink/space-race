@@ -126,6 +126,7 @@ public/front/                         the front page's picture (committed): the 
                                       snow from ERA5; earth.json: tools/front-earth.mjs), and the Moon (moon.colour.jpg, moon.whole.jpg,
                                       moon.wide.jpg, moon.near.jpg, .height.png, .colour.jpg, moon.site.bin (the ground round where the
                                       camera starts, whole), moon.json: tools/front-moon.mjs)
+public/lunar/                         each Apollo landing site's ground (<site>.terrain.bin, <site>.descent.bin: tools/lunar-terrain.py) and its finest map for the flight scene's Moon (<site>.moon.json, .near.jpg, .near.height.png, .near.colour.jpg: tools/front-moon.mjs --sites), committed; the whole Moon's maps are the front page's
 public/ephemeris/de440.bin            JPL's DE440 for 1957 to 2035 as Chebyshev segments (committed; `pnpm ephemeris`, world.md "Baking again"): fetched only when
                                       something asks for it (world/ephemeris.ts `loadEphemeris`)
 docs/ideas.md                         what the simulator lacks to play as a game: not a plan, kept so it is not forgotten
@@ -264,7 +265,8 @@ src/
   viewer/onfoot/hose.ts               a hose or tether of fixed length hanging between two moving anchors
   viewer/onfoot/going.ts              people walking off a site or onto it (types.ts Going): where each figure is at an instant of the clock, pure
   viewer/onfoot/crowd.ts              a part's people walked on the clock (Part going): each man posed by the gait for the distance he has gone
-  viewer/moon.ts                      the Moon as a body (`MoonBody`): its relief at three sizes and colour from its bake, the apron round the site, its own light; the front page's, under its camera
+   viewer/moon.ts                      the Moon as a body (`MoonBody`): its relief at three sizes and colour from its bake, the apron round the site, its own light; the front page's, under its camera, and in its flight mode the flight scene's (rings about the point under the eye, a landing site's finest map and ground, laid over the sky by its alpha)
+   viewer/flightmoon.ts                the Moon in a flight's scene (`FlightMoon`): where the flight's gravity has it, turned to its mean-Earth frame, lit by the Sun; the nearest landing site's maps; its up, its eclipse of the Sun, its light round the eye, its place for the map
   viewer/moonground.ts                the Moon's ground below what was measured, made by rule (estimated): the craters under 2 km and the soil's grain, in GLSL and the same sums here; the Moon's light law
   viewer/moonrocks.ts                 the blocks lying round the front page's site: instanced, four levels of detail, each with its shadow laid on the ground
   viewer/lunar-driving-ground.ts      builds the rover's drivable surface and places the landing module and the Sun
@@ -273,7 +275,7 @@ src/
   world/lunar-ground.ts               a landing site's ground over the Moon: the descent strip (`DescentStrip`, its file format), the grids and the strip as one (`LandingGround`), by latitude and longitude or in the site's frame
   world/lunar-sites.json              every landing site's position, height, approach and terrain products, and the bake's grids: written by tools/lunar-sites.mjs from missions/usa/places/moon/, never by hand
   world/lunar-rover-sites.json        what each rover's gallery scene shows at its site: its lander, which way it faces, what was unloaded, the second excursion's lighting instant
-  viewer/moonsite.ts                  the altimeter's ground round the site, read whole in doubles (`SiteGround`): heights, places, how near the ground comes to the path
+   viewer/moonsite.ts                  the altimeter's ground round the site, read whole in doubles (`SiteGround`): heights, places, how near the ground comes to the path; and a landing site's (`LandingApron`, from world/lunar-ground.ts) for the flight scene's apron
   viewer/space.ts                     the sky from above the air (Sun, Moon, stars) and its reflections, the Earth in them at the flight's height; the wear texture
   viewer/explode.ts                   exploded-view motion
   viewer/runs.ts                      what slides or drives stands on what it runs on: wheels on rails or ground, body pitched between them
@@ -287,7 +289,7 @@ src/
   world/aloft.ts                      a day's column of air (DayWeather.aloft) read at any height, and its hours at any instant
   world/thermosphere.ts               the upper air by the Sun's activity: Jacchia 1971's exosphere from the days flown's 10.7 cm flux and Kp (`DAYS`), as a factor on the 1976 standard (`ratioOf`)
   world/ut1.ts                        UT1 - TAI from the IERS (tools/ut1-bake.mjs): what the Earth's turn is behind atomic time, every 0.05 year since 1956
-  world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun; its principal axes from the ICRF (`principalAxes`: DE440's, or Meeus's)
+   world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun; its principal axes from the ICRF (`principalAxes`: DE440's, or Meeus's) and its mean-Earth axes, the maps' (`meanEarthAxes`)
   world/orbit.ts                      orbits: elements to and from state, J2 gravity and its steady rates, a coast, the place below, site to inertial, the Earth's shadow
   world/meanelements.ts               mean elements under J2 (Kozai 1959): published heights and period to the osculating state and back, the nodal, anomalistic and Kepler periods
   world/surface.ts                    the sea as a shape: the ellipsoid (any body's figure) at a site's sea level, radii of curvature, the horizon
@@ -436,7 +438,7 @@ tools/
   front-earth.mjs                     bakes the Earth as the front page sees it: the globe's maps small, and the hour's cloud, sea ice and snow from ERA5
   lunar-terrain.py                    bakes each landing site's ground (`pnpm lunar:terrain`): the nested grids from the NAC stereo DTMs and LOLA, the descent strip from SLDEM2015
   lunar-sites.mjs                     writes src/world/lunar-sites.json from the landing sites' modules (`pnpm lunar:sites`)
-  front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows, the site's ground whole (`--find-site` lists the places the camera could start from)
+  front-moon.mjs                      bakes the Moon as the front page sees it, from NASA's CGI Moon Kit: colour, relief at three sizes, the finest's cast shadows, the site's ground whole (`--find-site` lists the places the camera could start from); `--sites` each Apollo landing site's finest map for the flight scene (public/lunar/<site>.moon.json, .near.jpg, .near.height.png, .near.colour.jpg)
   shot.mjs                            one screenshot of the viewer, for looking at a change
   browser.mjs                         the one browser every browser tool launches (Chrome, ANGLE's back end, headless or not, from SR_* in the environment: macOS and Linux), and the page opener, options and checks they share
   bench.mjs                           the performance benchmark (`pnpm bench`): frames, load and a soak, with A/B and pixel comparison (rendering.md)
@@ -504,5 +506,6 @@ where it was left.
 - `tests/longrun.test.mjs` holds a flight of days to what a phone can hold (issue #173): Gemini VII's record run, fourteen days, by how many samples it keeps and how much heap it holds; `tests/rails.test.mjs` holds a coast kept by how fast its motion changes to the one that kept every step, between its samples.
 - `tests/lunargravity.test.mjs` holds the Moon's field to the published table and to its potential's gradient, the Moon's axes to the IAU's pole, the two sides of the sphere to the same gravity, and a coast through the sphere (Apollo 8's injection as the run reaches it) to one state across the crossing, to the same coast on rails, and to the Mission Report's pericynthion (a recorded miss).
 - `tests/cislunar.test.mjs` checks the path beyond a low orbit: a low orbit predicted to the bit as before, an orbit of more than six hours followed once round, a path that leaves the Earth's sphere, one that meets the Moon and one that passes it, Apollo 10's record predicted on from its injection to the Moon near the record's time (and to the same passing under a sphere's whole field), and the frame a path is drawn in.
+- `tests/flightmoon.test.mjs` holds the flight scene's Moon to the flight's own gravity's place for it, its axes to the Moon's frame, the eye's up turned toward it without a step, and its eclipse of the Sun without a step across the shadow's edge
 - `tests/pathref.test.mjs` checks the record's line as numbers: the curve against made paths and three flights' records, the events' rule, the window drawn.
 - `tests/path-display.test.mjs` checks late display jobs with synthetic results and distinguishes wall-time delay from simulation time.

@@ -16,6 +16,7 @@ import { bulkOf } from './bulk.ts';
 import { Cabin, type CabinThing } from './cabin.ts';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { MapOf } from './camera/rig.ts';
+import type { MapFocus } from './camera/map.ts';
 import { disposeTree } from './dispose.ts';
 import type { Effects } from './effects.ts';
 import { Eye, type Glaring, StarEye, veiled } from './eye.ts';
@@ -113,6 +114,8 @@ const UP = new THREE.Vector3(0, 1, 0);
  */
 const EARTH_ALBEDO = 0.294;
 const VEHICLE_ALBEDO = 0.5;
+/** The Moon's Bond albedo (NASA Goddard, "Moon fact sheet": 0.11), for the light it lays over the stars as the Earth's is (`seeStars`). */
+const MOON_ALBEDO = 0.11;
 /** The exposure the eye settles on in a room: 2.1 times the sunlit ground's 0.8 (daysky.ts: DAY_EXPOSURE). */
 const INDOORS_EXPOSURE = 1.68;
 const INDOORS_SECONDS = 0.9;
@@ -306,6 +309,10 @@ export class Stage {
   readonly pipe: Pipeline;
   private readonly settings: Settings;
   private readonly fill = new THREE.HemisphereLight(0, 0, 0.5);
+  /** Kept for the plumb line's turn toward the Moon's vertical (`world`): made once. */
+  private readonly upTurn = new THREE.Quaternion();
+  private readonly upNone = new THREE.Quaternion();
+  private readonly upMoon = new THREE.Vector3();
   private readonly timer = new THREE.Timer();
   private readonly loader = new GLTFLoader();
   private readonly loaded = new Map<string, Promise<THREE.Object3D>>();
@@ -804,6 +811,7 @@ export class Stage {
     if (this.setting.floor) this.scene.remove(this.setting.floor);
     for (const o of this.setting.scenery) this.scene.remove(o);
     if (this.setting.globe) this.scene.remove(this.setting.globe.group);
+    if (this.setting.moon) this.scene.remove(this.setting.moon.group);
     // (another flight than the one on show: what is the last one's alone is let go, and every piece forgets it)
     if (this.root) this.forget();
     this.releaseModels(flight);
@@ -1250,6 +1258,8 @@ export class Stage {
       this.looks.add(s.globe.mesh);
       if (s.globe.swellMesh) this.looks.add(s.globe.swellMesh);
     }
+    // (the Moon draws itself in both looks: the setting tells it which, Setting.simplify)
+    if (s.moon) this.scene.add(s.moon.group);
     this.scene.fog = s.fog;
     this.pipe.clouds.setAir(s.air?.air ?? null, s.weather ?? null, s.globe && ((eye) => s.globe!.altitude(eye)));
     this.renderer.shadowMap.needsUpdate = true;
@@ -1291,7 +1301,7 @@ export class Stage {
   }
 
   /** In the map: turn about the other of the vehicle and the Earth. Says which it now is, or null out of the map. */
-  mapFocus(): 'craft' | 'body' | null {
+  mapFocus(): { focus: MapFocus; next: MapFocus } | null {
     const focus = this.cam.refocus();
     if (focus) this.dirty = true;
     return focus;
@@ -1336,8 +1346,10 @@ export class Stage {
       if (!this.setting.floor) return Infinity;
       if (Math.hypot(p.x, p.z) <= (this.setting.horizon ?? this.setting.reach ?? Infinity)) return p.y - UNDER(p.x, p.z);
       const globe = this.setting.globe;
-      // (and over the sea where a flight came down, its waves as drawn: swell.ts)
-      return globe ? globe.altitude(p) - globe.swellHeight(p) : Infinity;
+      // (and over the sea where a flight came down, its waves as drawn: swell.ts; and over the Moon's ground once it is drawn)
+      const over = globe ? globe.altitude(p) - globe.swellHeight(p) : Infinity;
+      const moon = this.setting.moon;
+      return moon?.drawn ? Math.min(over, moon.altitude(p)) : over;
     };
     return {
       // Up is the plumb line where the subject is: the site's +Y on the site, leaning with the Earth's curve beyond it
@@ -1347,12 +1359,19 @@ export class Stage {
         const globe = this.setting.globe;
         const edge = this.setting.horizon ?? Infinity;
         const lean = globe ? THREE.MathUtils.smoothstep(Math.hypot(p.x, p.z), edge, 2 * edge) : 0;
-        return lean > 0
-          ? globe!
-              .up(p, out)
-              .lerp(UP, 1 - lean)
-              .normalize()
-          : out.copy(UP);
+        const earth =
+          lean > 0
+            ? globe!
+                .up(p, out)
+                .lerp(UP, 1 - lean)
+                .normalize()
+            : out.copy(UP);
+        // near the Moon, its vertical: turned evenly from the Earth's to it across its sphere (flightmoon.ts `toward`)
+        const moon = this.setting.moon;
+        const toward = moon ? moon.toward(p) : 0;
+        if (toward <= 0) return earth;
+        const turn = this.upTurn.setFromUnitVectors(earth, moon!.up(p, this.upMoon));
+        return out.applyQuaternion(this.upNone.identity().slerp(turn, toward)).normalize();
       },
       clearance,
       // on the ground there is a site to go over; anywhere else, only the models
@@ -1361,7 +1380,13 @@ export class Stage {
       maxPolar: () => this.setting.maxPolar,
       minPolar: () => this.setting.minPolar ?? 0,
       // (a map is of the globe the place stands on, and of a flight: nobody on foot has one)
-      map: () => (this.setting.globe && !this.walk.active ? (this.mapOf?.() ?? null) : null),
+      map: () => {
+        if (!this.setting.globe || this.walk.active) return null;
+        const of = this.mapOf?.() ?? null;
+        const moon = this.setting.moon;
+        // (and the Moon, where it is drawn, to turn about: camera/map.ts)
+        return of && moon?.drawn ? { ...of, moon: { centre: moon.centre, radius: moon.radius } } : of;
+      },
       craft: () => this.show.craft(),
       // (asked by the chase view as it is first framed, a few rays at most: the solids the near plane asks, less the vehicle)
       blocked: (from, to) => {
@@ -2112,7 +2137,7 @@ export class Stage {
   /** And above the air, what it sees of the stars for what is lit in its view (eye.ts `StarEye`). */
   readonly starEye = new StarEye();
   /** The lit things in view above the air, made once and moved each frame: the sunlit Earth, the Sun, the vehicle. */
-  private readonly glare: Glaring[] = [0, 1, 2].map(() => ({ toward: new THREE.Vector3(), radius: 0, lux: 0 }));
+  private readonly glare: Glaring[] = [0, 1, 2, 3].map(() => ({ toward: new THREE.Vector3(), radius: 0, lux: 0 }));
   /** The eye is to be settled at once on the next frame: the clock jumped, another place, on or off foot (a cut, not a walk). */
   private eyeCut = true;
   private eyeWalking = false;
@@ -2221,7 +2246,7 @@ export class Stage {
     if (out > 0) {
       const eye = this.camera.position;
       const sunlit = s.sunlit ?? 0;
-      const [earth, sun, vehicle] = this.glare as [Glaring, Glaring, Glaring];
+      const [earth, sun, vehicle, moon] = this.glare as [Glaring, Glaring, Glaring, Glaring];
       // the Earth: under the eye's plumb line, at its height plus the Earth's radius
       s.globe.up(eye, earth.toward).negate();
       const d = EARTH_SPHERE + Math.max(s.globe.altitude(eye), 0);
@@ -2241,6 +2266,15 @@ export class Stage {
         const across = near.radius / away;
         vehicle.radius = Math.asin(across);
         vehicle.lux = 0.5 * VEHICLE_ALBEDO * SUN_LUX * sunlit * across * across;
+      }
+      // the sunlit Moon, as the Earth is, with its normal albedo (flightmoon.ts `shine`)
+      moon.lux = 0;
+      if (s.moon?.drawn) {
+        const m = s.moon.shine(eye);
+        moon.toward.copy(m.toward);
+        moon.radius = m.radius;
+        const r = Math.sin(m.radius);
+        moon.lux = (2 / 3) * MOON_ALBEDO * SUN_LUX * r * r * ((Math.sin(m.phase) + (Math.PI - m.phase) * Math.cos(m.phase)) / Math.PI);
       }
       this.camera.updateMatrixWorld();
       veil = out * veiled(this.camera, this.glare);
@@ -2936,6 +2970,30 @@ export class Stage {
   }
 
   /** For tests and screenshots: stop the drift and put the camera somewhere exact. */
+  /**
+   * For tests and screenshots: the orbiting camera `height` metres over the Moon's sphere at a selenographic latitude and
+   * longitude (degrees), looking on `azimuthDeg` (from north through east) and `elevationDeg` above its level, at a pivot
+   * `distance` metres off that way. The clock is the flight's: set it first (the Moon is where it was then). False where
+   * this stage has no Moon.
+   */
+  moonPose(latitude: number, longitude: number, height: number, azimuthDeg: number, elevationDeg: number, distance = 2000): boolean {
+    const moon = this.setting.moon;
+    if (!moon || !this.clock) return false;
+    // (the Moon put where it is at the clock's instant, so the pose is about the Moon as the frame draws it)
+    moon.at(this.clock.jdUT, 1);
+    const { at, east, north, up } = moon.over(latitude, longitude, height);
+    const [az, el] = [THREE.MathUtils.degToRad(azimuthDeg), THREE.MathUtils.degToRad(elevationDeg)];
+    const look = north
+      .clone()
+      .multiplyScalar(Math.cos(az) * Math.cos(el))
+      .addScaledVector(east, Math.sin(az) * Math.cos(el))
+      .addScaledVector(up, Math.sin(el));
+    this.framing.following = this.framing.watched = null;
+    this.cam.place(at.clone().addScaledVector(look, distance), at, true);
+    this.dirty = true;
+    return true;
+  }
+
   pose(azimuthDeg: number, elevationDeg: number, distance: number, targetY = this.centreY, targetX = 0, targetZ = 0): void {
     this.framing.pose(azimuthDeg, elevationDeg, distance, targetY, targetX, targetZ);
   }

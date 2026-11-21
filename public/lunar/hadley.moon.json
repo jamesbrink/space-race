@@ -1,0 +1,42 @@
+{
+  "about": "The Moon round Hadley–Apennine, for the flight scene (viewer/flightmoon.ts): written by tools/front-moon.mjs --sites; do not edit.",
+  "site": "hadley",
+  "landing": [
+    26.13239,
+    3.6333
+  ],
+  "uprange": 200000,
+  "near": {
+    "file": "hadley.near.jpg",
+    "centre": [
+      0.8827655969306607,
+      0.17114580906549523,
+      0.4375317278952135
+    ],
+    "east": [
+      -0.19033056402013326,
+      0.9817200600984877,
+      0
+    ],
+    "north": [
+      -0.4295336742042841,
+      -0.08327566054699946,
+      0.8992029732407633
+    ],
+    "half": 0.21262862861745602,
+    "side": 1536,
+    "metres": 481.0169002082918,
+    "low": -4900,
+    "high": 3400,
+    "at": {
+      "longitude": 10.972076160183454,
+      "latitude": 25.946501405903387
+    },
+    "height": "hadley.near.height.png",
+    "heightMetres": 962.0338004165836,
+    "horizon": 0.7853981633974483,
+    "colour": "hadley.near.colour.jpg"
+  },
+  "cast": "east",
+  "data": "NASA Scientific Visualization Studio, CGI Moon Kit (E. Wright, 2019; svs.gsfc.nasa.gov/4720): colour from the Lunar Reconnaissance Orbiter Camera wide-angle mosaic, heights from the Lunar Orbiter Laser Altimeter. Public domain; credit NASA/GSFC/Arizona State University"
+}
