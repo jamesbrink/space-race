@@ -1244,8 +1244,10 @@ read gives enough of to fly (issue #10).
   sign counted, the point not), the decimals the deck asks for while they fit, fewer as the number grows, and past the
   last whole number that fits the next larger unit, as KSP's: km, Mm, Gm; m/s, km/s; min, h, d. Far from the Earth a height
   of 110,169.7 km reads 110.17 Mm and an apogee of 681,478 km 681.48 Mm, at 1280, 820 and 390 wide alike; a cell clips what
-  could still not fit rather than let it run into the next (`pnpm test:deck` fills every cell at the widest it can be given
-  and holds it inside its cell).
+  could still not fit rather than let it run into the next (`pnpm test:deck` fills every cell at the widest it can be given,
+  8888.8 km/s, and holds it inside its cell: at 1280, 820 and 390, and in `SR_ONLY=fit` on a phone 360 wide, a phone on its
+  side and with the deck opened by More). The phone's compact line (name, figure and unit on one line, a third of 390 px)
+  is sized in cockpit.css for that widest figure, not for the ones a flight usually shows.
 - **Fly is taken by hand** (deck.ts `START`). Every entry to Fly stands the flight on its pad with guidance (G) and the
   sequencer (B) off, on every kind (the ballistic, the orbital and the docking deck alike; nothing remembers it): the player
   lights the engines, steers, throttles, stages, cuts, fires the retrorockets and puts out the parachutes, each with its
