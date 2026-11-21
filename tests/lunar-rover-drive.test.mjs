@@ -96,6 +96,8 @@ for (const mission of [15, 16, 17]) {
   });
 }
 
+// (a steep, twisted facet of the survey: 31 degrees across it, its corners 18 cm off a plane, the far side of what its
+// springs take: two wheels bear and two hang, and the ones that bear are on it)
 test('Hadley tread contact stays on the survey surface through a full steering reversal', () => {
   const tile = readFileSync('public/lunar/hadley.terrain.bin');
   const terrain = new LunarTerrain(tile.buffer.slice(tile.byteOffset, tile.byteOffset + tile.byteLength));
@@ -103,10 +105,19 @@ test('Hadley tread contact stays on the survey surface through a full steering r
   const rover = new LunarRover(modelOf(15), { radius: 9000, height }, { x: 23.5, z: -77, heading: 0, distance: 0 });
   for (let i = 0; i < 100; i++) {
     rover.drive(0, i < 51 ? 1 : -1, false, 1 / 60);
+    let bearing = 0;
     for (const wheel of rover.wheels) {
       const gap = treadGap(rover, wheel, height);
-      assert.ok(gap !== null && Math.abs(gap) < 0.0001, `${wheel.wheel.name} ${gap}`);
+      if (gap === null) {
+        // (one that hangs is over the ground, not in it)
+        const hub = wheel.wheel.getWorldPosition(new Vector3());
+        assert.ok(hub.y - wheel.radius > height(hub.x, hub.z) - 0.001, `${wheel.wheel.name} hangs in the ground`);
+        continue;
+      }
+      bearing++;
+      assert.ok(Math.abs(gap) < 0.0001, `${wheel.wheel.name} ${gap}`);
     }
+    assert.ok(bearing >= 2, `only ${bearing} wheels bear`);
   }
 });
 
