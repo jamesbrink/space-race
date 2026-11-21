@@ -357,9 +357,10 @@ src/
   sim/sitecontact.ts                 a body flown by hand against what stands at its site and the land there (`SiteSurfaces`, `Ground`): the vehicle's hull (`SiteContact`) and each shed body's spheres (shed.ts) swept through every tick, the first meeting answered by an impulse on the tick's outcome (contact.ts `strike`, with the surface's drag), what was struck said, a body lying still down where it lies (`Lying`), and the live simulators' floor on the land (`floorOver`)
   sim/forces.ts  sim/shed.ts          the air on any rigid body (axial drag by the leading end, fins, cross-flow), one body made two with its momentum kept; what a vehicle sheds, flown
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
-  sim/orbital-target.ts               the stage a spacecraft left in orbit and went back to, where it is on a run: the run's target, flown on its own forces
-  sim/pursuit.ts                      manoeuvres made on another craft: the target as an integrated craft (`flownFrom`), where it is from the spacecraft (`placeFrom`),
+  sim/orbital-target.ts               a flight's target, where it is on a run: the stage a spacecraft left in orbit and went back to, flown on its own forces, or another flight's vehicle or a published orbit's craft (`targetAt`)
+  sim/pursuit.ts                      manoeuvres made on another craft: the target as an integrated craft (`flownFrom`), a published orbit as a state (`fixState`, `elementsState`), where the target is from the spacecraft (`placeFrom`),
                                       and the guidance that solves a burn on the two as they are (`reach`, `coelliptic`, `stationPush`)
+  sim/roster.ts                       the flights there are, by id, for a plan that names another flight as its target (`TargetDef.flight`): missions/index.ts enrols them all, a Gemini target enrols itself
   sim/launchescape.ts                 tower escape and service-module abort branches from the live state at the pilot’s command
   sim/orbital.ts                      a flight into orbit: the coast flown from its plan (`flyOrbit`), the descent (`flyDown`), the steering law's shape (`Guidance`), the drag of a body in orbit (`orbitDrag`, `ORBIT_DRAG`: free-molecular to continuum)
   sim/staged.ts                       an orbital flight's powered ascent, flown whole: stages burning together and in turn, dropped as the record says, on its steering law
