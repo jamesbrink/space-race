@@ -1135,13 +1135,20 @@ const RUNGS = 2 * RUNG;
  * rung is the one at his level or the next above; a hand's is `reach` rungs above its foot's. By height alone: stop
  * on the ladder and they stop, come down and they come down the same rungs.
  */
-export function rungs(y: number, reach = 5): { 'Foot.L': number; 'Foot.R': number; 'Hand.L': number; 'Hand.R': number } {
-  const u = y / RUNGS;
+export function rungs(
+  y: number,
+  reach = 5,
+  pitch = RUNG,
+  first = RUNG,
+): { 'Foot.L': number; 'Foot.R': number; 'Hand.L': number; 'Hand.R': number } {
+  // (a ladder that says where its rungs are, the LM's, has them `pitch` apart from `first` over its foot: walk.ts Ladder.rungs)
+  const two = 2 * pitch;
+  const u = y / two;
   const on = (o: number, up: number): number => {
     const v = u - o;
     const f = v - Math.floor(v);
     const k = Math.max(0, (f - 0.5) / 0.5);
-    return RUNGS * (o + Math.floor(v) + k * k * (3 - 2 * k)) + RUNG * (1 + up);
+    return two * (o + Math.floor(v) + k * k * (3 - 2 * k)) + first + pitch * up;
   };
   return { 'Foot.L': on(0, 0), 'Foot.R': on(0.5, 0), 'Hand.R': on(0, reach), 'Hand.L': on(0.5, reach) };
 }
