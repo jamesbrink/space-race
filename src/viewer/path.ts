@@ -512,6 +512,8 @@ export interface PathHost {
   /** What else flies in the run at the instant on show (viewer/ascent.ts `others`), and where one of them was at an instant before it (`otherAt`). */
   others?(): readonly OtherCraft[];
   otherAt?(drop: number, t: number): { r: Vec3; v: Vec3 } | null;
+  /** How far the Moon itself is drawn over the sky where it is (viewer/flightmoon.ts `covers`, 0 to 1): its outline on the map gives way to it. */
+  moonCovers?(): number;
 }
 
 /** Something else that flies in the run (a stage let go, the flight's target): which drop of the flight's it is, its name, when it left, and its state in the frame that does not turn. */
@@ -811,6 +813,8 @@ interface Heavenly {
   wayAt: [number, number, number];
   key: number[];
   strength: number;
+  /** How much of its outline where it is now gives way to the body drawn there (the flight scene's Moon, once it is a disc of a few pixels). */
+  drawn: number;
 }
 
 const UP = new THREE.Vector3(0, 1, 0);
@@ -2982,7 +2986,7 @@ export class FlightPath {
     }
     for (const h of this.heavens)
       for (const [mesh, strength] of [
-        [h.discMesh, 1],
+        [h.discMesh, 1 - h.drawn],
         [h.meetMesh, 0.6],
         [h.wayMesh, 0.6],
       ] as const) {
@@ -3416,6 +3420,11 @@ export class FlightPath {
       if (!on) continue;
       this.sceneOf(r, 0, t, frame, t, a, 0);
       h.mark.at.set(a[0]!, a[1]!, a[2]!);
+      // (the Moon itself drawn there, lit, once it is more than a few pixels across: its outline where it is now is let go,
+      // and its marker, its outline where the path passes it and its way there are kept, which mark a place to come)
+      const across =
+        (2 * h.body.radius * lens.pxPerRad) / Math.max(h.body.radius, Math.hypot(a[0]! - eye[0], a[1]! - eye[1], a[2]! - eye[2]));
+      h.drawn = THREE.MathUtils.smoothstep(across, 4, 8) * (this.host.moonCovers?.() ?? 0);
       const key = [eye[0], eye[1], eye[2], t, frame === 'orbit' ? 1 : 0, pass ? pass.t : -1, pass ? pass.distance : -1];
       if (key.every((x, i) => x === h.key[i])) continue;
       h.key = key;
@@ -3500,6 +3509,7 @@ export class FlightPath {
       wayAt: [0, 0, 0],
       key: [],
       strength: 0,
+      drawn: 0,
     };
   }
 

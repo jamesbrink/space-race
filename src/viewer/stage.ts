@@ -1295,6 +1295,11 @@ export class Stage {
    */
   mapOf: (() => MapOf | null) | null = null;
 
+  /** How far the Moon itself is drawn over the sky (viewer/flightmoon.ts `covers`): 0 where this stage has none, or it is not drawn. */
+  get moonCovers(): number {
+    return this.setting.moon?.covers ?? 0;
+  }
+
   /** Into the map (camera/map.ts), or back out of it to the view it was taken from. */
   setMap(on: boolean): void {
     this.cam.mapped(on);

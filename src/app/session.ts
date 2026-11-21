@@ -333,6 +333,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       craftName: flight.callsign,
       others: () => stage.show.ascent?.others(clock.t) ?? [],
       otherAt: (drop, t) => stage.show.ascent?.otherAt(drop, t) ?? null,
+      moonCovers: () => stage.moonCovers,
     },
     deck.querySelector<HTMLElement>('[data-do=path]'),
   );
