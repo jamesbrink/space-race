@@ -389,6 +389,14 @@ export interface DragDef {
   until: Measure;
   area: Measure;
   curve: Curve;
+  /**
+   * The force on the base, where the record gives it apart from the forebody's (`curve`, then a forebody coefficient): the
+   * base's pressure over the air's against the height, Pa (`pressure`, against m over the sea), times `factor` and the
+   * piece's `area`, pushing the stack along its axis where the base's pressure is the higher and holding it back where it is
+   * the lower, until `until` (s from liftoff: the stage whose base it is stops). A first stage's fire pumps its base,
+   * which a coefficient on the dynamic pressure does not follow.
+   */
+  base?: { pressure: Curve; factor: Measure; until: Measure };
 }
 
 /**

@@ -14,7 +14,7 @@ import { coastEvents, coastOf, movesOf, shipOf } from '../src/sim/orbital.ts';
 import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
 import { act, startCraft } from '../src/sim/craft.ts';
 import { byHand, drawnFrom, givenUp, guidanceOf, movedTo, schedule, sequenceOf, stagesOf } from '../src/sim/staged.ts';
-import { saturnVPlan, siiSpent } from '../missions/usa/apollo/vehicles/saturn-v-plan.ts';
+import { saturnVPlan, siiFigures, siiSpent } from '../missions/usa/apollo/vehicles/saturn-v-plan.ts';
 import { HARDWARE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { dayOf } from './ballistic.mjs';
 import { recordFrom } from './records.mjs';
@@ -564,7 +564,8 @@ for (const f of saturns) {
     );
     assert.equal(stages[0].engine.thrust.seaLevel, o.sic.f1.thrust);
     assert.equal(stages[0].tank.load, o.sic.propellant.load);
-    assert.equal(stages[2].engine.thrust.vacuum, o.sii.centre.thrust);
+    // (the S-II's figures as flown: the record's, with the trajectory match's adjustment where it has one)
+    assert.equal(stages[2].engine.thrust.vacuum.value, siiFigures(o).centre.thrust.value);
     assert.equal(stages[4].engine.thrust.vacuum, o.sivb.first.thrust);
     assert.equal(stages[5].engine.thrust.vacuum, o.sivb.second.thrust);
     // (the S-IVB's two burns: one J-2 under two names, drawing on one tank)

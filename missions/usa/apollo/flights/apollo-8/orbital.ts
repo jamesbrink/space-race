@@ -16,6 +16,7 @@ import type { ApolloLunarRecord } from '../../vehicles/apollo-lunar-record.ts';
 import { cmEntryAero } from '../../vehicles/command-module-aero.ts';
 import { localAim } from '../../vehicles/csm-plan.ts';
 import type { Burn } from '../../vehicles/csm-record.ts';
+import { saturnVDrag } from '../../vehicles/saturn-v-record.ts';
 
 const IN = 0.0254;
 const FT = 12 * IN;
@@ -43,9 +44,6 @@ const F1_ISP = (2584 + 2578 + 2592 + 2587 + 2601) / 5;
 /** The S-II's outboard J-2s at ESC+61 s (Table 6-2, engines 1 to 4, reconstructed): thrust, N, and impulse, N s/kg, their means. */
 const SII_THRUST = (1_021_276 + 1_010_858 + 1_000_908 + 1_020_102) / 4;
 const SII_ISP = (4161.9 + 4157.0 + 4155.1 + 4159.0) / 4;
-/** §6.3: the stage's thrust after the step to the low mixture ratio, N, and the change it made. */
-const SII_LOW = 3_877_101;
-const SII_STEP = 1_209_777;
 /** The S-IVB's second burn: the flow at the null mixture ratio (Table 7-7), kg/s, and its instants (Table 2-2, §7.9), s. */
 const SECOND_FLOW = 177.7 + 36.01;
 const SECOND_SHIFT = 10_242.49;
@@ -478,12 +476,12 @@ export const orbital: ApolloLunarRecord = {
         ),
         before: doc(1, 'the high mixture ratio’s figures, as given'),
         after: derived(
-          SII_LOW / (SII_LOW + SII_STEP),
-          `${EVAL}, §6.3: the stage's thrust after the shift, 3,877,101 N, over that and the change it made, 1,209,777 N: all five engines shifted`,
+          3_889_725 / 5_094_321,
+          `${EVAL}, Table 6-3: the simulation trajectory match's average longitudinal stage thrust through the low mixture ratio, 3,889,725 N, over the high's, 5,094,321 N: all five engines shifted (§6.3: the propulsion reconstruction's stage thrust after the shift, 3,877,101 N, over that and the change it made, 1,209,777 N, is 0.7622)`,
         ),
         flow: derived(
-          (SII_LOW / (SII_LOW + SII_STEP)) * (4159.0 / 4214.9),
-          `${EVAL}, Table 6-3: the S-II's reconstructed stage impulse at the low mixture ratio, 4,214.9 N s/kg (429.8 s), against 4,159.0 (424.1 s) at the high: the flow's share is the thrust's (§6.3) times the one over the other`,
+          920.6 / 1_221.4,
+          `${EVAL}, Table 6-3: the match's average vehicle mass loss rate through the low mixture ratio, 920.6 kg/s, over the high's, 1,221.4: the impulse after the shift the match's 4,225.7 N s/kg (430.9 s) against 4,170.8 (425.3 s) at the high`,
         ),
       },
     },
@@ -492,6 +490,18 @@ export const orbital: ApolloLunarRecord = {
       3,
       'm/s: NOT FOUND. The S-II’s four retrorockets and the S-IVB’s two ullage motors parted the stages; the evaluation gives the S-IVB’s acceleration (Fig. 12-8) and not the speed apart (§12.3: "no clearance problems"). Apollo 11’s estimate taken',
     ),
+    match: {
+      high: {
+        thrust: derived(
+          5_094_321 / (1_033_744 + 4 * SII_THRUST),
+          `${EVAL}, Table 6-3: the simulation trajectory match's average longitudinal stage thrust through the high mixture ratio, 5,094,321 N, over the five engines' at ESC+61 s (Table 6-2, 5,086,888 N); §6.3: the six-degree-of-freedom simulation matched the tracked trajectory within 1.1 m/s`,
+        ),
+        flow: derived(
+          1_221.4 / (1_033_744 / 4141.3 + (4 * SII_THRUST) / SII_ISP),
+          `${EVAL}, Table 6-3: the match's average vehicle mass loss rate through the high mixture ratio, 1,221.4 kg/s, over the five engines' flow at ESC+61 s (Table 6-2: their thrust over their impulse)`,
+        ),
+      },
+    },
     decay: {
       centre: derived(
         813_491 / 5,
@@ -751,24 +761,7 @@ export const orbital: ApolloLunarRecord = {
         inclination: doc(32.509, `${EVAL}, Table 4-6: the parking orbit's inclination`),
       },
     },
-    drag: [
-      {
-        until: doc(SECOND_CUT, 'to the end of the ascent'),
-        area: derived(Math.PI * (198 * IN) ** 2, 'the 33 ft stage’s disc (saturn-v.md)'),
-        curve: {
-          points: [
-            [0, 0.25],
-            [0.8, 0.3],
-            [1.1, 0.55],
-            [1.4, 0.45],
-            [2, 0.36],
-            [6, 0.23],
-          ],
-          confidence: 'estimated',
-          source: 'NOT FOUND for the Saturn V: the slender stack’s curve Apollo 7’s Saturn IB is flown on, taken',
-        },
-      },
-    ],
+    drag: saturnVDrag(doc(SECOND_CUT, 'to the end of the ascent'), 'AS-503'),
     steering: estimated(
       2,
       'deg/s² at full throw, about each axis: NOT FOUND. Four outboard F-1s gimballed ±5.17° (MSFC-MAN-503, §IV) some thirty metres below the stack’s centre of mass give it of the order of 1.4 at liftoff, more as it lightens; the S-II’s and the S-IVB’s gimbals of the same order: one figure taken for the three, as Apollo 11’s record estimates it',
