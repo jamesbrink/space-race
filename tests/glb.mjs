@@ -98,6 +98,8 @@ export function hierarchy(gltf) {
       if (node.scale) frame.scale.fromArray(node.scale);
     }
     frame.userData.mesh = node.mesh;
+    // (what the model says of the node: a vehicle's figures, a motion's samples)
+    if (node.extras) Object.assign(frame.userData, node.extras);
     for (const child of node.children ?? []) frame.add(read(child));
     return frame;
   }

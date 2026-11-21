@@ -29,8 +29,17 @@ for (const mission of [15, 16, 17]) {
         });
         return result;
       }
-      // The A-arms and tie rods physically attach to the parts being steered.
-      const fixed = root.children.filter((group) => group.name.startsWith('Rover') && group.name !== 'RoverSuspension').flatMap(surfaces);
+      // The A-arms and tie rods physically attach to the parts being steered: everything not on a corner is fixed (the
+      // outermost of the vehicle's groups named for what they are, on its frames)
+      const groups = [];
+      const corner = (o) => o.name.startsWith('LRV_Corner_');
+      const gather = (o) => {
+        if (corner(o)) return;
+        if (o.name.startsWith('Rover')) return void groups.push(o);
+        for (const c of o.children) gather(c);
+      };
+      gather(root);
+      const fixed = groups.flatMap(surfaces);
       assert.ok(fixed.some((part) => part.object.name === 'LRV_RCAColourCameraAndTCU'));
       const relative = new Matrix4();
       function assertClear(moving, pose) {

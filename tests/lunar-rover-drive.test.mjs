@@ -6,29 +6,38 @@ import { LunarRover } from '../src/viewer/lunar-rover.ts';
 import { LunarTerrain } from '../src/world/lunar-terrain.ts';
 import { hierarchy } from './glb.mjs';
 
+const modelOf = (mission) => {
+  const file = readFileSync(`public/models/usa/apollo/apollo-${mission}/rover.glb`);
+  return hierarchy(JSON.parse(file.subarray(20, 20 + file.readUInt32LE(12)).toString('utf8')));
+};
+/** Where a bearing wheel's tread is against the ground under it, metres (it hangs: null). */
+const treadGap = (rover, w, height) => {
+  if (!w.contact) return null;
+  const axle = new Vector3(0, 0, 1).applyQuaternion(w.wheel.getWorldQuaternion(new Quaternion()));
+  const up = new Vector3(0, 1, 0).applyQuaternion(rover.body.getWorldQuaternion(new Quaternion()));
+  const tread = w.wheel.getWorldPosition(new Vector3()).addScaledVector(up.addScaledVector(axle, -up.dot(axle)).normalize(), -w.radius);
+  return tread.y - height(tread.x, tread.z);
+};
+
 for (const mission of [15, 16, 17]) {
   test(`Apollo ${mission} drives, steers at both axles, brakes and keeps its tyres on the slope`, () => {
-    const file = readFileSync(`public/models/usa/apollo/apollo-${mission}/rover.glb`);
-    const model = hierarchy(JSON.parse(file.subarray(20, 20 + file.readUInt32LE(12)).toString('utf8')));
     const ground = { radius: 100, height: (x, z) => x * 0.12 + Math.sin(z * 2) * 0.09, blocked: (x) => x < -3 };
-    const rover = new LunarRover(model, ground);
+    const rover = new LunarRover(modelOf(mission), ground);
     const step = (pedal, steer, brake = false, steps = 120) => {
       for (let i = 0; i < steps; i++) rover.drive(pedal, steer, brake, 1 / 60);
     };
-    step(1, 0);
-    assert.ok(rover.motion.x > 4 && rover.motion.speed > 0);
-    assert.ok(rover.wheels.every((w) => w.phase < -8));
+    // four seconds up a slope of 1 in 8 under the Moon's gravity: what its motors and the ground give it
+    step(1, 0, false, 240);
+    assert.ok(rover.motion.x > 2.5 && rover.motion.speed > 1, `up the slope: ${rover.motion.x.toFixed(2)} m, ${rover.motion.speed.toFixed(2)} m/s`);
+    assert.ok(rover.wheels.every((w) => w.phase < (-0.9 * rover.motion.x) / w.radius));
     step(1, 1, false, 40);
     const [fl, fr, rl, rr] = rover.wheels;
     assert.ok(fl.steer.rotation.y > fr.steer.rotation.y && fr.steer.rotation.y > 0);
     assert.ok(rl.steer.rotation.y < rr.steer.rotation.y && rr.steer.rotation.y < 0);
     assert.ok(rover.motion.heading > 0 && rover.motion.z < 0);
-    const up = new Vector3(0, 1, 0).applyQuaternion(rover.body.quaternion);
     for (const w of rover.wheels) {
-      const axle = new Vector3(0, 0, 1).applyQuaternion(w.wheel.getWorldQuaternion(new Quaternion()));
-      const tireUp = up.clone().addScaledVector(axle, -up.dot(axle)).normalize();
-      const tread = w.wheel.getWorldPosition(new Vector3()).addScaledVector(tireUp, -w.radius);
-      assert.ok(Math.abs(tread.y - ground.height(tread.x, tread.z)) < 0.001, w.steer.name);
+      const gap = treadGap(rover, w, ground.height);
+      assert.ok(gap !== null && Math.abs(gap) < 0.001, `${w.steer.name} ${gap}`);
     }
     step(0, 0, true);
     assert.equal(rover.motion.speed, 0);
@@ -37,7 +46,7 @@ for (const mission of [15, 16, 17]) {
     assert.equal(rover.distance, at);
     step(-1, 0);
     assert.ok(rover.motion.speed < 0 && rover.distance > at);
-    const obstacle = new LunarRover(model, ground, { x: -2.9, z: 0, heading: Math.PI, distance: 0 });
+    const obstacle = new LunarRover(modelOf(mission), ground, { x: -2.9, z: 0, heading: Math.PI, distance: 0 });
     for (let i = 0; i < 180; i++) obstacle.drive(1, 0, false, 1 / 60);
     assert.ok(obstacle.motion.x >= -3 && obstacle.distance < 0.101);
   });
@@ -45,15 +54,9 @@ for (const mission of [15, 16, 17]) {
 
 for (const mission of [15, 16, 17]) {
   test(`Apollo ${mission} independent suspension holds both ends of every moving link on uneven ground`, () => {
-    const file = readFileSync(`public/models/usa/apollo/apollo-${mission}/rover.glb`);
-    const model = hierarchy(JSON.parse(file.subarray(20, 20 + file.readUInt32LE(12)).toString('utf8')));
-    const ground = {
-      radius: 100,
-      height(x, z) {
-        return amplitude * Math.tanh(3 * x) * Math.tanh(3 * z);
-      },
-    };
+    const model = modelOf(mission);
     let amplitude = 0;
+    const ground = { radius: 100, height: (x, z) => amplitude * Math.tanh(3 * x) * Math.tanh(3 * z) };
     const rover = new LunarRover(model, ground);
     const local = (n) => rover.body.worldToLocal(n.getWorldPosition(new Vector3()));
     const links = [];
@@ -63,9 +66,7 @@ for (const mission of [15, 16, 17]) {
         const inner = model.getObjectByName(label + '_In');
         const tip = model.getObjectByName(label + '_Out');
         const target = model.getObjectByName(`LRV_Mount_${id}_${kind}`);
-        const start = local(inner),
-          end = local(tip);
-        links.push({ id, kind, inner, tip, target, start, end, label });
+        links.push({ id, kind, inner, tip, target, start: local(inner), end: local(tip), label });
       }
     }
     for (const bump of [-0.176, 0.176]) {
@@ -95,24 +96,79 @@ for (const mission of [15, 16, 17]) {
 }
 
 test('Hadley tread contact stays on the survey surface through a full steering reversal', () => {
-  const file = readFileSync('public/models/usa/apollo/apollo-15/rover.glb');
-  const model = hierarchy(JSON.parse(file.subarray(20, 20 + file.readUInt32LE(12)).toString('utf8')));
   const tile = readFileSync('public/lunar/hadley.terrain.bin');
   const terrain = new LunarTerrain(tile.buffer.slice(tile.byteOffset, tile.byteOffset + tile.byteLength));
-  const rover = new LunarRover(
-    model,
-    { radius: 9000, height: (x, z) => terrain.height(x, z) },
-    { x: 23.5, z: -77, heading: 0, distance: 0 },
-  );
+  const height = (x, z) => terrain.height(x, z);
+  const rover = new LunarRover(modelOf(15), { radius: 9000, height }, { x: 23.5, z: -77, heading: 0, distance: 0 });
   for (let i = 0; i < 100; i++) {
     rover.drive(0, i < 51 ? 1 : -1, false, 1 / 60);
     for (const wheel of rover.wheels) {
-      const axle = new Vector3(0, 0, 1).applyQuaternion(wheel.wheel.getWorldQuaternion(new Quaternion()));
-      const up = new Vector3(0, 1, 0).applyQuaternion(rover.body.quaternion);
-      const contact = wheel.wheel
-        .getWorldPosition(new Vector3())
-        .addScaledVector(up.addScaledVector(axle, -up.dot(axle)).normalize(), -wheel.radius);
-      assert.ok(Math.abs(contact.y - terrain.height(contact.x, contact.z)) < 0.0001, wheel.wheel.name);
+      const gap = treadGap(rover, wheel, height);
+      assert.ok(gap !== null && Math.abs(gap) < 0.0001, `${wheel.wheel.name} ${gap}`);
     }
   }
+});
+
+test('on the level it is no faster than the handbook’s 14 km/h, and it gathers speed no harder than the ground gives in a sixth of a g', () => {
+  const rover = new LunarRover(modelOf(15), { radius: 1000, height: () => 0 });
+  let most = 0;
+  let accel = 0;
+  let last = 0;
+  for (let i = 0; i < 60 * 30; i++) {
+    rover.drive(1, 0, false, 1 / 60);
+    most = Math.max(most, rover.motion.speed);
+    accel = Math.max(accel, (rover.motion.speed - last) * 60);
+    last = rover.motion.speed;
+  }
+  assert.ok(most <= 14 / 3.6 + 1e-9, `${(most * 3.6).toFixed(2)} km/h`);
+  assert.ok(most > 13 / 3.6, `it reached only ${(most * 3.6).toFixed(2)} km/h in half a minute`);
+  // (traction-limited at a start: the grip times the Moon's gravity, 0.6 x 1.62 m/s², estimated)
+  assert.ok(accel < 1.0, `${accel.toFixed(2)} m/s²`);
+});
+
+test('at a crawl at full lock it turns within the handbook’s 122 in wall to wall; at speed it slides wide of its wheels', () => {
+  const rover = new LunarRover(modelOf(15), { radius: 1000, height: () => 0 });
+  // (the bicycle about its middle: its inner wheel's 50 degrees, LS006-002-2H section 1.3.4)
+  assert.ok(Math.abs(rover.vehicle.chassis.lock - Math.atan(1.143 / (0.9144 + 1.143 / Math.tan((50 * Math.PI) / 180)))) < 1e-3);
+  // lock to lock in 5.5 s
+  assert.ok(Math.abs((2 * rover.vehicle.chassis.lock) / rover.vehicle.chassis.rate - 5.5) < 1e-6);
+  const points = [];
+  for (let i = 0; i < 60 * 60 && Math.abs(rover.motion.heading) < 2 * Math.PI; i++) {
+    rover.drive(i % 3 === 0 ? 1 : 0, 1, rover.motion.speed > 0.3, 1 / 60);
+    points.push([rover.motion.x, rover.motion.z]);
+  }
+  assert.ok(Math.abs(rover.motion.heading) >= 2 * Math.PI, 'it did not come round');
+  // the middle of the circle its middle ran on, and the furthest any of it reached from there: the fender's outer edge
+  const late = points.slice(points.length / 2);
+  const cx = late.reduce((s, p) => s + p[0], 0) / late.length;
+  const cz = late.reduce((s, p) => s + p[1], 0) / late.length;
+  const middle = Math.hypot(rover.motion.x - cx, rover.motion.z - cz);
+  const outer = Math.hypot(middle + 0.9144 + 0.1143, 1.143);
+  assert.ok(Math.abs(outer - 122 * 0.0254) < 0.13, `wall to wall ${outer.toFixed(3)} m`);
+  // at 12 km/h with full lock its turn is held to what the ground gives across: no tighter than v² / (0.6 g)
+  const fast = new LunarRover(modelOf(15), { radius: 2000, height: () => 0 });
+  for (let i = 0; i < 60 * 20; i++) fast.drive(fast.motion.speed < 12 / 3.6 ? 1 : 0, 0, false, 1 / 60);
+  const h0 = fast.motion.heading;
+  const v = fast.motion.speed;
+  for (let i = 0; i < 60 * 8; i++) fast.drive(0, 1, false, 1 / 60);
+  const rate = (fast.motion.heading - h0) / 8;
+  assert.ok(fast.motion.steer > 0.5, 'its wheels went over');
+  assert.ok(rate < (0.6 * 1.624) / Math.max(0.5, fast.motion.speed) + 1e-6, `it turned at ${rate.toFixed(3)} rad/s at ${v.toFixed(2)} m/s`);
+});
+
+test('in a sixth of a g it leaves the ground over a bump at speed, and comes down again on its springs', () => {
+  // a ridge 20 cm high across its way, 1.5 m wide, 15 m on (estimated: a crater's rim)
+  const ridge = (x) => 0.2 * Math.max(0, 1 - Math.abs(x - 15) / 0.75);
+  const rover = new LunarRover(modelOf(15), { radius: 1000, height: (x) => ridge(x) });
+  let lifted = 0;
+  let down = 0;
+  for (let i = 0; i < 60 * 20; i++) {
+    rover.drive(1, 0, false, 1 / 60);
+    const off = rover.wheels.filter((w) => !w.contact).length;
+    if (off) lifted++;
+    if (rover.motion.x > 25 && off === 0) down++;
+  }
+  assert.ok(rover.motion.x > 25, 'it did not get over');
+  assert.ok(lifted > 6, `no wheel left the ground for more than a tenth of a second (${lifted} frames)`);
+  assert.ok(down > 60, 'it did not come down on all four again');
 });
