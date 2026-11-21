@@ -76,6 +76,15 @@ where the report has about 65 nautical miles (120 km), a miss.
 | Terminal phase, at 3:10 | 151.7 by 162.4 (280.9 by 300.8) | 275.9 by 299.7 | holds |
 | Rendezvous, at 4:00 | 156.4 by 162.7 (289.7 by 301.3) | 293.2 by 302.3 | holds |
 
+**Why the terminal phase stays on the clock.** Lit on the Agena's elevation instead ("approximately 27.0 degrees",
+4.3.1.2; plan.ts `Pursuit` `elevation`, aimed 128.9° of the Agena's travel on, its corrections and braking moved with
+the arrival it solves), flown from the pad on hal9000 on 21 November 2026 with the trigger's crossing state put right
+(the shared fix of the elevation trigger), the run's Agena rises through 27° at 3:00:47, five minutes before the crew's
+lighting and 39.7 km off, where the report has 22.1 nautical miles (40.9 km): the geometry the crew lit on. It asks
+7.96 m/s (the clock's 8.90, the record's 6.64) and meets the Agena at 3:33:10; the orbit at 3:10 still holds. But the
+braking, begun as long before that arrival as the crew's was before 3:38:12, gives 8.47 m/s against the record's 6.00
+± 2.44, where the clock's holds at 6.93. One check better, one that holds now out: the clock's run is kept.
+
 ## 4. The docked hours, the tether and the separation
 
 **The docking at 4:13:52, the two practice dockings, the undockings and the tether are not flown.** The two eclipse phasing
@@ -120,6 +129,6 @@ then rolled through 150° and back (Figure 5.1.5-8): the rolls are not flown.
 - The insertion velocity adjustment and the lateral manoeuvre: in the stage's cut.
 - The docking, the practice dockings, the undockings, the tether and the three walks; the station keeping between.
 - The docked burns' effect on the Agena: it is not moved by them in this run.
-- The terminal phase's trigger and the corrections' errors: lit by the clock, solved without navigation error.
+- The terminal phase's trigger and the corrections' errors: lit by the clock (section 3 says why), solved without navigation error.
 - The computer's entry rolls; the retrorockets one by one.
 - The OAMS's degraded attitude thrusters (Nos. 2, 4, 7 and 8): attitude is not flown.
