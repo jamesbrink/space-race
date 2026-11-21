@@ -265,6 +265,26 @@ const GT8_BRAKING =
 const GT8_ENTRY =
   'It comes down 31 km to the left (north) of where the ship landed, the drogue on the record’s place along the track. The retrofire is timed by guidance for the landing place along the track (sim/plan.ts LandingAim); the bank is the crew’s and the computer’s as read off the report’s Figure 5.1.5-17 and flown by the clock (10 degrees south to 400,000 ft, the back-up 52 south, then the computer’s banks to the north), not commanded on the run’s own range to the target as the computer’s were: the cross-range the run carries to 10:31 is not taken out. Its plane after the rendezvous is the Agena’s, flown on from the insertion vector. Not adjusted';
 
+/** Gemini IX-A's three rendezvous, made on the ATDA flown from its insertion vector two days before, and its descent (gt-9a/mission.md). */
+const GT9A_ATDA =
+  'The ATDA is flown from the report’s insertion vector 46 h 33 min before the Titan’s liftoff, on gravity and the air at an estimated drag area (Table 4.3-V): at the ship’s insertion it is 1,142 km ahead where the report has about 570 nautical miles (1,056 km), and 115 km off at the crew’s terminal phase where the report has 25.2 nautical miles (46.7 km). The ground made its plan from later vectors of the ATDA (Eglin revolution 29, 4.3.1.2), which the report does not print; the burns before the coelliptic are flown at the record’s impulses and do not take the difference out. Not adjusted';
+const GT9A_HIGH =
+  'After the first rendezvous the run’s orbit is the ATDA’s, flown from its insertion vector: its perigee some 4 km over the record’s, which the burns after it, flown at the record’s impulses, keep. Not adjusted';
+const GT9A_TPI =
+  'The terminal phase is lit on the ATDA’s elevation, 27.2° (4.3.1.2.1; sim/plan.ts `Pursuit` `elevation`), at 4:02:50, 27 minutes after the crew, the run’s ATDA being that much farther ahead (above), and solved to meet it 129.3° on: 10.7 m/s where the crew’s was 8.7 (28.4 ft/s), so the orbit read at 3:45 is still the coelliptic one. Lit by the clock at the crew’s 3:36:02 instead, 115 km from the ATDA, it asks 34.0 m/s. Not adjusted';
+const GT9A_CORRECTIONS =
+  'The run has no navigation, radar or platform error: the terminal phase it solves reaches the ATDA, and the corrections the crew made, which took out theirs, solve to nothing. Not adjusted';
+const GT9A_BRAKING =
+  'The braking is the thrust commanded on the ATDA to come to rest 60 ft from it and to stay there to the next manoeuvre (sim/pursuit.ts stationPush): what it gives is counted to then, the station keeping in it, where the record’s figure is the braking’s resultant alone, and it brakes a transfer solved as the run has it (above). Not adjusted';
+const GT9A_EQUI =
+  'The equi-period terminal phase is solved at the crew’s instant to meet the ATDA at the braking the crew were sent, 6:33:58: the run’s radial separation, flown at the record’s 19.9 ft/s from the station kept 60 ft behind the ATDA along the track (the report gives no range for it), leaves the ship where the crew’s left them only to within a few hundred metres, and 3.5 m/s puts that right where the crew needed 0.64. Not adjusted';
+const GT9A_COELLIPTIC =
+  'The coelliptic burns are solved on the ATDA as the run has it, flown from its insertion vector; the orbits after them hold (272.7 by 274.4 km after the first, against 268.9 by 274.1). Not adjusted';
+const GT9A_ABOVE =
+  'At the terminal phase from above, on the crew’s clock (21:02:28), the run’s ATDA is 19 km off and already 0.1° ahead of the ship, where the crew had it 27.5° below and behind (4.3.1.2.3): it has drawn some 36 km farther ahead over the fourteen hours since the separation, the ship and the ATDA flown on from where the run’s station keeping left them. Solved to meet it at the ground’s transfer time, the burn goes back toward it: 23.2 m/s where the crew’s was 5.5 (18.0 ft/s). The trigger, the ATDA falling through 27.5° below the level, is not a kind guidance has. Not adjusted';
+const GT9A_DESCENT =
+  'Down 136 s after the record, the drogue at the record’s instant (49 s, within its 60): the main at the 11,000 ft read off the report’s Figure 5.1.11-1, on the 84.2 ft ringsail’s 31.6 ft/s (CR-1106), where the figure has the ship from the main’s full opening to the water in 203 s, some 42 ft/s. As Gemini-Titan 7’s and 8’s. Not adjusted';
+
 /** Gemini XII's rendezvous, made on GATV-5001 flown from its insertion vector, its docked burns and its entry (gt-12/mission.md). */
 const GT12_DOCKED =
   'The orbit after the first docked burn and every burn after it holds its perigee and misses its apogee, 13 to 15 km over the record’s: the second and third dockings and the station keeping round them, which took the record’s orbit down from 162.7 by 156.4 nautical miles after the rendezvous to 161.4 by 153.0 before the first eclipse phasing (Tables 4.3-III and 4.3-II), are not flown, so the run comes to the docked burns some 7 km higher in its axis, and each burn, at the pair’s measured impulse, takes as much off it as the record’s did. Not adjusted';
@@ -1220,6 +1240,34 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 15,
         why: 'Down at 10:43:00, 94 s after the record: the drogue out 33 s after the report’s table has it (its figure has it 13 s earlier still), and the rest the parachutes: the main at the 8,700 ft read off the report’s figure, on the 84.2 ft ringsail’s 31.6 ft/s, where the figure has the ship from the main’s deployment to the water in 195 s. As Gemini-Titan 7’s. Not adjusted',
       },
+    },
+  }),
+  // Gemini IX-A from the pad, its three rendezvous made on the ATDA (its coast from the published orbit is not run: a flight
+  // with a target is flown with it, tests/orbital.test.mjs)
+  'usa/gemini/gt-9a': inUnits({
+    ascent: {},
+    shown: {
+      'after-13500.apogee': { by: -21_960, slack: 3_000, why: GT9A_TPI },
+      'after-70200.perigee': { by: 6_124, slack: 2_000, why: GT9A_HIGH },
+      'after-76200.apogee': { by: 25_070, slack: 4_000, why: GT9A_ABOVE },
+      'after-84600.perigee': { by: 6_462, slack: 2_000, why: GT9A_HIGH },
+      'coelliptic.velocity': { by: -1.51, slack: 0.5, why: GT9A_COELLIPTIC },
+      'terminal-phase.velocity': { by: 2.026, slack: 0.5, why: GT9A_TPI },
+      'midcourse-1.velocity': { by: -1.225, slack: 0.2, why: GT9A_CORRECTIONS },
+      'midcourse-2.velocity': { by: -1.219, slack: 0.2, why: GT9A_CORRECTIONS },
+      'terminal-braking.velocity': { by: 6.058, slack: 2, why: GT9A_BRAKING },
+      'terminal-phase-2.velocity': { by: 2.833, slack: 0.5, why: GT9A_EQUI },
+      'midcourse-2-3.velocity': { by: -0.9132, slack: 0.2, why: GT9A_CORRECTIONS },
+      'coelliptic-3.velocity': { by: -0.3273, slack: 0.15, why: GT9A_COELLIPTIC },
+      'terminal-phase-3.velocity': { by: 17.68, slack: 3, why: GT9A_ABOVE },
+      'midcourse-3-1.velocity': { by: -2.438, slack: 0.2, why: GT9A_CORRECTIONS },
+      'midcourse-3-2.velocity': { by: -5.791, slack: 0.2, why: GT9A_CORRECTIONS },
+      'terminal-braking-3.velocity': { by: 14.06, slack: 3, why: GT9A_BRAKING },
+      'at-436.range': { by: 86_320, slack: 10_000, why: GT9A_ATDA },
+      'at-12962.range': { by: 68_230, slack: 10_000, why: GT9A_ATDA },
+    },
+    descent: {
+      'reentry-module.at': { by: 136, slack: 30, why: GT9A_DESCENT },
     },
   }),
   // Gemini XII from the pad, its rendezvous made on GATV-5001 (its coast from the published orbit is not run: a flight with a

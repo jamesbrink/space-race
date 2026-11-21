@@ -210,7 +210,9 @@ each with its confidence; the air aloft is ERA5's (`aloft.ts`).
   ([g4c-suit.md](../../crew/g4c-suit.md)), Cernan's let out over its cover for going outside and its legs
   of Chromel-R; his overvisor is not built, and whether it was on his helmet at the pad is not
   settled. Cernan's stature is not in any NASA source read: 6 ft is taken. The seats are empty.
-- **The flight.** No trajectory, no orbit as data, no simulator run.
+- **The flight.** Flown from the pad to the landing as data (orbital.ts, [mission.md](mission.md)): the
+  ascent, the three rendezvous made on the ATDA, the last separation, the orbit shaping, the retrofire and the entry. The
+  walk outside is not flown. Fly still opens on the docking chapter.
 - **Cernan's two hours.** The unit, the bars and the rail are as they were at launch.
 
 ## Where sources disagree
