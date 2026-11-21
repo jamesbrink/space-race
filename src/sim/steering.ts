@@ -315,10 +315,16 @@ function nullPart(J: number[][], x: number[]): number[] {
   return x.map((y, k) => y - J.reduce((sum, row, i) => sum + row[k]! * w[i]!, 0));
 }
 
-/** What a burn is solved for: its misses after the cut (each against its tolerance), from the state and instant there. */
+/**
+ * What a burn is solved for: its misses after the cut (each against its tolerance), from the state and instant there.
+ * And where given (its nearest), a further miss, sought once those are met along what they leave free, in place of the least impulse: met
+ * where it can be, and otherwise brought as near as it goes (an orbit's plane about the Moon that the approach cannot
+ * be turned into).
+ */
 export interface Condition {
   miss(s: State, t: number): number[] | null;
   tolerance: number[];
+  nearest?: { miss(s: State, t: number): number | null; tolerance: number };
 }
 
 /**
@@ -383,10 +389,14 @@ export function solveImpulse(
         );
       if (!d || d.some((y) => !Number.isFinite(y))) return null;
       const step = limited(d, p.x);
+      // (the step, or a half of it, a quarter and so on while that is better: a step that only just shrinks the misses has
+      // gone past the bottom of a long valley and comes back over it on the next, so it is halved while halving helps)
       let next: Tried | null = null;
       for (let h = 0, by = 1; h < 10; h++, by /= 2) {
-        next = tried(p.x.map((y, i) => y + step[i]! * by));
-        if (next && next.size < p.size) break;
+        const at = tried(p.x.map((y, i) => y + step[i]! * by));
+        if (at && (!next || at.size < next.size)) next = at;
+        else if (next && next.size < p.size) break;
+        if (next && next.size < p.size / 2) break;
       }
       if (!next || !(next.size < p.size)) return null;
       p = next;
@@ -396,6 +406,45 @@ export function solveImpulse(
   const first = tried(free.map((k) => guess[k]!));
   let best = first && meet(first);
   if (!best || want.tolerance.length >= free.length) return best && { lv: lvOf(best.x), burn: best.burn };
+  const nearest = want.nearest;
+  if (nearest) {
+    // (the further miss along what the conditions leave free: Newton's step on it there, the conditions met again after
+    // each, kept while it is nearer; where it cannot be met the step finds it no nearer, and it stands as near as it went)
+    const far = (p: Tried): number | null => {
+      const y = nearest.miss(p.burn.state, p.burn.t);
+      return y === null || !Number.isFinite(y) ? null : y;
+    };
+    let off = far(best);
+    for (let k = 0; k < 20 && off !== null && Math.abs(off) >= nearest.tolerance; k++) {
+      const J = slopes(best);
+      const slope: number[] = [];
+      for (let j = 0; j < best.x.length && J; j++) {
+        const trial = steer(lvOf(best.x.map((y, i) => (i === j ? y + STEP : y))));
+        const y = nearest.miss(trial.state, trial.t);
+        if (y === null) break;
+        slope.push((y - off) / STEP);
+      }
+      if (!J || slope.length < best.x.length) break;
+      const along = nullPart(J, slope);
+      const square = along.reduce((sum, y) => sum + y * y, 0);
+      if (!(square > 0)) break;
+      const step = limited(
+        along.map((y) => (-off! * y) / square),
+        best.x,
+      );
+      let found: Tried | null = null;
+      for (let h = 0, by = 1; h < 6 && !found; h++, by /= 2) {
+        const moved = tried(best.x.map((y, i) => y + step[i]! * by));
+        const again = moved && meet(moved);
+        const now = again && far(again);
+        if (again && now !== null && Math.abs(now) < Math.abs(off)) found = again;
+      }
+      if (!found) break;
+      best = found;
+      off = far(best);
+    }
+    return { lv: lvOf(best.x), burn: best.burn };
+  }
   for (let k = 0; k < 20; k++) {
     const J = slopes(best);
     if (!J) break;

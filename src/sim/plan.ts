@@ -485,10 +485,19 @@ export type Pursuit =
    * record's (held to `until` all the same, or to the firing's end where that is later).
    */
   | { station: { ahead: Measure; above: Measure }; until: Measure; arrival?: Arrival }
-  /** A midcourse correction on the way out: its nearest to the Moon `height` m above the Moon's mean sphere, at `at`, s from liftoff. */
-  | { pericynthion: { height: Measure; at: Measure } }
-  /** An orbit about the body the craft is about as the burn ends (lunar orbit insertion, descent orbit insertion): its highest and lowest heights above that body's mean sphere (the Earth's: the orbit's reference ball), m. */
-  | { orbit: { apoapsis: Measure; periapsis: Measure } }
+  /**
+   * A midcourse correction on the way out: its nearest to the Moon `height` m above the Moon's mean sphere, at `at`, s from
+   * liftoff, and where given its motion there inclined `inclination` degrees to the Moon's equator (its principal axes':
+   * over 90, retrograde), the plane the orbit about the Moon is to be in.
+   */
+  | { pericynthion: { height: Measure; at: Measure; inclination?: Measure } }
+  /**
+   * An orbit about the body the craft is about as the burn ends (lunar orbit insertion, descent orbit insertion): its highest
+   * and lowest heights above that body's mean sphere (the Earth's: the orbit's reference ball), m. `lit`: lit not by the
+   * clock but at the craft's own periapsis, as the ground timed a circularization, looked for from `window` s before the
+   * record's lighting to as long after it (and lit at the end of that where none comes).
+   */
+  | { orbit: { apoapsis: Measure; periapsis: Measure; lit?: { at: 'periapsis'; window: Measure } } }
   /** The return (transearth injection, a return correction): through the entry interface, `height` m above the Earth's surface, at a space-fixed flight-path angle of `flightPathAngle` degrees (negative: going down), and at `at`, s from liftoff, where given. */
   | { entry: { flightPathAngle: Measure; height: Measure; at?: Measure } }
   /**

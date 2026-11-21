@@ -6,7 +6,7 @@ import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { CSM103_THRUST, SA503_THRUST } from '../../vehicles/propulsion.ts';
 import { saturnVFlies } from '../../vehicles/saturn-v-flies.ts';
-import { saturnVPlan } from '../../vehicles/saturn-v-plan.ts';
+import { apolloLunarPlan } from '../../vehicles/apollo-lunar-plan.ts';
 import { orbital } from './orbital.ts';
 import { WEATHER } from './weather.ts';
 
@@ -14,7 +14,7 @@ const IN = 0.0254;
 const FT = 12 * IN;
 const kit = 'NASA Apollo 8 press kit 68-208, ';
 const record = 'NASA SP-4029, Apollo 8 mission summary';
-const PLAN = saturnVPlan(orbital);
+const PLAN = apolloLunarPlan(orbital);
 const cabin = blockIICabin(3871); // SA-503 forward SLA station above the F-1 exits (3709 in) + XA1000 − XA838.
 
 // Selected-part cards keep the drawing units. The Specs tab converts their dimensional figures to SI.
@@ -459,11 +459,20 @@ export const flight: Flight = {
     { t: 684.98, event: 'S-IVB first cutoff' },
     { t: 10565.51, event: 'Translunar injection' },
     { t: 12059.3, event: 'CSM separates from S-IVB' },
+    { t: 3 * 3600 + 40 * 60 + 1, event: 'First separation manoeuvre' },
+    { t: 4 * 3600 + 45 * 60 + 1, event: 'Second separation manoeuvre, radially upward' },
+    { t: 10 * 3600 + 59 * 60 + 59.5, event: 'First midcourse correction' },
+    { t: 60 * 3600 + 59 * 60 + 55.9, event: 'Second midcourse correction' },
     { t: 69 * 3600 + 8 * 60 + 20.4, event: 'Lunar orbit insertion burn begins' },
+    { t: 73 * 3600 + 35 * 60 + 6.6, event: 'Lunar orbit circularized' },
     { t: 89 * 3600 + 19 * 60 + 16.6, event: 'Transearth injection burn begins' },
+    { t: 103 * 3600 + 59 * 60 + 54, event: 'Third midcourse correction' },
     { t: 146 * 3600 + 28 * 60 + 48, event: 'Service module jettison' },
+    { t: 146 * 3600 + 46 * 60 + 12.8, event: 'Entry interface' },
     { t: 147 * 3600 + 42, event: 'Pacific splashdown' },
   ],
+  flownNote:
+    'The run flies the whole flight on its own forces: the Saturn V to the translunar injection, the spacecraft parting from the S-IVB, each firing after it solved as it lights on the state the run is in (the corrections for the pericynthion each reached on the day, the lunar orbit’s burns for its orbits, the return’s for the entry interface), ten revolutions in the Moon’s field, and the entry steered by the computer to its target. The record’s impulses are what each firing is held to. The S-IVB’s evasive manoeuvre and slingshot are not flown.',
   specs: [
     spec('Height on the pad', 363 * FT, `${kit}p. 38, rounded assembled height to escape tower tip`),
     spec('S-IC stage length', 138 * FT, `${kit}p. 38, rounded envelope`),

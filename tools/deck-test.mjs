@@ -270,7 +270,8 @@ for (const [w, h, touch] of process.env.SR_ONLY && !staging ? [] : SIZES) {
   if (w === 1280)
     for (const id of Object.keys(FLIGHTS).filter(
       (f) =>
-        (f.startsWith('ussr/') || f.startsWith('usa/gemini/gt-')) &&
+        // (and Apollo 8, flown from the pad to the Pacific: apollo-lunar-plan.ts)
+        (f.startsWith('ussr/') || f.startsWith('usa/gemini/gt-') || f === 'usa/apollo/apollo-8') &&
         (!process.env.SR_FLIGHTS || process.env.SR_FLIGHTS.split(',').some((part) => f.includes(part))),
     )) {
       const where = `${id} as flown at ${w}`;

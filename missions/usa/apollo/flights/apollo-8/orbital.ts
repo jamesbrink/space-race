@@ -1,23 +1,39 @@
 /**
- * Apollo 8's launch as its records have it: SA-503 from Pad 39A through the translunar injection, the record the plan is
- * written from (vehicles/saturn-v-plan.ts `saturnVPlan`). All times are range time, s from range zero (12:51:00 UT).
- * The launch vehicle's figures are MSFC's flight evaluation's (MPR-SAT-FE-69-1): its event times (Table 2-2), its
- * trajectory at each event (Tables 4-2 to 4-7), its engines' reconstructed performance (Tables 5-2, 6-2, 7-2, 7-7) and its
- * mass at each event (Tables 21-1 to 21-9, read off the page). Where AS-503's report has no figure, Apollo 11's record is
- * taken and says so. What is read, what disagrees and what is estimated is in mission.md beside this file.
+ * Apollo 8 as its records have it, from Pad 39A to the Pacific: SA-503 through the translunar injection and CSM-103 on to
+ * the Moon, ten revolutions about it and home, the record the plan is written from (vehicles/apollo-lunar-plan.ts
+ * `apolloLunarPlan`). All times are range time, s from range zero (12:51:00 UT). The launch vehicle's figures are MSFC's
+ * flight evaluation's (MPR-SAT-FE-69-1): its event times (Table 2-2), its trajectory at each event (Tables 4-2 to 4-7),
+ * its engines' reconstructed performance (Tables 5-2, 6-2, 7-2, 7-7) and its mass at each event (Tables 21-1 to 21-9,
+ * read off the page). Where AS-503's report has no figure, Apollo 11's record is taken and says so. The spacecraft's are
+ * the Mission Report's (MSC-PA-R-69-1): its sequence of events (Table 3-I), the trajectory at each manoeuvre and what each
+ * reached (Tables 5-II to 5-V, §§5.3 to 5.8), the guidance's account of each firing (Table 6.9-II) and of the entry
+ * (§6.9.1, Table 6.9-III), the service propulsion system's (Table 6.11-I, §6.11.2) and the mass at each phase (Table
+ * A.6-I). What is read, what disagrees and what is estimated is in mission.md beside this file.
  */
 import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
-import type { OrbitFix, PlanCheck } from '../../../../../src/sim/plan.ts';
-import type { SaturnVRecord } from '../../vehicles/saturn-v-record.ts';
+import type { AttitudeDef, OrbitFix, PlanCheck } from '../../../../../src/sim/plan.ts';
+import type { ApolloLunarRecord } from '../../vehicles/apollo-lunar-record.ts';
+import { cmEntryAero } from '../../vehicles/command-module-aero.ts';
+import { localAim } from '../../vehicles/csm-plan.ts';
+import type { Burn } from '../../vehicles/csm-record.ts';
 
 const IN = 0.0254;
+const FT = 12 * IN;
 const LB = 0.45359237;
+const LBF = 4.448221615;
+const NMI = 1852;
 const G0 = 9.80665;
+const T = (hours: number, minutes: number, seconds: number) => hours * 3600 + minutes * 60 + seconds;
 const EVAL = 'Saturn V Launch Vehicle Flight Evaluation Report AS-503, Apollo 8 Mission (MSFC, MPR-SAT-FE-69-1, 20 February 1969)';
 const EVENTS = `${EVAL}, Table 2-2, actual range time`;
 const MASS = `${EVAL}, Tables 21-1 to 21-9 (actual, kg)`;
 const MR = 'Apollo 8 Mission Report (MSC-PA-R-69-1, February 1969)';
 const KIT = 'NASA Apollo 8 press kit (release 68-208, 15 December 1968)';
+const SEQUENCE = `${MR}, Table 3-I, sequence of events`;
+const MASSES = `${MR}, Table A.6-I, spacecraft mass properties`;
+const MANOEUVRES = `${MR}, Table 6.9-II, guidance and control maneuver summary`;
+const AFJ =
+  'Apollo 8 Flight Journal, day 1: separation and the evasive manoeuvres (apollojournals.org, ap08fj/03day1_green_sep.html), the air-to-ground transcript';
 const AS506 = 'AS-506’s flight evaluation (MSFC, MPR-SAT-FE-69-9), as Apollo 11’s record (apollo-11/orbital.ts) reads it';
 
 /** The F-1s' mainstage propellant (Table 21-9) over the engine-seconds the run burns them from range zero: one engine's flow, kg/s. */
@@ -55,6 +71,18 @@ const fix = (
   heading: doc(heading, source),
 });
 
+/** A state of the Mission Report's Table 5-II or 5-V: its altitude in nautical miles and its speed in ft/s. */
+const fixNmi = (
+  source: string,
+  at: number,
+  latitude: number,
+  longitude: number,
+  altitude: number,
+  speed: number,
+  climb: number,
+  heading: number,
+): OrbitFix => fix(source, at, latitude, longitude, (altitude * NMI) / 1000, speed * FT, climb, heading);
+
 const check = (id: string, label: string, value: number, unit: string, tolerance: number, source: string): PlanCheck => ({
   id,
   label,
@@ -69,7 +97,294 @@ const check = (id: string, label: string, value: number, unit: string, tolerance
 const CUTOFFS = `${EVAL}, Table 4-3, actual`;
 const SEPARATIONS = `${EVAL}, Table 4-4, actual`;
 
-export const orbital: SaturnVRecord = {
+/** The spacecraft at liftoff, kg (the record's `csm.mass`, as the launch vehicle's evaluation has it). */
+const CSM_LIFTOFF = 28_816 + 6;
+/** Table A.6-I, lb: the command module after the modules parted, at the entry interface and at drogue deployment; the two modules just before. */
+const CM_AFTER = 12_179;
+const CM_INTERFACE = 12_171;
+const CM_DROGUE = 11_712;
+const MODULES_BEFORE = 31_768;
+/** The entry interface, Table 3-I and Table 5-V: 146:46:12.8. */
+const INTERFACE = T(146, 46, 12.8);
+const DROGUE = T(146, 54, 47.8);
+const SPLASH = T(147, 0, 42);
+/** Half the period of a 168.5 by 60.0 n. mi. orbit about the Moon (1,738 km, GM 4,902.8 km³/s²), s. */
+const LOI_HALF_PERIOD = Math.PI * Math.sqrt((1_738_000 + ((168.5 + 60.0) / 2) * NMI) ** 3 / 4.9028e12);
+const CMC_PROGRAM =
+  'Colossus 2A (Comanche 055, Apollo 11) flight program listing, REENTRY CONTROL, pp. 844 to 881: taken for Colossus 237, the program Apollo 8 flew (the Mission Report, §6.9.2), whose own listing has not been compared';
+const NOT_PLACED =
+  'the record’s own components (Table 6.9-II) are in the guidance platform’s axes, which are not placed here: the line of a burn guidance does not solve';
+
+/**
+ * The firings after the injection, as the Mission Report has them, in the order flown: the two separation manoeuvres
+ * with the service module's thrusters (§5.3: the second because the spacecraft was not drawing away from the S-IVB as the
+ * crew expected), the two midcourse corrections that were needed of the four planned (§5.4), the lunar orbit's insertion
+ * and circularization (§5.5), the transearth injection (§5.6) and the one correction of the three planned on the way home
+ * (§5.7, which the report calls the third midcourse correction). Each lights at the record's instant; each but the
+ * separations is solved as it lights for what it reached on the day (`toward`: what each was aimed at is given only in
+ * words, "about 65 n. mi." for the corrections, §3), and its impulse is a check.
+ */
+const burns: Burn[] = [
+  {
+    id: 'separation-1',
+    label: 'First separation manoeuvre',
+    engine: 'sm-rcs',
+    aim: localAim(
+      'separation-1-aim',
+      'First separation manoeuvre',
+      [0, 0, 1],
+      `estimated: ${AFJ}, 003:44:28: "Delta-VX minus 00011", the thrust along the spacecraft's minus X with its plus X toward the Earth, which is radially upward; the attitude's reference is not placed, so taken as the second manoeuvre's`,
+    ),
+    on: doc(T(3, 40, 1), SEQUENCE),
+    off: {
+      at: estimated(
+        T(3, 40, 1) + 11,
+        'eleven seconds: 1.1 ft/s on two 100 lbf thrusters at the spacecraft’s mass; the firing’s length is not in the report',
+      ),
+      label: 'First separation manoeuvre complete',
+    },
+    flown: doc(1.1 * FT, `${MR}, §5.3: "a 1.1-ft/sec separation maneuver"`),
+    massAtIgnition: doc(63_524 * LB, `${MASSES}, spacecraft/S-IVB separation`),
+  },
+  {
+    id: 'separation-2',
+    label: 'Second separation manoeuvre',
+    engine: 'sm-rcs',
+    aim: localAim(
+      'separation-2-aim',
+      'Second separation manoeuvre',
+      [0, 0, 1],
+      `${AFJ}, 004:37:22 and 004:39:22: "burn radially upward at 8 feet per second", "for trajectory reasons"`,
+    ),
+    on: doc(T(4, 45, 1), SEQUENCE),
+    off: {
+      at: estimated(
+        T(4, 45, 1) + 76,
+        'seventy-six seconds: 7.7 ft/s on two 100 lbf thrusters at the spacecraft’s mass; the firing’s length is not in the report',
+      ),
+      label: 'Second separation manoeuvre complete',
+    },
+    flown: doc(7.7 * FT, `${MR}, §5.3: "an additional separation maneuver (7.7 ft/sec)"; ${AFJ}, 004:45:54: "7.7 plus-X"`),
+    massAtIgnition: doc(63_524 * LB, `${MASSES}, spacecraft/S-IVB separation`),
+  },
+  {
+    id: 'mcc-1',
+    label: 'First midcourse correction',
+    engine: 'sps',
+    aim: localAim('mcc-1-aim', 'First midcourse correction', [1, 0, 0], `estimated: along the motion; ${NOT_PLACED}`),
+    on: doc(T(10, 59, 59.5), SEQUENCE),
+    off: { at: doc(T(11, 0, 1.9), SEQUENCE), label: 'First midcourse correction cutoff' },
+    flown: doc(
+      20.4 * FT,
+      `${MR}, §5.4: 24.8 ft/s calculated, "a velocity change of only 20.4 ft/sec was achieved because the thrust was less than expected"`,
+    ),
+    firingTime: doc(2.4, MANOEUVRES),
+    massAtIgnition: doc(63_307 * LB, `${MASSES}, first midcourse correction`),
+    toward: {
+      pericynthion: {
+        height: doc(
+          66.3 * NMI,
+          `${MR}, Table 5-III: the pericynthion solution after it, 66.3 n. mi., taken as what it was aimed at (§3 gives the aim only as "the desired altitude of about 65 n. mi.")`,
+        ),
+        at: doc(T(69, 10, 40), `${MR}, Table 5-III: its time of nearest approach, 69:10:40`),
+        inclination: derived(
+          180 - 12,
+          `${KIT}, lunar parking orbit: "The lunar parking orbit will have an inclination of 12 degrees to the lunar equator", the plan's, flown westward over the near side (${MR}, Table 5-II: the selenographic longitude falling through the insertion), so retrograde: taken as what the first correction aimed the approach's plane at`,
+        ),
+      },
+    },
+  },
+  {
+    id: 'mcc-2',
+    label: 'Second midcourse correction',
+    engine: 'sm-rcs',
+    aim: localAim('mcc-2-aim', 'Second midcourse correction', [1, 0, 0], `estimated: along the motion; ${NOT_PLACED}`),
+    on: doc(T(60, 59, 55.9), MANOEUVRES),
+    off: { at: doc(T(61, 0, 7.8), MANOEUVRES), label: 'Second midcourse correction complete' },
+    flown: doc(1.4 * FT, `${MR}, §5.4: "a 1.4-ft/sec, 11.8-second reaction control maneuver"`),
+    massAtIgnition: doc(62_845 * LB, `${MASSES}, second midcourse correction`),
+    toward: {
+      pericynthion: {
+        height: doc(
+          65.8 * NMI,
+          `${MR}, Table 5-III: the pericynthion solution after it, 65.8 n. mi., taken as what it was aimed at (§3: "to further refine the initial conditions"; the plane is the first correction's, and this one the least impulse that gives the height and the time)`,
+        ),
+        at: doc(T(69, 10, 39), `${MR}, Table 5-III: its time of nearest approach, 69:10:39`),
+      },
+    },
+  },
+  {
+    id: 'loi',
+    label: 'Lunar orbit insertion',
+    engine: 'sps',
+    aim: localAim('loi-aim', 'Lunar orbit insertion', [-1, 0, 0], `estimated: against the motion, as an insertion is; ${NOT_PLACED}`),
+    on: doc(T(69, 8, 20.4), SEQUENCE),
+    off: { at: doc(T(69, 12, 27.3), SEQUENCE), label: 'Lunar orbit insertion cutoff' },
+    flown: doc(2997 * FT, `${MR}, §5.5: "A 2997-ft/sec, 246.9-second service propulsion maneuver"`),
+    massAtIgnition: doc(62_827 * LB, `${MASSES}, lunar orbit insertion`),
+    toward: {
+      orbit: {
+        apoapsis: doc(
+          168.5 * NMI,
+          `${MR}, §5.5: "placed the spacecraft in a lunar orbit of 168.5 by 60.0 n. mi. to achieve the desired velocity change"`,
+        ),
+        periapsis: doc(60.0 * NMI, `${MR}, §5.5`),
+      },
+    },
+  },
+  {
+    id: 'loc',
+    label: 'Lunar orbit circularization',
+    engine: 'sps',
+    aim: localAim('loc-aim', 'Lunar orbit circularization', [-1, 0, 0], `estimated: against the motion; ${NOT_PLACED}`),
+    on: doc(T(73, 35, 6.6), MANOEUVRES),
+    off: { at: doc(T(73, 35, 16.2), MANOEUVRES), label: 'Lunar orbit circularization cutoff' },
+    flown: doc(
+      134.8 * FT,
+      `${MR}, §5.5: "The firing time and the resultant velocity change ... were 9.6 seconds and 134.8 ft/sec" (§3 rounds it to 135)`,
+    ),
+    massAtIgnition: doc(46_716 * LB, `${MASSES}, lunar orbit circularization`),
+    toward: {
+      orbit: {
+        apoapsis: doc(60.7 * NMI, `${MR}, §5.5: "circularized to 60.7 by 59.7 n. mi."`),
+        periapsis: doc(59.7 * NMI, `${MR}, §5.5`),
+        lit: {
+          at: 'periapsis',
+          window: derived(
+            LOI_HALF_PERIOD,
+            `s: half a revolution of the orbit the insertion left it on (${MR}, §5.5: 168.5 by 60.0 n. mi.) about the Moon's mean sphere, either side of the record's lighting, which was at the periapsis (Table 5-II: 59.3 n. mi. up and level, -0.03 degree); §3: "after approximately 4 hours of navigation checks"`,
+          ),
+        },
+      },
+    },
+  },
+  {
+    id: 'tei',
+    label: 'Transearth injection',
+    engine: 'sps',
+    aim: localAim('tei-aim', 'Transearth injection', [1, 0, 0], `estimated: along the motion, as an injection is; ${NOT_PLACED}`),
+    on: doc(T(89, 19, 16.6), SEQUENCE),
+    off: { at: doc(T(89, 22, 40.3), SEQUENCE), label: 'Transearth injection cutoff' },
+    flown: doc(
+      3519 * FT,
+      `${MR}, §5.6: "The required velocity change of 3519 ft/sec was achieved in 203.7 seconds; however, the reaction control plus X translation added an additional 3.5 ft/sec" (§3: 3517)`,
+    ),
+    massAtIgnition: doc(45_931 * LB, `${MASSES}, transearth injection`),
+    toward: {
+      entry: {
+        flightPathAngle: doc(
+          -6.117,
+          `${MR}, Table 5-IV: the entry interface conditions the transearth injection left it on, -6.117 degrees, taken as what it was aimed at`,
+        ),
+        height: doc(400_000 * FT, `${MR}, Table 5-V: the entry interface, 400 000 feet`),
+        at: estimated(
+          INTERFACE,
+          `${MR}, Table 3-I: the instant it came through the interface, 146:46:12.8, taken for the one the injection was aimed at, which the report does not give (§5.8: the interface's speed and angle within 1 ft/s and 0.02 degree of the plan's)`,
+        ),
+      },
+    },
+  },
+  {
+    id: 'mcc-3',
+    label: 'Third midcourse correction',
+    engine: 'sm-rcs',
+    aim: localAim(
+      'mcc-3-aim',
+      'Third midcourse correction',
+      [-1, 0, 0],
+      `${MR}, §5.7: "to decrease the inertial velocity by 4.8 ft/sec": against the motion`,
+    ),
+    on: doc(T(103, 59, 54), SEQUENCE),
+    off: { at: doc(T(104, 0, 8), `${MR}, Table 5-II, third midcourse correction cutoff`), label: 'Third midcourse correction complete' },
+    flown: doc(4.8 * FT, `${MR}, §5.7`),
+    massAtIgnition: doc(32_008 * LB, `${MASSES}, third midcourse correction`),
+    toward: {
+      entry: {
+        flightPathAngle: doc(
+          -6.395,
+          `${MR}, Table 5-IV: the entry interface conditions the third midcourse correction left it on, -6.395 degrees, taken as what it was aimed at`,
+        ),
+        height: doc(400_000 * FT, `${MR}, Table 5-V: the entry interface, 400 000 feet`),
+        at: estimated(
+          INTERFACE,
+          `${MR}, Table 3-I: the instant it came through the interface, 146:46:12.8, taken for the one the correction was aimed at`,
+        ),
+      },
+    },
+  },
+];
+
+/**
+ * The entry, steered to the computer's target (sim/entry.ts) from the interface by the command module computer, as Apollo
+ * 8's was (§6.9.1: "Entry was performed under automatic control"; P63 at the interface, P64 after 0.05 g, constant drag
+ * and then straight to P67, the final phase). The record's commanded bank (Fig. 6.9-10) is not flown: what it shows of
+ * the entry is held as checks.
+ */
+const entry: AttitudeDef = {
+  id: 'entry-steered',
+  label: 'Entry',
+  source: `${MR}, §5.8 and §6.9.1, entry`,
+  hold: {
+    entry: {
+      target: {
+        latitude: doc(8.133, `${MR}, Table 5-V, drogue deployment: the target, 8.133 degrees north`),
+        longitude: doc(-165.033, `${MR}, Table 5-V, drogue deployment: the target, 165.033 degrees west`),
+      },
+      initial: assumed(
+        0,
+        'NASA TN D-6725: on a return from the Moon a lift-vector-up attitude is commanded through the interface; Apollo 8’s own is not given',
+      ),
+      computer: {
+        kind: 'apollo',
+        lad: assumed(
+          0.3,
+          'R-577, Colossus GSOP, Section 5 (Rev. 14), Fig. 7.0-1a: LADPAD, nominal 0.3; this flight’s pad load has not been read',
+        ),
+        lod: assumed(
+          0.18,
+          'R-577, Colossus GSOP, Section 5 (Rev. 14), Fig. 7.0-1a: LOD, nominal 0.18; this flight’s pad load has not been read',
+        ),
+        program: { confidence: 'assumed', source: CMC_PROGRAM },
+      },
+      roll: {
+        rate: assumed(
+          20,
+          'Colossus 2A (Comanche 055) listing, CM ENTRY DIGITAL AUTOPILOT, roll constants: VM = 20 deg/s; taken for Colossus 237',
+        ),
+        acceleration: assumed(
+          9.1,
+          'Colossus 2A (Comanche 055) listing, CM ENTRY DIGITAL AUTOPILOT, roll constants: A = 9.1 deg/s², two jets; taken for Colossus 237 and this module’s inertia',
+        ),
+      },
+    },
+  },
+};
+
+/** A manoeuvre's impulse as the record has it, ft/s, held to `share` of itself. */
+const impulse = (id: string, label: string, fps: number, share: number, source: string): PlanCheck => ({
+  id: `${id}.velocity`,
+  label,
+  value: fps * FT,
+  unit: 'm/s',
+  tolerance: share * fps * FT,
+  of: 'orbit',
+  confidence: 'documented',
+  source,
+});
+/** A figure of the steered entry (orbital.ts `OrbitResults`, `entry.<id>`), as the record has it. */
+const entryCheck = (id: string, label: string, value: number, unit: string, tolerance: number, source: string): PlanCheck => ({
+  id: `entry.${id}`,
+  label,
+  value,
+  unit,
+  tolerance,
+  of: 'orbit',
+  confidence: 'documented',
+  source,
+});
+const CM_AERO = cmEntryAero('assumed');
+
+export const orbital: ApolloLunarRecord = {
   label: 'Saturn V SA-503 with CSM-103 and LTA-B',
   liftoff: doc(2_781_694, `${EVAL}, Table 21-1, total launch vehicle at holddown arm release (0.27 s; first motion 0.33 s, Table 2-2)`),
   sic: {
@@ -280,6 +595,100 @@ export const orbital: SaturnVRecord = {
       `${MR}, Table A.6-I: the command module after the modules parted at the end of the flight, the nearest figure read; it was heavier at launch by what it then used`,
     ),
   },
+  spacecraft: {
+    sm: derived(
+      CSM_LIFTOFF - (CM_DROGUE + (CM_INTERFACE - CM_DROGUE)) * LB,
+      `the spacecraft at liftoff (${EVAL}, Table 21-9: ${CSM_LIFTOFF} kg) less the command module and its forward heat shield (${MASSES}: ${CM_DROGUE} lb at drogue deployment, and ${CM_INTERFACE - CM_DROGUE} lb more at the entry interface); what the command module used between liftoff and its parting is carried in the service module`,
+    ),
+    cm: {
+      label: 'Command module 103',
+      mass: doc(CM_DROGUE * LB, `${MASSES}, at drogue deployment; held through the descent`),
+      lift: CM_AERO.lift!,
+      trim: CM_AERO.trim!,
+    },
+    shield: derived(
+      (CM_INTERFACE - CM_DROGUE) * LB,
+      `${MASSES}: the command module at the entry interface less at drogue deployment, with the char and the command module's consumables in it (the forward heat shield's own mass is not given)`,
+    ),
+    sps: {
+      thrust: doc(
+        20_498 * LBF,
+        `${MR}, Table 6.11-I: the vacuum thrust measured 50 s into the lunar orbit insertion (20,466 lbf at 200 s; 2 per cent under the predicted)`,
+      ),
+      isp: doc(313.0, `${MR}, Table 6.11-I: the vacuum specific impulse measured through the lunar orbit insertion`),
+      starts: doc(4, `${MANOEUVRES}: the service propulsion system lit four times`),
+      load: doc(40_836.0 * LB, `${MR}, §6.11.2: the actual loads, 25,105.1 lb of oxidizer and 15,730.9 lb of fuel`),
+      flown: doc(
+        3519 * FT,
+        `${MR}, §5.6: the transearth injection's 3519 ft/s, the last firing, solved for the entry interface and not flown as this (sim/orbital.ts \`coastEvents\`)`,
+      ),
+    },
+    separation: {
+      at: doc(
+        12_059.3,
+        `${EVAL}, Table 2-2 and §11: the separation sequence begun at 12,056.3 s, "physical separation was accomplished 3 seconds later at 12,059.3"`,
+      ),
+      push: estimated(
+        0.5,
+        `m/s: the plus-X translation held 3 s before the parting and 5 s after it (${AFJ}, 003:20:52 to 003:21:00), four 100 lbf thrusters on 28.8 t; the speed apart is not in the report`,
+      ),
+    },
+    modules: {
+      at: doc(T(146, 28, 48), SEQUENCE),
+      after: doc(CM_AFTER * LB, `${MASSES}, command module after separation`),
+      leaves: derived((MODULES_BEFORE - CM_AFTER) * LB, `${MASSES}: the modules at their separation less the command module after it`),
+      push: assumed(
+        27.5 * FT,
+        'Apollo 7 Mission Report (MSC-PA-R-68-15), §3.4: the service module reconstructed moving off at 25 to 30 ft/s posigrade, the midpoint taken; the type’s, Apollo 8’s report giving none',
+      ),
+    },
+  },
+  stage: {
+    mass: derived(
+      59_285 - 28_816,
+      `${EVAL}: the stack at the second cutoff (Table 21-7, 59,285 kg) less the spacecraft at separation (Table 21-9, 28,816 kg); what the S-IVB vented between is not taken off`,
+    ),
+  },
+  burns,
+  entry: { parting: entry, attitudes: [], events: [] },
+  els: {
+    shield: {
+      at: derived(
+        DROGUE - 1.6,
+        `${SEQUENCE}, drogue deployment at 146:54:47.8, and the forward heat shield 1.6 s before it as on Apollo 7 (its report, §5.5)`,
+      ),
+      height: assumed(
+        23_500 * FT,
+        'Apollo 7 Mission Report (MSC-PA-R-68-15), §5.5: the barometric switches’ 23,500 ft, the type’s (§6.0 of Apollo 8’s: the Earth landing system "operated exactly as intended and [is] not documented")',
+      ),
+      push: estimated(4, 'forward cover clearance speed; not reconstructed'),
+    },
+    drogues: {
+      at: doc(DROGUE, SEQUENCE),
+      wait: assumed(
+        1.6,
+        'Apollo 7 Mission Report (MSC-PA-R-68-15), §5.5: the forward heat shield jettisoned 1.6 s before the drogue mortars fired; the type’s',
+      ),
+      fills: assumed(10, 'Apollo 7 Mission Report (MSC-PA-R-68-15), §5.5: first disreefing after 10 s; the type’s'),
+    },
+    mains: {
+      at: doc(T(146, 55, 38.9), SEQUENCE),
+      height: assumed(10_300 * FT, 'Apollo 7 Mission Report (MSC-PA-R-68-15), §5.5: the mains out at 10,300 ft; the type’s'),
+      fills: assumed(16, 'Apollo Earth Landing System, two reefed stages; represented by one progressive fill'),
+    },
+  },
+  mission: {
+    manoeuvreTurn: estimated(30, 'Display slew into each firing’s line; the attitude timeline is not read'),
+    entryInterface: doc(400_000 * FT, `${MR}, Table 5-V`),
+    landing: {
+      at: doc(SPLASH, SEQUENCE),
+      latitude: doc(8 + 7.5 / 60, `${MR}, §6.9.1: the recovery forces' estimate, 8 degrees 7.5 minutes north`),
+      longitude: doc(-(165 + 1.2 / 60), `${MR}, §6.9.1: the recovery forces' estimate, 165 degrees 1.2 minutes west`),
+      near: 'the Pacific, near USS Yorktown',
+    },
+    ground: doc(0, `${MR}, §3: the Pacific Ocean`),
+    automatic: 'The computer flew the entry from the interface, and the Earth landing sequence ran automatically.',
+  },
   ascent: {
     guidance: {
       azimuth: doc(72.124, `${EVAL}, §4.1: launched on an azimuth of 90°, rolled to a flight azimuth of 72.124°`),
@@ -377,10 +786,6 @@ export const orbital: SaturnVRecord = {
       'the stack after the injection, its centre of mass above the F-1 exits: the S-IVB, the instrument unit, the adapter with LTA-B and the command and service modules, each by its mass at the second cutoff (Tables 21-7 and 21-9) at the middle of its stretch of the model (saturn_v.py), taken for the record’s run',
     ),
   },
-  bound: {
-    for: 'the Moon',
-    next: 'The command and service modules separated from the S-IVB and turned to look back at it, the S-IVB with LTA-B still in its adapter was sent past the Moon’s trailing edge into orbit about the Sun by its hydrogen vent, an oxygen dump and its ullage engines, and Borman, Lovell and Anders went into lunar orbit three days later: none of it is flown here, the stack coasting on whole with the Moon pulling on it.',
-  },
   orbit: {
     radius: doc(6_378_165, `${EVAL}, Table 4-6: apogee and perigee based on a spherical earth of radius 6,378.165 km`),
     perigee: doc(184_410, `${EVAL}, Table 4-6, actual`),
@@ -408,6 +813,10 @@ export const orbital: SaturnVRecord = {
     { id: 'max-q', label: 'Greatest dynamic pressure', at: doc(78.9, EVENTS) },
     { id: 'insertion', label: 'Parking orbit insertion', at: doc(694.98, EVENTS) },
     { id: 'tli', label: 'Translunar injection', at: doc(10_565.51, `${EVAL}, Table 4-7 (the second cutoff and ten seconds)`) },
+    { id: 'entry-interface', label: 'Entry interface · 400,000 ft', at: doc(INTERFACE, SEQUENCE) },
+    { id: 'blackout-in', label: 'Communications blackout', at: doc(T(146, 46, 37), SEQUENCE) },
+    { id: 'blackout-out', label: 'Communications restored', at: doc(T(146, 51, 42), SEQUENCE) },
+    { id: 'splashdown', label: 'Splashdown', at: doc(SPLASH, SEQUENCE), lands: 'cm' },
   ],
   checks: [
     check('maxQ', 'Greatest dynamic pressure', 37_200, 'Pa', 3_000, `${EVAL}, Table 4-2: 3.720 N/cm²`),
@@ -428,13 +837,75 @@ export const orbital: SaturnVRecord = {
     check('injection.mass', 'The stack at the second cutoff', 59_285, 'kg', 1_500, `${EVAL}, Table 21-7, at the engine cutoff command`),
     check('injection.energy', 'C3 at the second cutoff', -1_556_426, 'm²/s²', 30_000, `${CUTOFFS}: C3 at the S-IVB second cutoff`),
     check('injection.eccentricity', 'Eccentricity at the second cutoff', 0.97425, '', 0.002, CUTOFFS),
+    // The spacecraft's firings, each solved on the run's own state for what it reached on the day: the record's impulse is
+    // what each is held to (the separation manoeuvres are flown as the record's, and are not checks of anything)
+    impulse('mcc-1', 'First midcourse correction, impulse', 20.4, 0.1, `${MR}, §5.4`),
+    impulse('mcc-2', 'Second midcourse correction, impulse', 1.4, 0.3, `${MR}, §5.4`),
+    impulse('loi', 'Lunar orbit insertion, impulse', 2997, 0.01, `${MR}, §5.5`),
+    impulse('loc', 'Lunar orbit circularization, impulse', 134.8, 0.05, `${MR}, §5.5`),
+    impulse('tei', 'Transearth injection, impulse', 3519, 0.01, `${MR}, §5.6`),
+    impulse('mcc-3', 'Third midcourse correction, impulse', 4.8, 0.2, `${MR}, §5.7`),
+    {
+      id: 'interfaceAt',
+      label: 'Entry interface, 400,000 ft',
+      value: INTERFACE,
+      unit: 's',
+      tolerance: 30,
+      of: 'orbit',
+      confidence: 'documented',
+      source: SEQUENCE,
+    },
+    {
+      id: 'entryG',
+      label: 'Peak entry load',
+      value: 6.84,
+      unit: 'g',
+      tolerance: 0.5,
+      of: 'orbit',
+      confidence: 'documented',
+      source: `${MR}, Table 5-V, maximum conditions (§6.9.1: the first peak, 6.84 g, sensed at 31,840.8 ft/s)`,
+    },
+    entryCheck(
+      'sensed',
+      '0.05 g after the interface',
+      30,
+      's',
+      10,
+      `${MR}, §6.9.1: "Approximately 30 seconds later, the command module had passed through the 0.05g level"`,
+    ),
+    entryCheck(
+      'final',
+      'The computer’s final phase after the interface',
+      T(146, 48, 34.4) - INTERFACE,
+      's',
+      15,
+      `${MR}, Table 6.9-III: start of the final phase at 146:48:34.4 (§6.9.1: program 67 entered at 24,900.8 ft/s)`,
+    ),
+    entryCheck(
+      'miss',
+      'From the computer’s target at drogue deployment',
+      2.2 * NMI,
+      'm',
+      3 * NMI,
+      `${MR}, §6.9.1: "The best-estimate trajectory shows a landing point ... 2.2 n. mi. from the target point" (the onboard computer's position at drogue deployment 2.1 n. mi. from it; §5.8 has 0.9 n. mi. of overshoot by the reconstructed trajectory)`,
+    ),
+    {
+      id: 'cm.at',
+      label: 'Splashdown',
+      value: SPLASH,
+      unit: 's',
+      tolerance: 120,
+      of: 'descent',
+      confidence: 'documented',
+      source: SEQUENCE,
+    },
   ],
   coastFixes: [
     fix(SEPARATIONS, 154.47, 28.852, -79.717, 66.37, 2_721.91, 20.605, 75.384),
     fix(SEPARATIONS, 524.9, 31.728, -65.334, 191.61, 6_824.96, 0.636, 81.807),
     fix(`${EVAL}, Table 4-6, actual`, 694.98, 32.649, -53.292, 191.36, 7_792.84, 0.0006, 88.5319),
     fix(
-      `${SEPARATIONS}: S-IVB/spacecraft separation, not flown, the stack coasting on whole`,
+      `${SEPARATIONS}: S-IVB/spacecraft separation (the sequence begun; the parting 3 s later)`,
       12_056.3,
       25.884,
       -66.293,
@@ -443,6 +914,11 @@ export const orbital: SaturnVRecord = {
       45.076,
       107.09,
     ),
+    // (Table 5-II's Earth-referenced states after the parting, n. mi. and ft/s: what the run is compared with, never put on)
+    fixNmi(`${MR}, Table 5-II, first midcourse correction ignition`, T(10, 59, 59.5), -1.7, -123.74, 52_768.4, 8187, 73.82, 120.65),
+    fixNmi(`${MR}, Table 5-II, first midcourse correction cutoff`, T(11, 0, 1.9), -1.71, -123.75, 52_771.7, 8172, 73.75, 120.54),
+    fixNmi(`${MR}, Table 5-II, third midcourse correction ignition`, T(103, 59, 54), -5.67, -57.27, 165_561.5, 4299, -80.59, 52.65),
+    fixNmi(`${MR}, Table 5-V, entry interface (400 000 feet)`, INTERFACE, 20.83, -179.89, 65.9, 36_221, -6.5, 121.57),
   ],
   aborts: [
     {
@@ -471,10 +947,11 @@ export const orbital: SaturnVRecord = {
 /**
  * Where the injection as flown would have taken the stack with nothing more done to it: the Mission Report's
  * pericynthion solution for the translunar injection, from its best-estimate trajectory. Under the Moon's surface: left
- * alone it struck the Moon, and the separation manoeuvres and the first midcourse correction (not flown here) took it
- * to 66 n. mi. A check of the coast to the Moon (the Moon's field, the Sun, the centre changed at the guidance
- * computer's sphere: sim/core/gravity.ts), flown in tests/lunargravity.test.mjs on this plan with that gravity, a run of
- * its own (`lunar`, src/sim/misses.ts). The tolerances were set before it was flown: ten nautical miles and a minute,
+ * alone it struck the Moon, and the separation manoeuvres and the first midcourse correction took it to 66 n. mi. A check
+ * of the coast to the Moon (the Moon's field, the Sun, the centre changed at the guidance computer's sphere:
+ * sim/core/gravity.ts), flown in tests/lunargravity.test.mjs on this plan to the spacecraft's parting and no further, the
+ * injection left alone, a run of its own (`lunar`, src/sim/misses.ts): the flight's own run flies the manoeuvres after it,
+ * each held to its impulse. The tolerances were set before it was flown: ten nautical miles and a minute,
  * under a tenth of what the first separation manoeuvre, 1.1 ft/s, moved the solution by (131 n. mi. and 13 minutes,
  * the same table).
  */

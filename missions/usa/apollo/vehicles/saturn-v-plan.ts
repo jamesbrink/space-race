@@ -37,7 +37,7 @@ const IN = 0.0254;
  * The flown model's stations, inches up from the F-1s' exits (saturn_v.py, saturn-v.md): where each piece that leaves
  * begins and ends, for what is shed (sim/shed.ts). The model's own, so `estimated` where the model is.
  */
-const STATIONS = {
+export const STATIONS = {
   firstTop: 1564 + 115,
   collarTop: 1760 + 115,
   secondTop: 2519 + 115,
@@ -46,7 +46,7 @@ const STATIONS = {
   slaTop: 3222 + 115 + 36 + 28 * 12,
   tip: 363 * 12,
 };
-const LOWER = 198 * IN;
+export const LOWER = 198 * IN;
 const MODEL = 'saturn_v.py and saturn-v.md, the model’s stations (inches above the F-1 exits)';
 
 /** An F-1 as the plan flies it: the record's sea-level thrust and impulse, and in vacuum what its exit area adds at one atmosphere. */
@@ -194,7 +194,7 @@ function ullageAhead(o: SaturnVRecord, impulse: Measure): Measure {
 }
 
 /** What leaves, as a body of its own (sim/shed.ts): the model's stretch of the stack, its radius, and a shell's figures for the rest. */
-function shed(on: string, name: string, mass: Measure, from: number, to: number, radius: number, forward = false): ShedBody {
+export function shed(on: string, name: string, mass: Measure, from: number, to: number, radius: number, forward = false): ShedBody {
   const a = derived(from * IN, MODEL);
   const b = derived(to * IN, MODEL);
   const length = (to - from) * IN;
@@ -397,7 +397,7 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
       coastFixes: o.coastFixes,
       aborts: o.aborts,
       marks: o.marks,
-      bound: o.bound,
+      ...(o.bound ? { bound: o.bound } : {}),
       centre: o.ascent.centre,
     },
   };

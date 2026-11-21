@@ -321,6 +321,8 @@ export interface BurnContext {
   about(s: State, t: number): Centred;
   height(s: State, t: number): number;
   moon?(t: number): State;
+  /** The Moon's pole (its principal axis of the greatest moment, world/moon.ts `principalAxes`) in the flight's axes at an instant: a field with the Moon's. */
+  moonPole?(t: number): Vec3;
   oblate?(r: Vec3): Vec3;
   accel(t: number): number;
   exhaust?: number;
@@ -444,7 +446,11 @@ export function solveBurn(toward: Pursuit, ctx: BurnContext, state: State, t: nu
     return found && { steering: external(found.lv), burn: found.burn, reached: report(found.burn.state, found.burn.t) };
   };
   if ('orbit' in toward) {
-    const [ra, rp] = [here.radius + toward.orbit.apoapsis.value, here.radius + toward.orbit.periapsis.value];
+    // (where the craft is lower than the lowest point asked for, or higher than the highest, no orbit through it has them:
+    // heights the record gives over a sphere it was not quite flown about can leave it so, a few hundred metres, and the
+    // nearer of the two is then taken where it is)
+    const r = length(here.s.r);
+    const [ra, rp] = [Math.max(r, here.radius + toward.orbit.apoapsis.value), Math.min(r, here.radius + toward.orbit.periapsis.value)];
     // (the energy and the lowest point: both go smoothly through a parabola, where the highest point does not)
     const energy = -here.gm / (ra + rp);
     const report: Report = (s, at) => {
@@ -468,8 +474,13 @@ export function solveBurn(toward: Pursuit, ctx: BurnContext, state: State, t: nu
   if ('pericynthion' in toward) {
     const moon = ctx.moon;
     if (!moon) return null;
-    const { height, at: when } = toward.pericynthion;
-    const nearest = (s: State, at: number): { height: number; at: number } | null => {
+    const { height, at: when, inclination } = toward.pericynthion;
+    const pole = inclination && ctx.moonPole;
+    if (inclination && !pole) return null;
+    /** The inclination of the motion about the Moon to its equator, degrees (over 90: retrograde). */
+    const tilt = (p: State, w: number): number =>
+      pole ? Math.acos(Math.max(-1, Math.min(1, dot(unit(cross(p.r, p.v)), pole(w))))) / DEG : 0;
+    const nearest = (s: State, at: number): { height: number; at: number; inclination: number } | null => {
       const from = (x: State, w: number): State => {
         const m = moon(w);
         return { r: sub(x.r, m.r), v: sub(x.v, m.v) };
@@ -489,14 +500,14 @@ export function solveBurn(toward: Pursuit, ctx: BurnContext, state: State, t: nu
       );
       if (!end) return null;
       const p = from(end.s, end.t);
-      if (length(p.r) >= radius) return { height: length(p.r) - radius, at: end.t };
+      if (length(p.r) >= radius) return { height: length(p.r) - radius, at: end.t, inclination: tilt(p, end.t) };
       const q = periapsisOf(p, end.t, gm);
-      return { height: q.r - radius, at: q.at };
+      return { height: q.r - radius, at: q.at, inclination: tilt(p, end.t) };
     };
     const report: Report = (s, at) => {
       const n = nearest(s, at);
       const out: Record<string, number> = {};
-      if (n) Object.assign(out, { pericynthion: n.height, pericynthionAt: n.at });
+      if (n) Object.assign(out, { pericynthion: n.height, pericynthionAt: n.at, ...(inclination ? { inclination: n.inclination } : {}) });
       return out;
     };
     return solve(
@@ -506,6 +517,19 @@ export function solveBurn(toward: Pursuit, ctx: BurnContext, state: State, t: nu
           return n && [n.height - height.value, n.at - when.value];
         },
         tolerance: [10, 1],
+        // (the plane, met where it can be and otherwise as near as it goes: an approach comes in at its own angle to the
+        // Moon's equator, and no orbit about the Moon from it is tilted less than that)
+        ...(inclination
+          ? {
+              nearest: {
+                miss: (s: State, at: number) => {
+                  const n = nearest(s, at);
+                  return n && n.inclination - inclination.value;
+                },
+                tolerance: 0.01,
+              },
+            }
+          : {}),
       },
       [0, 0, 0],
       [0, 1, 2],

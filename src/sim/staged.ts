@@ -637,9 +637,12 @@ export function orbitShort(plan: FlightPlan, site: Geodetic): ((r: Vec3, v: Vec3
 
 /**
  * The speed the last joint's push will give the spacecraft as it parts, m/s, by the plan's masses: the spacecraft as it is
- * in orbit against its last stage with its tanks empty. Nothing, for a plan whose last joint pushes nothing.
+ * in orbit against its last stage with its tanks empty. Nothing, for a plan whose last joint pushes nothing, or whose last
+ * stage is lit again after the orbit is reached (an injection): the spacecraft is left on the orbit the injection gives,
+ * and the parking orbit is cut for itself.
  */
 export function pushAhead(plan: FlightPlan): number {
+  if (injectionOf(plan)) return 0;
   const c = plan.craft[0]!;
   const last = stagesOf(plan).at(-1)!;
   const joint = sequenceOf(plan).stages.at(-1)!.joint;

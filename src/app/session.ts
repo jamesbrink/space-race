@@ -38,6 +38,7 @@ import { uOrigin } from '../viewer/origin.ts';
 import { FlightPath } from '../viewer/path.ts';
 import type { Stage, Thing, WarmStep } from '../viewer/stage.ts';
 import { Clock, localTime, missionTime } from '../world/clock.ts';
+import { loadEphemeris } from '../world/ephemeris.ts';
 import { frameOf } from '../world/earthframe.ts';
 import { SiteWorld, solidModels, solidUrl } from '../sim/siteworld.ts';
 import { decodeSolids, type SolidModel } from '../sim/solids.ts';
@@ -194,6 +195,10 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     );
     solids = { world: SiteWorld.of(flight, (url) => got.get(url)), hull: got.get(solidUrl(flight, flown.def))! };
   })().catch((e) => console.warn('the site’s solids did not arrive: nothing there will be struck', e));
+  // A flight flown out to the Moon is flown by JPL's ephemeris (sim/core/gravity.ts: the Moon to metres, where Meeus's is 40
+  // km out), which is fetched now and there before the curtain lifts (`start`), so its record's run is the tests' and the
+  // figures': no run is made of it before then.
+  const ephemerisArrives = flight.plan?.gravity?.sphere ? loadEphemeris() : Promise.resolve(false);
   const escapeFrame = frameOf(flight);
   const escapeSite = siteFrame(flight.site);
   const cockpit = new Deck(document.querySelector<HTMLElement>('#ui')!, flight, clock, {
@@ -486,6 +491,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       steps,
     );
     try {
+      await ephemerisArrives;
       await stage.load(flight, (f, parts) => said.arrive(f, parts));
       await solidsArrive;
       if (gone) return; // (the page has gone to another flight meanwhile)

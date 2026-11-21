@@ -12,8 +12,9 @@ import { flight as apollo8 } from '../missions/usa/apollo/flights/apollo-8/fligh
 import { TLI_PERICYNTHION } from '../missions/usa/apollo/flights/apollo-8/orbital.ts';
 import { centreAt, EARTH_FIELD, fieldFor, RSPHERE, recentred, stepAbout, stepIn, termsOf } from '../src/sim/core/gravity.ts';
 import { apart, coast, crossing } from '../src/sim/rails.ts';
-import { between, orbitalFlown, runOf } from '../src/sim/run.ts';
-import { flyWhole } from '../src/sim/staged.ts';
+import { clockAt } from '../src/sim/plan.ts';
+import { between, runOf } from '../src/sim/run.ts';
+import { flyWhole, steer } from '../src/sim/staged.ts';
 import { MOON } from '../src/world/bodies.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { stateOf, useEphemeris } from '../src/world/ephemeris.ts';
@@ -213,8 +214,22 @@ test('the Moon’s principal axes: DE440’s librations within the IAU pole’s 
   }
 });
 
-/** Apollo 8's plan flown under the Moon's field and the Sun, the centre changing at the guidance computer's sphere. */
-const lunar = { ...apollo8.plan, gravity: { central: 'earth', terms: ['j2', 'moon', 'sun'], sphere: RSPHERE } };
+/**
+ * Apollo 8's plan to the spacecraft's parting from the S-IVB and no further, under the Moon's field and the Sun with the
+ * centre changing at the guidance computer's sphere (the plan's own gravity): the injection left alone, none of the firings
+ * after it flown, which is what the Mission Report's pericynthion for the injection is a solution for.
+ */
+const parted = apollo8.plan.craft[0].joints.find((j) => j.id === 'spacecraft-separation').at.value;
+const lunar = {
+  ...apollo8.plan,
+  // (by the record's instant: a cut the guidance makes on the state is set off by no clock)
+  events: apollo8.plan.events.filter((e) => (e.at?.value ?? clockAt(apollo8.plan, e)) <= parted),
+  // (and nothing to come down to: the descent is not flown)
+  record: {
+    ...Object.fromEntries(Object.entries(apollo8.plan.record).filter(([k]) => k !== 'ground' && k !== 'landing')),
+    coastFixes: apollo8.plan.record.coastFixes.filter((f) => f.at.value <= parted),
+  },
+};
 const site = siteFrame(apollo8.site);
 const frame = frameOf(apollo8);
 const sea = apollo8.site.seaLevel.value;
@@ -226,8 +241,9 @@ test('a plan that names nothing is flown under the Earth with J2 to the bit, and
   const push = (q) => scale(unit(q.v), -1e-4);
   assert.deepEqual(stepIn(EARTH_FIELD, s, 0, 10, push), step(s, 0, 10, push));
   assert.deepEqual(EARTH_FIELD.at(s.r, 5), gravity(s.r));
-  // the plan's own gravity today, the Moon a point: the same sum as ever (world/orbit.ts step with the pull added to the push)
-  const named = fieldFor(apollo8.plan.gravity, frame);
+  // a Saturn V's to its injection (saturn-v-plan.ts), the Moon a point: the same sum as ever (world/orbit.ts step with the
+  // pull added to the push)
+  const named = fieldFor({ central: 'earth', terms: ['j2', 'moon'] }, frame);
   assert.equal(named.central, 'earth');
   assert.equal(named.sphere, undefined);
   const pulled = (q, t) => named.others(q.r, t);
@@ -279,7 +295,7 @@ test('Apollo 8’s injection as the run flies it, coasted through the sphere to 
   useEphemeris(de440);
   try {
     // (the ascent on the law the record's run solved; the coast from where it leaves the stack, three days)
-    const whole = flyWhole(lunar, site, frame, sea, orbitalFlown(apollo8).ascent.solved, 1);
+    const whole = flyWhole(lunar, site, frame, sea, steer(lunar, site, frame, sea), 1);
     const { samples, results, crossings } = whole.coast;
     assert.ok(crossings?.length >= 1 && crossings[0].to === 'moon', 'it comes within the sphere');
     const field = fieldFor(lunar.gravity, frame).about('earth');

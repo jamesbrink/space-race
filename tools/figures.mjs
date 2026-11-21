@@ -28,6 +28,7 @@ import { orbitalRecord, recordOf } from '../src/sim/run.ts';
 import { DEG, dot, enuToEcefDirection, fromHorizontal, geodeticToEcef, length, scale, siteFrame, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
 import { frameOf } from '../src/world/earthframe.ts';
+import { useEphemeris } from '../src/world/ephemeris.ts';
 import { predictions } from './predictions.mjs';
 
 const root = join(import.meta.dirname, '..');
@@ -35,6 +36,7 @@ const root = join(import.meta.dirname, '..');
 const against = process.argv.indexOf('--against');
 const FIXTURE = against > 0 ? process.argv[against + 1] : join(root, 'tests/fixtures/figures.json');
 const write = process.argv.includes('--write');
+const DE440 = new Uint8Array(readFileSync(join(root, 'public/ephemeris/de440.bin'))).slice().buffer;
 
 const flights = (
   await Promise.all(
@@ -146,6 +148,8 @@ for (const flight of flights.filter((f) => f.plan?.kind === 'ballistic')) {
 
 // ---- orbital flights ----
 for (const flight of flights.filter((f) => f.plan?.kind === 'orbital' && f.site)) {
+  // (a flight flown out to the Moon is flown by JPL's ephemeris, as the page flies it: src/app/session.ts)
+  useEphemeris(flight.plan.gravity?.sphere ? DE440 : null);
   const site = siteFrame(flight.site);
   const dated = frameOf(flight);
   const sea = flight.site.seaLevel.value;

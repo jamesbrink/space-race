@@ -4,7 +4,7 @@
 // on a miss nobody recorded, on one that has moved past its slack, and on one that has come within tolerance. Nothing
 // in a flight's inputs is adjusted to bring a check in.
 import assert from 'node:assert/strict';
-import { globSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -38,6 +38,7 @@ import {
 import { stagedVehicle } from '../src/sim/stagedlive.ts';
 import { P0 } from '../src/world/bodies.ts';
 import { frameOf } from '../src/world/earthframe.ts';
+import { useEphemeris } from '../src/world/ephemeris.ts';
 import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 import { part } from './part.mjs';
@@ -51,6 +52,8 @@ const all = await Promise.all(
 );
 const flown = all.filter((f) => f.plan?.kind === 'orbital' && f.plan.attitude.some((a) => 'law' in a.hold) && f.site);
 const where = (f) => [siteFrame(f.site), frameOf(f), f.site.seaLevel.value];
+/** JPL's ephemeris, baked (public/ephemeris/de440.bin): a flight flown out to the Moon is flown by it, as the page flies it (src/app/session.ts). */
+const DE440 = new Uint8Array(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '../public/ephemeris/de440.bin'))).slice().buffer;
 
 /**
  * By flight, every input the ascent reads that is not documented (the last test's list): a new one must be added here. Vostok
@@ -195,11 +198,46 @@ const UNDOCUMENTED = {
     'ascent.rarefied.area',
     'ascent.rarefied.drag',
     'ascent.steering',
+    'burns.0.aim.hold.below',
+    'burns.0.aim.hold.yaw',
+    'burns.0.off.at',
+    'burns.1.aim.hold.below',
+    'burns.1.aim.hold.yaw',
+    'burns.1.off.at',
+    'burns.2.aim.hold.below',
+    'burns.2.aim.hold.yaw',
+    'burns.2.toward.pericynthion.inclination',
+    'burns.3.aim.hold.below',
+    'burns.3.aim.hold.yaw',
+    'burns.4.aim.hold.below',
+    'burns.4.aim.hold.yaw',
+    'burns.5.aim.hold.below',
+    'burns.5.aim.hold.yaw',
+    'burns.5.toward.orbit.lit.window',
+    'burns.6.aim.hold.below',
+    'burns.6.aim.hold.yaw',
+    'burns.6.toward.entry.at',
+    'burns.7.aim.hold.below',
+    'burns.7.aim.hold.yaw',
+    'burns.7.toward.entry.at',
     'csm.cm',
     'csm.mass',
+    'els.drogues.fills',
+    'els.drogues.wait',
+    'els.mains.fills',
+    'els.mains.height',
+    'els.shield.at',
+    'els.shield.height',
+    'els.shield.push',
+    'entry.parting.hold.entry.computer.lad',
+    'entry.parting.hold.entry.computer.lod',
+    'entry.parting.hold.entry.initial',
+    'entry.parting.hold.entry.roll.acceleration',
+    'entry.parting.hold.entry.roll.rate',
     'les.mass',
     'les.motor.burn',
     'les.motor.thrust',
+    'mission.manoeuvreTurn',
     'sic.decay.centre',
     'sic.decay.outboard',
     'sic.f1.exitArea',
@@ -226,6 +264,14 @@ const UNDOCUMENTED = {
     'sivb.propellant.usable',
     'sivb.second.align',
     'sivb.second.shift.before',
+    'spacecraft.cm.lift',
+    'spacecraft.cm.trim',
+    'spacecraft.modules.leaves',
+    'spacecraft.modules.push',
+    'spacecraft.separation.push',
+    'spacecraft.shield',
+    'spacecraft.sm',
+    'stage.mass',
   ],
   'usa/apollo/apollo-10': [
     'ascent.drag.0.area',
@@ -1722,7 +1768,9 @@ function saturnInputs(f, o, whole) {
     }
     for (const [key, value] of Object.entries(x)) walk(value, `${at}.${key}`);
   };
-  for (const key of ['sic', 'sii', 'les', 'sivb', 'csm', 'ascent']) walk(o[key], key);
+  // (and a flight flown on to the Moon, the spacecraft's: apollo-lunar-record.ts)
+  for (const key of ['sic', 'sii', 'les', 'sivb', 'csm', 'ascent', 'spacecraft', 'stage', 'burns', 'entry', 'els', 'mission'])
+    walk(o[key], key);
   walk({ liftoff: o.liftoff }, 'record');
   assert.deepEqual(read.sort(), UNDOCUMENTED[f.id], 'the inputs that are not documented, by flight (UNDOCUMENTED)');
   const [site, dated, sea] = where(f);
@@ -1812,6 +1860,8 @@ for (const f of part(flown)) {
   });
 
   test(`${f.designation}: the steering law reaches its target, and the flight is the same flight every time`, () => {
+    // (a flight flown out to the Moon by JPL's ephemeris, every other by what it always was)
+    useEphemeris(plan.gravity?.sphere ? DE440 : null);
     const [site, dated, sea] = where(f);
     const x = steer(f.plan, site, dated, sea);
     console.log(
@@ -2132,6 +2182,8 @@ for (const f of part(flown)) {
       // (the cutoff the law aims at: the last stage's, or the orbit's where a stage is lit again after it)
       assert.ok(Math.abs(cut.t - whole.ascent.stops[targetStageOf(f.plan)]) < 0.5, 'cutoff agrees with the batch run');
       if (guidance.attached && !parted) continue; // The predictor ends after one orbit; the stack stays attached into its second.
+      // (and a stage lit again in orbit, which the spacecraft leaves hours after the parking orbit's cut: an injection)
+      if (guidance.injection && !parted) continue;
       if (!Number.isFinite(seq.stages.at(-1).sep)) continue; // (the last stage is the spacecraft: an Agena, let go of by nothing)
       assert.ok(parted, `from T+${t0}: the parting is on the path`);
       // (the path's parting is the stack's state as it parts: the run's last sample of the ascent, before the joint's push)

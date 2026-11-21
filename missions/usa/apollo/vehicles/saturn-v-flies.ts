@@ -13,6 +13,8 @@ const IN = 0.0254;
 /** The F-1's exit, 11 ft 7 in across (saturn_v.py `F1_EXIT_RADIUS`), and the J-2's (Apollo 7's fires: flown.ts). */
 const F1_EXIT = ((11 * 12 + 7) / 2) * IN;
 const J2_EXIT = 38.5 * IN;
+/** The service propulsion engine's exit, 94.5 in across (apollo_csm.py; the Saturn IB's fires: saturn-ib-flies.ts). */
+const SPS_EXIT = 47.25 * IN;
 
 /**
  * `carried`: the nodes of the launch vehicle's own parts list (its `launcher`). A node a stage carried on some vehicles
@@ -22,6 +24,8 @@ const J2_EXIT = 38.5 * IN;
 export function saturnVFlies(plan: FlightPlan, carried: readonly string[], model = 'vehicle'): NonNullable<Flight['flies']> {
   const had = (names: string[]) => names.filter((name) => carried.includes(name));
   const joints = plan.craft[0]!.joints;
+  // (a plan flown on past the injection: the spacecraft parts from the S-IVB)
+  const lunar = joints.some((j) => j.id === 'spacecraft-separation');
   const drop = (on: string, nodes: string[]) => {
     const at = joints.find((j) => j.id === on)?.at;
     if (!at) throw new Error(`the Saturn V's plan has no instant for its joint '${on}'`);
@@ -45,6 +49,29 @@ export function saturnVFlies(plan: FlightPlan, carried: readonly string[], model
         'SaturnInterstage',
         ...had(['PogoAccumulator']),
       ]),
+      ...(lunar
+        ? [
+            drop('spacecraft-separation', [
+              'SaturnThirdStage',
+              'ThirdStageTankStructure',
+              'ThirdStageEngine',
+              'InstrumentUnit',
+              'InstrumentUnitEquipment',
+              'SpacecraftAdapter',
+              ...(plan.craft[0]!.bodies.find((b) => b.id === 'payload')?.nodes ?? []),
+            ]),
+            drop('cm-sm-separation', [
+              'ServiceModule',
+              'ServiceSumpTanks',
+              'ServicePower',
+              'ServiceHelium',
+              'ReactionControl',
+              'ServiceEngine',
+              'HighGainAntenna',
+            ]),
+            drop('forward-shield-jettison', ['ForwardShield']),
+          ]
+        : []),
     ],
     fires: [
       // (saturn_v.py: the fifth of each cluster is its centre)
@@ -62,7 +89,8 @@ export function saturnVFlies(plan: FlightPlan, carried: readonly string[], model
       })),
       { node: 'ThirdStageEngine', radius: J2_EXIT, on: 'sivb-j2', burns: 'hydrogen-lox' as const },
       { node: 'ThirdStageEngine', radius: J2_EXIT, on: 'sivb-tli', burns: 'hydrogen-lox' as const },
+      ...(lunar ? [{ node: 'SPS_Bell', radius: SPS_EXIT, on: 'sps', burns: 'hydrazine-n2o4' as const }] : []),
     ],
-    air: { collar: 'SaturnFirstStage' },
+    air: lunar ? { shield: 'HeatShield', collar: 'SaturnFirstStage' } : { collar: 'SaturnFirstStage' },
   };
 }

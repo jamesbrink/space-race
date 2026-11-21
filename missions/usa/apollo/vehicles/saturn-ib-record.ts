@@ -14,45 +14,24 @@ import type { Measure } from '../../../../src/measure.ts';
 import type { Guidance } from '../../../../src/sim/orbital.ts';
 import type {
   AbortMode,
-  AttitudeDef,
   Craft,
   DragDef,
   EngineDef,
-  EventDef,
   OrbitFix,
   PlanCheck,
   PlanRecord,
-  Pursuit,
   TargetDef,
-  ThrusterSet,
   VentDef,
 } from '../../../../src/sim/plan.ts';
-import type { Curve } from '../../../../src/types.ts';
+import type { Burn, CsmRecord, ElsRecord, EntryRecord } from './csm-record.ts';
 import type { J2Figures, MixtureShift } from './saturn-v-record.ts';
+
+export type { Burn } from './csm-record.ts';
 
 /** One H-1 as the record has it: its thrust, N, and specific impulse, s, at sea level and in vacuum. */
 export interface H1Figures {
   thrust: { seaLevel: Measure; vacuum: Measure };
   isp: { seaLevel: Measure; vacuum: Measure };
-}
-
-/**
- * A firing in orbit by the service module's engine (`sps`) or its thrusters (`sm-rcs`), as the record has it: the attitude
- * it was made in (its own `AttitudeDef`, an `aim` hold), its ignition and cutoff, the impulse the record gives it, m/s
- * (`flown`: what it is held to), and where the record has them, its firing time, the mass it lit at, and what it was made
- * on another craft for (`toward`: sim/plan.ts `Pursuit`, carried out by guidance on where the two are).
- */
-export interface Burn {
-  id: string;
-  label: string;
-  engine: 'sps' | 'sm-rcs';
-  aim: AttitudeDef;
-  on: Measure;
-  off: { at: Measure; label: string };
-  flown: Measure;
-  firingTime?: Measure;
-  massAtIgnition?: Measure;
-  toward?: Pursuit;
 }
 
 export interface SaturnIBRecord {
@@ -90,44 +69,13 @@ export interface SaturnIBRecord {
   /** The launch escape tower with its boost cover: its mass, when it was let go, the motor that pulled it clear, and its escape motor. */
   les: { mass: Measure; at: Measure; motor: { thrust: Measure; burn: Measure }; escape: EngineDef };
   /** The command and service modules. */
-  csm: {
-    /** The service module as flown up, kg (the spacecraft less the command module and its forward heat shield). */
-    sm: Measure;
-    /** The command module: its name, its mass through the descent, and its own lift and trim in the entry (the drag is CM-107's: command-module-aero.ts). */
-    cm: { label: string; mass: Measure; lift: Curve; trim: Measure };
-    /** The forward heat shield, kg. */
-    shield: Measure;
-    /** The service propulsion system: its thrust and impulse, how many times it was lit, its load, and the last firing's impulse (`deltaV`). */
-    sps: { thrust: Measure; isp: Measure; starts: Measure; load: Measure; deltaV?: Measure };
-    /** The spacecraft let go of the S-IVB: when, and how fast they part, m/s. */
-    separation: { at: Measure; push: Measure };
-    /** The command module let go of the service module: when, the command module's mass after, the service module's, and its push, m/s. */
-    modules: { at: Measure; after: Measure; leaves: Measure; push: Measure };
-    /**
-     * The service module's reaction control system as the attitude is flown with it alone in orbit (sm-rcs.ts, sim/attitude.ts):
-     * the centre of mass its chambers are placed about (XA, inches), its propellant load, kg, and the record's mass properties
-     * through the free flight. Left out, the attitude is turned as a hand turns it, at the hand's rate.
-     */
-    rcs?: { centre: Measure; load: Measure; inertia: NonNullable<ThrusterSet['inertia']> };
-  };
+  csm: CsmRecord;
   /** The firings in orbit, in the order they are flown. */
   burns: Burn[];
-  /**
-   * The entry as the record flies it: the attitude held from the modules' parting (`parting`: lift up, or an entry
-   * steered to the computer's target on its own events, `Hold.entry`, sim/entry.ts), and any attitudes and events after
-   * it (banks flown by the clock, where a record has only those).
-   */
-  entry: { parting: AttitudeDef; attitudes: AttitudeDef[]; events: EventDef[] };
-  /**
-   * The Earth landing system: the forward heat shield let go below a height (the barometric switches') once the modules have
-   * parted, the twin drogues a wait after it, the three mains below a height; the record's instant of each, a figure;
-   * how long each canopy takes to fill and its push, m/s.
-   */
-  els: {
-    shield: { at: Measure; height: Measure; push: Measure };
-    drogues: { at: Measure; wait: Measure; fills: Measure };
-    mains: { at: Measure; height: Measure; fills: Measure };
-  };
+  /** The entry as the record flies it (csm-record.ts `EntryRecord`). */
+  entry: EntryRecord;
+  /** The Earth landing system (csm-record.ts `ElsRecord`). */
+  els: ElsRecord;
   ascent: {
     /** The law flown to the orbit (sim/staged.ts), and what it is read from. */
     guidance: Guidance;
