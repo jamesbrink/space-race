@@ -14,7 +14,10 @@ import {
   targetFix,
 } from '../../vehicles/gemini-targets.ts';
 import { dimensions, LB, NMI, SEDR2, thrusters, titanEngines } from '../../vehicles/gemini-titan.ts';
+import { geminiFlies } from '../../vehicles/gemini-flies.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
 import { lateVehicle, oldAgena } from '../../vehicles/late-vehicle.ts';
+import { INSERTION, orbital } from './orbital.ts';
 import { crewAboard, crewArrives, hatchesShut, pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -78,7 +81,8 @@ export const flight: Flight = {
       dockedBurn('Height adjustment', get(20, 20, 12), 346.2, 0, 180, REPORT + ', table 4-VIII and section 4.3'),
       dockedBurn('Coelliptic maneuver', get(22, 37, 6), 82.2, 0, 0, REPORT + ', table 4-VIII and section 4.3'),
     ],
-    fixes: [targetFix(REPORT + ', table 4-IX, final insertion', -6040.517, 558.27, 28.61, -59.49, 979215, 25366, -0.03, 94.91)],
+    // (the Agena at its insertion, the vector the flight's plan flies its target from: orbital.ts `INSERTION`)
+    fixes: [INSERTION],
     interface: 'cone',
     target: 'GATV 5005',
     transfer: crewTransfer(
@@ -283,6 +287,16 @@ export const flight: Flight = {
     ...thrusters('spacecraft 10, as described in its mission report'),
     ...agenaMotors(),
   ],
+  // the flight as an orbit, written from its record: the Titan's two stages, the orbit, the rendezvous made on the Agena, the
+  // six docked burns, the rendezvous with Gemini VIII's Agena as recorded, the retrofire and the lifting entry, each figure with
+  // its source (orbital.ts; mission.md), flown through the day's air over the pad. Fly still opens on the docking chapter (src/app/address.ts `lacks`)
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-10’s own weights and engines, from its mission report, on a stated steering law, and the coast on from the state it leaves. ' +
+    'The Agena is flown from the report’s tracking at its insertion: the coelliptic burn, the terminal phase, its corrections and the braking are solved on it as each is made; the six burns its engines made with the pair docked are flown on the ship at the pair’s impulse. ' +
+    'The rendezvous with Gemini VIII’s Agena is flown at the record’s impulses, that Agena not being in the run (no orbit of it for July 1966 was found); the docking, the walks and the visit are not flown, and the retrofire and the entry are flown as recorded (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot, oldAgena],
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };

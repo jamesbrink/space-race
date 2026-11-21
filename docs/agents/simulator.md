@@ -474,7 +474,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     `oams.docked`): flown on the spacecraft at the pair's measured impulse, toward its tail, with no fire drawn; the target
     in the run is not moved by them, and nothing after them is made on it. A record whose period is not its heights' orbit
     gives no period (`orbit.period`): Gemini XII's 88.87 min is some 6 km of axis from its heights, and cut on it the
-    rendezvous closed on the wrong phase. The entry body
+    rendezvous closed on the wrong phase. Gemini X's flies six docked burns (gt-10/orbital.ts, mission.md), three on the
+    Agena's primary propulsion to an apogee of 412 nautical miles and up to Gemini VIII's Agena; that Agena, its rendezvous
+    flown at the record's impulses, is no craft in the run, no published orbit of it for July 1966 having been found. The entry body
     lifts (`AeroDef.lift`, lift over drag against Mach number) while a bank is held (`Hold.bank`, from the event that sets
     it; or the bank an entry steered to a place is flying, `Hold.entry`, "An entry is steered" above): orbital.ts `liftOf`, square to the motion through the air in the plane of the plumb line, turned about the motion by
     the bank. Mercury's and the Vostoks' plans have neither, and fly what they flew before to the last bit. Given up
@@ -1675,8 +1677,8 @@ read gives enough of to fly (issue #10).
 **Not yet under the one-state rule.** The docking deck's chapters (sim/approach.ts, transfer.ts, rendezvous.ts,
 flyby.ts) begin from navigation fixes in the mission reports, and some then place a craft from an observation
 (`startTransfer`'s radar range, `startRendezvous`'s line of sight, `startVisit`'s optical range, `startTether`'s
-extended strap). Gemini IX-A, X, XI and Apollo 9 have no flight from the pad (no `Flight.plan`), so there is no state
-of their own for a chapter to begin from, and their targets' launches are separate flights. Gemini VIII and XII have
+extended strap). Gemini IX-A, XI and Apollo 9 have no flight from the pad (no `Flight.plan`), so there is no state
+of their own for a chapter to begin from, and their targets' launches are separate flights. Gemini VIII, X and XII have
 their plans (each rendezvous made on its Agena as a published orbit, then what followed the docked hours to the landing),
 held by the tests and the figures; their Fly still opens on the chapter until the docking is a phase of the same run. What they need is each
 flight's ascent and coast as a plan, its target named as a craft (`FlightPlan.target`: the target's own flight, by its

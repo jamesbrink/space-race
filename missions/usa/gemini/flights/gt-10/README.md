@@ -18,7 +18,9 @@ Gemini X docked with its own Agena in the fourth revolution. Young flew the join
 The launch site shows the Titan on its thrust mount with the erector up at the start of the count.
 The two crew models stand by the ramp before boarding and can be used to walk the complex. The
 Agena stands beside the vehicle in the gallery. The gallery also carries the spent Gemini VIII target GATV 5003, as Collins found it, on its own stand.
-The flight deck and orbital trajectory are pending.
+The flight is flown from the pad to the landing as data (orbital.ts, [mission.md](mission.md)): the ascent, the
+rendezvous made on the Agena, the six docked burns, the rendezvous with Gemini VIII's Agena at the record's impulses
+(that Agena is not in the run), the retrofire and the entry. Fly still opens on the docking chapter.
 
 Young and Collins were in the white room by about 15:15 EST and settling into the spacecraft around 15:20. Both hatches were shut around 15:27. Launch Control reported the room being cleared at T−77 min 46 sec and the erector down by T−42 min 45 sec. The terminal hold at T−3 took 5 min 26 sec. A stage II fuel vent and topping umbilical failed to release and part of the line went up with the booster. The pad draws the usual disconnect.
 
