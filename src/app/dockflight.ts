@@ -9,10 +9,10 @@ import { dockJets } from '../viewer/dockjets.ts';
 import { Stage } from '../viewer/stage.ts';
 import { SUN } from '../world/bodies.ts';
 import { Clock } from '../world/clock.ts';
+import { frameOf } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, length, sub } from '../world/frames.ts';
 import { sunlit } from '../world/orbit.ts';
-import { julianDate, terrestrialTime } from '../world/time.ts';
 import { formatAddress, onMoved, where } from './address.ts';
 import { CURTAIN, Curtain } from './curtain.ts';
 import { installDebug } from './debug.ts';
@@ -32,7 +32,8 @@ export async function openDocking(flight: Flight) {
   curtain.begin(flight.designation);
   const stage = new Stage(canvas);
   stage.setAutoRotate(false);
-  const epoch = julianDate(flight.launch);
+  // (the frame the two craft's states are in: the flight's, as every flown run's; the Sun is turned into it)
+  const frame = frameOf(flight);
   const clock = new Clock(flight.launch);
   clock.allow(128);
   const deck = new DockDeck(root, flight, clock, {
@@ -188,7 +189,7 @@ export async function openDocking(flight: Flight) {
       }
       for (const show of flames) show(run.t, deck.firedForce, deck.firedTorque, deck.mainFiring);
       probe?.(run.phase === 'hard' ? 'docked' : run.phase === 'capture' ? 'capture' : 'approach', run.closure);
-      const earthToSun = sunPosition(terrestrialTime(epoch + run.t / 86400)),
+      const earthToSun = frame.fromDate(sunPosition(frame.jdTT(run.t))),
         toSun = sub(earthToSun, run.bodies[1].r);
       draw(new Vector3(...toSun).normalize(), Math.asin(SUN.equatorialRadius.value / length(toSun)), sunlit(run.bodies[1].r, earthToSun));
     };

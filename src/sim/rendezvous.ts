@@ -1,7 +1,8 @@
-/** LM-active rendezvous from terminal phase initiation. Local-vertical components come from the flight report. */
+/** LM-active rendezvous from terminal phase initiation, in the flight's frame (world/earthframe.ts `frameOf`). Local-vertical components come from the flight report. */
 import type { Flight } from '../types.ts';
 import type { DockBody, DockPair } from './docking.ts';
 import { orbitalFix, terminalApproach } from './approach.ts';
+import { frameOf } from '../world/earthframe.ts';
 import { add, cross, dot, length, scale, sub, unit, type Vec3, DEG } from '../world/frames.ts';
 import { aboutAxis, fromAxes, multiply, turn, unturn } from './rigid.ts';
 
@@ -9,7 +10,8 @@ export function startRendezvous(flight: Flight) {
   const op = flight.docking!.rendezvous!;
   const pair = terminalApproach(flight, true),
     [passive, active] = pair.bodies;
-  Object.assign(active, orbitalFix(op.fix, flight.launch, op.fix.t.value));
+  const frame = frameOf(flight);
+  Object.assign(active, orbitalFix(op.fix, frame, op.fix.t.value));
   const up = unit(active.r),
     normal = unit(cross(active.r, active.v)),
     forward = cross(normal, up);
@@ -22,7 +24,7 @@ export function startRendezvous(flight: Flight) {
   passive.r = add(active.r, scale(sight, distance));
   // Use the subsequent station-keeping tracking fix to obtain speed and flight-path angle.
   // Its backwards-propagated position differs from the simultaneously observed radar geometry.
-  const tracking = orbitalFix(flight.docking!.fixes![1]!, flight.launch, op.fix.t.value);
+  const tracking = orbitalFix(flight.docking!.fixes![1]!, frame, op.fix.t.value);
   const measuredUp = unit(tracking.r),
     measuredForward = unit(cross(unit(cross(tracking.r, tracking.v)), measuredUp));
   passive.v = add(

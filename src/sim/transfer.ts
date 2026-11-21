@@ -1,5 +1,6 @@
-/** Start both spacecraft from independent navigation fixes. All motion and control are in Earth orbit. */
+/** Start both spacecraft from independent navigation fixes, in the flight's frame (world/earthframe.ts `frameOf`). All motion and control are in Earth orbit. */
 import type { Flight } from '../types.ts';
+import { frameOf } from '../world/earthframe.ts';
 import { add, cross, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { coast } from '../world/orbit.ts';
 import { orbitalFix, terminalApproach } from './approach.ts';
@@ -12,8 +13,9 @@ export function startTransfer(flight: Flight) {
     run = terminalApproach(flight),
     [a, b] = run.bodies;
   run.t = op.fix.t.value;
-  Object.assign(a, orbitalFix(op.fix, flight.launch, run.t));
-  Object.assign(b, orbitalFix(flight.docking!.fixes![0], flight.launch, run.t));
+  const frame = frameOf(flight);
+  Object.assign(a, orbitalFix(op.fix, frame, run.t));
+  Object.assign(b, orbitalFix(flight.docking!.fixes![0], frame, run.t));
   if (op.radar) {
     // Reconstruct the target epoch from the observed relative fix before the run starts.
     // This uses the crew's measured burns up to the observation and the tracked target's local velocity.

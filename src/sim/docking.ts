@@ -1,6 +1,8 @@
 /** Terminal Earth-orbit rendezvous. Body +Y points out of its mating ring, +Z is the roll datum.
  * The ring offset is from the centre of mass. Positions, velocities and angular momenta use the
- * same inertial frame throughout, including when the active pilot changes seats. */
+ * same inertial frame throughout, including when the active pilot changes seats: the flight's (world/earthframe.ts
+ * `frameOf`), which approach.ts lays each tracking fix in and the flown runs are in, and whose +Z is the pole the
+ * gravity here (world/orbit.ts, with J2) is about. */
 import { add, cross, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import { coast, type State, step } from '../world/orbit.ts';
 import { aboutAxis, conjugate, fromAxes, multiply, nlerp, type Quat, rotateFor, turn, unturn } from './rigid.ts';
