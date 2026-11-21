@@ -151,3 +151,27 @@ test('Freedom 7’s own engine follows the lever over the game’s range, and un
   for (let i = 0; i < 10; i++) s = real.tick(s, pilot);
   assert.ok(s.cutoff && s.starts === 1, 'it starts once');
 });
+
+test('the one lever on a spacecraft’s own engines in orbit (sim/craftlive.ts): the SPS and a braking engine ran at one thrust and have the game’s range, said so; retrorockets are solids with none', async () => {
+  const { flights } = await import('../missions/index.ts');
+  const { craftEngines } = await import('../src/sim/craftlive.ts');
+  const of = (id, engine) => craftEngines(flights.find((f) => f.id === id).plan, [engine])[0];
+  for (const [id, engine] of [
+    ['usa/apollo/apollo-7', 'sps'],
+    ['ussr/vostok/vostok-1', 'tdu-1'],
+    ['ussr/soyuz/soyuz-1', 'skd'],
+    ['usa/gemini/gt-4', 'aft-thrusters'],
+  ]) {
+    const r = of(id, engine).range;
+    assert.ok(
+      r && !r.real && r.fixed && r.least === HAND_LEAST && r.confidence === 'estimated',
+      `${engine}: the game’s range on a fixed-thrust engine`,
+    );
+    assert.match(r.source, /one thrust/);
+  }
+  for (const [id, engine] of [
+    ['usa/gemini/gt-4', 'retrorockets'],
+    ['usa/mercury/ma-6-friendship-7', 'retrorockets'],
+  ])
+    assert.equal(of(id, engine).range, null, `${id}'s ${engine}: a solid, no lever`);
+});

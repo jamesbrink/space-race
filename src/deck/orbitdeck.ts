@@ -99,7 +99,19 @@ import {
   dueAt,
 } from './phases/ascent.ts';
 import { digit, freeHands, planHands, drawHands, manualJetsGone, turnTo, pushOf } from './phases/coast.ts';
-import { burnNext, burnAsked, burnName, burnByHand, fire, nextMove, move, retroWhy } from './phases/burn.ts';
+import {
+  burnAsked,
+  burnByHand,
+  burnName,
+  burnNext,
+  burnOn,
+  coastThrottle,
+  fire,
+  type LiveBurn,
+  move,
+  nextMove,
+  retroWhy,
+} from './phases/burn.ts';
 import {
   descentPlan,
   hands,
@@ -180,6 +192,15 @@ export class OrbitDeck extends Deck {
   /** Preserve the record up to an orbital takeover, then integrate freely from its state there. */
   handover: { t: number; r: Vec3; v: Vec3 } | null = null;
   priorMoves = 0;
+  /** A burn lit by hand and flown live while it burns (phases/burn.ts `burnOn`), or null. */
+  burn: LiveBurn | null = null;
+  /**
+   * Where the last burn flown live left the spacecraft (the coast's state as it stopped), with the run's samples up to then:
+   * the rest of the flight is flown again from there (`whole`, `samplesOf`). Null before any.
+   */
+  burnt: { t: number; r: Vec3; v: Vec3; past: readonly LiveSample[] } | null = null;
+  /** The ticks the burns flown live have taken, for the tape (tape.ts): each burn's added as it stops. */
+  craftTicks = 0;
   /** The plan as this flight now has it: the record's own, its burn given up (hands free, nothing fired), or the hand's burn. */
   planned: FlightPlan | null = null;
   /** How it is flown: the two switches, and how far the hands have leaned the law. */
@@ -303,7 +324,7 @@ export class OrbitDeck extends Deck {
   }
   /** What the predicted path is made from (viewer/path.ts): this flight's plan, as it stands. */
   get plan(): string {
-    return `${this.mine === null ? 'record' : `mine ${this.mine}`}|${this.fired !== null ? `hand ${this.fired}` : this.free ? 'free' : 'timer'}${this.state?.broke ? '|broke' : ''}`;
+    return `${this.mine === null ? 'record' : `mine ${this.mine}`}|${this.fired !== null ? `hand ${this.fired}` : this.free ? 'free' : 'timer'}${this.state?.broke ? '|broke' : ''}${this.burn ? `|burning ${this.burn.state.burns.at(-1)?.on}` : ''}${this.burnt ? `|burnt ${this.burnt.t}` : ''}`;
   }
 
   /**
@@ -437,6 +458,11 @@ export class OrbitDeck extends Deck {
         short: 'if cut now',
         long: 'Where it goes if the engines stopped now: the stack with what it still carries, on its own drag, nothing more lit or let go. Under guidance, K shows where guidance would take it instead',
       };
+    if (this.burn)
+      return {
+        short: 'if cut now',
+        long: 'Where the spacecraft goes if the burn by hand were cut now: the coast from here with nothing more lit',
+      };
     if (this.free && this.fired === null)
       return {
         short: 'hands off',
@@ -468,7 +494,7 @@ export class OrbitDeck extends Deck {
   can(what: string): boolean {
     if (!this.on) return false;
     if (what.startsWith('descent:')) return descentWhy(this, what.slice(8)) === null;
-    if (what === 'retro') return this.free && this.fired === null && this.hand !== null && retroWhy(this) === null;
+    if (what === 'retro') return this.free && this.fired === null && this.hand !== null && !this.burn && retroWhy(this) === null;
     if (what === 'move') return nextMove(this) !== null;
     const step = stepOf(what);
     if (!step || this.ascended || this.clock.t > this.parting) return false;
@@ -528,7 +554,11 @@ export class OrbitDeck extends Deck {
     this.show();
   }
   protected get ticks(): number {
-    return this.state?.ticks ?? 0;
+    return (this.state?.ticks ?? 0) + this.craftTicks + (this.burn?.state.ticks ?? 0);
+  }
+  /** The lever put somewhere by the deck itself (a hand lighting an engine in orbit opens it: phases/burn.ts). */
+  leverTo(to: number): void {
+    this.setLever(to);
   }
   /** The live vehicle has been set going: lit on the pad, taken over, or escaped from it (a pad escape is flown whole, at tick 0). */
   protected override get begun(): boolean {
@@ -560,6 +590,16 @@ export class OrbitDeck extends Deck {
       this.run && [this.run.samples.length, this.run.duration, this.run.dropped],
       [this.lever.at, [...this.cutByLever]],
       [this.hold, this.holdAt],
+      this.burn && [
+        this.burn.state.t,
+        this.burn.state.ticks,
+        this.burn.state.r,
+        this.burn.state.v,
+        this.burn.state.mass,
+        this.burn.state.tanks,
+      ],
+      this.burnt && [this.burnt.t, this.burnt.r, this.burnt.v],
+      this.craftTicks,
     ]);
   }
   protected switches(to?: Record<string, boolean>): Record<string, boolean> {
@@ -640,6 +680,9 @@ export class OrbitDeck extends Deck {
     this.fired = null;
     this.moved = [];
     this.handover = null;
+    this.burn = null;
+    this.burnt = null;
+    this.craftTicks = 0;
     this.bankTaken = null;
     this.priorMoves = 0;
     this.planned = null;
@@ -794,6 +837,8 @@ export class OrbitDeck extends Deck {
       if (!this.clock.running) this.clock.play(true);
       return;
     }
+    // (a burn by hand burning: Space waits for it to stop; the lever or Cut stops it)
+    if (this.burn) return;
     if (this.can('move')) {
       this.eventAt = now;
       move(this, t);
@@ -897,22 +942,7 @@ export class OrbitDeck extends Deck {
     const stages = stagesOf(plan);
     const live = this.state && this.pilot && !this.ascended && this.mine !== null ? this.state : null;
     const t = Math.max(0, live ? Math.min(this.clock.t, live.t) : this.clock.t);
-    if (t > this.parting || this.ascended) {
-      const burn = coastEvents(plan).burn;
-      if (!burn || t >= this.parts) return null;
-      const engine = plan.craft[0]!.engines.find((e) => e.id === burn.id) ?? burn;
-      return {
-        engines: burnName(this),
-        burning: false,
-        range: handRange(engine),
-        thrust: 0,
-        left: 0,
-        flow: 0,
-        isp: 0,
-        mass: 0,
-        not: engine.kind === 'solid' ? 'fired whole by Space' : 'fired by Space at full: no throttle in orbit yet',
-      };
-    }
+    if (t > this.parting || this.ascended) return coastThrottle(this);
     const now = stagesAt(this, t);
     const lit = now.map((x, i) => (x.burning ? i : -1)).filter((i) => i >= 0);
     // (nothing burning: on the pad, the stages lit at liftoff; after, the first still aboard with something left)
@@ -976,7 +1006,7 @@ export class OrbitDeck extends Deck {
     const sea = this.flight.site.seaLevel.value;
     const user = this.mine !== null ? this.ascended : null;
     const ascent = user ?? orbitalFlown(this.flight).ascent;
-    const from = this.handover ?? ascent.separation;
+    const from = this.burnt ?? this.handover ?? ascent.separation;
     const baseline = flyOn(plan, site, this.frame, sea, ascent, from, hands);
     const samples = this.samplesOf(plan, baseline);
     this.handSamples(samples, shipOf(plan));
@@ -1057,6 +1087,11 @@ export class OrbitDeck extends Deck {
       (at) => sunPosition(terrestrialTime(jd + at / 86_400)),
       this.mine === null ? undefined : this.state?.q,
     );
+    if (this.burnt) {
+      // (what was flown live is kept as it was flown, and the rest flown again from where it stopped)
+      const t = this.burnt.t;
+      return [...this.burnt.past.filter((s) => s.t < t), ...all.filter((s) => s.t >= t)];
+    }
     if (this.handover) {
       const t = this.handover.t;
       const past = this.record!.samples.filter((s) => s.t < t) as LiveSample[];
@@ -1161,12 +1196,14 @@ export class OrbitDeck extends Deck {
    * When each of `flies.fires` burns on this flight, in their order: a stage's from its lighting to its stop (the record's run's,
    * or the user's vehicle's), the coast's burn between `retro`'s instants (none until a hand fires it, once the hands are free).
    */
-  fires(retro: { on: number; off: number } = { on: Infinity, off: Infinity }): { from: number; to: number }[] {
+  fires(retro: { on: number; off: number } = { on: Infinity, off: Infinity }, as?: FlightPlan): { from: number; to: number }[] {
+    // (the burns this flight flew, where it has flown on: one guidance solved burns as long as it burned here, and a burn
+    // by hand in a solved one's place burns as the hand had it, not as the record's run solved it)
     const record = firesOf(
       this.flight,
-      orbitalFlown(this.flight),
+      this.flown ?? orbitalFlown(this.flight),
       retro,
-      this.planned ?? (this.free || this.mine !== null ? this.givenUp() : this.recordPlan),
+      as ?? this.planned ?? (this.free || this.mine !== null ? this.givenUp() : this.recordPlan),
     );
     const s = this.mine !== null ? this.state : null;
     const v = s ? this.vehicleOf() : null;
@@ -1221,6 +1258,12 @@ export class OrbitDeck extends Deck {
       this.impact(this.encounters.hits[this.nextImpact++]!);
     while (this.padGrazes[0] && this.padGrazes[0].t <= t) this.impact(this.padGrazes.shift()!);
     if (!this.free && this.mine === null && this.fired === null && this.downMine === null) planHands(this, t);
+    // (a burn lit by hand: flown live up to the clock, the hands turning it as it burns)
+    if (this.burn) {
+      burnOn(this, t);
+      this.rails(t);
+      return void this.show();
+    }
     if (this.free && this.fired === null && this.hand) {
       const logged = this.hand.log.at(-1);
       turnTo(this, t);
@@ -1461,12 +1504,18 @@ export class OrbitDeck extends Deck {
       ...shipOf(this.planned ?? (this.free || this.mine !== null ? this.givenUp() : plan))
         .moves.filter((m) => t >= m.on && t < m.off)
         .map((m) => plan.craft[0]!.engines.find((e) => e.id === m.engine)!.label),
+      // (a burn by hand flown live: phases/burn.ts)
+      ...(this.burn && this.burn.craft.burning(this.burn.state, this.burn.engine) ? [this.burn.craft.engines[0]!.label] : []),
     ];
     const coastEngine = coastEvents(plan).burn;
     const fuelTank = plan.craft[0]!.tanks.find((tank) => tank.id === coastEngine?.tanks[0]);
     if (fuelTank && coastEngine) {
       const planned = this.planned ?? (this.free || this.mine !== null ? this.givenUp() : plan);
-      const fuel = coastEngineState(planned, coastEngine.id, t);
+      // (as it stands while a burn by hand burns on that engine: its own state, live)
+      const live = this.burn?.engine === coastEngine.id ? this.burn.state : null;
+      const fuel = live
+        ? { starts: live.engines[coastEngine.id]!.starts, kg: live.tanks[fuelTank.id] ?? 0 }
+        : coastEngineState(planned, coastEngine.id, t);
       const aboard = t < this.parts;
       const fraction = aboard ? fuel.kg / (fuelTank.usable ?? fuelTank.load).value : 0;
       const row = this.cells.get('coast-fuel')!.parentElement!;
@@ -1563,7 +1612,7 @@ export class OrbitDeck extends Deck {
     const step = !waiting && !alone && !this.ascended ? nextStep(this) : null;
     const move = nextMove(this);
     const fire = !move && burnNext(this);
-    const descent = alone && !fire && !move ? nextDescent(this) : null;
+    const descent = alone && !fire && !move && !this.burn ? nextDescent(this) : null;
     const flotation = this.run.afloat?.inflation;
     const inflate = Boolean(flotation && t >= this.run.duration && t < flotation.at);
     set(
@@ -1574,21 +1623,23 @@ export class OrbitDeck extends Deck {
           : 'Escape in progress'
         : replay
           ? 'Run on'
-          : waiting
-            ? 'Ignition'
-            : inflate
-              ? 'Inflate uprighting bags'
-              : step
-                ? step.label
-                : move
-                  ? move.label
-                  : fire
-                    ? burnAsked(this)
-                    : descent
-                      ? descent.label
-                      : alone
-                        ? 'Nothing to do: it flies itself'
-                        : 'Nothing left to do',
+          : this.burn
+            ? `${this.burn.label}: burning`
+            : waiting
+              ? 'Ignition'
+              : inflate
+                ? 'Inflate uprighting bags'
+                : step
+                  ? step.label
+                  : move
+                    ? move.label
+                    : fire
+                      ? burnAsked(this)
+                      : descent
+                        ? descent.label
+                        : alone
+                          ? 'Nothing to do: it flies itself'
+                          : 'Nothing left to do',
     );
     this.root.querySelector<HTMLButtonElement>('[data-do=next]')!.disabled = !(
       !this.padImpact &&

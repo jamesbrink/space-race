@@ -17,7 +17,8 @@ import { hash, pack, readTape, replay, SAVE, stampOf, unpack } from '../src/deck
 import { autopilot, blend } from '../src/sim/autopilot.ts';
 import { hasLeft } from '../src/sim/craft.ts';
 import { ballisticOf } from '../src/sim/fly.ts';
-import { coastOf } from '../src/sim/orbital.ts';
+import { craftVehicle } from '../src/sim/craftlive.ts';
+import { coastOf, craftAt, injectionState } from '../src/sim/orbital.ts';
 import { aboutAxis, multiply, normalize, turn } from '../src/sim/rigid.ts';
 import { orbitalFlown } from '../src/sim/run.ts';
 import { byHand, flyOn, givenUp, sequenceOf } from '../src/sim/staged.ts';
@@ -453,6 +454,113 @@ test('Vostok 1 turned and its braking engine fired by hand: the attitude, the co
     assert.equal(pack(sample(taken, t)), pack(sample(whole, t)), `the run at T+${t.toFixed(0)}: the same`);
   assert.ok(whole.down, 'it came down');
   assert.equal(pack(taken.down), pack(whole.down), 'and the descent, to the landing: the same');
+});
+
+/**
+ * Apollo 7's spacecraft alone in orbit, its SPS flown live by hand (deck/phases/burn.ts `burnOn` on sim/craftlive.ts): lit by
+ * Space, the lever moved down and back, cut by the lever (Cut), lit again and cut; the attitude turned meanwhile by the keys
+ * (as the coast's hand turns it, frame by frame). Each frame flies the craft's ticks up to the clock, no more than `MOST`
+ * a frame, at the axis the hand holds then. Written while it burns, after the cut, and burning again, and flown again from
+ * what was written: the same state to the last bit, and flown on beside the run never left, the same.
+ */
+class Craft extends Flier {
+  constructor(f) {
+    const p = f.plan;
+    const t = p.record.orbit.injection.at.value;
+    super(f.launch);
+    this.frame = frameOf(f);
+    const at = injectionState(p, siteFrame(f.site), this.frame);
+    this.v = craftVehicle(p, this.frame, f.site.seaLevel.value, { engines: ['sps'] });
+    const own = craftAt(p, t, ['sps']);
+    this.q = [1, 0, 0, 0];
+    this.h = { t };
+    this.lever = 1;
+    this.light = false;
+    this.state = this.v.start({ t, r: at.r, v: at.v, mass: own.mass, tanks: own.tanks, starts: own.starts, axis: this.axis });
+    this.rate = p.craft[0].thrusters.find((x) => x.mode === 'manual' && x.rate).rate.value * DEG;
+    this.clock.seek(t);
+  }
+  get axis() {
+    return turn(this.q, [1, 0, 0]);
+  }
+  /** As the deck's `framed`: while the hand turns the attitude, each frame is part of the run and is written down. */
+  followed() {
+    const t = this.clock.t;
+    const turning = this.held.has('w');
+    super.followed();
+    if (turning) this.entries.push(['f', t, this.ticks, this.now, this.clock.running ? 1 : 0]);
+  }
+  get ticks() {
+    return this.state.ticks;
+  }
+  print() {
+    return pack([this.state, this.q, this.lever]);
+  }
+  follow() {
+    const t = this.clock.t;
+    // (the hand's attitude turned on to the frame, as the coast's turnTo: W pitches about the body's +Y)
+    const d = t - this.h.t;
+    if (d > 0 && this.held.has('w')) this.q = normalize(multiply(this.q, aboutAxis([0, 1, 0], this.rate * d)));
+    this.h.t = Math.max(this.h.t, t);
+    let s = this.state;
+    const ahead = t - s.t;
+    if (ahead <= 0) return;
+    const upTo = s.t + Math.min(ahead, MOST);
+    const axis = this.axis;
+    while (s.t < upTo - TICK / 2) {
+      s = this.v.tick(s, { axis, lever: this.lever, ...(this.light ? { light: ['sps'] } : {}) });
+      this.light = false;
+    }
+    this.state = s;
+    if (ahead > MOST) this.clock.seek(s.t);
+  }
+  command(what) {
+    if (what === 'undefined') return; // (a frame: nothing to do but reach it)
+    if (what === 'light') {
+      this.light = true;
+      this.clock.play(true);
+    } else if (what.startsWith('rate:')) this.clock.setRate(Number(what.slice(5)));
+  }
+}
+
+test('Apollo 7’s SPS lit by hand in orbit, throttled, cut, lit again: written and flown again at each instant, the same, and the same flown on', () => {
+  const f = flights.find((x) => x.id === 'usa/apollo/apollo-7');
+  const t0 = f.plan.record.orbit.injection.at.value;
+  const list = frames(60 * 60 * 2, 13);
+  const hands = () => [
+    { at: t0, kind: 'c', payload: ['light'] },
+    { at: t0 + 3, kind: 'h', payload: ['w'] },
+    { at: t0 + 5, kind: 'h', payload: [''] },
+    { at: t0 + 6, kind: 'l', payload: [0.75] },
+    { at: t0 + 9, kind: 'l', payload: [1] },
+    { at: t0 + 12, kind: 'l', payload: [0] },
+    { at: t0 + 15, kind: 'c', payload: ['rate:8'] },
+    { at: t0 + 40, kind: 'c', payload: ['rate:1'] },
+    { at: t0 + 42, kind: 'c', payload: ['light'] },
+    { at: t0 + 42, kind: 'l', payload: [1] },
+    { at: t0 + 50, kind: 'l', payload: [0] },
+  ];
+  const at = [
+    { t: t0 + 8, is: (s, v) => v.burning(s, 'sps') && v.share(s, 'sps') === 0.75, what: 'burning, the lever down' },
+    { t: t0 + 30, is: (s, v) => !v.burning(s, 'sps') && s.burns.length === 1, what: 'cut by the lever' },
+    { t: t0 + 46, is: (s, v) => v.burning(s, 'sps') && s.burns.length === 2, what: 'lit again' },
+    { t: t0 + 55, is: (s, v) => !v.burning(s, 'sps') && s.burns.length === 2, what: 'cut again' },
+  ];
+  for (const instant of at) {
+    const a = new Craft(f);
+    const hs = hands();
+    const n = drive(a, hs, instant.t, list);
+    assert.ok(instant.is(a.state, a.v), `at T+${instant.t.toFixed(0)} it is ${instant.what}`);
+    const taped = a.written();
+    const b = new Craft(f);
+    assert.ok(flyAgain(taped, b), `T+${instant.t.toFixed(0)}: flown again to the same ticks and state`);
+    assert.equal(b.print(), a.print());
+    flyOnBoth(a, b, hs, list, n, 600);
+    assert.equal(b.print(), a.print(), `T+${instant.t.toFixed(0)}: and ten seconds on, the same`);
+    console.log(
+      `# Apollo 7's SPS at T+${instant.t.toFixed(0)} (${instant.what}): ${taped.entries.length} entries, ${a.state.burns.length} burns`,
+    );
+  }
 });
 
 test('a run written by another version, or of another flight, or not a run at all, is not read', () => {
