@@ -18,7 +18,9 @@ Gemini XI docked with its Agena 94 minutes after liftoff, in the first revolutio
 The launch site shows the Titan on its thrust mount with the erector up at the start of the count.
 The two crew models stand by the ramp before boarding and can be used to walk the complex. The
 Agena stands beside the vehicle in the gallery. 
-The flight deck and orbital trajectory are pending.
+The flight is flown from the pad to the landing as data (orbital.ts, [mission.md](mission.md)): the ascent, the
+first-revolution rendezvous made on the Agena, the docked burns to 741.5 nautical miles and back, the coincident-orbit
+rendezvous, the retrofire and the automatic entry. Fly still opens on the docking chapter.
 
 Conrad and Gordon reached the white room around 07:25 EST and were seated about a minute later. The two hatches had just closed at the 07:39 update. A suspected leak around the command pilot's left hatch stopped the count at T−97. The team resealed the hatch, repeated the checks and resumed from T−103; the crew estimated a 15-minute delay. The erector began lowering around T−57 min 42 sec. The terminal hold at T−3 lasted 2 min 21 sec.
 

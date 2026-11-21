@@ -285,6 +285,20 @@ const GT9A_ABOVE =
 const GT9A_DESCENT =
   'Down 136 s after the record, the drogue at the record’s instant (49 s, within its 60): the main at the 11,000 ft read off the report’s Figure 5.1.11-1, on the 84.2 ft ringsail’s 31.6 ft/s (CR-1106), where the figure has the ship from the main’s full opening to the water in 203 s, some 42 ft/s. As Gemini-Titan 7’s and 8’s. Not adjusted';
 
+/** Gemini XI's two rendezvous, made on GATV-5006 flown from its insertion vector and begun again where the pair parted, its docked burns and its entry (gt-11/mission.md). */
+const GT11_TPI =
+  'The terminal phase is lit at the crew’s instant, the run’s Agena 56 km off where the report has about 21 nautical miles (38.9 km), the range at insertion holding (436 km, the report’s 232 nautical miles): solved to meet it when the braking was planned, 1:20:53, it asks 48.8 m/s where the crew’s was 43.9 (143.9 ft/s), and its transfer is 270 by 324 km where the record’s was 279 by 307. Not adjusted';
+const GT11_CORRECTIONS =
+  'The run has no navigation, radar or platform error: the terminal phase it solves reaches the Agena, and the corrections the crew and the ground made, which took out theirs, solve to nothing. Not adjusted';
+const GT11_BRAKING =
+  'The braking is the thrust commanded on the Agena to come to rest 50 ft from it and to stay there to the next event (sim/pursuit.ts stationPush): what it gives is counted to then, the station keeping in it, where the record’s figure is the braking’s resultant alone, and it brakes a transfer solved as the run has it. Not adjusted';
+const GT11_STANDOFF =
+  'The separation and the stand-off are flown at the record’s impulses along the lines the guidance system measured, on the orbit the run’s pair came to through the docked burns, whose perigee lies elsewhere along it than the record’s: the record’s took the perigee down 5.6 km, the run’s 0.3 (Table 4.3-II). The coincident orbit, the rendezvous made on the Agena begun where the ship was at the separation, and the last separation keep it. Not adjusted';
+const GT11_COINCIDENT =
+  'At the coincident-orbit terminal phase the run’s ship trails the Agena by 27 km where the ground’s last solution had 24.9 nautical miles (46 km): the stand-off "was supposed to have placed the spacecraft in the same orbit as the GATV and with no relative rates" 15 nautical miles behind, and the record’s trailing grew from 16.6 to 20.8 nautical miles, which the report puts to the ground solutions’ error "or that some venting or other perturbation caused this anomaly" (4.3.1.2.2), not flown. Solved to arrive when the braking was planned, the 292° transfer asks 2.7 m/s where the crew’s was 4.5. Not adjusted';
+const GT11_ENTRY =
+  'The drogue comes out on the record’s place along the track (0.2 km short) and 24 km to its right, 91 s after the record: the retrofire is timed by guidance for the landing place along the track (sim/plan.ts LandingAim), and after guidance initiate the entry is flown lift up, where the computer’s banks, held by the control system, steered it (Figure 5.1.5-12, not read). Not adjusted';
+
 /** Gemini XII's rendezvous, made on GATV-5001 flown from its insertion vector, its docked burns and its entry (gt-12/mission.md). */
 const GT12_DOCKED =
   'The orbit after the first docked burn and every burn after it holds its perigee and misses its apogee, 13 to 15 km over the record’s: the second and third dockings and the station keeping round them, which took the record’s orbit down from 162.7 by 156.4 nautical miles after the rendezvous to 161.4 by 153.0 before the first eclipse phasing (Tables 4.3-III and 4.3-II), are not flown, so the run comes to the docked burns some 7 km higher in its axis, and each burn, at the pair’s measured impulse, takes as much off it as the record’s did. Not adjusted';
@@ -1268,6 +1282,36 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     },
     descent: {
       'reentry-module.at': { by: 136, slack: 30, why: GT9A_DESCENT },
+    },
+  }),
+  // Gemini XI from the pad, its two rendezvous made on GATV-5006 (its coast from the published orbit is not run: a flight with
+  // a target is flown with it, tests/orbital.test.mjs)
+  'usa/gemini/gt-11': inUnits({
+    ascent: {},
+    shown: {
+      'after-3600.perigee': { by: -8_833, slack: 2_000, why: GT11_TPI },
+      'after-3600.apogee': { by: 17_620, slack: 3_000, why: GT11_TPI },
+      'after-198000.perigee': { by: 7_463, slack: 2_000, why: GT11_STANDOFF },
+      'after-237600.perigee': { by: 14_270, slack: 3_000, why: GT11_COINCIDENT },
+      'after-243000.perigee': { by: 9_256, slack: 2_000, why: GT11_STANDOFF },
+      'after-252000.perigee': { by: 9_205, slack: 2_000, why: GT11_STANDOFF },
+      'terminal-phase.velocity': { by: 4.893, slack: 1, why: GT11_TPI },
+      'midcourse-1.velocity': { by: -1.887, slack: 0.2, why: GT11_CORRECTIONS },
+      'midcourse-2.velocity': { by: -0.6279, slack: 0.2, why: GT11_CORRECTIONS },
+      'terminal-braking.velocity': { by: 10.56, slack: 2, why: GT11_BRAKING },
+      'terminal-phase-2.velocity': { by: -1.818, slack: 0.5, why: GT11_COINCIDENT },
+      'midcourse-3.velocity': { by: -1.801, slack: 0.2, why: GT11_CORRECTIONS },
+      'terminal-braking-2.velocity': { by: 4.306, slack: 2, why: GT11_BRAKING },
+      'at-2998.range': { by: 17_390, slack: 5_000, why: GT11_TPI },
+      'at-235642.range': { by: -19_260, slack: 5_000, why: GT11_COINCIDENT },
+      ejectionAt: { by: 91.27, slack: 30, why: GT11_ENTRY },
+    },
+    descent: {
+      'reentry-module.at': {
+        by: 158.8,
+        slack: 30,
+        why: `Down 159 s after the record: the drogue out 91 s late (below), and the main at the 11,000 ft read off the report’s Figure 5.1.11-1 on the 84.2 ft ringsail’s 31.6 ft/s (CR-1106), 67 s longer from the drogue to the water than the record’s 340 s. ${GT11_ENTRY}`,
+      },
     },
   }),
   // Gemini XII from the pad, its rendezvous made on GATV-5001 (its coast from the published orbit is not run: a flight with a

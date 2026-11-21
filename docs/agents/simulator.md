@@ -553,7 +553,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     the node of the target's orbit at the cutoff in place of the inclination, which is then a result and a check, as the
     radio guidance's yaw steering put the ship into its target's plane. Cut near the top of its latitude, where the yaw
     turns the node and hardly the inclination, aimed at the inclination alone Gemini IX-A came out 23° of node from the
-    ATDA's. The entry body
+    ATDA's. Gemini XI's flies on after its docked burns (gt-11/orbital.ts, mission.md): the
+    pair joined, docked and then tethered, to the separation, where the target is begun again where the spacecraft is
+    (`FlightPlan.parted`, orbital.ts `flyOrbit`), so it has the docked burns (the climb to 741.5 nautical miles and back)
+    and the coincident-orbit rendezvous after them is made on where the pair was. The entry body
     lifts (`AeroDef.lift`, lift over drag against Mach number) while a bank is held (`Hold.bank`, from the event that sets
     it; or the bank an entry steered to a place is flying, `Hold.entry`, "An entry is steered" above): orbital.ts `liftOf`, square to the motion through the air in the plane of the plumb line, turned about the motion by
     the bank. Mercury's and the Vostoks' plans have neither, and fly what they flew before to the last bit. Given up
@@ -1831,7 +1834,7 @@ read gives enough of to fly (issue #10).
 **Not yet under the one-state rule.** The docking deck's chapters (sim/approach.ts, transfer.ts, rendezvous.ts,
 flyby.ts) begin from navigation fixes in the mission reports, and some then place a craft from an observation
 (`startTransfer`'s radar range, `startRendezvous`'s line of sight, `startVisit`'s optical range, `startTether`'s
-extended strap). Gemini X, XI and Apollo 9 have no flight from the pad (no `Flight.plan`), so there is no state
+extended strap). Gemini X and Apollo 9 have no flight from the pad (no `Flight.plan`), so there is no state
 of their own for a chapter to begin from, and their targets' launches are separate flights. Gemini VIII, IX-A and XII have
 their plans (each rendezvous made on its target as a published orbit, then what followed to the landing),
 held by the tests and the figures; their Fly still opens on the chapter until the docking is a phase of the same run. What they need is each

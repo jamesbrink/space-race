@@ -14,7 +14,7 @@ import { thirdOf } from '../src/sim/core/gravity.ts';
 import { ballisticOf, fly } from '../src/sim/fly.ts';
 import { heightsBall, trackedState } from '../src/sim/orbital.ts';
 import { turn } from '../src/sim/rigid.ts';
-import { orbitalFlown, recordOf } from '../src/sim/run.ts';
+import { between, orbitalFlown, recordOf } from '../src/sim/run.ts';
 import { flyWhole, guidanceOf, sequenceOf, stagesOf, steer } from '../src/sim/staged.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
 import { EARTH, G0 } from '../src/world/bodies.ts';
@@ -163,7 +163,15 @@ for (const f of part(orbital)) {
     const begin = Math.max(target.from, whole.ascent.separation.t);
     const end = Math.min(whole.coast.samples.at(-1).t, begin + 48 * 3600);
     let worst = { dv: 0, dr: 0, at: 0 };
+    // (where the spacecraft let go of it after flying joined to it, it is begun again there, FlightPlan.parted: the step
+    // across that instant is not gravity's, and is held to the spacecraft's state there instead)
+    const releases = (plan.parted ?? []).map((m) => m.value);
+    for (const at of releases) {
+      const [it, ship] = [target.at(at), between(whole.coast.samples, at)];
+      assert.ok(length(sub(it.r, ship.r)) < 1e-3 && length(sub(it.v, ship.v)) < 1e-6, `begun again where the spacecraft is at T+${at}`);
+    }
     for (let t = begin; t + 10 <= end; t += 10) {
+      if (releases.some((at) => at > t && at <= t + 10)) continue;
       const [a, b] = [target.at(t), target.at(t + 10)];
       assert.ok(a && b, `the target is there at T+${t}`);
       const free = orbitStep(a, t, 10);

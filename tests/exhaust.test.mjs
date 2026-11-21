@@ -44,6 +44,7 @@ const FALLBACK = {
   'usa/gemini/gt-7': ['forward-thrusters', 'aft-thrusters'],
   'usa/gemini/gt-8': ['forward-thrusters', 'aft-thrusters'],
   'usa/gemini/gt-9a': ['forward-thrusters', 'aft-thrusters'],
+  'usa/gemini/gt-11': ['forward-thrusters', 'aft-thrusters'],
   'usa/gemini/gt-12': ['forward-thrusters', 'aft-thrusters'],
   // (the Agena's Bell 8247: its 45:1 expansion is documented, LMSC-A604166-2 14.2.1, but no chamber pressure was read)
   ...Object.fromEntries(
@@ -68,8 +69,8 @@ test('every ascent fire of the Mercury-Atlas and Gemini-Titan flights is drawn f
   }
   assert.equal(
     seen,
-    4 * 3 + 8 * 3,
-    'four Mercury-Atlas flights of three ascent fires, and Gemini-Titans 3, 4, 5, 6A, 7, 8, 9A and 12 of three each',
+    4 * 3 + 9 * 3,
+    'four Mercury-Atlas flights of three ascent fires, and Gemini-Titans 3, 4, 5, 6A, 7, 8, 9A, 11 and 12 of three each',
   );
 });
 
