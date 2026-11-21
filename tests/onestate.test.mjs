@@ -404,3 +404,15 @@ for (const f of part(orbital.filter((x) => varied.includes(x.id)))) {
     }
   });
 }
+
+test('every craft of a run flown together is one state: between samples its velocity changes by gravity and what pushes it', async () => {
+  const { flownOnce } = await import('./transposition.mjs');
+  const run = flownOnce();
+  assert.ok(run.tracks.length >= 5);
+  for (const track of run.tracks) {
+    // (no engine is lit among craft flown together: the most that pushes one is its thrusters, under the 0.3 m/s^2 allowed)
+    const { worst, steps } = unexplained(track.samples.map((x) => ({ ...x, g: 0 })));
+    assert.ok(worst.dv < 1 && worst.dr < 1, `craft ${track.id} (${track.bodies.join(', ')}) at ${worst.at} s: ${JSON.stringify(worst)}`);
+    assert.deepEqual(steps, [], `craft ${track.id}: no step within a craft's own track; a parting begins new ones`);
+  }
+});

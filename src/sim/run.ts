@@ -27,6 +27,7 @@ import { wavesOf } from './sea.ts';
 import type { Stretched } from './rails.ts';
 import { apart, Sheds } from './shed.ts';
 import {
+  type Crafts,
   type DrawnDescent,
   descentOf,
   type FlownWhole,
@@ -125,6 +126,14 @@ export interface Run {
   held?: Record<string, number>;
   /** The craft its manoeuvres in orbit were made on (staged.ts `targetOf`: a stage it let go, another flight's vehicle, or one flown from a published orbit): the record's run's. */
   target?: Target;
+  /**
+   * Each craft of the run, by any body in it (sim/components.ts): its state at `t`, undefined where the run does not fly
+   * it then. Where the plan has a joint made in flight every craft is flown (staged.ts `Crafts`); otherwise the run
+   * flies one, the followed, and a body is found in it while it is aboard. `samples` stay the followed craft's.
+   */
+  craft(body: string): { at(t: number): State | undefined };
+  /** Every craft of the run, where its plan has a joint made in flight (staged.ts `flySeveral`). */
+  crafts?: Crafts;
 }
 
 /** What every run answers the same way from its own samples. */
@@ -135,6 +144,17 @@ const asked = {
   track(this: Run): readonly Sample[] {
     return this.samples;
   },
+  craft(this: Run, body: string): { at(t: number): State | undefined } {
+    const run = this;
+    return {
+      at(t: number) {
+        if (run.crafts) return run.crafts.at(body, t);
+        const left = run.bodies[body];
+        if (left === undefined || (Number.isFinite(left) && left <= t)) return undefined;
+        return between(run.samples, t);
+      },
+    };
+  },
   centred(this: Run, t: number): { central: 'earth' | 'moon'; r: Vec3; v: Vec3 } {
     const s = between(this.samples as readonly (Sample & { centre?: Vec3 })[], t, (x) => x.centre ?? x.r);
     const earth = this.field?.about?.('earth');
@@ -144,7 +164,7 @@ const asked = {
 };
 
 /** What a run is made of before what it answers is put on it (`runOf`). */
-export type RunFields = Omit<Run, 'frame' | 'at' | 'track' | 'centred' | 'events' | 'bodies' | 'results'> &
+export type RunFields = Omit<Run, 'frame' | 'at' | 'track' | 'centred' | 'craft' | 'events' | 'bodies' | 'results'> &
   Partial<Pick<Run, 'events' | 'bodies' | 'results'>>;
 
 /**
@@ -696,6 +716,7 @@ export function orbitalRecord(flight: SitedFlight): Run {
     bodies: bodiesOf(flown, events),
     results: held(flown, whole),
     ...(whole.target ? { target: whole.target } : {}),
+    ...(whole.crafts ? { crafts: whole.crafts } : {}),
     ...(flown.gravity?.sphere ? { field: fieldFor(flown.gravity, frameOf(flight)) } : {}),
     ...(whole.coast.crossings ? { crossings: whole.coast.crossings } : {}),
   });

@@ -49,10 +49,13 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { shortOfPublished } from '../world/meanelements.ts';
-import { elementsOf, hermite, period, planeThrough, type State } from '../world/orbit.ts';
+import { elementsOf, hermite, period, planeThrough, type State, sunlit } from '../world/orbit.ts';
+import { sunPosition } from '../world/ephemeris.ts';
 import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { integrate, sensed } from './apparent.ts';
+import { componentsOf, followedOf, type Piece } from './components.ts';
 import { fieldFor, stepIn } from './core/gravity.ts';
+import { type CraftState, part as partJoint, startCraft } from './craft.ts';
 import { downOf } from './descent.ts';
 import { ALONE, along, MEAN_RADIUS, RIDING } from './fly.ts';
 import { keptShare } from './forces.ts';
@@ -65,6 +68,7 @@ import {
   chuteEvent,
   coastEngineState,
   coastEvents,
+  coastOf,
   type DescentFlown,
   type DescentHands,
   flyDown,
@@ -95,6 +99,7 @@ import {
   type TankDef,
   type TargetDef,
 } from './plan.ts';
+import { type CraftStart, type CraftTrack, craftAt, flyProximity, laidOf, type ProximityFlown, splitRigid } from './proximity.ts';
 import type { Railed, Stretched } from './rails.ts';
 import { aboutAxis, attitudeBetween, fromAxes, multiply, normalize as normalizeQ, type Quat, rotateFor, turn as turnQ } from './rigid.ts';
 import { enrolled } from './roster.ts';
@@ -258,6 +263,8 @@ export interface FlownWhole {
   target?: Target;
   /** The plan as the coast and the descent flew it, where guidance timed the braking burn (`OrbitFlown.plan`). Left out, the flight's. */
   plan?: FlightPlan;
+  /** Every craft of the run, where its plan has a joint made in flight (`flySeveral`): the coast is the followed one's. */
+  crafts?: Crafts;
 }
 
 /** One unit's nozzle exit area, m^2: given, or (vacuum less sea-level thrust) over one atmosphere. Nothing for an engine with no sea-level figure. */
@@ -1203,13 +1210,261 @@ export function flyWhole(plan: FlightPlan, site: Geodetic, frame: EarthFrame, se
   const x = solved ?? steer(plan, site, frame, seaLevel);
   const ascent = ascend(plan, site, frame, seaLevel, x);
   ascent.separation = partedOff(plan, ascent);
-  const target = targetOf(plan, frame, seaLevel, ascent);
-  const coast = flyOrbit(plan, site, frame, seaLevel, every, ascent.separation, undefined, undefined, undefined, target);
+  // (a plan with a joint made in flight flies its craft together from the parting, through the docking, before the coast)
+  const several = formsJoints(plan) ? flySeveral(plan, frame, seaLevel, ascent) : null;
+  const target = several ? several.target : targetOf(plan, frame, seaLevel, ascent);
+  const coast = flyOrbit(plan, site, frame, seaLevel, every, several?.from ?? ascent.separation, undefined, undefined, undefined, target);
+  if (several) coast.samples.unshift(...several.samples);
   const end = coast.samples[coast.samples.length - 1]!;
   // (the plan as the coast flew it: its braking burn where guidance timed it for the landing place, orbital.ts `LandingAim`)
   const flown = coast.plan ?? plan;
   const down = downOf(flown) && end.phase === 'down' ? flyDown(flown, frame, seaLevel, end) : null;
-  return { ascent, coast, down, ...(target ? { target } : {}), ...(coast.plan ? { plan: coast.plan } : {}) };
+  const crafts = several ? craftsOf(several, coast) : undefined;
+  return { ascent, coast, down, ...(target ? { target } : {}), ...(coast.plan ? { plan: coast.plan } : {}), ...(crafts ? { crafts } : {}) };
+}
+
+/** Whether a plan has a joint made in flight (`JointDef.formed`): only such a plan's run is flown as several craft. */
+export const formsJoints = (plan: FlightPlan): boolean => plan.craft.some((c) => c.joints.some((j) => j.formed));
+
+/**
+ * A run's craft (simulator.md, "Several craft in one run"): each one's track while they were flown together
+ * (sim/proximity.ts), and after it the followed craft's coast and every other's flight on gravity alone. `at` finds a
+ * craft by any body of it.
+ */
+export interface Crafts {
+  tracks: readonly CraftTrack[];
+  /** When the craft stopped being flown together, s from liftoff: from then the followed one is the coast's. */
+  until: number;
+  /** The followed craft's bodies from then. */
+  followed: readonly string[];
+  at(body: string, t: number): State | undefined;
+}
+
+interface Several {
+  flown: ProximityFlown;
+  samples: OrbitSample[];
+  from: { t: number; r: Vec3; v: Vec3 };
+  followed: Piece;
+  others: { piece: Piece; target: Target }[];
+  target?: Target;
+}
+
+/**
+ * When the craft stop being flown together: once every docking the record's crew fly has been captured and drawn hard
+ * (its record's instant of contact, and its retraction), and every parting the clock sets off by three hours after it
+ * that is not the coast's own (its burn's body, its descent's) has been made.
+ */
+function severalUntil(plan: FlightPlan, from: number): number {
+  const joints = plan.craft.flatMap((c) => c.joints);
+  const contacts = joints.flatMap((j) =>
+    j.formed?.approach ? [j.formed.approach.contact.value + j.formed.capture.retract.value + 60] : [],
+  );
+  const last = Math.max(from, ...contacts);
+  let coastJoints = new Set<string>();
+  try {
+    const parting = coastOf(plan).parting;
+    coastJoints = new Set(eventOf(plan, parting ?? '')?.do.flatMap((a) => ('separate' in a ? [a.separate] : [])) ?? []);
+  } catch {
+    // (a plan with no coast of its own: every parting is its craft's)
+  }
+  const later = plan.events.flatMap((e) => {
+    const at = clockAt(plan, e);
+    const parts = e.do.some((a) => ('separate' in a && !coastJoints.has(a.separate)) || 'dock' in a);
+    return parts && at > from && at <= last + 3 * 3600 && at < Number.MAX_SAFE_INTEGER ? [at] : [];
+  });
+  return Math.max(last, ...later) + 1;
+}
+
+/** The machine as the ascent leaves it at the parting, `t`: every event the record had happened by then, and its partings. */
+function machineAt(plan: FlightPlan, t: number): CraftState {
+  let s = startCraft(plan);
+  const fired: Record<string, number> = {};
+  for (const e of plan.events) {
+    const at = clockAt(plan, e);
+    const when = Number.isFinite(at) && at < Number.MAX_SAFE_INTEGER ? at : e.at?.value;
+    if (when === undefined || when > t + 1e-9) continue;
+    // (what the parting's own event does besides is the craft's to do as they are flown together from it: the
+    // spacecraft's crew setting off to dock)
+    if (when >= t - 1e-9 && e.do.some((a) => 'dock' in a)) {
+      for (const a of e.do)
+        if ('separate' in a)
+          s = partJoint(plan, { ...s, joints: { ...s.joints, [a.separate]: { ...s.joints[a.separate]!, loose: when } } }, a.separate, when);
+      continue;
+    }
+    fired[e.id] = when;
+    for (const a of e.do) {
+      if ('separate' in a)
+        s = partJoint(plan, { ...s, joints: { ...s.joints, [a.separate]: { ...s.joints[a.separate]!, loose: when } } }, a.separate, when);
+      if ('attitude' in a) s = { ...s, attitude: a.attitude };
+    }
+  }
+  const last = sequenceOf(plan).stages.at(-1)!.joint;
+  if (last && !Number.isFinite(s.joints[last]?.gone ?? Infinity)) s = partJoint(plan, s, last, t);
+  return { ...s, fired: { ...s.fired, ...fired } };
+}
+
+/** Each body's mass at the parting, kg: a piece's mass (the ascent's figures) shared as its bodies weighed at the pad, the stage that burned taking what is left. */
+function massesAt(plan: FlightPlan, pieces: readonly { bodies: readonly string[]; mass: number }[]): Record<string, number> {
+  const out: Record<string, number> = {};
+  const c = plan.craft[0]!;
+  for (const p of pieces) {
+    const defs = p.bodies.map((id) => c.bodies.find((b) => b.id === id)!);
+    const burned = defs.filter((b) => c.tanks.some((k) => k.body === b.id));
+    const whole = (b: BodyDef) => b.mass.value * b.count;
+    if (burned.length === 1) {
+      const rest = defs.filter((b) => b !== burned[0]).reduce((m, b) => m + whole(b), 0);
+      for (const b of defs) out[b.id] = b === burned[0] ? p.mass - rest : whole(b);
+    } else {
+      const sum = defs.reduce((m, b) => m + whole(b), 0);
+      for (const b of defs) out[b.id] = (whole(b) * p.mass) / sum;
+    }
+  }
+  return out;
+}
+
+/** An orbit sample of a craft's state, as the coast keeps one (`phase` 'orbit', its accelerometer's reading given). */
+function orbitSampleOf(frame: EarthFrame, seaLevel: number, s: { t: number; r: Vec3; v: Vec3 }, g = 0): OrbitSample {
+  const air = airAt(frame, s.r, s.v, s.t, seaLevel);
+  const here = frame.place(s.r, s.t);
+  return {
+    t: s.t,
+    phase: 'orbit',
+    altitude: air.altitude,
+    latitude: here.latitude,
+    longitude: here.longitude,
+    speed: length(s.v),
+    groundSpeed: air.airspeed,
+    g,
+    q: air.q,
+    mach: air.mach,
+    sunlit: sunlit(s.r, frame.fromDate(sunPosition(frame.jdTT(s.t)))),
+    r: s.r,
+    v: s.v,
+  };
+}
+
+/**
+ * The craft of a plan with a joint made in flight flown together from its spacecraft's parting (sim/proximity.ts): the
+ * stack as the ascent left it split by the parting's joint as a rigid body (forces.ts `part`, the joint's push shared by
+ * the masses), every craft of the plan met in flight where its target (`TargetDef.body`) has it then, flown to
+ * `severalUntil`. The followed craft's samples there are the coast's first; the others fly on by gravity alone.
+ */
+function flySeveral(plan: FlightPlan, frame: EarthFrame, seaLevel: number, ascent: Ascended): Several {
+  const last = ascent.samples.at(-1)!;
+  const t0 = last.t;
+  const s = machineAt(plan, t0);
+  const pieces = componentsOf(plan, s, t0);
+  const followed = followedOf(plan, s, t0);
+  const kept = pieces.find((p) => p.id === followed.id)!;
+  const joint = plan.craft[0]!.joints.find((j) => j.id === sequenceOf(plan).stages.at(-1)!.joint);
+  const stage = pieces.find((p) => p.bodies.includes(joint?.gone[0] ?? ''));
+  if (!joint || !stage || stage === kept) throw new Error('the spacecraft’s parting lets no craft of its own go');
+  const masses = massesAt(plan, [
+    { bodies: kept.bodies, mass: ascent.parted.kept },
+    { bodies: stage.bodies, mass: ascent.parted.gone },
+  ]);
+  const axis = unit(last.axis);
+  const q = fromAxes(axis, ascent.plane, cross(axis, ascent.plane));
+  const whole = { r: last.r, v: last.v, q, w: [0, 0, 0] as Vec3, laid: laidOf(plan, [...kept.bodies, ...stage.bodies], masses) };
+  const push = joint.push?.value ?? plan.craft[0]!.sheds?.find((x) => x.on === joint.id)?.push?.value ?? 0;
+  const [a, b] = splitRigid(plan, whole, kept.bodies, stage.bodies, push);
+  const start: CraftStart[] = [
+    { ...a, bodies: kept.bodies },
+    { ...b, bodies: stage.bodies },
+  ];
+  // (a craft the plan meets in flight: where its target has it as the parting is made. What left the stack before the
+  // parting, a stage or a tower, is not flown here)
+  const def = plan.target;
+  const own = new Set(plan.craft[0]!.bodies.map((b) => b.id));
+  for (const p of pieces) {
+    if (p === kept || p === stage || p.bodies.some((b) => own.has(b))) continue;
+    const there = def && 'body' in def && def.body && p.bodies.includes(def.body) ? metOf(def, frame, seaLevel).at(t0) : undefined;
+    if (!there)
+      throw new Error(
+        `craft '${p.id}' of the plan is met in flight, and nothing says where it is at ${t0} s: give the target its \`body\``,
+      );
+    const x = unit(there.v);
+    const y = unit(cross(there.r, there.v));
+    start.push({ ...there, q: fromAxes(x, y, cross(x, y)), bodies: p.bodies });
+    for (const id of p.bodies) masses[id] = plan.craft.flatMap((c) => c.bodies).find((x) => x.id === id)!.mass.value;
+  }
+  const until = severalUntil(plan, t0);
+  const flown = flyProximity(plan, frame, t0, s, start, masses, until, 1);
+  const end = followedOf(plan, flown.state, flown.t);
+  // (the followed craft's samples: whichever craft held the commander's body, in order)
+  const body = end.bodies.find((x) => kept.bodies.includes(x)) ?? end.bodies[0]!;
+  const samples = flown.tracks
+    .filter((k) => k.bodies.includes(body) && k.until > k.from)
+    .flatMap((k) => k.samples.filter((x) => x.t < flown.t - 1e-9).map((x) => orbitSampleOf(frame, seaLevel, x)));
+  const last_ = flown.crafts.find((c) => c.piece.id === end.id)!.rigid;
+  const field = fieldFor(plan.gravity, frame);
+  const others = flown.crafts
+    .filter((c) => c.piece.id !== end.id)
+    .map((c) => ({ piece: c.piece, target: onGravity({ t: flown.t, r: c.rigid.r, v: c.rigid.v }, field) }));
+  // (the target, where it is a craft of this run: by a body of it, or the side a joint let go)
+  const aimed =
+    def && 'craft' in def ? def.craft : def && 'joint' in def ? plan.craft[0]!.joints.find((j) => j.id === def.joint)?.gone[0] : undefined;
+  const named = aimed ? others.find((o) => o.piece.bodies.includes(aimed)) : undefined;
+  return {
+    flown,
+    samples,
+    from: { t: flown.t, r: last_.r, v: last_.v },
+    followed: end,
+    others,
+    ...(named && aimed
+      ? { target: { from: t0, at: (t: number) => (t <= flown.t ? craftAt(flown.tracks, aimed, t) : named.target.at(t)) } }
+      : {}),
+  };
+}
+
+/** A craft flown on from `start` by gravity alone (the run's field), in steps of 10 s, as far as it is asked. */
+function onGravity(start: { t: number; r: Vec3; v: Vec3 }, field: ReturnType<typeof fieldFor>): Target {
+  const kept: { t: number; r: Vec3; v: Vec3 }[] = [start];
+  return {
+    from: start.t,
+    at(t) {
+      if (t < start.t) return undefined;
+      let last = kept[kept.length - 1]!;
+      while (last.t < t) {
+        last = { ...stepIn(field, last, last.t, 10), t: last.t + 10 };
+        kept.push(last);
+      }
+      const i = Math.min(kept.length - 1, Math.max(1, Math.ceil((t - start.t) / 10)));
+      const [a, b] = [kept[i - 1]!, kept[i]!];
+      return hermite(a.t, a.r, a.v, b.t, b.r, b.v, t);
+    },
+  };
+}
+
+/** A coast's state at `t` between its samples: a quiet stretch flown again (`Sample.rails`), or the cubic across a step. */
+function stateOn(xs: readonly OrbitSample[], t: number): State {
+  let lo = 0;
+  let hi = xs.length - 1;
+  if (t <= xs[0]!.t) return xs[0]!;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (xs[mid]!.t <= t) lo = mid;
+    else hi = mid;
+  }
+  const [a, b] = [xs[lo]!, xs[hi]!];
+  if (!(b.t > a.t)) return b;
+  return a.rails ? a.rails.state({ t: a.t, r: a.r, v: a.v }, { t: b.t, r: b.r, v: b.v }, t) : hermite(a.t, a.r, a.v, b.t, b.r, b.v, t);
+}
+
+/** The run's craft from what was flown together and the coast after it. */
+function craftsOf(several: Several, coast: OrbitFlown): Crafts {
+  const { flown, followed, others } = several;
+  const samples = coast.samples;
+  return {
+    tracks: flown.tracks,
+    until: flown.t,
+    followed: followed.bodies,
+    at(body, t) {
+      if (t <= flown.t) return craftAt(flown.tracks, body, t);
+      if (followed.bodies.includes(body)) return t > samples[samples.length - 1]!.t ? undefined : stateOn(samples, t);
+      return others.find((o) => o.piece.bodies.includes(body))?.target.at(t);
+    },
+  };
 }
 
 const wholes = new WeakMap<object, FlownWhole>();
@@ -1288,7 +1543,7 @@ const met = new WeakMap<object, Map<EarthFrame, Target>>();
  * that id, as sim/roster.ts knows it) or a craft flown from a published orbit (orbital.ts `orbitTarget`). One for a
  * target and a frame, whoever asks: the record's run and one flown by hand have the same craft, which follows neither.
  */
-export function metOf(def: Exclude<TargetDef, { joint: string }>, frame: EarthFrame, seaLevel: number): Target {
+export function metOf(def: Extract<TargetDef, { flight: string } | { orbit: unknown }>, frame: EarthFrame, seaLevel: number): Target {
   let known = met.get(def);
   if (!known) met.set(def, (known = new Map()));
   let target = known.get(frame);
@@ -1319,6 +1574,8 @@ const targets = new WeakMap<object, Target>();
 export function targetOf(plan: FlightPlan, frame: EarthFrame, seaLevel: number, ascent: Ascended): Target | undefined {
   const def = plan.target;
   if (!def) return undefined;
+  // (a craft of this run is the several craft's to say: staged.ts `flySeveral`)
+  if ('craft' in def) return undefined;
   if (!('joint' in def)) return metOf(def, frame, seaLevel);
   if (def.joint !== sequenceOf(plan).stages.at(-1)!.joint) return undefined;
   const key = ascent.separation;
