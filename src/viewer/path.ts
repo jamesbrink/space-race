@@ -1948,7 +1948,11 @@ export class FlightPath {
             .filter((p) => p.t >= a && p.t <= b)
             .map((p) => {
               lunar.way.at(p.t, m, 0, v);
-              return { ...p, r: [p.r[0] - m[0]!, p.r[1] - m[1]!, p.r[2] - m[2]!] as Vec3, v: [p.v[0] - v[0]!, p.v[1] - v[1]!, p.v[2] - v[2]!] as Vec3 };
+              return {
+                ...p,
+                r: [p.r[0] - m[0]!, p.r[1] - m[1]!, p.r[2] - m[2]!] as Vec3,
+                v: [p.v[0] - v[0]!, p.v[1] - v[1]!, p.v[2] - v[2]!] as Vec3,
+              };
             });
           for (const x of apsides(rel, r.from)) {
             lunar.way.at(x.t, m);
@@ -1987,7 +1991,12 @@ export class FlightPath {
           const at = [0, 0, 0];
           const vel = [0, 0, 0];
           curveAt(shown.curve, t, at, 0, 0, vel);
-          extra.push({ kind: 'interface', t, r: [at[0]!, at[1]!, at[2]!], figure: `${(Math.hypot(vel[0]!, vel[1]!, vel[2]!) / 1000).toFixed(2)} km/s` });
+          extra.push({
+            kind: 'interface',
+            t,
+            r: [at[0]!, at[1]!, at[2]!],
+            figure: `${(Math.hypot(vel[0]!, vel[1]!, vel[2]!) / 1000).toFixed(2)} km/s`,
+          });
           break;
         }
       }
@@ -3775,7 +3784,10 @@ export class FlightPath {
         };
         // (and it has no way there to draw: drawn about the Moon, the Moon stands)
         const about = this.about;
-        h.way.n = about && aboutWeight(at, about.from, about.to, ABOUT_EASE) >= 1 ? 0 : sample(place, curve.t, t, t + span, lens, BODY_MOST, h.way.t, h.way.p);
+        h.way.n =
+          about && aboutWeight(at, about.from, about.to, ABOUT_EASE) >= 1
+            ? 0
+            : sample(place, curve.t, t, t + span, lens, BODY_MOST, h.way.t, h.way.p);
         h.wayAt = [h.discAt[0], h.discAt[1], h.discAt[2]];
         upload(h.way, h.wayAt, t);
         // (it leaves the body's outline and comes in to the one it will have: neither end is cut square)

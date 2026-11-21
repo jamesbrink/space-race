@@ -1013,7 +1013,10 @@ test('the map first looks square onto the path’s plane, tipped toward the vehi
   ]) {
     // the vehicle in the plane, `height` over the ground
     const up = V(1, 0, 0).sub(plane.clone().multiplyScalar(plane.x)).normalize();
-    const at = up.clone().multiplyScalar(R + height).add(V(0, -R, 0));
+    const at = up
+      .clone()
+      .multiplyScalar(R + height)
+      .add(V(0, -R, 0));
     const craft = craftAt(at, 3);
     const state = { turned: 0, reach: R + height + 1e6, extent: 2 * (R + height), plane };
     const rig = new MapRig(mapWorld(craft, state), 35);
@@ -1024,7 +1027,10 @@ test('the map first looks square onto the path’s plane, tipped toward the vehi
     const toEye = posed(rig).position.sub(rig.pivot).normalize();
     const off = (Math.acos(Math.min(1, toEye.dot(plane))) * 180) / Math.PI;
     const want = (Math.atan((0.85 * R) / (R + height)) * 180) / Math.PI;
-    assert.ok(Math.abs(off - want) < 1e-3 && off < most, `${(height / 1e3).toFixed(0)} km up: ${off.toFixed(2)} degrees from square on (${want.toFixed(2)})`);
+    assert.ok(
+      Math.abs(off - want) < 1e-3 && off < most,
+      `${(height / 1e3).toFixed(0)} km up: ${off.toFixed(2)} degrees from square on (${want.toFixed(2)})`,
+    );
     assert.ok(toEye.dot(up) > 0, 'tipped toward the vehicle: it is on the near side');
     // (and from the other side of the plane, the other side)
     const other = new MapRig(mapWorld(craft, state), 35);
