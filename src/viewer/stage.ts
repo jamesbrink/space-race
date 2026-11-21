@@ -2639,7 +2639,10 @@ export class Stage {
     const lander = this.staged[i];
     if (!lander) return null;
     lander.group.updateMatrixWorld(true);
-    return { at: lander.group.localToWorld(new THREE.Vector3(...this.defs[i]!.lander!.out!)), facing: lander.group.rotation.y + Math.PI / 2 };
+    return {
+      at: lander.group.localToWorld(new THREE.Vector3(...this.defs[i]!.lander!.out!)),
+      facing: lander.group.rotation.y + Math.PI / 2,
+    };
   }
 
   /** A right click's "Look at this" on a place: the view goes to the spot and turns about it. */

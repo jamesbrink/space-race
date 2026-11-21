@@ -1323,7 +1323,7 @@ read gives enough of to fly (issue #10).
   each phase does is a module beside it, a set of functions of the deck's state (`OrbitDeck`, whose fields they read and
   write): ascent.ts the steps, the taking over, the lever's cuts, the drops, the aborts and their escapes and the parting;
   coast.ts the lock, the hands freed and the attitude by hand; burn.ts the braking burn and the record's manoeuvres;
-  entry.ts the descent's events by hand; surface.ts the end and its card. orbitdeck.ts keeps the deck's contract
+  entry.ts the descent's events by hand; surface.ts the end and its card (on the Moon the surface phase is the stage stood at a landing site, where the deck offers Go out and Lift off, deck.ts `onSurface`: Lift off says it is not flown yet). orbitdeck.ts keeps the deck's contract
   (`Deck`), the run, the samples, the path, the clock's following and the instruments (`show`). The seam for the phases
   to come (`PhaseId`: `rendezvous`, `dock` and `descent` are named and not yet chosen; `coast` and `surface` about the
   Earth or the Moon): a phase is an id, a branch of `phaseOf` on what the run's state says (a joint formed, the surface

@@ -10,13 +10,15 @@ import type { Figure } from '../deck.ts';
  *
  * The ids still to come, which `phaseOf` does not yet give: `rendezvous` (range, rate, elevation angle), `dock` (today the
  * docking deck, dockdeck.ts, a deck of its own, to be folded in), `descent` (to a body's surface: radar altitude, rate,
- * propellant, the guidance's programme). `coast` will be about the Earth or the Moon, `surface` on either.
+ * propellant, the guidance's programme). `coast` will be about the Earth or the Moon. `surface` is on either: down on the
+ * Earth at the run's end (surface.ts, the card), or stood at a landing site on the Moon (`PhaseState.down` then too, the
+ * stage there: app/session.ts `surface`), where the deck offers Go out and Lift off (deck.ts `onSurface`).
  */
 export type PhaseId = 'ascent' | 'coast' | 'burn' | 'rendezvous' | 'dock' | 'descent' | 'surface' | 'entry';
 
 /** What the deck reads off the flight on show to choose its phase and what the phase shows (orbitdeck.ts `show`). */
 export interface PhaseState {
-  /** Down: what it rode on the ground at the run's end, standing still on it, in no orbit. */
+  /** Down: what it rode on the ground at the run's end, standing still on it, in no orbit; or the flight stood on the Moon. */
   down: boolean;
   /** The spacecraft alone: parted from its launch vehicle, not down, not struck on the pad. */
   alone: boolean;

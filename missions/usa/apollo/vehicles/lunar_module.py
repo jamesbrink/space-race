@@ -285,7 +285,9 @@ def check_hatch_swing(parts):
     for root in ("LMStations", "LMControlPanels", "LMAscentLifeSupport", "LMAscentPower", "LMAscentEngine"):
         for obj in parts[root].children_recursive if root in parts else []:
             if obj.type == "MESH":
-                cabin.append((obj.name, BVHTree.FromPolygons([obj.matrix_world @ v.co for v in obj.data.vertices], [p.vertices[:] for p in obj.data.polygons])))
+                cabin.append(
+                    (obj.name, BVHTree.FromPolygons([obj.matrix_world @ v.co for v in obj.data.vertices], [p.vertices[:] for p in obj.data.polygons]))
+                )
 
     def strikes(degrees):
         turn = Matrix.Translation(hinge) @ Matrix.Rotation(math.radians(degrees), 4, "Z") @ Matrix.Translation(-hinge)
@@ -568,7 +570,10 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
                 ],
             )
         mark_shells(
-            [hatch_cover.build("LM4_ForwardHatchCover", dark, door or parent).name, hatch_fittings.build("LM4_HatchFittings", gold, door or parent).name]
+            [
+                hatch_cover.build("LM4_ForwardHatchCover", dark, door or parent).name,
+                hatch_fittings.build("LM4_HatchFittings", gold, door or parent).name,
+            ]
         )
         grab.build("LM4_HatchHandholds", alloy, parent)
     # Both flight articles: a handrail up either side of the porch (AS09-21-3212 of LM-3; the press kit's plate 43a
@@ -718,7 +723,9 @@ def build(iu_top=0, *, deployed=False, spacecraft=3, landed=False):
     staging_fittings(parts["LMDescent"], parts["LMAscent"], silver, dark)
     if deployed and spacecraft == 5:
         lm5_equipment.pilot_camera(parts["LMControlPanels"], silver, dark, ivory)
-    lm_cabin.build(parts["LMStations"], parts["LMControlPanels"], silver, interior_paint, dark, ivory, glass, hatch_top=HATCH_Z + HATCH / 2 if landed else None)
+    lm_cabin.build(
+        parts["LMStations"], parts["LMControlPanels"], silver, interior_paint, dark, ivory, glass, hatch_top=HATCH_Z + HATCH / 2 if landed else None
+    )
     check_engine_interfaces(parts)
     if landed:
         check_hatch_swing(parts)

@@ -448,7 +448,10 @@ test('a ladder that leans is found to lean, is climbed on its upper face going i
   solids.gather(new THREE.Vector3(2.6, 1.5, 0), 3, 3, 3);
   const [ladder] = solids.ladders();
   assert.ok(ladder.lean, 'it leans');
-  assert.ok(Math.abs(ladder.lean.x + 1 / 3) < 0.02 && Math.abs(ladder.lean.z) < 1e-6, `a third of a metre in for each up: ${ladder.lean.x}`);
+  assert.ok(
+    Math.abs(ladder.lean.x + 1 / 3) < 0.02 && Math.abs(ladder.lean.z) < 1e-6,
+    `a third of a metre in for each up: ${ladder.lean.x}`,
+  );
   assert.ok(Math.abs(centreOf(ladder, 0).x - 3.1) < 0.03 && Math.abs(centreOf(ladder, 3).x - 2.1) < 0.03);
   // whichever side it is come to from, it is held on its outer, upper face
   assert.equal(hang(ladder, 0, 0, 0.26).nx, 1);
@@ -475,7 +478,10 @@ test('a ladder that leans is found to lean, is climbed on its upper face going i
   go(body, 0, 0, 0.1, 0);
   go(body, 0, 0, 8, -1);
   go(body, 0, 0, 0.5, 0);
-  assert.ok(!body.on && body.grounded && Math.abs(body.position.y) < 1e-6 && body.position.x > 3, `down at its foot: ${body.position.toArray()}`);
+  assert.ok(
+    !body.on && body.grounded && Math.abs(body.position.y) < 1e-6 && body.position.x > 3,
+    `down at its foot: ${body.position.toArray()}`,
+  );
 });
 
 /** An open steel stair: thin treads with daylight between them and no risers, up to a deck, with a rail down each side. */
