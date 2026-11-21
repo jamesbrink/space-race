@@ -506,7 +506,7 @@ export class Vehicle {
    * plane through the ground under its four hubs, each spring holding its share of its weight; without, on the ground
    * under its axles. What it is first stood on, before anything moves it.
    */
-  stand(road: Road): void {
+  standOn(road: Road): void {
     const b = this.bounce;
     if (!b) {
       this.drive(0, 0, 0, road);

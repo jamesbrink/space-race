@@ -44,7 +44,7 @@ export class LunarRover {
       },
     };
     // stood on its wheels where it is
-    this.vehicle.stand(this.road);
+    this.vehicle.standOn(this.road);
   }
 
   get motion(): Motion {
