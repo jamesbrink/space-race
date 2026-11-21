@@ -29,8 +29,29 @@ export const DESCARTES = landingSite({
       'its heading at the LM',
   },
   landed: {
-    at: '1972-04-21T02:23:35Z',
+    value: Date.parse('1972-04-21T02:23:35Z') / 1000,
+    confidence: 'derived',
     source:
-      'Apollo 16 Mission Report, MSC-07230, table 3-I (sequence of events): landing at 104:29:35 GET from liftoff at 17:54:00 GMT, 16 April 1972 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+      'the range zero and the elapsed time of the landing, both read on the page, added: Apollo 16 Mission Report, MSC-07230 (August 1972), table 3-I (sequence of events), p. 3-2: "Lift-off (Range zero = 17:54:00 G.m.t., April 16, 1972)" and "Lunar landing 104:29:35", times from range zero without the two updates of the mission clock the table lists (section 2.0, p. 2-1). UTC, seconds from 1970',
+  },
+  rest: {
+    heading: {
+      value: 270.31,
+      confidence: 'estimated',
+      source:
+        'Apollo 16 Mission Report, MSC-07230, section 9, p. 9-19: "with a slight yaw to the south", given no figure; taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead), the slight yaw left out',
+    },
+    pitch: {
+      value: 2.5,
+      confidence: 'documented',
+      source:
+        'Apollo 16 Mission Report, MSC-07230, section 9 (pilots’ report), p. 9-19: "The attitude of the vehicle after touchdown was essentially zero roll, 2 1/2 degrees pitch up, with a slight yaw to the south"',
+    },
+    roll: {
+      value: 0,
+      confidence: 'documented',
+      source:
+        'Apollo 16 Mission Report, MSC-07230, section 9, p. 9-19: "essentially zero roll"',
+    },
   },
 });
