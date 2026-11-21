@@ -190,6 +190,7 @@ const fragment = (apron: boolean, octaves: number, grains: number): string => /*
   uniform float uDetail;  // how far the finest maps are in (a flight's: they fade as they are changed for another site's)
   uniform float uFade;    // how much of what is behind it is covered (a flight's: it comes in as the eye leaves the air)
   uniform float uCel;     // drawn as the cel look draws: the light in flat tones
+  uniform vec4 uHole;     // a square of the site's plane not drawn (east from x to y, north from z to w, metres), where another ground is: the lunar setting's
   varying vec3 vDir, vP;
   varying vec2 vQ;
   ${MAPS}
@@ -204,6 +205,8 @@ const fragment = (apron: boolean, octaves: number, grains: number): string => /*
   vec3 normalFrom(vec3 d, vec3 tx, vec2 s) { return normalize(d - s.x * tx - s.y * cross(d, tx)); }
   void main() {
     vec3 d = normalize(vDir);
+    // (the lunar setting's own ground is drawn there: viewer/lunar/setting.ts)
+    if (uHole.y > uHole.x && vQ.x > uHole.x && vQ.x < uHole.y && vQ.y > uHole.z && vQ.y < uHole.w && d.x * uSite[0].z + d.y * uSite[1].z + d.z * uSite[2].z > 0.5) discard;
     ${
       apron
         ? ''
@@ -464,6 +467,7 @@ export class MoonBody {
       uMade: { value: 0 },
       uDetail: { value: 1 },
       uFade: { value: 1 },
+      uHole: { value: new THREE.Vector4(0, 0, 0, 0) },
       uCel: { value: 0 },
       uSun: { value: new THREE.Vector3(1, 0, 0) },
       uSunLight: { value: sunLight },
@@ -679,7 +683,7 @@ export class MoonBody {
     u.uSite!.value = siteRows(to.ground.meta);
     this.shapeApron(to.ground, this.lighter);
     u.uMade!.value = 1;
-    this.apron.visible = this.mesh.visible || (this.coarse?.visible ?? false);
+    this.apron.visible = this.apronShown && (this.mesh.visible || (this.coarse?.visible ?? false));
   }
 
   get ready(): boolean {
@@ -705,6 +709,22 @@ export class MoonBody {
   /** A flight's: the turn from the Moon's frame to the scene's (its columns: the Moon's axes in the scene). */
   turn(m: THREE.Matrix3): void {
     (this.uniforms.uTurn!.value as THREE.Matrix3).copy(m);
+  }
+
+  /**
+   * A flight's: whether the site's apron is drawn (it is, from orbit). The lunar setting draws its own ground there and
+   * none of the apron (viewer/lunar/setting.ts).
+   */
+  apronShown = true;
+
+  /**
+   * A flight's: leave a square of the site's plane undrawn (east from `west` to `east`, north from `south` to `north`,
+   * metres from the site), where the lunar setting's own ground is; null draws all of it.
+   */
+  hole(square: { west: number; east: number; south: number; north: number } | null): void {
+    const h = this.uniforms.uHole!.value as THREE.Vector4;
+    if (square) h.set(square.west, square.east, square.south, square.north);
+    else h.set(0, 0, 0, 0);
   }
 
   /** The cel look: its light in flat tones. */
@@ -766,7 +786,7 @@ export class MoonBody {
     const far = r - MOON_RADIUS > COARSE.beyond;
     this.mesh.visible = !far;
     this.coarse!.visible = far;
-    this.apron.visible = this.site !== null && !far;
+    this.apron.visible = this.site !== null && !far && this.apronShown;
     // the finest maps: out while another's are wanted, in once they are here
     const u = this.uniforms.uDetail!;
     const was = u.value as number;

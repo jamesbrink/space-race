@@ -12,6 +12,7 @@ import type { Effects } from '../viewer/effects.ts';
 import type { FlightPath } from '../viewer/path.ts';
 import type { Stage } from '../viewer/stage.ts';
 import type { Clock } from '../world/clock.ts';
+import type { LunarSite } from '../world/lunar-terrain.ts';
 import type { Demo } from './demo.ts';
 import type { FrontScene } from './front/scene.ts';
 import type { PATH } from './front/view.ts';
@@ -36,6 +37,14 @@ export interface FlightDebug {
   gallery: Gallery;
   /** The front page's picture, while it is still there under a flight just gone into from it (front.ts). */
   front?: FrontScene;
+  /**
+   * Stand the flight on the Moon at a landing site (its id: missions/usa/places/moon/), at `at` seconds of the mission's
+   * clock (left out, where the clock is), as the run will once it lands (session.ts `surface`); resolves true once the
+   * curtain has lifted. `offMoon` goes back to the pad's place; `moon` is the site stood at, or null.
+   */
+  onMoon: (site: LunarSite, at?: number) => Promise<boolean>;
+  offMoon: () => Promise<boolean>;
+  readonly moon: LunarSite | null;
 }
 
 /** A flight that is only its vehicle (only.ts): the gallery, and its stage as `stage` (null until it is made). */

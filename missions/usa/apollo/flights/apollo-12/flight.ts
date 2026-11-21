@@ -506,6 +506,6 @@ export const flight: Flight = {
       terminalSource:
         'Saturn V Flight Manual SA-507, fig. 8-20 (nominal preflight arm sequence); AS-507 Flight Evaluation Report, table 2-2 and §3.6.1 (first motion).',
     }),
-    ...lc39Crew(['Conrad', 'Gordon', 'Bean'], true),
+    ...lc39Crew(['Conrad', 'Gordon', 'Bean'], true, [], true),
   ],
 };

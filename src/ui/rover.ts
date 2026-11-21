@@ -1,7 +1,6 @@
 import { ROVER_SITES } from '../world/lunar-terrain.ts';
 import {
   ACESFilmicToneMapping,
-  Color,
   DepthTexture,
   type Group,
   HalfFloatType,
@@ -158,7 +157,6 @@ export class RoverDrive {
         this.redraw = true;
       })
       .observe(stage.renderer.domElement);
-    this.scene.background = new Color(0x000000);
     void this.load(model).catch((error) => {
       if (!this.scope.live) return;
       this.status.textContent = error instanceof Error ? error.message : 'The lunar traverse could not be opened.';
@@ -198,7 +196,7 @@ export class RoverDrive {
     const { lunarDrivingGround } = await import('../viewer/lunar-driving-ground.ts');
     this.scope.signal.throwIfAborted();
     const [ground, body, crew] = await Promise.all([
-      lunarDrivingGround(config.site, this.scope.signal).then((surface) => {
+      lunarDrivingGround(config.site, this.stage.renderer, this.scope.signal).then((surface) => {
         if (!this.scope.live) {
           surface.dispose();
           this.scope.signal.throwIfAborted();
@@ -217,6 +215,8 @@ export class RoverDrive {
     }
     this.scene.add(ground.group, this.rover.body);
     this.looks.add(this.scene);
+    // (what draws itself in both looks: the whole Moon past the grids)
+    this.scene.add(...(ground.setting.selfDrawn ?? []));
     const renderer = this.stage.renderer;
     this.frameTarget = new WebGLRenderTarget(1, 1, {
       samples: Math.min(4, renderer.capabilities.maxSamples),
@@ -228,7 +228,12 @@ export class RoverDrive {
     this.composer.renderTarget2 = new WebGLRenderTarget(1, 1, { type: HalfFloatType, depthBuffer: false });
     this.composer.readBuffer = this.frameTarget;
     this.composer.writeBuffer = this.composer.renderTarget2;
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    // the setting's sky first (lunar/setting.ts: the stars, the Sun, the Earth), then the ground and the rover over it
+    const sky = ground.setting.backdrop;
+    this.composer.addPass(new RenderPass(sky.scene, sky.camera));
+    const over = new RenderPass(this.scene, this.camera);
+    over.clear = false;
+    this.composer.addPass(over);
     this.ink = new InkPass();
     this.composer.addPass(this.ink);
     this.composer.addPass(new OutputPass());
@@ -268,6 +273,8 @@ export class RoverDrive {
   private tick(t: number): void {
     if (!this.scope.live || !this.rover || !this.ground) return;
     this.scope.frame((now) => this.tick(now));
+    // (the whole Moon's maps come in over a moment after the ground: drawn again until they are in)
+    if (this.ground.attend(this.camera.position)) this.redraw = true;
     const dt = this.last ? Math.min(0.1, (t - this.last) / 1000) : 0;
     this.last = t;
     const held = new Set(this.fingers.values());
@@ -326,7 +333,15 @@ export class RoverDrive {
     const mapping = renderer.toneMapping;
     renderer.toneMapping = this.looks.current === 'cel' ? NeutralToneMapping : ACESFilmicToneMapping;
     const exposure = renderer.toneMappingExposure;
-    renderer.toneMappingExposure = 1;
+    const setting = this.ground.setting;
+    renderer.toneMappingExposure = setting.exposure;
+    this.scene.environment = setting.environment;
+    this.scene.environmentIntensity = setting.environmentIntensity;
+    const sky = setting.backdrop.camera;
+    sky.quaternion.copy(this.camera.quaternion);
+    sky.fov = this.camera.fov;
+    sky.aspect = this.camera.aspect;
+    sky.updateProjectionMatrix();
     renderer.shadowMap.needsUpdate = true;
     renderer.setRenderTarget(null);
     renderer.info.reset();

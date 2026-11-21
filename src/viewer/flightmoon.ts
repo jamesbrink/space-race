@@ -4,8 +4,8 @@ import { SUN } from '../world/bodies.ts';
 import { type EarthFrame, sinceLiftoff } from '../world/earthframe.ts';
 import { ephemerisOf, moonPosition, stateOf, sunPosition } from '../world/ephemeris.ts';
 import { ecefToSite, ecefToSiteDirection, inertialToJ2000, type Mat3, rotate, type Site, scale, sub, type Vec3 } from '../world/frames.ts';
-import { DescentStrip, LandingGround } from '../world/lunar-ground.ts';
-import { LUNAR_SITES, type LunarSite, LunarTerrain } from '../world/lunar-terrain.ts';
+import { LUNAR_SITES, type LunarSite } from '../world/lunar-terrain.ts';
+import { lunarGround } from './lunar/ground.ts';
 import { meanEarthAxes, MOON_RADIUS } from '../world/moon.ts';
 import { MoonBody, type MoonDetail, type PlaneMeta } from './moon.ts';
 import { LandingApron } from './moonsite.ts';
@@ -59,6 +59,26 @@ const COMES_IN = [0.95, 1] as const;
 const UP_FROM = [0.5, 1.5] as const;
 
 const smooth = (x: number, a: number, b: number): number => THREE.MathUtils.smoothstep(x, a, b);
+
+/**
+ * A landing site's finest map (its moon.json's `near`: tools/front-moon.mjs `--sites`) and its ground (the landing
+ * ground's, fetched once a page for the flight scene and the lunar setting alike: viewer/lunar/ground.ts), as `MoonBody`
+ * draws them; null where the site has not been baked, or anything of it could not be fetched.
+ */
+export async function landingDetail(base: string, id: LunarSite): Promise<MoonDetail | null> {
+  const dir = `${base}lunar/`;
+  try {
+    const [meta, data] = await Promise.all([
+      fetch(`${dir}${id}.moon.json`).then((r) => (r.ok ? (r.json() as Promise<{ near: PlaneMeta }>) : null)),
+      lunarGround(id),
+    ]);
+    if (!meta) return null;
+    const s = LUNAR_SITES[id];
+    return { id, dir, near: meta.near, ground: new LandingApron([s.landing[0]!, s.landing[1]!], s.height, data.ground) };
+  } catch {
+    return null;
+  }
+}
 
 export class FlightMoon {
   /** What the stage adds to its scene. */
@@ -231,22 +251,7 @@ export class FlightMoon {
   private detailFor(id: LunarSite): Promise<MoonDetail | null> {
     let made = this.details.get(id);
     if (!made) {
-      const dir = `${this.base}lunar/`;
-      made = (async () => {
-        try {
-          const [meta, terrain, strip] = await Promise.all([
-            fetch(`${dir}${id}.moon.json`).then((r) => (r.ok ? (r.json() as Promise<{ near: PlaneMeta }>) : null)),
-            fetch(`${dir}${id}.terrain.bin`).then((r) => r.arrayBuffer()),
-            fetch(`${dir}${id}.descent.bin`).then((r) => r.arrayBuffer()),
-          ]);
-          if (!meta) return null;
-          const s = LUNAR_SITES[id];
-          const ground = new LandingGround(s, new LunarTerrain(terrain), new DescentStrip(strip));
-          return { id, dir, near: meta.near, ground: new LandingApron([s.landing[0]!, s.landing[1]!], s.height, ground) };
-        } catch {
-          return null;
-        }
-      })();
+      made = landingDetail(this.base, id);
       this.details.set(id, made);
     }
     return made;

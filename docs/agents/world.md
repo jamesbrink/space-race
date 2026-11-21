@@ -63,7 +63,7 @@ segments, measured against the kernel at points it did not fit; public/ephemeris
 reads it). With the places it carries the Moon's orientation (`moonpa`: the three Euler angles from the ICRF to its
 principal axes, DE440's own integration of its turning and librations, from NAIF's binary PCK moon_pa_de440_200625.bpc,
 refitted within 0.02 microradians, 4 cm on its ground): `world/moon.ts principalAxes` is those axes, or Meeus's
-mean-Earth ones where DE440 is not loaded (estimated: 0.03 degrees, and the two frames 0.03 apart). `meanEarthAxes` turns DE440's by the fixed offset to the mean-Earth frame the maps and the landing sites are in (Park et al. 2021, section 5.3; its order and signs found by the IAU's series, which it is within 75 m of on the ground where the principal axes are 890 m off: tests/moon.test.mjs); the flight scene's Moon is turned by it (viewer/flightmoon.ts). The Moon's gravity
+mean-Earth ones where DE440 is not loaded (estimated: 0.03 degrees, and the two frames 0.03 apart). `meanEarthAxes` turns DE440's by the fixed offset to the mean-Earth frame the maps and the landing sites are in (Park et al. 2021, section 5.3; its order and signs found by the IAU's series, which it is within 75 m of on the ground where the principal axes are 890 m off: tests/moon.test.mjs); the flight scene's Moon is turned by it (viewer/flightmoon.ts). The sky from the Moon at an instant (the Earth, the Sun, how the Earth and the stars are turned, the points under each) is `world/moonsky.ts` `skyAt`, the front page's and the lunar setting's alike. The Moon's gravity
 is given in them (`world/lunargravity.ts`: GRGM900C from GRAIL's tracking, cut to degree 30 by
 tools/lunar-gravity-bake.mjs, which prints what the cut leaves out: 4.8 mGal of the field's 50 at 110 km, 56 of 98 at
 15 km; summed by Cunningham's recurrence; tests/lunargravity.test.mjs). An instant may be asked in two parts
@@ -71,7 +71,14 @@ tools/lunar-gravity-bake.mjs, which prints what the cut leaves out: 4.8 mGal of 
 4 cm of the Moon, and a state taken from the Moon's centre and put back steps with it. It is fetched only when something asks, and a test hands it in (`useEphemeris`). Who asks: whatever makes a
 flight's gravity terms with the Moon or the Sun in them, and any flight that leaves low Earth orbit, awaits
 `loadEphemeris()` before it makes them (the terms take DE440 only if it is loaded then, and say `estimated` otherwise:
-core/gravity.ts); nothing on the ground needs it. Once it is here the sky answers from it too, since the step is under a
+core/gravity.ts). In the page that is app/main.ts, before a flight's session is made, for a flight whose plan's gravity
+wants it (core/gravity.ts `wantsEphemeris`: the Moon or the Sun named, or a sphere), so the run and the Moon drawn over it
+(viewer/flightmoon.ts) are both DE440's from the first frame; and Stage.load, before the lunar setting is built at a landing
+site (viewer/lunar/setting.ts: its Sun and Earth). The tests still fly every plan on Meeus's Moon unless one hands DE440 in
+(tests/gravity.test.mjs, lunargravity.test.mjs do), so a lunar flight's run in the page and in `pnpm figures` differ by
+what the two Moons' pull makes of it: at the end of Apollo 11's record (270,923 s, 387,500 km out) 2.4 km and 0.15 m/s
+(measured on hal9000, November 2026), nothing to speak of at the translunar injection the checks are on. Closed when the
+tests fly such a flight with DE440 handed in, which will move its figures. Nothing on the ground needs it. Once it is here the sky answers from it too, since the step is under a
 third of a pixel (below). Then `stateOf(body, jdTT, centre)` gives a position and velocity in the ICRF, geometric, from the
 Earth's centre or any body's or the solar system's barycentre; `toDate` turns one into the frame of date, and
 `sunPosition`, `moonPosition` and `planetPosition` (what the sky and everything else asks) answer from it, apparent to

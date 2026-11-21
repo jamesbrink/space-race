@@ -155,11 +155,16 @@ export const flight: Flight = {
       terminalSource:
         'Saturn V Flight Manual SA-507, fig. 8-20 (nominal ML-2 preflight arm schedule). AS-509 Flight Evaluation Report, tables 2-1 and 2-2 and §3.6.1 (first motion and measured mast strokes).',
     }),
-    ...lc39Crew(['Shepard', 'Roosa', 'Mitchell'], true, [
-      {
-        url: 'models/usa/apollo/apollo-14/crew.glb',
-        scale: 'Shepard · 5 ft 11 in stature · A7L EV launch suit with commander’s bands',
-      },
-    ]),
+    ...lc39Crew(
+      ['Shepard', 'Roosa', 'Mitchell'],
+      true,
+      [
+        {
+          url: 'models/usa/apollo/apollo-14/crew.glb',
+          scale: 'Shepard · 5 ft 11 in stature · A7L EV launch suit with commander’s bands',
+        },
+      ],
+      true,
+    ),
   ],
 };

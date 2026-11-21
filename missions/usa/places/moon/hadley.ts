@@ -29,4 +29,9 @@ export const HADLEY = landingSite({
       'trajectory tables, descartes.ts and taurus-littrow.ts); Apollo 15’s ' +
       'table (MSC-05161, table 3-III) is an image not yet read',
   },
+  landed: {
+    at: '1971-07-30T22:16:30Z',
+    source:
+      'Apollo 15 Mission Report, MSC-05161, table 3-I (sequence of events): landing at 104:42:29.3 GET from liftoff at 13:34:00.6 GMT, 26 July 1971 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+  },
 });

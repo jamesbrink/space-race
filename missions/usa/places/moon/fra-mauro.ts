@@ -28,4 +28,9 @@ export const FRA_MAURO = landingSite({
       'the great circle from powered descent initiation, 7.38 S 1.57 W (Apollo 14 Mission Report, MSC-04112, table 6-III (trajectory parameters); the scan drops the latitude’s first digit, and ' +
       'the planned approach azimuth of -76.31 degrees puts the track at 7.2 S there), to the LM, its heading at the LM; 493 km',
   },
+  landed: {
+    at: '1971-02-05T09:18:11Z',
+    source:
+      'Apollo 14 Mission Report, MSC-04112, table 3-I (sequence of events): landing at 108:15:09.3 GET from liftoff at 21:03:02 GMT, 31 January 1971 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+  },
 });

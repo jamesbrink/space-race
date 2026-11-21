@@ -43,6 +43,7 @@
     "test:operate": "node tools/operate-test.mjs",
     "test:sound": "node tools/sound-test.mjs",
     "test:lunar-rover": "node tools/lunar-rover-drive-test.mjs",
+    "test:lunar": "node tools/lunar-test.mjs",
     "test:drive": "node tools/drive-test.mjs",
     "test:front": "node tools/front-test.mjs",
     "test:lineup": "node tools/lineup-test.mjs",
@@ -66,7 +67,8 @@
     "globe:weather": "node tools/globe-weather.mjs",
     "era5:aloft": "node tools/era5-aloft.mjs",
     "lunar:sites": "node tools/lunar-sites.mjs",
-    "lunar:terrain": "uv run --script tools/lunar-terrain.py"
+    "lunar:terrain": "uv run --script tools/lunar-terrain.py",
+    "lunar:earth": "node tools/front-earth.mjs --lunar"
   },
   "engines": {
     "node": ">=22.18.0"

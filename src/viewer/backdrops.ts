@@ -27,6 +27,8 @@ import { uLast } from './overlay.ts';
 import { newPlace } from './programs.ts';
 import { DECK_REACH } from './weather.ts';
 import { FlightMoon } from './flightmoon.ts';
+import { lunarGroundHeld, lunarSiteOf } from './lunar/ground.ts';
+import { lunarSetting } from './lunar/setting.ts';
 import { frameOf } from '../world/earthframe.ts';
 import { tier } from './tier.ts';
 import { WeatherMap } from './weathermap.ts';
@@ -62,6 +64,8 @@ export interface Setting {
   fog: THREE.FogExp2 | null;
   /** Scenery that is part of the place rather than the model. */
   scenery: THREE.Object3D[];
+  /** What of the place draws itself in both looks (its own shaders: the whole Moon under the lunar setting): put in the scene, not given to the looks. */
+  selfDrawn?: THREE.Object3D[];
   /** Of that scenery, what is drawn at levels of detail and chooses them by its size on screen, as the place round the pad does (lod.ts `Levelled`). */
   levels?: Levelled[];
   /** How far from the model there is something to look at, metres: the view can be walked and pulled back this far. */
@@ -1054,7 +1058,21 @@ const SETTINGS: Record<BackdropKind, (renderer: THREE.WebGLRenderer, when?: Occa
   orbit,
   studio: (renderer) => studio(renderer),
   ground,
+  moon,
 };
+
+/**
+ * On the Moon, at a landing site (lunar/setting.ts): built once its ground has been fetched (lunar/ground.ts `lunarGround`,
+ * which Stage.load awaits), and let go as a place is (`Settings.drop`) when the stage goes elsewhere.
+ */
+function moon(renderer: THREE.WebGLRenderer, when?: Occasion): Setting {
+  const id = lunarSiteOf(when?.site);
+  const data = id ? lunarGroundHeld(id) : null;
+  if (!when || !id || !data) throw new Error('a setting on the Moon is built at a landing site once its ground has been fetched');
+  const setting = lunarSetting(renderer, when, data);
+  placeOf.set(setting, `moon ${id} ${when.launch}`);
+  return setting;
+}
 
 /**
  * Settings are expensive (shaders, an environment map each), so each is built once, on first use:

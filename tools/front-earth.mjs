@@ -1,6 +1,9 @@
-// Bakes the Earth as the front page sees it from the Moon (src/app/front/earth.ts): the globe's own maps at the size
+// Bakes the Earth as the front page sees it from the Moon (src/viewer/farearth.ts): the globe's own maps at the size
 // that distance needs, and the day's cloud, sea ice and snow.
 //   node tools/front-earth.mjs [--cache <dir>] [--only surface|colour|day]
+//   node tools/front-earth.mjs --lunar [--cache <dir>]   the day alone over each Apollo landing site, at the hour its LM
+//                       touched down (missions/usa/places/moon/: `landed`), for the Earth in its sky (viewer/lunar/setting.ts):
+//                       public/lunar/<site>.earth.day.jpg and <site>.earth.json
 //
 // Written to public/front/, each the six faces of a cube side by side (+X, -X, +Y, -Y, +Z, -Z of the Earth's own
 // frame, as tools/globe.mjs lays a face out):
@@ -143,9 +146,9 @@ function at(data, latitude, longitude) {
   return (v(j, i) * (1 - fx) + v(j, i1) * fx) * (1 - fy) + (v(j + 1, i) * (1 - fx) + v(j + 1, i1) * fx) * fy;
 }
 
-async function day() {
+async function day(instant = INSTANT, path = join(out, 'earth.day.jpg')) {
   // the hour nearest the instant
-  const hour = Math.round((Date.parse(INSTANT) - Date.UTC(1900, 0, 1)) / 3_600_000);
+  const hour = Math.round((Date.parse(instant) - Date.UTC(1900, 0, 1)) / 3_600_000);
   const when = new Date(Date.UTC(1900, 0, 1) + hour * 3_600_000).toISOString();
   const [cover, water, ice, seaIce, snow] = await Promise.all(
     ['total_cloud_cover', 'total_column_cloud_liquid_water', 'total_column_cloud_ice_water', 'sea_ice_cover', 'snow_depth'].map((n) =>
@@ -180,11 +183,28 @@ async function day() {
         strip[o + 2] = Math.round(255 * Math.min(1, Math.max(0, at(snow, latitude, longitude) / 0.025)));
       }
   });
-  writeJpeg(join(out, 'earth.day.jpg'), strip, DAY * 6, DAY, 90, '4:4:4');
+  writeJpeg(path, strip, DAY * 6, DAY, 90, '4:4:4');
   console.log(
-    `earth.day.jpg      ${DAY * 6} x ${DAY}  ${sizeOf('earth.day.jpg')}  ${when}  mean cloud albedo ${(sum / (6 * DAY * DAY)).toFixed(3)}`,
+    `${path.split('/').pop()}  ${DAY * 6} x ${DAY}  ${(statSync(path).size / 1e6).toFixed(2)} MB  ${when}  mean cloud albedo ${(sum / (6 * DAY * DAY)).toFixed(3)}`,
   );
   return when;
+}
+
+const DATA =
+  'ECMWF ERA5 hourly data on single levels (Hersbach et al. 2020, doi:10.24381/cds.adbb2d47), from the ARCO-ERA5 copy ' +
+  '(Carver and Merose 2023); contains modified Copernicus Climate Change Service information';
+
+if (args.includes('--lunar')) {
+  const { LUNAR_SITES } = await import('../missions/usa/places/moon/sites.ts');
+  const lunar = join(root, 'public/lunar');
+  for (const s of LUNAR_SITES) {
+    const when = await day(s.landed.at, join(lunar, `${s.id}.earth.day.jpg`));
+    writeFileSync(
+      join(lunar, `${s.id}.earth.json`),
+      `${JSON.stringify({ day: { file: `${s.id}.earth.day.jpg`, face: DAY, channels: ['cloud', 'sea ice', 'snow'], at: when, for: s.landed }, data: `${DATA}. Fetched ${new Date().toISOString().slice(0, 10)}` }, null, 2)}\n`,
+    );
+  }
+  process.exit(0);
 }
 
 if (!only || only === 'surface') surface();

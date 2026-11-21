@@ -28,4 +28,9 @@ export const OCEAN_OF_STORMS = landingSite({
       'powered descent initiation at 6.76 S (Apollo 12 Mission Report, MSC-01855, §5 table of trajectory parameters; the scan loses its longitude), taken 482 km uprange as Apollo 11’s ' +
       'was: the great circle through it and the LM, its heading at the LM. A descent of 450 to 495 km moves it 0.3 to 1 degree',
   },
+  landed: {
+    at: '1969-11-19T06:54:36Z',
+    source:
+      'Apollo 12 Mission Report, MSC-01855, table 3-I (sequence of events): landing at 110:32:36.2 GET from liftoff at 16:22:00 GMT, 14 November 1969 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+  },
 });

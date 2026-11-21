@@ -1,4 +1,6 @@
 import { flights } from '../../missions/index.ts';
+import { wantsEphemeris } from '../sim/core/gravity.ts';
+import { loadEphemeris } from '../world/ephemeris.ts';
 import type { Flight, SitedFlight } from '../types.ts';
 import type { GalleryKept } from '../ui/gallery.ts';
 import { Stage } from '../viewer/stage.ts';
@@ -37,7 +39,8 @@ async function open(flight: Flight): Promise<void> {
     session = null;
   }
   if (entrances(flight).site) {
-    const { siteSession } = await import('./session.ts');
+    // (a flight that leaves low Earth orbit is flown, and its Moon drawn, by DE440's Moon: fetched before anything of it is flown)
+    const [{ siteSession }] = await Promise.all([import('./session.ts'), wantsEphemeris(flight.plan?.gravity) ? loadEphemeris() : null]);
     if (!stage) {
       stage = new Stage(document.querySelector<HTMLCanvasElement>('#stage')!);
       stage.pipe.quality.auto = prefs.get('resolutionAuto'); // ("Hold frame rate": off unless chosen, so the picture is the screen's own)
