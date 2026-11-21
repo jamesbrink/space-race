@@ -60,8 +60,17 @@ for (const suffix of ['', '.lod1', '.lod2']) {
     ];
     for (const part of internals) {
       const contents = meshes(part);
-      if (suffix) assert.equal(contents.length, 0, `${part}: interior omitted at distance`);
-      else assert.ok(contents.length > 0, `${part}: empty full-detail compartment`);
+      // (below full detail the S-IVB keeps its aft dome and thrust cone: once the S-IB has gone they are the stage's base)
+      const closure = part === 'SecondStageTankStructure' ? ['SIVB_AftTankDome', 'SIVB_ThrustCone'] : [];
+      if (suffix) {
+        const inside = contents.filter((n) => !closure.some((name) => n.name.startsWith(name)));
+        assert.equal(inside.length, 0, `${part}: interior omitted at distance`);
+        for (const name of closure)
+          assert.ok(
+            contents.some((n) => n.name.startsWith(name)),
+            `${part}: ${name} closes the base`,
+          );
+      } else assert.ok(contents.length > 0, `${part}: empty full-detail compartment`);
     }
     if (!suffix) {
       const hatchPanes = meshes('Side_Hatch_Pivot').filter((mesh) => mesh.name.startsWith('CM_Window_hatch_'));

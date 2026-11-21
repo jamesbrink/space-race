@@ -340,6 +340,7 @@ S68-29781 `5cdf66573dc36ecd18e8a23cad2a49ed69ce949a78b48af99e259a1aeaa468db`.
   ([apollo-csm.md](apollo-csm.md)); the J-2's contour is its own.
 - S-IB baffle sections, tank weld stations, fin wedge sections, engine contours, piping and spider-beam sections are approximate. The tail frame omits individual brackets, access openings and firewall panels. Flame shields, exhaust aspirators, sump manifolds and hold-downs remain incomplete.
 - S-IVB domes and rings omit the honeycomb sandwich detail, internal pockets, structural welds, A-frame joints, bosses and most feed and vent plumbing. The APS housings and skirt paint remain exterior studies. Ullage and retro motors, separation fittings and tunnel fairings remain unfinished.
+- Below full detail the S-IVB's tanks are left out but its aft dome and thrust cone are kept (`saturn_structure.aft_closure`), with a plain inner face to its aft skirt an inch inside the skin (clear of the SA-206 to 208 APS modules' pressure vessels), so the stage's base is closed from behind once the S-IB has gone; the cone's stringers are full detail only.
 - IU electronics have simplified cases and platform envelope. Connectors, individual fasteners, access fittings, cable bundles, antennas and internal circuit boards remain unmodelled.
 - The four attached upper adapter panels hinge outward above the fixed aft skirt. Detailed hinge fittings, the rendezvous target and internal cabling are omitted.
 - LC-34 and a Saturn flight simulation remain outside this gallery model.

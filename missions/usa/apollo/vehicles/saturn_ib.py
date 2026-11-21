@@ -305,4 +305,16 @@ def build(*, skylab_serial=None):
         ]
     )
     structure.build(groups, spheres_per_bank=3 if skylab else 4, s150=skylab_serial == 207)
+    metal, _, dark = structure.paints()
+    # The inside of the S-IVB's aft skirt, from its edge up to where the aft dome meets it, at every level of detail:
+    # from behind and below, once the S-IB and its interstage have gone, the skin's outer face alone let the sky through.
+    inside = RADIUS - 1.0  # (an inch in: the SA-206 to 208 APS modules' pressure vessels stand 0.6 in inside the skin)
+    meets = structure.ds(287.8) - math.sqrt(structure.DOME_RADIUS**2 - inside**2)
+    skirt = MeshBuilder()
+    skirt.lathe(prof([(inside, interstage_top), (inside, meets)]), segs=128)
+    mark_shells([skirt.build("SIVB_AftSkirtInner", metal, sivb).name])
+    if not srlib.interior():
+        # (the aft dome and the thrust cone at every level: below full detail the tanks are not built, and once the S-IB
+        # has gone these are the stage's base)
+        structure.aft_closure(groups["SecondStageTankStructure"], metal, dark)
     return groups
