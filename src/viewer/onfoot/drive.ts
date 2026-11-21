@@ -122,18 +122,27 @@ export function rollOn(from: Motion, pedal: number, wheel: number, dt: number, c
   const p = Math.max(-1, Math.min(1, pedal));
   const held = t.grip * t.gravity * t.bearing;
   const drive = Math.min(held, t.power / (t.mass * Math.max(Math.abs(speed), 0.5)));
+  // (the pedal against the way it goes, or held on it stopped, is the brake)
+  let braking = false;
   if (p > 0) {
-    if (speed < 0) speed = Math.min(0, speed + held * p * dt);
-    else if (speed < chassis.top) speed = Math.min(chassis.top, speed + drive * p * dt);
+    if (speed < 0) {
+      speed = Math.min(0, speed + held * p * dt);
+      braking = true;
+    } else if (speed < chassis.top) speed = Math.min(chassis.top, speed + drive * p * dt);
   } else if (p < 0) {
-    if (speed > 0) speed = Math.max(0, speed - held * -p * dt);
-    else if (speed > -chassis.reverse && (speed < 0 || (from.halted ?? 0) >= PAUSE)) speed = Math.max(-chassis.reverse, speed - drive * 0.6 * -p * dt);
+    if (speed > 0) {
+      speed = Math.max(0, speed - held * -p * dt);
+      braking = true;
+    } else if (speed > -chassis.reverse && (speed < 0 || (from.halted ?? 0) >= PAUSE)) speed = Math.max(-chassis.reverse, speed - drive * 0.6 * -p * dt);
+    else braking = speed === 0;
   }
-  // (rolling, and the slope's pull while it moves: stood still, its brakes hold it)
-  if (speed !== 0 || p !== 0) {
+  // (rolling, and the slope's pull while it moves: stood still, or braked to a stand, its brakes hold it)
+  if (speed !== 0 || (p !== 0 && !braking)) {
     const lost = t.rolling * t.gravity * t.bearing * dt;
+    const was = speed;
     speed = Math.abs(speed) <= lost && p === 0 ? 0 : speed - Math.sign(speed) * Math.min(Math.abs(speed), lost);
     speed -= t.gravity * t.slope * t.bearing * dt;
+    if (braking && Math.sign(speed) !== Math.sign(was)) speed = 0;
   }
   const want = Math.max(-1, Math.min(1, wheel)) * chassis.lock;
   const rate = chassis.rate ?? WHEEL;
