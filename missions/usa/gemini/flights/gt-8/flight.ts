@@ -41,6 +41,9 @@ import {
   thrusters,
   titanEngines,
 } from '../../vehicles/gemini-titan.ts';
+import { commanded, geminiCommands, geminiFlies } from '../../vehicles/gemini-flies.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
+import { INSERTION, orbital } from './orbital.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -585,7 +588,7 @@ const vehicle = lc19Vehicle(
   withTarget(
     geminiTitanStack({
       flight: 'gt-8',
-      parts: [...parts, ...agenaParts(target)],
+      parts: commanded([...parts, ...agenaParts(target)], geminiCommands()),
       // the crew into the ship at 9:38 (the mission report, Table 7.2-V); the hatches shut about ten minutes after the
       // plan's T-100, glue having been found in a harness fitting (5.1.10.1.3), about 10:05: estimated (pad.ts)
       seats: seats([-7382, -5754]),
@@ -658,19 +661,8 @@ export const flight: Flight = {
       ),
     },
     massProperties: dockingProperties(GVIII, 105.12, 343, 7116),
-    fixes: [
-      targetFix(
-        GVIII + ', table 4.3-V, preliminary tracking solution (altitude above LC-19 radius)',
-        -6059.262,
-        558,
-        28.6,
-        -59.64,
-        980359,
-        25366,
-        0.002,
-        95.13,
-      ),
-    ],
+    // (the Agena at its insertion, the vector the flight's plan flies its target from: orbital.ts `INSERTION`)
+    fixes: [INSERTION],
     closureSpeed: dockingReading(0.75 * 0.3048, 'MSC-G-R-66-4, crew account of docking'),
     retractTime: dockingReading(6.9, 'MSC-G-R-66-4, docking-system performance'),
     interface: 'cone',
@@ -1056,6 +1048,16 @@ export const flight: Flight = {
     ),
     ...agenaMotors(),
   ],
+  // the flight as an orbit, written from its record: the Titan's two stages, the orbit, the rendezvous made on the Agena,
+  // the undocking, the early retrofire and the lifting entry, each figure with its source (orbital.ts; mission.md), flown
+  // through the day's air over the pad. Fly still opens on the docking chapter (src/app/address.ts `lacks`)
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-8’s own weights and engines, from its mission report, on a stated steering law, and the coast on from the state it leaves. ' +
+    'The Agena is flown from the report’s tracking at its insertion: the four burns before the coelliptic are flown at the record’s instants and impulses, and the coelliptic, the terminal phase, its corrections and the braking are solved on the Agena as each is made. ' +
+    'The docking, the roll and thruster No. 8 are not flown: the ship keeps station to the docking, backs off at the undocking, and comes down from the early retrofire on the bank the crew and the computer flew (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot],
   // the place round the pad as it stood that March: as in March 1965 (places/cape-canaveral/lc19/model/1965-03.py)
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',

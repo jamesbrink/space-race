@@ -11,7 +11,9 @@
  * manoeuvre system's aft-firing pair, on the equipment section, pushes toward the nose, and its forward-firing pair, on
  * the retrograde section, toward the tail (`EngineDef.astern`). Each manoeuvre is an attitude, a lighting with its own
  * impulse as the crew's velocity indicator gave it (`Action.flown`), and a cut, at the record's instants (src/sim/
- * orbital.ts `movesOf`). Before retrofire the equipment section is let go; the retrograde section's four solids, fired one
+ * orbital.ts `movesOf`). Where the record gives the craft the flight went up to meet (`target`, plan.ts `TargetDef`), a
+ * manoeuvre made on it says what it was for (`Manoeuvre.toward`, plan.ts `Pursuit`): guidance then solves it on where the
+ * two are as it lights, and the record's impulse and attitude are what the solved burn is held against. Before retrofire the equipment section is let go; the retrograde section's four solids, fired one
  * after another, are the coast's burn, flown as their whole impulse spread evenly from the first's lighting to the last's
  * burning out; the section goes so long after, and the re-entry module comes down on its offset centre of mass, its lift
  * turned by the bank the crew held (`AeroDef.lift`, `Hold.bank`), its drogue and its main.
@@ -30,7 +32,9 @@ import type {
   Lands,
   Nozzle,
   PlanCheck,
+  Pursuit,
   TankDef,
+  TargetDef,
   ThrusterSet,
 } from '../../../../src/sim/plan.ts';
 import type { Confidence, Curve, Heating, ShedBody } from '../../../../src/types.ts';
@@ -85,19 +89,33 @@ export interface Thrusters {
 
 /**
  * A manoeuvre by the crew: the attitude they turned to (`aim`, with whose figure it is), when they were in it, when the
- * thrusters were lit and cut, and the impulse the velocity indicator gave for it, where it gave one.
+ * thrusters were lit and cut, and the impulse the velocity indicator gave for it, where it gave one. `toward`: what it was
+ * for, where it was made on the flight's target (`GeminiTitanRecord.target`): guidance solves it from the state as it
+ * lights, and the attitude, the impulse and the cut here are the record's, which the solved burn is held against.
  */
 export interface Manoeuvre {
   id: string;
   label: string;
   /** Which pair fired: the aft-firing (pushing toward the nose) or the forward-firing (toward the tail). */
   thrusters: 'aft' | 'forward';
-  /** `below`: along the motion, the line pitched down from the level by so many degrees (up, negative: plan.ts `Hold`). */
-  attitude: { label: string; aim: 'velocity' | 'normal'; sense: 1 | -1; below?: Measure; confidence: Confidence; source: string };
+  /**
+   * `below`: along the motion, the line pitched down from the level by so many degrees (up, negative); `yaw`: turned in
+   * the level toward the left of the motion first (the right, negative: plan.ts `Hold`).
+   */
+  attitude: {
+    label: string;
+    aim: 'velocity' | 'normal';
+    sense: 1 | -1;
+    below?: Measure;
+    yaw?: Measure;
+    confidence: Confidence;
+    source: string;
+  };
   turned: Measure;
   on: Measure;
   off: Measure;
   deltaV?: Measure;
+  toward?: Pursuit;
 }
 
 /** Something the spacecraft let go of in orbit besides its fairings (a pod it threw out): its joint's id, which its shed in `ascent.sheds` is `on`, and its nodes. */
@@ -123,6 +141,8 @@ export interface GeminiTitanRecord {
   separation: { at: Measure; push: Measure; mass: Measure };
   /** What else it let go of in orbit, each at its instant (`Released`). */
   released?: Released[];
+  /** The craft it went up to meet, which its manoeuvres made on it are solved on (plan.ts `FlightPlan.target`). */
+  target?: TargetDef;
   ascent: {
     guidance: Guidance;
     drag: { until: Measure; area: Measure; curve: Curve }[];
@@ -385,6 +405,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
           aim: m.attitude.aim,
           sense: m.attitude.sense,
           ...(m.attitude.below ? { below: m.attitude.below } : {}),
+          ...(m.attitude.yaw ? { yaw: m.attitude.yaw } : {}),
           confidence: m.attitude.confidence,
         },
         source: m.attitude.source,
@@ -426,7 +447,9 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
     const id = THRUSTER_ID[m.thrusters];
     return [
       timed(`${m.id}:turn`, `${m.label}: turned to its attitude`, m.turned, [{ attitude: `${m.id}-attitude` }]),
-      timed(`${m.id}`, m.label, m.on, [m.deltaV ? { ignite: id, flown: m.deltaV } : { ignite: id }]),
+      timed(`${m.id}`, m.label, m.on, [
+        { ignite: id, ...(m.deltaV ? { flown: m.deltaV } : {}), ...(m.toward ? { toward: m.toward } : {}) },
+      ]),
       timed(`${m.id}:cut`, `${m.label}: thrusters off`, m.off, [{ cut: id }, { attitude: 'orbit-attitude' }]),
     ];
   });
@@ -529,9 +552,16 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
   const checks: PlanCheck[] = [
     ...o.ascent.checks.map((c): PlanCheck => ({ ...c, of: 'ascent', ...ascentWhen(c.id) })),
     ...o.checks.map((c): PlanCheck => {
-      // (`<name>.<perigee|apogee|period>`: the orbit read at an instant after a manoeuvre, orbital.ts `readingsOf`)
+      // (`after-<s>.<perigee|apogee|period>`: the orbit read at an instant after a manoeuvre, orbital.ts `readingsOf`;
+      // `at-<s>.range`: how far the target is then, on a run flown with it)
       const reading = /^after-(\d+)\./.exec(c.id);
-      return { ...c, of: 'orbit', ...(reading ? { when: { at: Number(reading[1]), reading: 'orbit' as const } } : {}) };
+      const sighting = /^at-(\d+)\.range$/.exec(c.id);
+      return {
+        ...c,
+        of: 'orbit',
+        ...(reading ? { when: { at: Number(reading[1]), reading: 'orbit' as const } } : {}),
+        ...(sighting ? { when: { at: Number(sighting[1]), reading: 'range' as const } } : {}),
+      };
     }),
     ...o.descent.checks.map((c): PlanCheck => ({ ...c, of: 'descent' })),
   ];
@@ -541,6 +571,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
     events,
     attitude,
     checks,
+    ...(o.target ? { target: o.target } : {}),
     record: {
       orbit: { ...o.orbit, injection: o.injection, mass: o.mass },
       landing: o.landing,

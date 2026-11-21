@@ -222,8 +222,10 @@ m/s), each with its confidence; the air aloft is ERA5's (`aloft.ts`).
   is not built, and whether it was on his helmet at the pad is not settled (the mission report has it
   "added", the press kit "carried"). Scott's stature is not in any NASA source read: 6 ft is taken.
   The seats are empty.
-- **The flight.** No trajectory, no orbit as data, no simulator run: nothing here docks, rolls or
-  comes home.
+- **The flight.** Flown from the pad to the landing as data (orbital.ts, [mission.md](mission.md)): the
+  ascent, the rendezvous made on the Agena, the undocking, the early retrofire and the entry. The docking,
+  the docked period, thruster No. 8 and the roll are not flown: the ship keeps station to the docking and
+  coasts beside the Agena until it backs off. Fly still opens on the docking chapter, which docks.
 
 ## Where sources disagree
 

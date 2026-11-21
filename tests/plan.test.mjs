@@ -366,7 +366,8 @@ for (const f of titans) {
     // the coast's burn the four rockets as one, spent and not cut; the section goes so long after
     const coast = coastOf(plan);
     assert.equal(coast.on, o.retro.on.value);
-    assert.equal(coast.off, o.retro.on.value + o.retro.spacing.value * 3 + o.retro.burn.value);
+    // (to rounding: the plan adds the four rockets' burn to their first lighting, this the spacing and the burn to it in turn)
+    assert.ok(Math.abs(coast.off - (o.retro.on.value + o.retro.spacing.value * 3 + o.retro.burn.value)) < 1e-9, 'the four as one');
     assert.equal(coast.parted, o.retro.gone.value);
     // the lift is the module's own, flown at the bank the record holds from its instant
     const entry = c.bodies.find((b) => b.aero);
