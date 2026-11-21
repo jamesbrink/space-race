@@ -16,7 +16,12 @@ from there). Every simulator, the predictor, the decks and everything in the vie
 the Earth through it (`toFixed`, `toInertial`, `place`, `up`), and what is of date (the Sun, published elements) comes in
 through `fromDate`, so no two of them can take the Earth's angle differently. Two frames are offered: the inertial frame of
 date, and that frame turned back about the pole to the Earth's axes at liftoff; gravity with J2, the air and the ground are
-symmetric about the pole, so a flight is the same flight in either to rounding (tests/frame.test.mjs).
+symmetric about the pole, so a flight is the same flight in either to rounding (tests/frame.test.mjs). Two flights have
+two frames, each of the date of its own liftoff: a state goes from one to the other through the ICRF (`toIcrf`,
+`fromIcrf`), and an instant goes onto a flight's clock to the millisecond it is recorded to (`sinceLiftoff`), which is
+how one flight's vehicle is another's target (simulator.md, "A manoeuvre made on another craft"). The seconds between
+two liftoffs are UTC's, as each flight's own clock's are; UTC's second of the 1960s was up to 3 parts in 10^8 longer
+than the SI second the integrators step in, which no clock here allows for (5 ms over two days, 40 m along an orbit).
 
 Time and the Earth's turn (`time.ts`, `frames.ts`; the header of each states it once). An instant is UTC, as a launch is
 recorded. TT is made from it by the leap seconds (`taiMinusUtc`: SOFA's table, with UTC's steps and rate offsets of 1960

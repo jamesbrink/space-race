@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { EARTH_ROTATION_RATE } from '../src/world/bodies.ts';
-import { between, earthFrame, frameOf, LIFTOFF, OF_DATE } from '../src/world/earthframe.ts';
+import { between, earthFrame, frameOf, LIFTOFF, OF_DATE, sinceLiftoff } from '../src/world/earthframe.ts';
 import { sunPosition } from '../src/world/ephemeris.ts';
 import {
   cross,
@@ -107,6 +107,24 @@ test('the frame fixed at liftoff is the frame of date turned back about the pole
   near(apart(DATED.fromIcrf(star), atLiftoff), 0, 1e-15, 'the ICRF in the frame of date at liftoff');
   near(apart(FIXED.fromIcrf(star), inertialToEcef(atLiftoff, g)), 0, 1e-15, 'and in the frame fixed at liftoff');
   assert.throws(() => LIFTOFF.fromIcrf(star), /no date/, 'a frame with no date has no ICRF either');
+});
+
+test('a frame turns to the ICRF and back, and two flights’ frames differ by the precession between their liftoffs', () => {
+  for (const frame of [DATED, FIXED]) {
+    near(apart(frame.fromIcrf(frame.toIcrf(R)), R), 0, 1e-8, 'there and back, m');
+    near(apart(frame.toIcrf(frame.fromIcrf(V)), V), 0, 1e-11, 'back and there, m/s');
+    near(length(frame.toIcrf(R)), length(R), 1e-8, 'a turn keeps a length');
+  }
+  // the frame of date is the ICRF turned by frames.ts's bias, precession and nutation of the liftoff's date
+  near(apart(DATED.toIcrf(j2000ToInertial(R, terrestrialTime(JD))), R), 0, 1e-8, 'the turn to date, undone');
+  // Freedom 7's frame and one of a liftoff 120 days on: the general precession is 50.3 arcseconds a year, 16.5 in 120
+  // days, and the nutation's change in that time a second or two more or less
+  const later = earthFrame(JD + 120, true);
+  const moved = apart(later.fromIcrf(DATED.toIcrf([1, 0, 0])), [1, 0, 0]) / (DEG / 3600);
+  assert.ok(moved > 12 && moved < 21, `the equinox ${moved.toFixed(2)} arcseconds on`);
+  // and an instant on a flight's clock is exact to the millisecond it is recorded to
+  near(sinceLiftoff(DATED, julianDate('1961-05-05T14:49:35.123Z')), 922.123, 0, 'Freedom 7, 14:34:13 to 14:49:35.123');
+  near(sinceLiftoff(DATED, JD - 167_970.972 / 86_400), -167_970.972, 0, 'two days before it, to the millisecond');
 });
 
 test('a flight is flown in its frame of date, made once from its liftoff', () => {

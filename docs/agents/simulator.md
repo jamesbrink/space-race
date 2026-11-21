@@ -56,8 +56,26 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   the speed its joint pushes the two apart at, along the long axis, on the record's run as on a flight flown by hand.
 
 - **A manoeuvre made on another craft is solved on the two as they are** (sim/pursuit.ts). The target is a craft of its
-  own (`FlightPlan.target`: a stage the spacecraft let go, flown on from the parting with its side of the joint's push,
-  by gravity and the air on its own mass and drag area: orbital.ts `targetFrom`, staged.ts `targetOf`). Nothing the
+  own (`FlightPlan.target`, plan.ts `TargetDef`, one of three; staged.ts `targetOf`). `joint`: a stage the spacecraft
+  let go, flown on from the parting with its side of the joint's push, by gravity and the air on its own mass and drag
+  area (orbital.ts `targetFrom`). `flight`: another flight's own vehicle, by that flight's id, where that flight's
+  record run has it at the same instant (staged.ts `flightTarget`, `recordWhole`: the states its run flew, a cubic
+  between two): the two clocks are set apart by the difference of the two liftoffs, to the millisecond
+  (world/earthframe.ts `sinceLiftoff`), and the state is turned from that flight's frame to the ICRF and into this
+  one's (`toIcrf`, `fromIcrf`: each frame is of its own liftoff's date, a third of a metre apart at the Earth's radius
+  for two liftoffs 101 minutes apart). Nothing is flown again and nothing fitted, so what the target's own run misses
+  its record by, the flight that goes up to it inherits. The flights are known to the simulator by id through
+  sim/roster.ts: missions/index.ts enrols them all, and a flight built to be met enrols itself as it is built
+  (vehicles/target-flight.ts), so a test that loads the flights' files has them; a target that names a flight nobody
+  enrolled is an error, not a missing target. `orbit`: a craft the record gives only an orbit for (Gemini X's second
+  Agena, four months up; a workshop): a tracking vector or an element set as published, at an instant counted from a
+  stated `epoch`, laid in the flight's frame (pursuit.ts `fixState`, `elementsState`: osculating or Kozai's mean
+  elements, of the true equator and equinox of their own date or of the ICRF) and flown on from there, and back from
+  there for an instant before it, by gravity and the air on its stated mass and drag area (orbital.ts `orbitTarget`).
+  How far such a craft then is from where the record later has it is the published orbit's error and the air's, and is
+  the run's finding. A target that stays up is flown as far as its plan's record says (`PlanRecord.coastUntil`: the
+  Gemini targets, three days from their own liftoff, which covers the flight that went up to each;
+  tests/pursuit.test.mjs), three days where it says nothing. Nothing the
   spacecraft does moves it, and no observation of the record's is written into it. A burn made on it says what it was for
   (`Action.ignite.toward`, plan.ts `Pursuit`): `reach`, the target at a stated place from the craft at a stated instant
   and in its plane (a corrective combination, a terminal phase); `coelliptic`, an orbit of the target's shape; `station`,
@@ -1362,7 +1380,8 @@ flyby.ts) begin from navigation fixes in the mission reports, and some then plac
 (`startTransfer`'s radar range, `startRendezvous`'s line of sight, `startVisit`'s optical range, `startTether`'s
 extended strap). Gemini VIII to XII and Apollo 9 have no flight from the pad (no `Flight.plan`), so there is no state
 of their own for a chapter to begin from, and their targets' launches are separate flights. What they need is each
-flight's ascent and coast as a plan, its target named as a craft (`FlightPlan.target`, from the target's own run), and
+flight's ascent and coast as a plan, its target named as a craft (`FlightPlan.target`: the target's own flight, by its
+id, `TargetDef.flight`, which the simulator now resolves, or a published orbit, `TargetDef.orbit`), and
 the record's manoeuvres given their purposes (`Pursuit`), as Apollo 7's are: then a chapter is a place in that one run.
 Until then what follows describes chapters that start at the record. They are at least in the flown runs' frame: each
 fix is laid in the flight's own (world/earthframe.ts `frameOf`: approach.ts `orbitalFix`, the place over the Earth turned

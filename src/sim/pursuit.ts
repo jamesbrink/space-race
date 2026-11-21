@@ -8,14 +8,88 @@
  * are, by flying the burn ahead on the run's own forces until it does what it is for. The record's impulse, its
  * attitude and the ranges the crew read are what the run is then compared with (sim/misses.ts, tools/residuals.mjs).
  */
+import type { OrbitalFix } from '../types/flight.ts';
 import { EARTH } from '../world/bodies.ts';
-import { add, cross, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { gravity, hermite, type State, step } from '../world/orbit.ts';
+import type { EarthFrame } from '../world/earthframe.ts';
+import {
+  add,
+  cross,
+  DEG,
+  dot,
+  geodeticToEcef,
+  icrfToDate,
+  length,
+  rotate,
+  scale,
+  sub,
+  transpose,
+  unit,
+  type Vec3,
+} from '../world/frames.ts';
+import { stateOfMean } from '../world/meanelements.ts';
+import { gravity, hermite, meanAnomaly, type State, stateOf, step, trueAnomaly } from '../world/orbit.ts';
+import type { OrbitElements, TargetOrbit } from './plan.ts';
 
-/** A craft flown on its own forces from `from`, s from liftoff: its state at an instant, or nothing before it began or after it came down. */
+/**
+ * A craft flown on its own forces from `from`, s from liftoff: its state at an instant, or nothing before it began or
+ * after it came down. One the record gives at an instant (a published orbit, flown back from it as well as on) answers
+ * before `from` too; another flight's vehicle is there from that flight's liftoff, which is `from` on this one's clock.
+ */
 export interface Target {
   from: number;
   at(t: number): State | undefined;
+}
+
+/**
+ * A tracking vector of the record's as a state in a flight's frame (world/earthframe.ts), at the vector's own instant.
+ * `zero` is the instant its `t` is counted from, on the flight's clock: 0 for one in the flight's own elapsed time. The
+ * place over the Earth is laid in the frame by the Earth's angle in it at that instant, and the velocity built on it.
+ * Space-fixed heading and flight-path angle are defined relative to the geocentric horizontal, even though the
+ * reported latitude and height are geodetic (Apollo 9 MR, table 7-I).
+ */
+export function fixState(fix: OrbitalFix, frame: EarthFrame, zero = 0): State & { t: number } {
+  const t = zero + fix.t.value;
+  const earth = geodeticToEcef({ latitude: fix.latitude.value, longitude: fix.longitude.value, height: fix.height.value });
+  const r = frame.toInertial(earth, t),
+    up = unit(r),
+    east = unit(cross([0, 0, 1], up)),
+    north = cross(up, east);
+  const heading = DEG * fix.heading.value,
+    path = DEG * fix.flightPath.value;
+  const horizontal = add(scale(north, Math.cos(heading)), scale(east, Math.sin(heading)));
+  const v = scale(add(scale(horizontal, Math.cos(path)), scale(up, Math.sin(path))), fix.speed.value);
+  return { t, r, v };
+}
+
+/**
+ * A published element set as a state in a flight's frame, at the set's own instant (`zero` as `fixState`'s): the
+ * osculating orbit's state (world/orbit.ts `stateOf`), or a mean orbit's at its mean anomaly (world/meanelements.ts
+ * `stateOfMean`: Kozai's short-periodic terms put back), turned into the frame from the equator and equinox the set is
+ * referred to: the true ones of its own date, through the ICRF, or the ICRF's.
+ */
+export function elementsState(el: OrbitElements, frame: EarthFrame, zero = 0): State & { t: number } {
+  const t = zero + el.t.value;
+  const [a, e] = [el.axis.value, el.eccentricity.value];
+  const [i, node, argp, anomaly] = [el.inclination, el.node, el.perigee, el.anomaly].map((x) => x.value * DEG) as [
+    number,
+    number,
+    number,
+    number,
+  ];
+  if (el.kind.is === 'mean' && el.frame !== 'of-date')
+    throw new Error('mean elements are of the true equator of date, whose pole J2 is about: an element set in the ICRF is osculating');
+  const s =
+    el.kind.is === 'mean'
+      ? stateOfMean({ a, e, i, node, argp, mean: el.anomalyIs === 'mean' ? anomaly : meanAnomaly(anomaly, e) })
+      : stateOf({ a, e, i, node, argp, nu: el.anomalyIs === 'true' ? anomaly : trueAnomaly(anomaly, e) });
+  if (el.frame === 'icrf') return { t, r: frame.fromIcrf(s.r), v: frame.fromIcrf(s.v) };
+  const back = transpose(icrfToDate(frame.jdTT(t)));
+  return { t, r: frame.fromIcrf(rotate(back, s.r)), v: frame.fromIcrf(rotate(back, s.v)) };
+}
+
+/** A published orbit as a state in a flight's frame, at its own instant: its tracking vector's, or its element set's. */
+export function publishedState(orbit: TargetOrbit, frame: EarthFrame, zero = 0): State & { t: number } {
+  return 'fix' in orbit ? fixState(orbit.fix, frame, zero) : elementsState(orbit.elements, frame, zero);
 }
 
 /** How often the target's state is kept, s: a cubic between two is within a millimetre of the orbit flown. */
@@ -24,18 +98,32 @@ const EVERY = 10;
 /**
  * A craft flown on from `start` by gravity and `push` (everything else on it, m/s^2: the air), in steps of ten seconds,
  * as far as it is asked for and no further, until `ended` says it is down. What it has flown is kept, so an instant
- * asked for twice is the same state.
+ * asked for twice is the same state. With `back`, a craft the record gives at `start` and that was there before it (a
+ * published orbit): an instant before `start` is answered by flying the same forces back from it, in the same steps.
  */
 export function flownFrom(
   start: { t: number; r: Vec3; v: Vec3 },
   push: (s: State, at: number) => Vec3,
   ended: (s: State, at: number) => boolean,
+  back = false,
 ): Target {
   const samples: (State & { t: number })[] = [{ t: start.t, r: start.r, v: start.v }];
+  /** Flown back from the start: the k-th is k steps before it. */
+  const earlier: (State & { t: number })[] = [samples[0]!];
   let over = false;
   return {
     from: start.t,
     at(t) {
+      if (back && t < start.t) {
+        while (earlier[earlier.length - 1]!.t > t) {
+          const last = earlier[earlier.length - 1]!;
+          earlier.push({ ...step(last, last.t, -EVERY, push), t: start.t - earlier.length * EVERY });
+        }
+        const i = Math.min(earlier.length - 2, Math.floor((start.t - t) / EVERY));
+        const a = earlier[i + 1]!;
+        const b = earlier[i]!;
+        return hermite(a.t, a.r, a.v, b.t, b.r, b.v, t);
+      }
       if (!(t >= start.t)) return undefined;
       while (!over && samples[samples.length - 1]!.t < t) {
         const last = samples[samples.length - 1]!;

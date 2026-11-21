@@ -28,11 +28,11 @@ import {
   type DrawnDescent,
   descentOf,
   type FlownWhole,
-  flyWhole,
   type Held,
   held,
   liftoffEngine,
   recordSamples,
+  recordWhole,
   sequenceOf,
   stagesOf,
 } from './staged.ts';
@@ -103,7 +103,7 @@ export interface Run {
   descent?: DrawnDescent | null;
   /** A flight flown by hand: what it gave for each of the record's checks (by check id), for the Flown panel to set beside the record's run. */
   held?: Record<string, number>;
-  /** The craft its manoeuvres in orbit were made on, flown on its own forces (staged.ts `targetOf`): the record's run's. */
+  /** The craft its manoeuvres in orbit were made on (staged.ts `targetOf`: a stage it let go, another flight's vehicle, or one flown from a published orbit): the record's run's. */
   target?: Target;
 }
 
@@ -493,18 +493,13 @@ export function firesOf(
     return { from: lit[i]?.from ?? Infinity, to: whole.ascent.stops[i] ?? Infinity };
   });
 }
-const orbitalWholes = new WeakMap<object, FlownWhole>();
 /**
- * An orbital flight's record flown once (sim/staged.ts flyWhole, the coast kept every second), whoever asks first: the scene and the Flown panel show the
+ * An orbital flight's record flown once (sim/staged.ts `recordWhole`, the coast kept every second), whoever asks first: the scene, the Flown panel and a flight whose target it is show the
  * same run. One state from the pad to the ground: the coast begins from the state the ascent left the spacecraft in, and
  * the published orbit is what the run is held against (the flight's mission.md), not what it is put on.
  */
 export function orbitalFlown(flight: SitedFlight): FlownWhole {
-  const plan = flight.plan!;
-  let whole = orbitalWholes.get(plan);
-  if (!whole)
-    orbitalWholes.set(plan, (whole = flyWhole(plan, siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1)));
-  return whole;
+  return recordWhole(flight);
 }
 /**
  * The flight's plan as its record's run flew it: with its braking burn where guidance timed it for the landing place

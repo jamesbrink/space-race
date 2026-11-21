@@ -1,6 +1,9 @@
 // Manoeuvres made on another craft (src/sim/pursuit.ts), on orbits made up here: the target flown on its own forces; a
 // burn solved to put it at a stated place at a stated instant; the coelliptic burn; the braking held at a station. Each
-// is held to what it is for, by flying on under gravity (world/orbit.ts `step`) and looking.
+// is held to what it is for, by flying on under gravity (world/orbit.ts `step`) and looking. And the three ways a plan
+// names its target (sim/plan.ts `TargetDef`): what a joint lets go is the flights' own tests' (apollo-7-flight.test.mjs);
+// here, another flight's vehicle is where that flight's record run has it, to the bit after the change of clock and
+// frame, and a published orbit is flown from as stated.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { coelliptic, flownFrom, placeFrom, reach, stationPush } from '../src/sim/pursuit.ts';
@@ -164,4 +167,196 @@ test('a braking commanded on the target comes to rest at its station by the inst
     ),
     [0, 0, 0],
   );
+});
+
+// (the Gemini flights that went up to a target, each with the target's flight and the last instant it was at it, s on
+// its own clock: the docking, or for the ATDA, which could not be docked with, the last leaving, 22:59)
+const MEETINGS = [
+  ['gt-8', 'gatv-5003'],
+  ['gt-9a', 'atda', 22 * 3600 + 59 * 60],
+  ['gt-10', 'gatv-5005'],
+  ['gt-11', 'gatv-5006'],
+  ['gt-12', 'gatv-5001'],
+];
+const gemini = async (name) => (await import(`../missions/usa/gemini/flights/${name}/flight.ts`)).flight;
+
+test('a target that is another flight’s vehicle is where that flight’s record run has it, to the bit', async () => {
+  const { orbitalFlown, recordOf } = await import('../src/sim/run.ts');
+  const { metOf, targetOf } = await import('../src/sim/staged.ts');
+  const { enrolled } = await import('../src/sim/roster.ts');
+  const { frameOf } = await import('../src/world/earthframe.ts');
+  const { targetAt } = await import('../src/sim/orbital-target.ts');
+  const crewed = await gemini('gt-8');
+  const other = await gemini('gatv-5003');
+  assert.equal(enrolled(other.id), other, 'a target’s flight is known by its id as soon as it is loaded');
+  const def = { flight: other.id, label: 'GATV-5003' };
+  const frame = frameOf(crewed);
+  const theirs = frameOf(other);
+  const met = metOf(def, frame, 0);
+  // the two clocks: Gemini VIII left 1 h 40 min 59.262 s after its target
+  const later = (Date.parse(crewed.launch) - Date.parse(other.launch)) / 1000;
+  assert.equal(later, 6059.262);
+  assert.equal(met.from, -later, 'it is there from its own liftoff');
+  assert.equal(metOf(def, frame, 0), met, 'one craft for a target and a frame, whoever asks');
+  assert.equal(targetOf({ target: def }, frame, 0, undefined), met, 'and it is the plan’s target whatever the ascent');
+  assert.equal(met.at(-later - 1), undefined, 'nothing before the other flight left the pad');
+  // that flight's record, flown once: the states its run flew, which the run on show is made from
+  const whole = orbitalFlown(other);
+  const run = recordOf(other);
+  const states = [...whole.ascent.samples, ...whole.coast.samples.filter((s) => s.t >= whole.ascent.samples.at(-1).t)];
+  assert.equal(states.length, run.samples.length, 'the run on show has a sample for each');
+  const turned = (v) => frame.fromIcrf(theirs.toIcrf(v));
+  let held = 0;
+  states.forEach((s, i) => {
+    const t = s.t - later;
+    // (an instant of Gemini VIII's clock that is this state's own to the bit, and not the instant of the parting,
+    // which has a state either side)
+    if (i % 251 || t + later !== s.t || states[i + 1]?.t === s.t) return;
+    assert.deepEqual(met.at(t), { r: turned(s.r), v: turned(s.v) }, `at ${s.t} s of the target’s flight`);
+    assert.deepEqual(run.samples[i].v, s.v, 'which is the velocity the run on show has there');
+    held++;
+  });
+  assert.ok(held > 40, `${held} instants held`);
+  // the turn between the two frames, each of its own liftoff's date 101 minutes apart, is next to nothing, but it is made
+  const x = [EARTH.equatorialRadius.value, 0, 0];
+  const turn = length(sub(turned(x), x));
+  // (a hundredth of an arcsecond of precession: a third of a metre at the Earth's radius)
+  assert.ok(turn > 0.1 && turn < 1, `the frames ${turn} m apart at the Earth’s radius`);
+  assert.ok(Math.abs(length(turned(x)) - length(x)) < 1e-8);
+  // between two kept states, ten seconds apart in orbit, it is the orbit flown: gravity carries the first to it
+  const k = states.findIndex((s) => s.t > 3 * 3600);
+  const [a, b] = [states[k], states[k + 1]];
+  assert.ok(Math.abs(b.t - a.t - 10) < 1e-9);
+  const mid = met.at(a.t + 5 - later);
+  assert.ok(length(sub(mid.r, turned(step(a, 0, 5).r))) < 0.01, 'within a centimetre of the state flown on five seconds');
+  // it is the flight's target at any instant, whatever a run of the flight did
+  const plan = { target: def };
+  const state = targetAt({ plan, site: crewed.site }, { frame, launchAborted: true }, 1000);
+  assert.deepEqual(state, metOf(def, frame, crewed.site.seaLevel.value).at(1000));
+  // and it ends where that flight's coast does
+  const end = states.at(-1).t;
+  assert.ok(met.at(end - later - 1));
+  assert.equal(met.at(end - later + 1), undefined);
+  // a flight nobody has enrolled, and one that is not flown into orbit, cannot be met
+  assert.throws(() => metOf({ flight: 'no/such/flight', label: 'none' }, frame, 0), /not been enrolled/);
+  const { flight: freedom7 } = await import('../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts');
+  (await import('../src/sim/roster.ts')).enrol(freedom7);
+  assert.throws(() => metOf({ flight: freedom7.id, label: 'Freedom 7' }, frame, 0), /not flown into orbit/);
+});
+
+test('each Gemini target’s own run covers the flight that went up to it', async () => {
+  const { metOf } = await import('../src/sim/staged.ts');
+  const { frameOf } = await import('../src/world/earthframe.ts');
+  for (const [name, target, until] of MEETINGS) {
+    const crewed = await gemini(name);
+    const other = await gemini(target);
+    const met = metOf({ flight: other.id, label: other.callsign }, frameOf(crewed), 0);
+    const last = until ?? crewed.docking.at;
+    assert.ok(met.at(last), `${other.callsign} is there ${(last / 3600).toFixed(2)} h into ${crewed.designation}`);
+    assert.ok(met.at(last + 3600), 'and an hour after');
+    // (and the stated limit is its record's: three days from its own liftoff)
+    assert.equal(other.plan.record.coastUntil.value, 3 * 86_400);
+    const later = (Date.parse(crewed.launch) - Date.parse(other.launch)) / 1000;
+    assert.ok(met.at(3 * 86_400 - later - 1) && !met.at(3 * 86_400 - later + 1), 'flown to its stated limit and no further');
+  }
+});
+
+test('a target given as a published orbit is flown from it as stated, on and back', async () => {
+  const { orbitTarget } = await import('../src/sim/orbital.ts');
+  const { elementsState, fixState } = await import('../src/sim/pursuit.ts');
+  const { earthFrame } = await import('../src/world/earthframe.ts');
+  const { DEG } = await import('../src/world/frames.ts');
+  const { meanOf } = await import('../src/world/meanelements.ts');
+  const { elementsOf, stateOf } = await import('../src/world/orbit.ts');
+  const { julianDate } = await import('../src/world/time.ts');
+  const said = (value) => ({ value, confidence: 'documented', source: 'made up here' });
+  // a flight that left at 22:20:26.648, and a tracking vector given 1,200 s into another's elapsed time, which left at 20:39:46.131
+  const frame = earthFrame(julianDate('1966-07-18T22:20:26.648Z'));
+  const epoch = '1966-07-18T20:39:46.131Z';
+  const zero = -6040.517;
+  const fix = {
+    t: said(1200),
+    latitude: said(12.5),
+    longitude: said(-140),
+    height: said(298_000),
+    speed: said(7730),
+    heading: said(75),
+    flightPath: said(0.02),
+  };
+  const airless = orbitTarget({ orbit: { fix }, epoch, label: 'made up', mass: said(3000), dragArea: said(0) }, frame, 0);
+  const start = fixState(fix, frame, zero);
+  assert.equal(start.t, zero + 1200, 'its instant on this flight’s clock');
+  assert.equal(airless.from, start.t);
+  assert.deepEqual(airless.at(start.t), { r: start.r, v: start.v });
+  // as stated: over that place at that height, at that speed on that heading and path
+  const place = frame.place(start.r, start.t);
+  assert.ok(Math.abs(place.latitude - 12.5) < 1e-9 && Math.abs(place.longitude + 140) < 1e-9 && Math.abs(place.height - 298_000) < 1e-6);
+  const up = unit(start.r);
+  const east = unit(cross([0, 0, 1], up));
+  const north = cross(up, east);
+  assert.ok(Math.abs(length(start.v) - 7730) < 1e-9);
+  assert.ok(Math.abs(Math.asin(dot(start.v, up) / 7730) / DEG - 0.02) < 1e-9, 'the path above the geocentric level');
+  assert.ok(Math.abs(Math.atan2(dot(start.v, east), dot(start.v, north)) / DEG - 75) < 1e-9, 'the heading, east of north');
+  // on from it: ten-second steps of gravity, with no air on a drag area of nothing
+  let s = { r: start.r, v: start.v };
+  for (let k = 0; k < 540; k++) s = step(s, 0, 10);
+  assert.ok(length(sub(airless.at(start.t + 5400).r, s.r)) < 1e-6, 'its kept states are ten-second steps of gravity');
+  // back from it: the same steps the other way, so flying on from an earlier state comes back to the vector
+  const before = airless.at(start.t - 3000);
+  assert.ok(before, 'it was there before the record gave it');
+  let again = before;
+  for (let k = 0; k < 300; k++) again = step(again, 0, 10);
+  assert.ok(length(sub(again.r, start.r)) < 0.01, `back and on again ${length(sub(again.r, start.r))} m from the vector`);
+  assert.deepEqual(airless.at(start.t - 3000), before, 'and an instant asked for twice is the same state');
+  // with air: the same vector, on 44 m^2 at 3,000 kg, is lower after a day than the airless one
+  const dragged = orbitTarget({ orbit: { fix }, epoch, label: 'made up', mass: said(3000), dragArea: said(44) }, frame, 0);
+  const axis = (target) => elementsOf(target.at(start.t + 86_400).r, target.at(start.t + 86_400).v).a;
+  assert.ok(axis(dragged) < axis(airless) - 100, `the air took ${(axis(airless) - axis(dragged)).toFixed(0)} m off its axis in a day`);
+
+  // an element set, osculating, of the true equator and equinox of its date, at the flight's own liftoff: the state
+  // world/orbit.ts gives for it, the frame being of that date
+  const el = { a: 6_680_000, e: 0.004, i: 28.87 * DEG, node: 40 * DEG, argp: 100 * DEG, nu: 10 * DEG };
+  const set = (over) => ({
+    t: said(0),
+    axis: said(el.a),
+    eccentricity: said(el.e),
+    inclination: said(28.87),
+    node: said(40),
+    perigee: said(100),
+    anomaly: said(10),
+    anomalyIs: 'true',
+    kind: { is: 'osculating', confidence: 'documented', source: 'made up here' },
+    frame: 'of-date',
+    ...over,
+  });
+  const own = elementsState(set(), frame);
+  assert.ok(length(sub(own.r, stateOf(el).r)) < 1e-7 && length(sub(own.v, stateOf(el).v)) < 1e-10);
+  // the same set dated 120 days before: the equinox it is counted from was then some 16 arcseconds back
+  const dated = elementsState(set({ t: said(-120 * 86_400) }), frame);
+  const turn = length(sub(dated.r, own.r)) / el.a / (DEG / 3600);
+  assert.ok(turn > 5 && turn < 21, `turned ${turn.toFixed(2)} arcseconds`);
+  // in the ICRF: turned by the whole precession since J2000, a third of a degree by 1966
+  const icrf = elementsState(set({ frame: 'icrf' }), frame);
+  const since = length(sub(icrf.r, own.r)) / el.a / DEG;
+  assert.ok(since > 0.2 && since < 0.5, `turned ${since.toFixed(3)} degrees from J2000`);
+  // the mean anomaly for the true, on the same orbit
+  const E = 2 * Math.atan(Math.sqrt((1 - el.e) / (1 + el.e)) * Math.tan(el.nu / 2));
+  const byMean = elementsState(set({ anomaly: said((E - el.e * Math.sin(E)) / DEG), anomalyIs: 'mean' }), frame);
+  assert.ok(length(sub(byMean.r, own.r)) < 1e-5);
+  // mean elements (Kozai's): the state whose mean elements they are
+  const meant = elementsState(set({ kind: { is: 'mean', confidence: 'documented', source: 'made up here' } }), frame);
+  const back = meanOf({ r: meant.r, v: meant.v });
+  assert.ok(Math.abs(back.a - el.a) < 1e-3 && Math.abs(back.e - el.e) < 1e-9 && Math.abs(back.i - el.i) < 1e-9);
+  assert.ok(length(sub(meant.r, own.r)) > 1000, 'which is not the osculating orbit of the same figures');
+  assert.throws(
+    () => elementsState(set({ frame: 'icrf', kind: { is: 'mean', confidence: 'documented', source: 'made up here' } }), frame),
+    /mean elements are of the true equator of date/,
+  );
+  // and a target given by an element set is flown from that state
+  const byElements = orbitTarget(
+    { orbit: { elements: set() }, epoch: '1966-07-18T22:20:26.648Z', label: 'made up', mass: said(3000), dragArea: said(0) },
+    frame,
+    0,
+  );
+  assert.deepEqual(byElements.at(0), { r: own.r, v: own.v });
 });

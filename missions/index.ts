@@ -1,3 +1,4 @@
+import { enrol } from '../src/sim/roster.ts';
 import type { Flight } from '../src/types.ts';
 import { flight as apollo7 } from './usa/apollo/flights/apollo-7/flight.ts';
 import { flight as apollo8 } from './usa/apollo/flights/apollo-8/flight.ts';
@@ -110,3 +111,6 @@ export const flights: Flight[] = [
   soyuz16,
   soyuzT2,
 ];
+
+// (known to the simulator by their ids: a flight's plan may name another flight as its target, sim/roster.ts)
+enrol(...flights);

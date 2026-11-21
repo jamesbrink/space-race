@@ -14,7 +14,7 @@
  */
 import type { Measure } from '../types.ts';
 import { G0 } from '../world/bodies.ts';
-import type { EarthFrame } from '../world/earthframe.ts';
+import { type EarthFrame, sinceLiftoff } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import {
@@ -30,6 +30,7 @@ import {
 } from '../world/meanelements.ts';
 import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
 import { ratioOf } from '../world/thermosphere.ts';
+import { julianDate } from '../world/time.ts';
 import { airAt, airDrag } from './air.ts';
 import { thirdOf } from './core/gravity.ts';
 import { atmosphere, meanFreePath } from './atmosphere.ts';
@@ -49,8 +50,9 @@ import {
   type Hold,
   type OrbitFix,
   type Pursuit,
+  type TargetDef,
 } from './plan.ts';
-import { type Ahead, coelliptic, flownFrom, reach, stationPush, type Target } from './pursuit.ts';
+import { type Ahead, coelliptic, flownFrom, publishedState, reach, stationPush, type Target } from './pursuit.ts';
 import type { CoastRotation } from './rigid.ts';
 
 /**
@@ -1185,6 +1187,30 @@ export interface Coast {
 }
 
 /**
+ * A craft of a stated mass and drag area flown on from `start` on its own forces: gravity, and the air it meets (the
+ * air turning with the Earth, at the day's thermosphere, on `dragArea` at `mass`), until it is down in the thick air.
+ * With `back`, one the record gives at `start` and that was there before it: flown back from it too (pursuit.ts).
+ */
+function craftFrom(
+  def: { mass: Measure; dragArea: Measure },
+  frame: EarthFrame,
+  seaLevel: number,
+  start: { t: number; r: Vec3; v: Vec3 },
+  back = false,
+): Target {
+  const k = def.dragArea.value / def.mass.value;
+  return flownFrom(
+    start,
+    (s, at) => {
+      const air = airAt(frame, s.r, s.v, at, seaLevel);
+      return airDrag(air.wind, air.airspeed, air.air.density * solarAt(frame, s.r, at, air.altitude) * k, 1);
+    },
+    (s, at) => frame.place(s.r, at).height - seaLevel < THICK,
+    back,
+  );
+}
+
+/**
  * The flight's target (`FlightPlan.target`) as a craft of its own from `start`, where it began (a stage let go: the
  * stack's state at the parting with the stage's side of the joint's push): gravity, and the air of the day's Sun on its
  * drag area at its mass, down to the top of the thick air, where it is taken to be gone. Undefined for a plan with none.
@@ -1196,16 +1222,21 @@ export function targetFrom(
   start: { t: number; r: Vec3; v: Vec3 },
 ): Target | undefined {
   const def = plan.target;
-  if (!def) return undefined;
-  const k = def.dragArea.value / def.mass.value;
-  return flownFrom(
-    start,
-    (s, at) => {
-      const air = airAt(frame, s.r, s.v, at, seaLevel);
-      return airDrag(air.wind, air.airspeed, air.air.density * solarAt(frame, s.r, at, air.altitude) * k, 1);
-    },
-    (s, at) => frame.place(s.r, at).height - seaLevel < THICK,
-  );
+  // (a target that is another flight's vehicle, or a published orbit, does not begin where this flight's craft was)
+  if (!def || !('joint' in def)) return undefined;
+  return craftFrom(def, frame, seaLevel, start);
+}
+
+/**
+ * A target the record gives only an orbit for (`TargetDef.orbit`): the published state laid in the flight's frame at
+ * its own instant (pursuit.ts `publishedState`; `epoch`, the instant its `t` is counted from, set on the flight's
+ * clock to the millisecond: world/earthframe.ts `sinceLiftoff`), and the craft flown on from there, and back from there,
+ * on gravity and the air at its stated mass and drag area. Nothing else moves it: how far it is from where the record
+ * later has it is the published orbit's error and the air's, carried over the time between.
+ */
+export function orbitTarget(def: Extract<TargetDef, { orbit: unknown }>, frame: EarthFrame, seaLevel: number): Target {
+  const start = publishedState(def.orbit, frame, sinceLiftoff(frame, julianDate(def.epoch)));
+  return craftFrom(def, frame, seaLevel, start, true);
 }
 
 /** Local rigid-body encounters on a hand-flown coast. The scene gets the same corrected
@@ -1562,9 +1593,14 @@ export function flyOrbit(
   /** Where it was over as it came through the interface: the landing's miss is measured along the line from there. */
   let gate: Vec3 | null = null;
   // (six hours past the last thing planned, or past now with nothing planned: a day in orbit is flown round to its burn; a
-  // coast with no burn at all, an uncrewed target that stays up, three days: as far as the clock's coasting rates take it)
+  // coast with no burn at all, an uncrewed target that stays up, three days: as far as the clock's coasting rates take it.
+  // Or to the instant the plan's record says its coast is flown to, `PlanRecord.coastUntil`, and no further)
   const span = Number.isFinite(on) || moves.length ? 6 * 3600 : 3 * 86_400;
-  const LIMIT = Math.min(stopAt, Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER)) + span);
+  const planned = Math.max(t, ...marks.filter((m) => m < Number.MAX_SAFE_INTEGER));
+  const stated = plan.record?.coastUntil?.value;
+  const LIMIT = Math.min(stopAt, stated === undefined ? planned + span : Math.max(planned, stated));
+  // (a stated limit is an instant a step ends on: the coast is flown to it and not a step past it)
+  if (stated !== undefined && stated > t) marks = [...marks, stated].sort((p, q) => p - q);
   const target =
     ship.landing && geodeticToEcef({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value, height: 0 });
 

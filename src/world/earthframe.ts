@@ -29,6 +29,7 @@ import {
   type Mat3,
   rotate,
   sub,
+  transpose,
   type Vec3,
 } from './frames.ts';
 import { greenwichSiderealTime, julianDate, terrestrialTime } from './time.ts';
@@ -68,6 +69,8 @@ export interface EarthFrame {
    * arcsecond a week against the ICRF; what is of date at each instant, `fromDate`, carries that turn.)
    */
   fromIcrf(v: Vec3): Vec3;
+  /** The reverse: a direction, position or velocity in this frame, in the ICRF. What two flights' frames, each of its own date, are turned between. */
+  toIcrf(v: Vec3): Vec3;
   /** The instant `t` seconds from liftoff as a Julian date, UT and TT. */
   jdUT(t: number): number;
   jdTT(t: number): number;
@@ -91,6 +94,8 @@ export function earthFrame(jd0: number, ofDate = true): EarthFrame {
   const upOver = (place: { latitude: number; longitude: number }, t: number): Vec3 => ecefToInertial(enuAxes(place).up, angle(t));
   const fromDate = (v: Vec3): Vec3 => (ofDate ? v : inertialToEcef(v, sure(behind)));
   let icrf: Mat3 | null = null;
+  let back: Mat3 | null = null;
+  const toDate = (v: Vec3): Vec3 => (ofDate ? v : ecefToInertial(v, sure(behind)));
   return {
     ofDate,
     jd0,
@@ -106,8 +111,9 @@ export function earthFrame(jd0: number, ofDate = true): EarthFrame {
     upOver,
     up: (r, t) => upOver(ecefToGeodetic(inertialToEcef(r, angle(t))), t),
     fromDate,
-    toDate: (v) => (ofDate ? v : ecefToInertial(v, sure(behind))),
+    toDate,
     fromIcrf: (v) => fromDate(rotate((icrf ??= icrfToDate(terrestrialTime(sure(jd0)))), v)),
+    toIcrf: (v) => rotate((back ??= transpose(icrfToDate(terrestrialTime(sure(jd0))))), toDate(v)),
     jdUT: (t) => jd0 + t / 86_400,
     jdTT: (t) => terrestrialTime(jd0 + t / 86_400),
   };
@@ -121,6 +127,15 @@ export function between(from: EarthFrame, to: EarthFrame): (v: Vec3) => Vec3 {
   const by = to.gast0 - from.gast0;
   return (v) => ecefToInertial(v, by);
 }
+
+/**
+ * A Julian date (UT) on a flight's clock: seconds from its liftoff, to the millisecond. An instant of the record's is a
+ * whole number of milliseconds (time.ts `julianDate`, from an ISO 8601 string), and a Julian date in a double resolves
+ * 40 microseconds near these dates, so the difference is rounded to the millisecond and is then exact. The seconds are
+ * UTC's, as every flight's own clock is: UTC's second of 1961 to 1971 was up to 3 parts in 10^8 longer than the SI second
+ * the integrators step in (time.ts `taiMinusUtc`), 5 ms over two days, which no clock here allows for.
+ */
+export const sinceLiftoff = (frame: EarthFrame, jd: number): number => Math.round((jd - frame.jd0) * 86_400_000) / 1000;
 
 /** A frame fixed at liftoff whose date is not known: for a ballistic flight flown from a test's own state, with no Sun to place. */
 export const LIFTOFF: EarthFrame = earthFrame(Number.NaN, false);

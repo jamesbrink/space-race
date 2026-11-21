@@ -15,6 +15,7 @@
  * its confidence, as everywhere; ids are for code to find things by and a flight's own words go in `label`.
  */
 import type { Confidence, Measure } from '../measure.ts';
+import type { OrbitalFix } from '../types/flight.ts';
 import type { AbortRecord, AbortSequence, Aloft, Body, Burns, Curve, Heating, ShedBody, Thruster, Winds } from '../types.ts';
 import type { Vec3 } from '../world/frames.ts';
 import type { PeriodKind } from '../world/meanelements.ts';
@@ -460,15 +461,54 @@ export type Pursuit =
   | { station: { ahead: Measure; above: Measure }; until: Measure };
 
 /**
- * Another craft a flight's manoeuvres are made on: a craft of its own, integrated from where it began on the forces it
- * has (gravity and the air on `dragArea`, its drag coefficient times its area, m^2, at `mass`, kg), which nothing the
- * spacecraft does changes. `joint`: it is what that joint of the first craft lets go, flown on from the parting.
+ * Another craft a flight's manoeuvres are made on (sim/pursuit.ts `Target`): a craft of its own, which nothing the
+ * spacecraft does changes and no observation of the record's is written into. One of three.
+ *
+ * `joint`: what that joint of the first craft lets go, flown on from the parting on the forces it has (gravity and the
+ * air on `dragArea`, its drag coefficient times its area, m^2, at `mass`, kg): orbital.ts `targetFrom`.
+ *
+ * `flight`: another flight's own vehicle (that flight's id, `Flight.id`, known through sim/roster.ts), where that
+ * flight's record run has it at the same instant: the two clocks set apart by the difference of the two liftoffs
+ * (`Flight.launch`), and the state turned from that flight's frame to the ICRF and from there into this one's
+ * (staged.ts `flightTarget`). Nothing is flown again and nothing is fitted: what the target's own run misses its
+ * record by, the flight that goes up to it inherits.
+ *
+ * `orbit`: a craft the record gives only an orbit for: a tracking vector or an element set as published
+ * (`TargetOrbit`), flown on from its instant, and back from it to an instant before, on the same forces as a
+ * `joint`'s (orbital.ts `orbitTarget`). `epoch` is the instant its `t` is counted from, UTC (ISO 8601): the liftoff
+ * of the flight whose elapsed time the record gives it in, or the instant itself with `t` 0.
  */
-export interface TargetDef {
-  joint: string;
-  label: string;
-  mass: Measure;
-  dragArea: Measure;
+export type TargetDef =
+  | { joint: string; label: string; mass: Measure; dragArea: Measure }
+  | { flight: string; label: string }
+  | { orbit: TargetOrbit; epoch: string; label: string; mass: Measure; dragArea: Measure };
+
+/**
+ * An orbit as a record publishes it, at one instant. `fix`: a tracking vector, the place over the Earth with the
+ * space-fixed speed, heading and flight-path angle there (types/flight.ts `OrbitalFix`). `elements`: an element set.
+ */
+export type TargetOrbit = { fix: OrbitalFix } | { elements: OrbitElements };
+
+/**
+ * A published element set: the six elements at `t`, s from the target's `epoch`. Angles in degrees: the inclination to
+ * the equator, the right ascension of the ascending node from the equinox, the argument of perigee from the node, and
+ * the anomaly from perigee, true or mean as `anomalyIs` says. `kind` says whether they are the osculating orbit's at
+ * that instant or mean elements (Kozai's, world/meanelements.ts, which a published orbit usually is), and how sure;
+ * `frame` the equator and equinox they are referred to: the true ones of their own date, or the ICRF's (J2000's mean
+ * ones, to 0.02 arcseconds). Mean elements are of the true equator, whose pole J2 is about: they are given of date.
+ */
+export interface OrbitElements {
+  t: Measure;
+  /** Semi-major axis, m. */
+  axis: Measure;
+  eccentricity: Measure;
+  inclination: Measure;
+  node: Measure;
+  perigee: Measure;
+  anomaly: Measure;
+  anomalyIs: 'true' | 'mean';
+  kind: { is: 'osculating' | 'mean'; confidence: Confidence; source: string };
+  frame: 'of-date' | 'icrf';
 }
 
 /** A way of holding the craft's attitude. */
@@ -662,6 +702,12 @@ export interface PlanRecord {
     /** The spacecraft in orbit, kg. */
     mass: Measure;
   };
+  /**
+   * How far the coast is flown where nothing of the plan's ends it, s from liftoff, and why that far: a craft that stays
+   * up (an uncrewed target: no burn of the record's, nothing that comes down) is flown on gravity and the air to this
+   * instant and no further (orbital.ts `flyOrbit`). Left out: six hours past the last thing planned.
+   */
+  coastUntil?: Measure;
   /**
    * Where and when it came down; `near`, the place in the record's own words: on land the place it was near ('Smelovka'),
    * at sea the water and where in it ('the Atlantic, east of Grand Turk'), as `Craft.lands.on` says which.

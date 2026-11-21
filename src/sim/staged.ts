@@ -29,9 +29,9 @@
  * Fixed steps of fourth-order Runge-Kutta, `STEP` long, each cut to end on the next event, so one input gives one
  * flight to the last bit.
  */
-import type { Curve } from '../types.ts';
+import type { Curve, SitedFlight } from '../types.ts';
 import { EARTH, G0, P0 } from '../world/bodies.ts';
-import type { EarthFrame } from '../world/earthframe.ts';
+import { type EarthFrame, frameOf, sinceLiftoff } from '../world/earthframe.ts';
 import {
   add,
   angleBetween,
@@ -43,12 +43,13 @@ import {
   geodeticToEcef,
   length,
   scale,
+  siteFrame,
   sub,
   unit,
   type Vec3,
 } from '../world/frames.ts';
 import { shortOfPublished } from '../world/meanelements.ts';
-import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
+import { elementsOf, hermite, period, planeThrough, type State, step } from '../world/orbit.ts';
 import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { integrate, sensed } from './apparent.ts';
 import { thirdOf } from './core/gravity.ts';
@@ -74,12 +75,24 @@ import {
   liftOf,
   movesOf,
   type OrbitFlown,
+  orbitTarget,
   publishedOf,
   shipOf,
   targetFrom,
 } from './orbital.ts';
 import type { Target } from './pursuit.ts';
-import { type Action, type BodyDef, clockAt, type EngineDef, type EventDef, eventOf, type FlightPlan, type TankDef } from './plan.ts';
+import {
+  type Action,
+  type BodyDef,
+  clockAt,
+  type EngineDef,
+  type EventDef,
+  eventOf,
+  type FlightPlan,
+  type TankDef,
+  type TargetDef,
+} from './plan.ts';
+import { enrolled } from './roster.ts';
 import { aboutAxis, fromAxes, multiply, normalize as normalizeQ, type Quat, turn as turnQ } from './rigid.ts';
 import { nozzleThrust } from './thrust.ts';
 import type { LiveSample } from './vehicle.ts';
@@ -1193,17 +1206,107 @@ export function flyWhole(plan: FlightPlan, site: Geodetic, frame: EarthFrame, se
   return { ascent, coast, down, ...(target ? { target } : {}), ...(coast.plan ? { plan: coast.plan } : {}) };
 }
 
+const wholes = new WeakMap<object, FlownWhole>();
+/**
+ * An orbital flight's record flown once (`flyWhole`, the coast kept every second), whoever asks first: the scene, the
+ * Flown panel (run.ts `recordOf`, whose samples these are) and a flight whose target this flight's vehicle is
+ * (`flightTarget`) have the same run.
+ */
+export function recordWhole(flight: SitedFlight): FlownWhole {
+  const plan = flight.plan!;
+  let whole = wholes.get(plan);
+  if (!whole) wholes.set(plan, (whole = flyWhole(plan, siteFrame(flight.site), frameOf(flight), flight.site.seaLevel.value, undefined, 1)));
+  return whole;
+}
+
+/**
+ * Where a flight's record run has its vehicle, in order of time: the ascent's samples and the coast's from the parting
+ * on, each the state the run flew (the same states, in the same order, as the record's run on show has: `recordSamples`).
+ * It ends where the coast does: what is let loose to come down from it is no craft to be met.
+ */
+function trackOf(whole: FlownWhole): readonly (State & { t: number })[] {
+  const up = whole.ascent.samples;
+  const parted = up[up.length - 1]!.t;
+  return [...up, ...whole.coast.samples.filter((s) => s.t >= parted)];
+}
+
+/**
+ * Another flight's vehicle as a target (`TargetDef.flight`), in the frame of the flight that goes up to it: where the
+ * other flight's record run has it at the same instant. The two clocks are set apart by the difference of the two
+ * liftoffs, to the millisecond (world/earthframe.ts `sinceLiftoff`); the state is the run's own at that instant (a
+ * sample's, or the cubic through the two either side: its coast's samples are ten seconds apart above the air, where
+ * such a cubic is within a millimetre of the orbit flown), turned from the
+ * other flight's frame to the ICRF and from there into this one's (`toIcrf`, `fromIcrf`: each flight's frame is of
+ * the date of its own liftoff, and the two differ by the precession and nutation between). Nothing is flown again and
+ * nothing is fitted. The other's record is not flown until the target is first asked for. Before the other's liftoff
+ * and after its coast's end there is no target.
+ */
+export function flightTarget(other: SitedFlight, frame: EarthFrame): Target {
+  const theirs = frameOf(other);
+  /** This flight's liftoff on the other's clock, s. */
+  const later = sinceLiftoff(theirs, frame.jd0);
+  const turned = (v: Vec3): Vec3 => frame.fromIcrf(theirs.toIcrf(v));
+  let track: readonly (State & { t: number })[] | null = null;
+  return {
+    from: 0 - later,
+    at(t) {
+      track ??= trackOf(recordWhole(other));
+      const at = t + later;
+      if (!(at >= track[0]!.t) || at > track[track.length - 1]!.t) return undefined;
+      let lo = 0;
+      let hi = track.length - 1;
+      while (hi - lo > 1) {
+        const mid = (lo + hi) >> 1;
+        if (track[mid]!.t <= at) lo = mid;
+        else hi = mid;
+      }
+      const a = track[lo]!;
+      const b = track[hi]!;
+      const s = at >= b.t ? b : at <= a.t || !(b.t > a.t) ? a : hermite(a.t, a.r, a.v, b.t, b.r, b.v, at);
+      return { r: turned(s.r), v: turned(s.v) };
+    },
+  };
+}
+
+const met = new WeakMap<object, Map<EarthFrame, Target>>();
+/**
+ * A plan's target where it is no part of the flight's own vehicle: another flight's (`flightTarget`: the flight of
+ * that id, as sim/roster.ts knows it) or a craft flown from a published orbit (orbital.ts `orbitTarget`). One for a
+ * target and a frame, whoever asks: the record's run and one flown by hand have the same craft, which follows neither.
+ */
+export function metOf(def: Exclude<TargetDef, { joint: string }>, frame: EarthFrame, seaLevel: number): Target {
+  let known = met.get(def);
+  if (!known) met.set(def, (known = new Map()));
+  let target = known.get(frame);
+  if (!target) {
+    if ('flight' in def) {
+      const other = enrolled(def.flight);
+      if (!other)
+        throw new Error(
+          `the target is the flight '${def.flight}', which has not been enrolled (sim/roster.ts): load its flight.ts, or missions/index.ts`,
+        );
+      if (!other.site || other.plan?.kind !== 'orbital')
+        throw new Error(`the target is the flight '${def.flight}', which is not flown into orbit`);
+      target = flightTarget(other as SitedFlight, frame);
+    } else target = orbitTarget(def, frame, seaLevel);
+    known.set(frame, target);
+  }
+  return target;
+}
+
 const targets = new WeakMap<object, Target>();
 /**
- * The flight's target where it is what the spacecraft's last joint lets go (`FlightPlan.target`): the stage flown on as
+ * The flight's target (`FlightPlan.target`). Where it is what the spacecraft's last joint lets go: the stage flown on as
  * a craft of its own from the parting (orbital.ts `targetFrom`), its velocity the spacecraft's as it left (`partedOff`)
  * less the whole of the speed the joint pushed the two apart at, along the long axis as it lay. One for an ascent,
  * whoever asks: the record's coast and one flown on from the same ascent by hand have the same target, which follows
- * neither.
+ * neither. Where it is another flight's vehicle or a published orbit, that craft (`metOf`), whatever the ascent.
  */
 export function targetOf(plan: FlightPlan, frame: EarthFrame, seaLevel: number, ascent: Ascended): Target | undefined {
   const def = plan.target;
-  if (!def || def.joint !== sequenceOf(plan).stages.at(-1)!.joint) return undefined;
+  if (!def) return undefined;
+  if (!('joint' in def)) return metOf(def, frame, seaLevel);
+  if (def.joint !== sequenceOf(plan).stages.at(-1)!.joint) return undefined;
   const key = ascent.separation;
   let target = targets.get(key);
   if (!target) {

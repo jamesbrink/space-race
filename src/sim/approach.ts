@@ -1,29 +1,21 @@
 import type { OrbitalFix } from '../types/flight.ts';
 import type { Flight } from '../types.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
-import { add, cross, DEG, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { add, cross, DEG, length, scale, sub, type Vec3 } from '../world/frames.ts';
 import { coast, type State } from '../world/orbit.ts';
 import { type DockBody, DockPair } from './docking.ts';
 import { dockPlan } from './dockplan.ts';
+import { fixState } from './pursuit.ts';
 import { aboutAxis, conjugate, IDENTITY, multiply, turn, unturn } from './rigid.ts';
 
 /**
  * A tracking fix of the record's as a state at `at`, s from liftoff, in the flight's frame (world/earthframe.ts
  * `frameOf`, the one every flown run is in): the place over the Earth laid in the frame by the Earth's angle in it at
- * the fix's instant, the velocity built on it, and the state coasted from the fix to `at` under the Earth's gravity
- * with J2 (world/orbit.ts, the flown runs' own; no air). Space-fixed heading and flight-path angle are defined relative
- * to the geocentric horizontal, even though the reported latitude and height are geodetic (Apollo 9 MR, table 7-I).
+ * the fix's instant and the velocity built on it (sim/pursuit.ts `fixState`), and the state coasted from the fix to `at`
+ * under the Earth's gravity with J2 (world/orbit.ts, the flown runs' own; no air).
  */
 export function orbitalFix(fix: OrbitalFix, frame: EarthFrame, at: number): State {
-  const earth = geodeticToEcef({ latitude: fix.latitude.value, longitude: fix.longitude.value, height: fix.height.value });
-  const r = frame.toInertial(earth, fix.t.value),
-    up = unit(r),
-    east = unit(cross([0, 0, 1], up)),
-    north = cross(up, east);
-  const heading = DEG * fix.heading.value,
-    path = DEG * fix.flightPath.value;
-  const horizontal = add(scale(north, Math.cos(heading)), scale(east, Math.sin(heading)));
-  const v = scale(add(scale(horizontal, Math.cos(path)), scale(up, Math.sin(path))), fix.speed.value);
+  const { r, v } = fixState(fix, frame);
   return coast({ r, v }, at - fix.t.value);
 }
 
