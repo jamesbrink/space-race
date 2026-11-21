@@ -5,8 +5,10 @@
  * is scheduled to do next (an engine's cutoff, a separation, a burn's start and end, a parachute filling) and what it
  * does by itself at a height (a parachute let out, an ejection). Gravity is the Earth's with J2 (world/orbit.ts
  * `gravity`, every simulator's), in the flight's frame (world/earthframe.ts: of date, unless a test gives another), the air turning with the
- * Earth. It goes on until it meets the ground, has gone once round the Earth, is told to stop (`Arrival.end`), or runs
- * out of time. Nothing here knows which flight or which kind of vehicle it is, and nothing is drawn: viewer/path.ts
+ * Earth. It goes on until it meets the ground, has gone once round the Earth, is told to stop (`Arrival.end`), meets
+ * another body that pulls on it (the Moon: `Pass`), leaves the Earth's sphere, or runs out of time; and how much time
+ * that is follows from the orbit it is on (`lookAhead`), so a low orbit is looked six hours along and a path to the
+ * Moon days, by one rule. Nothing here knows which flight or which kind of vehicle it is, and nothing is drawn: viewer/path.ts
  * draws what this returns. The vehicles there are, and what each supplies, are in sim/fliers.ts.
  *
  * The step is the dynamics' own: an embedded Runge-Kutta pair (Dormand and Prince's fifth order with its fourth for the
@@ -34,7 +36,7 @@
  * `propagate` does the work in slices (`run(budget)`), so a page can spread it over frames; `predict` and `predictor`
  * are a ballistic flight's (sim/fliers.ts `ballistic`) for those who have one.
  */
-import { EARTH, EARTH_ROTATION_RATE, WGS84_A } from '../world/bodies.ts';
+import { AU, EARTH, EARTH_ROTATION_RATE, SUN, WGS84_A } from '../world/bodies.ts';
 import { type EarthFrame, LIFTOFF } from '../world/earthframe.ts';
 import {
   angleBetween,
@@ -59,7 +61,7 @@ import { aboutAxis, turn } from './rigid.ts';
 import { dp45 } from './core/dp45.ts';
 import { acceleration } from './core/rk4.ts';
 import { ENTRY_G } from './loads.ts';
-import { EARTH_GRAVITY, fieldOf, type GravityTerm } from './core/gravity.ts';
+import { EARTH_GRAVITY, fieldOf, type GravityTerm, type Passed } from './core/gravity.ts';
 
 export { AIR_TOP, between };
 
@@ -104,7 +106,10 @@ export interface Sequence {
 /**
  * How far a prediction looks ahead before it stops: the longest time, s; how many turns round the Earth (an orbit is drawn
  * once round, where it begins to repeat); and the most steps the integrator may take. A flight's plan says these; the
- * default is a ballistic flight's and a day's orbit's alike: six hours, once round, 60,000 steps.
+ * default is a ballistic flight's and a day's orbit's alike: six hours, once round, 60,000 steps. A time given is the
+ * time looked ahead, whatever the path. Left to the default it is the least looked ahead, and the path's own orbit says
+ * how much further (`lookAhead`): an orbit that takes longer than six hours to go round is still followed once round,
+ * and a path to the Moon as far as the Moon and back.
  */
 export interface Horizons {
   limit: number;
@@ -112,6 +117,72 @@ export interface Horizons {
   steps: number;
 }
 export const HORIZONS: Horizons = { limit: 6 * 3600, turns: 1, steps: 60_000 };
+
+/**
+ * How far from the Earth's centre the Earth holds what goes round it, m: its sphere of influence against the Sun by
+ * Laplace's rule, a (m / M)^(2/5) with a the astronomical unit and the two GMs (derived: 924,600 km). A path that
+ * passes it has left the Earth, and is followed no further (`Prediction.outcome` 'escape').
+ */
+export const EARTH_HOLDS = AU * (EARTH.gm.value / SUN.gm.value) ** 0.4;
+/** The radius about another body's centre within which a path is that body's, m: Laplace's rule again, from its distance from the Earth and the two GMs (the Moon's: 66,000 km). */
+export const sphereOf = (body: Passed, t: number): number => length(body.where(t)) * (body.gm / EARTH.gm.value) ** 0.4;
+/**
+ * The longest any prediction looks ahead by itself, s: the time once round the largest orbit the Earth's sphere holds
+ * (its far end on the sphere: a semi-major axis of half of it), 36 days. Derived.
+ */
+export const FARTHEST = 2 * Math.PI * Math.sqrt((EARTH_HOLDS / 2) ** 3 / EARTH.gm.value);
+/** How much longer than its orbit's period a path is followed, so that it is seen once round (the sweep ends it there) though the Earth's bulge and the Moon change the time a little. Estimated. */
+const ROUND = 1.05;
+
+/**
+ * How long a state is looked ahead from, s: the time its own orbit takes to go round `turns` times, and a little
+ * more, where the orbit closes within what holds it; otherwise (it does not close, or its far end is beyond the sphere
+ * of the body it is about) as long as anything is followed, `FARTHEST`. The orbit is the osculating one about the
+ * body whose sphere the state is in: another body's (`bodies`) within its sphere of influence, else the Earth. Nothing
+ * here is a flight's or a phase's: a parking orbit, a transfer to the stationary height, a path to the Moon and one
+ * leaving the Earth are told apart by their energy and their height alone.
+ */
+export function lookAhead(r: Vec3, v: Vec3, t: number, bodies: readonly Passed[] = [], turns = 1): number {
+  const about = (p: Vec3, u: Vec3, gm: number, holds: number): number => {
+    const a = -gm / (dot(u, u) - (2 * gm) / length(p));
+    if (!(a > 0)) return FARTHEST;
+    const h = cross(p, u);
+    const e = Math.sqrt(Math.max(0, 1 - dot(h, h) / (gm * a)));
+    if (a * (1 + e) >= holds) return FARTHEST;
+    return Math.min(FARTHEST, ROUND * turns * 2 * Math.PI * Math.sqrt((a * a * a) / gm));
+  };
+  for (const body of bodies) {
+    const s = body.where(t);
+    const holds = sphereOf(body, t);
+    const p = sub(r, s);
+    if (length(p) < holds) return about(p, sub(v, velocityOf(body, t)), body.gm, holds);
+  }
+  return about(r, v, EARTH.gm.value, EARTH_HOLDS);
+}
+
+/**
+ * What the ellipse a state is on about the Earth runs into before it closes, so that its far end and its period are not
+ * what the state will do: the name of another body whose sphere of influence it reaches (the Moon), 'escape' where it
+ * does not close or goes beyond what the Earth holds, or null where the ellipse is its own orbit (every low one). For
+ * whoever shows an orbit's apsides from the state alone (the deck's figures): the predicted path flies what happens.
+ */
+export function reaches(r: Vec3, v: Vec3, t: number, bodies: readonly Passed[] = []): string | null {
+  const gm = EARTH.gm.value;
+  const a = -gm / (dot(v, v) - (2 * gm) / length(r));
+  if (!(a > 0)) return 'escape';
+  const h = cross(r, v);
+  const e = Math.sqrt(Math.max(0, 1 - dot(h, h) / (gm * a)));
+  if (a * (1 + e) >= EARTH_HOLDS) return 'escape';
+  for (const body of bodies) {
+    const far = length(body.where(t));
+    const holds = sphereOf(body, t);
+    if (a * (1 + e) >= far - holds && a * (1 - e) <= far + holds) return body.name;
+  }
+  return null;
+}
+
+/** A body's velocity in the frame, m/s: its place a second either side (its acceleration is a few millimetres a second squared at most, so the centred difference is its velocity to a part in a billion). */
+const velocityOf = (body: Passed, t: number): Vec3 => scale(sub(body.where(t + 1), body.where(t - 1)), 0.5);
 
 export interface PredictOptions extends BallisticOptions {
   /** The longest it looks ahead, s (`Horizons.limit`). */
@@ -204,6 +275,8 @@ const TOL_V = 1e-5;
 const TURN = 1 * DEG;
 /** The shortest step, s: past it a step is taken whatever its error (a corner in the forces). */
 const SHORTEST_STEP = 2 ** -10;
+/** The most of the way to another body's centre one step may go: under a half, so no step from outside it ends beyond it. */
+const NEAR = 0.25;
 /**
  * Every step is a rung of a ladder of quarter octaves (2^(k/4) s), the longest the error and the turn allow (or what
  * ends it on an instant the flier scheduled). A step chosen as the error's own continuous function of the state follows
@@ -291,6 +364,21 @@ export interface Elements {
   inclination: number;
 }
 
+/**
+ * Another body passed on the way (one that pulls on it and has a surface: core/gravity.ts `Passed`), where the path
+ * is nearest it: the instant and the state there (a `PathPoint`: its height is over the Earth's sea still), the
+ * body's centre then, how far from that centre, the height over its sphere, m, and the speed past it, m/s. One that
+ * meets the surface ends the path there (`strikes`: the point is where it meets it).
+ */
+export interface Pass extends PathPoint {
+  body: string;
+  centre: Vec3;
+  distance: number;
+  height: number;
+  speed: number;
+  strikes: boolean;
+}
+
 export interface Prediction {
   kind: 'coast' | 'guided';
   /** The instant it was made from, and when the engine stops on a guided one. */
@@ -299,10 +387,15 @@ export interface Prediction {
   points: PathPoint[];
   /**
    * How it ends: `impact` at the ground (or where the flier stops it, as the spacecraft's at the height its pilot left
-   * at); `orbit`, once round without meeting it; `limit`, still going when the time ran out; `none`, standing on the
-   * ground with nothing to predict.
+   * at); `orbit`, once round without meeting it; `strike`, on another body's surface (the last of `passes`);
+   * `escape`, out of the Earth's sphere (`EARTH_HOLDS`); `limit`, still going when the time ran out (`horizon`);
+   * `none`, standing on the ground with nothing to predict.
    */
-  outcome: 'impact' | 'orbit' | 'limit' | 'none';
+  outcome: 'impact' | 'orbit' | 'strike' | 'escape' | 'limit' | 'none';
+  /** How far ahead it looked at the most, s (`Horizons.limit`, or what the path's own orbit asked for: `lookAhead`). */
+  horizon: number;
+  /** The other bodies it passes, in order of time: the nearest it comes to each, each time it comes by (`Pass`). */
+  passes: Pass[];
   /** The greatest height ahead: null if it is already coming down (and has no orbit to go round). */
   apogee: PathPlace | null;
   /** The least height, on an orbit. */
@@ -390,10 +483,15 @@ export function propagate(
 ): Predictor {
   const { site, seaLevel } = where;
   const frame = where.frame ?? LIFTOFF;
-  const field = fieldOf(where.gravity ?? EARTH_GRAVITY);
+  const terms = where.gravity ?? EARTH_GRAVITY;
+  const field = fieldOf(terms);
+  /** The other bodies that pull on it and have a surface: the path's nearest to each is found, and its meeting one. */
+  const bodies = terms.flatMap((term) => (term.body ? [term.body] : []));
   const pad = geodeticToEcef(site);
   const horizons = { ...HORIZONS, ...options.horizons, ...(options.limit !== undefined ? { limit: options.limit } : {}) };
-  const limit = horizons.limit;
+  /** A time asked for is the time looked ahead; with none, the least, and the orbit it is on says how much further (`lookAhead`). */
+  const asked = options.limit !== undefined || options.horizons?.limit !== undefined;
+  let limit = horizons.limit;
   const round = 2 * Math.PI * horizons.turns;
   const most = Math.max(8, options.points ?? 480);
 
@@ -449,6 +547,32 @@ export function propagate(
   let outcome: Prediction['outcome'] = 'limit';
   let impact: Prediction['impact'] = null;
   let h = 1;
+  /** Whether anything burned at the last step's end: where a burn has ended, the orbit it left the path on says how far to look. */
+  let lit = false;
+  const passes: Pass[] = [];
+  /**
+   * Each other body as the state now has it: its centre and velocity, how far off it is, and the rate that distance
+   * changes at (times the distance: the path is nearest where it goes from closing to opening).
+   */
+  const sight = (body: Passed, at: number, p: Vec3, u: Vec3): { centre: Vec3; distance: number; speed: number; rate: number } => {
+    const centre = body.where(at);
+    const off = sub(p, centre);
+    const past = sub(u, velocityOf(body, at));
+    return { centre, distance: length(off), speed: length(past), rate: dot(off, past) };
+  };
+  let sights: ReturnType<typeof sight>[] = [];
+  const passed = (body: Passed, at: PathPoint, strikes: boolean): void => {
+    const s = sight(body, at.t, at.r, at.v);
+    passes.push({
+      ...at,
+      body: body.name,
+      centre: s.centre,
+      distance: s.distance,
+      height: s.distance - body.radius,
+      speed: s.speed,
+      strikes,
+    });
+  };
 
   /** Where the height turns, from the last three points: the vertex of the parabola through them. */
   const turning = (): PathPlace | null => {
@@ -514,6 +638,9 @@ export function propagate(
       outcome = 'none';
       done = true;
     }
+    lit = flier.burning();
+    if (!asked) limit = Math.max(limit, lookAhead(r, v, t, bodies, horizons.turns));
+    sights = bodies.map((body) => sight(body, t, r, v));
   };
 
   /** Back along the step just taken (from `before`, `h0` long, ending at the state now) to where its cubic is at height `at`, flown again to there. */
@@ -557,7 +684,9 @@ export function propagate(
     // the longest step: what turns the motion by `TURN`, and never past what the flier has scheduled
     const speed = length(v);
     const turnRate = speed > 0 ? length(cross(v, a0)) / (speed * speed) : 0;
-    const longest = Math.max(TURN / Math.max(turnRate, 1e-12), SHORTEST / Math.max(speed, 1e-3));
+    let longest = Math.max(TURN / Math.max(turnRate, 1e-12), SHORTEST / Math.max(speed, 1e-3));
+    // (and toward another body no step goes a quarter of the way to its centre: none can pass through it unseen)
+    for (const s of sights) longest = Math.min(longest, Math.max(SHORTEST_STEP, (NEAR * s.distance) / Math.max(s.speed, 1e-3)));
     const mark = flier.next(t);
     let step = rung(Math.min(h, longest));
     let reaches = false;
@@ -632,6 +761,58 @@ export function propagate(
       return;
     }
 
+    // the other bodies: one whose surface it has met ends the path there (the step flown again to the instant it meets
+    // it), and where it has gone from closing on one to drawing away, the nearest it came is found on the step's cubic
+    for (let i = 0; i < bodies.length; i++) {
+      const body = bodies[i]!;
+      const was = sights[i]!;
+      const seen = sight(body, t, r, v);
+      sights[i] = seen;
+      if (seen.distance <= body.radius) {
+        const h0 = t - before.t;
+        [t, r, v, altitude] = [before.t, before.r, before.v, before.altitude];
+        const from = accel(t, r, v, altitude);
+        const to = bisect(0, h0, (x) => length(sub(pair(x, from).r, body.where(before.t + x))) <= body.radius);
+        const s = pair(to, from);
+        [t, r, v] = [before.t + to, s.r, s.v];
+        altitude = place(r, t).height - seaLevel;
+        points.pop();
+        points.push({ t, r, v, altitude });
+        passed(body, { t, r, v, altitude }, true);
+        outcome = 'strike';
+        done = true;
+        return;
+      }
+      // (within the body's own sphere: the nearest a low orbit comes to the Moon, a whole Moon's distance off, is no passing of it)
+      if (was.rate < 0 && seen.rate >= 0 && seen.distance < sphereOf(body, t)) {
+        const here: PathPoint = { t, r, v, altitude };
+        const state = (x: number): PathPoint => {
+          const s = between(before.t, before.r, before.v, here.t, here.r, here.v, x);
+          return {
+            t: x,
+            r: s.r,
+            v: s.v,
+            altitude: before.altitude + ((here.altitude - before.altitude) * (x - before.t)) / (here.t - before.t),
+          };
+        };
+        const at = bisect(before.t, here.t, (x) => {
+          const s = state(x);
+          return sight(body, x, s.r, s.v).rate >= 0;
+        });
+        passed(body, state(at), false);
+      }
+    }
+    // out of the Earth's sphere: it has left, and is followed no further
+    if (length(r) > EARTH_HOLDS) {
+      outcome = 'escape';
+      done = true;
+      return;
+    }
+    // how far it looks ahead is the orbit's it is on: read again where a burn has ended
+    const burns = flier.burning();
+    if (!asked && lit && !burns) limit = Math.max(limit, t - start.t + lookAhead(r, v, t, bodies, horizons.turns));
+    lit = burns;
+
     if (swept + turned >= round) {
       // once round (or as many turns as the horizons say): the path ends where it began to repeat
       const part = turned > 0 ? (round - swept) / turned : 1;
@@ -666,7 +847,16 @@ export function propagate(
    */
   let grid: { out: PathPoint[]; i: number; last: number; bend: number; longest: number } | null = null;
   const sampled = (until: number): PathPoint[] | null => {
-    grid ??= { out: [points[0]!], i: 0, last: points[0]!.t, bend: BEND, longest: 16 };
+    // (a path too long to fit even with every piece at the longest step begins with a longer one: days to the Moon are not
+    // laid out a dozen times over, the bend allowed doubled each time until nothing of the curve's bending is left in it)
+    const span = points[points.length - 1]!.t - points[0]!.t;
+    grid ??= {
+      out: [points[0]!],
+      i: 0,
+      last: points[0]!.t,
+      bend: BEND,
+      longest: Math.max(16, 2 ** Math.ceil(Math.log2(Math.max(1, span) / most))),
+    };
     const g = grid;
     for (let k = 0; g.i + 1 < points.length; g.i++, k++) {
       if (k > 0 && k % 16 === 0 && now() > until) return null;
@@ -750,6 +940,8 @@ export function propagate(
       apogee: orbit ? best([...tops, last()], 1) : (tops[0] ?? null),
       perigee: orbit ? best([...bottoms, last()], -1) : null,
       impact,
+      horizon: limit,
+      passes,
       orbit: orbit ? el : null,
       events,
       chute: flier.chute,
