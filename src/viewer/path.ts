@@ -1647,8 +1647,8 @@ export class FlightPath {
 
   /** How far off the curve on show the flight at `s` may be and still be on it, m (`PIN_FAR`, `PIN_SHARE`). */
   private pinFar(s: PathSample): number {
-    const r = fliesOf(s);
-    return Math.max(PIN_FAR, PIN_SHARE * Math.hypot(r[0], r[1], r[2]));
+    const r = fliesOf(s) as Vec3 | undefined;
+    return r ? Math.max(PIN_FAR, PIN_SHARE * Math.hypot(r[0], r[1], r[2])) : PIN_FAR;
   }
 
   /** How far the flight at sample `s` is from the curve on show at its instant, m (pathline.ts `departure`; 0 outside the curve's span). */
