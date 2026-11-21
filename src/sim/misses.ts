@@ -250,6 +250,18 @@ const GT6A_RETRO =
 const GT6A_ENTRY =
   'The retrofire is timed by guidance for the landing place along the track (sim/plan.ts `LandingAim`), 277 s before the record’s instant, the run being that far from the real ship along its orbit after a day (the terminal phase, braking, station keeping and separation are not flown as made). The ground track at that instant passes west of the place, and the bank is held 55° to the left throughout, as Schirra held it until the computer took over, whose commands, left and right against an overshoot, are not read. Nothing adjusted';
 
+/** Gemini VIII's rendezvous, made on GATV-5003 flown from its insertion vector, and its early entry (gt-8/mission.md). */
+const GT8_DH =
+  'The four burns before the coelliptic are flown at the record’s instants and impulses: what they were aimed at (the apogee 15 nautical miles under the Agena’s, the phase, the node) is not a kind guidance solves yet. The run comes to them on an orbit whose apogee is some 5 km over the record’s, the ascent cut on the record’s period, which the report’s heights and period give some 3 km apart; so the coelliptic orbit the run solves on the Agena lies 5 to 7 km over the record’s, about 21 km under the Agena where the record has 25 (13.5 nautical miles), and closes on it slower. The Agena is 10 km farther than the record has it at the radar’s lock-on, before the coelliptic burn, and 37 km farther by the terminal phase’s instant. Not adjusted';
+const GT8_TPI =
+  'The terminal phase is lit at the record’s instant, from 91 km where the record has 54 (its trigger, the Agena 27 degrees above the horizon, is not a kind guidance has yet), and solved to reach the Agena when the record’s transfer did (its corrections’ central angles, 5:47:46): it asks 22.5 m/s where the crew’s was 8.3 (27.3 ft/s), and its transfer’s apogee is 29 km over the record’s. Not adjusted';
+const GT8_CORRECTIONS =
+  'The run has no navigation, radar or platform error: the terminal phase it solves reaches the Agena, and the corrections the crew made at 82 and 34 degrees to go, which took out theirs, solve to nothing. Not adjusted';
+const GT8_BRAKING =
+  'The braking is the thrust commanded on the Agena to come to rest 150 ft from it by 5:53 and to stay there to the docking at 6:33:16 (sim/pursuit.ts stationPush): what it gives is counted to the docking, the station keeping in it, where the record’s 41.22 ft/s is the braking’s resultant alone (“the total ΔV expended during semi-optical approach was about twice this number”), and it brakes a transfer that comes in faster than the record’s. Not adjusted';
+const GT8_ENTRY =
+  'It comes down 31 km to the left (north) of where the ship landed, the drogue on the record’s place along the track. The retrofire is timed by guidance for the landing place along the track (sim/plan.ts LandingAim); the bank is the crew’s and the computer’s as read off the report’s Figure 5.1.5-17 and flown by the clock (10 degrees south to 400,000 ft, the back-up 52 south, then the computer’s banks to the north), not commanded on the run’s own range to the target as the computer’s were: the cross-range the run carries to 10:31 is not taken out. Its plane after the rendezvous is the Agena’s, flown on from the insertion vector. Not adjusted';
+
 /** Soyuz 1's period after its correction, and its landing across the track. */
 const PERIOD_S1 =
   'The heights of Mishin’s first orbit, 200.9 by 224.1 km, are flown as mean heights over the WGS 84 ellipsoid under the apsis (the convention where heights come without a period), and so go round in 88.36 min where Mishin has 88.62 for them: the Soviet heights were over a ball some kilometres lower (tests/orbital.test.mjs, "the heights over the mean Earth"). The correction, the middle of Mishin’s 3.1 to 3.8 m/s, takes 0.10 min off the period where his figures fall by 0.07: it stays short. Not adjusted';
@@ -1188,6 +1200,30 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       crossTrack: { by: -170_672, slack: 15_000, why: `It comes down 171 km to the left of where the ship landed. ${GT6A_ENTRY}` },
     },
     descent: {},
+  }),
+  // Gemini VIII from the pad, its rendezvous made on GATV-5003 (its coast from the published orbit is not run: a flight with a
+  // target is flown with it, tests/orbital.test.mjs)
+  'usa/gemini/gt-8': inUnits({
+    ascent: {},
+    shown: {
+      'after-14100.perigee': { by: 7_507, slack: 1_500, why: GT8_DH },
+      'after-19200.apogee': { by: 29_120, slack: 4_000, why: GT8_TPI },
+      'coelliptic.velocity': { by: 2.308, slack: 0.5, why: GT8_DH },
+      'terminal-phase.velocity': { by: 14.22, slack: 2, why: GT8_TPI },
+      'correction-1.velocity': { by: -4.617, slack: 0.5, why: GT8_CORRECTIONS },
+      'correction-2.velocity': { by: -2.886, slack: 0.5, why: GT8_CORRECTIONS },
+      'terminal-braking.velocity': { by: 17.31, slack: 3, why: GT8_BRAKING },
+      'at-18092.range': { by: 36_550, slack: 5_000, why: GT8_DH },
+      'at-18896.range': { by: 37_660, slack: 5_000, why: GT8_DH },
+      crossTrack: { by: -31_476, slack: 5_000, why: GT8_ENTRY },
+    },
+    descent: {
+      'reentry-module.at': {
+        by: 93.5,
+        slack: 15,
+        why: 'Down at 10:43:00, 94 s after the record: the drogue out 33 s after the report’s table has it (its figure has it 13 s earlier still), and the rest the parachutes: the main at the 8,700 ft read off the report’s figure, on the 84.2 ft ringsail’s 31.6 ft/s, where the figure has the ship from the main’s deployment to the water in 195 s. As Gemini-Titan 7’s. Not adjusted',
+      },
+    },
   }),
   // Soyuz 1: the record from the pad and from its published orbit (missions/ussr/soyuz/flights/soyuz-1/mission.md, "Against the record")
   'ussr/soyuz/soyuz-1': inUnits({

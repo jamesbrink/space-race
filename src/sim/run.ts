@@ -671,8 +671,11 @@ export function orbitalRecord(flight: SitedFlight): Run {
     const [was, is] = [clockAt(plan, eventOf(plan, e.id)), clockAt(flown, e)];
     return Number.isFinite(was) && Number.isFinite(is) && was < Number.MAX_SAFE_INTEGER ? is - was : 0;
   };
+  // (a manoeuvre guidance solved on the flight's target is cut when it has given what was solved, whether or not the
+  // record has an instant for its cut: orbital.ts `BurnFlown`)
+  const solvedCut = new Map((whole.coast.burns ?? []).flatMap((b) => (b.solved ? [[b.cut, b.off] as const] : [])));
   for (const e of flown.events) {
-    const t = e.record ? times[e.record.id] : e.at && e.at.value + later(e);
+    const t = e.record ? times[e.record.id] : (solvedCut.get(e.id) ?? (e.at && e.at.value + later(e)));
     if (t === undefined) continue;
     events.push({ event: e.id, ...(e.record ? { record: e.record.id } : {}), t });
     if (e.record) told.add(e.record.id);

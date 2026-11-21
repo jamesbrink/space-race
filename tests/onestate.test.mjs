@@ -156,10 +156,14 @@ for (const f of part(orbital)) {
     whole ??= orbitalFlown(f);
     const target = whole.target;
     assert.ok(target, 'the run has its target');
-    assert.equal(target.from, whole.ascent.separation.t, 'it begins at the parting');
-    const end = Math.min(whole.coast.samples.at(-1).t, target.from + 48 * 3600);
+    // (a stage let go begins at the parting; a published orbit or another flight's vehicle is there before it, and is
+    // held from the parting on, where the spacecraft can be made on it)
+    if ('joint' in plan.target) assert.equal(target.from, whole.ascent.separation.t, 'it begins at the parting');
+    else assert.ok(target.from <= whole.ascent.separation.t, 'it is there by the parting');
+    const begin = Math.max(target.from, whole.ascent.separation.t);
+    const end = Math.min(whole.coast.samples.at(-1).t, begin + 48 * 3600);
     let worst = { dv: 0, dr: 0, at: 0 };
-    for (let t = target.from; t + 10 <= end; t += 10) {
+    for (let t = begin; t + 10 <= end; t += 10) {
       const [a, b] = [target.at(t), target.at(t + 10)];
       assert.ok(a && b, `the target is there at T+${t}`);
       const free = orbitStep(a, t, 10);
