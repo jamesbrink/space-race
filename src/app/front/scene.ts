@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { makeAtmosphere, ownAtmosphere } from '../../viewer/atmosphere.ts';
+import { DAY_EXPOSURE, SUN_LUX } from '../../viewer/daysky.ts';
+import { limitUnder } from '../../viewer/eye.ts';
 import { starsAlone } from '../../viewer/heavens.ts';
 import { MoonBody } from '../../viewer/moon.ts';
 import { tier } from '../../viewer/tier.ts';
@@ -49,13 +51,16 @@ const SUNLIGHT = [4.5, 4.3, 4.0] as const;
  */
 const HAZE = { extinction: 8e-5, scale: 1500 };
 /**
- * The faintest star drawn, and how bright: with the camera set for sunlit ground and cloud a photograph has none and
- * an eye a few; estimated. Through this lens that is none for most of the path: the stars here are the bright table's
- * 518 (heavens.ts `starsAlone`; the whole catalogue is a flight's sky's to fetch), six degrees of sky holds one of them
- * in ten frames, and the first to come into this picture is one of magnitude 3.9, low on the left once the camera
- * has settled. So the sky over the Moon is black, as a film exposed for this ground has it.
+ * The faintest star drawn, and how bright. The eye here is adapted to the sunlit ground in front of it, the Moon's
+ * (its albedo, 0.12: NASA Goddard, "Moon fact sheet", geometric), which fills the view's lower half: so the stars are
+ * those the eye's law leaves against a veil of that ground's luminance (eye.ts `limitUnder`, the same law a flight's
+ * sky above the air has), about the fifth magnitude, and they are drawn as bright as that eye sees them, the
+ * exposure undone (as a flight's sky is: daysky.ts `DAY_EXPOSURE`). Through this lens that is few: the stars here are
+ * the bright table's 518 (heavens.ts `starsAlone`; the whole catalogue is a flight's sky's to fetch), six degrees of
+ * sky holds one of them in ten frames, and the first to come into this picture is one of magnitude 3.9, low on the
+ * left once the camera has settled.
  */
-const STARS = { limit: 4.5, gain: 0.55 };
+const STARS = { limit: limitUnder((0.12 * SUN_LUX) / Math.PI), gain: DAY_EXPOSURE / EXPOSURE };
 
 export interface FrontStats {
   /** Frames drawn in the last second, and the loop's rate. */

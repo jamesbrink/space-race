@@ -304,7 +304,7 @@ src/
   viewer/later.ts                     what the first view does not need, fetched once the scene is up
   viewer/heavens.ts  daysky.ts        the Moon, stars and planets drawn; light and sky colours by the Sun's height
   viewer/lamps.ts                     floodlights: every lamp lens a model carries lights the scene after dark; when a pad's are lit
-  viewer/eye.ts                       the eye by night: what the lamps in view add, adapted to over the eye's own times
+  viewer/eye.ts                       the eye: by night what the lamps in view add, above the air what is lit in view leaves of the stars, each adapted to over the eye's own times
   viewer/origin.ts                    drawing from the eye: the GPU sees only eye-relative positions (a floating origin)
   viewer/ascent.ts                    the flown vehicle in the scene: where the simulator has it, and what it has shed
   viewer/plume.ts                     the engine's fire as data: its place, how hard it burns, the shape the air lets it take (its nozzle's exit, its core's length), its light on the pad
@@ -441,7 +441,7 @@ tools/
   era5.mjs                            ERA5 as the tools read it: the ARCO-ERA5 store, Blosc and LZ4, whole fields and the blocks round a place by range
   era5-aloft.mjs                      bakes each flight's aloft.ts: ERA5's column over its pad at the hour nearest liftoff, and the surface's hours round it
   ut1-bake.mjs                        bakes src/world/ut1.ts from the IERS's EOP C01 series: UT1 - TAI since 1956
-  stars.mjs                           bakes the stars (the Bright Star Catalogue: stars.ts and public/sky/stars.bin) and the Milky Way (NASA's map)
+  stars.mjs                           bakes the stars (the Bright Star Catalogue: stars.ts and public/sky/stars.bin) and the Milky Way (NASA's map: public/sky/milkyway.jpg its light, milkyway.tint.jpg its colour)
   figures.mjs                         the simulators' figures to the last digit, every run the tests fly, against tests/fixtures/figures.json (`pnpm figures`; made on hal9000, not in `pnpm check`)
   residuals.mjs                       what every flight into orbit misses its record by, as one table: when each stage stopped, the orbit left on, where and when it came down, the step in velocity at the parting, each tracking fix (`node tools/residuals.mjs [flight]`: simulator.md, "One state")
   predictions.mjs                     the predictions the figures capture (`predict:*`), each made again from a start nudged and in a frame turned (tests/predict.test.mjs, #30)

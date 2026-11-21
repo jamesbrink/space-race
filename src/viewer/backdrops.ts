@@ -9,7 +9,7 @@ import { julianDate } from '../world/time.ts';
 import { densityFor, type PlaceAir, setDeckShade, setHazeAbove, setVeilLight } from './air.ts';
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere.ts';
 import { type Blowing, dayOf, DECK_DEPTH, VEIL_DOWN, veilShade, windsOf } from './day.ts';
-import { dayLight, type RGB, starLimit } from './daysky.ts';
+import { DAY_EXPOSURE, type DayLight, dayLight, NIGHT_ADAPTATION, type RGB, starLimit } from './daysky.ts';
 import { wavesOf } from '../sim/sea.ts';
 import { chapman, Globe } from './globe.ts';
 import { Heavens, MOON_GLSL, starsAlone } from './heavens.ts';
@@ -106,6 +106,15 @@ export interface Setting {
    * stays as bright as it is to an eye among floodlights, and the faint stars go.
    */
   eye?: (factor: number) => void;
+  /**
+   * The faintest star the eye sees above the air for what is lit in its view (eye.ts `StarEye`): 6.5 with nothing lit
+   * in it. Under the air the sky's own light sets the stars' limit and this is not asked.
+   */
+  stars?: (limit: number) => void;
+  /** How far out of the air the eye is at the instant `at` was last given: 0 under all of it, 1 above it (1 - `airAbove`). */
+  space?: number;
+  /** How much of the Sun's disc the eye sees from where it is, past the Earth's edge (0 to 1), at that instant. */
+  sunlit?: number;
   /** Anything in the setting that moves (surf). */
   tick?: (dt: number) => void;
   /** The Earth beyond the place, to scale (globe.ts): drawn once the eye can see past the place's own ground. */
@@ -429,6 +438,8 @@ const placeOf = new WeakMap<Setting, string>();
 
 /** The sky turns 15 arcseconds a second. Under this many seconds of it nothing has moved a pixel, and the view is left alone. */
 const SKY_STEP = 4;
+/** The sunlit Earth's light on what is above the air, at full phase and filling half its sky, as a share of a clear day's sky's (backdrops.ts `space`). Estimated. */
+const EARTHSHINE = 1.7;
 
 /**
  * How much of the sea-level sky's glow is left at `height` metres: the sky's blue is sunlight
@@ -504,7 +515,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     uCloudLight: { value: new THREE.Color() },
     uSunLight: { value: new THREE.Color() },
     uWisps: { value: 1 },
-    uUp: { value: new THREE.Vector3(0, 1, 0) },
+    uUp: { value: h.up }, // (the stars' plumb line too: what is under the eye's horizon is not drawn)
     uGlare: { value: 1 },
     uVeilSun: { value: new THREE.Color() },
     uVeilAir: { value: new THREE.Color() },
@@ -618,7 +629,10 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     horizon: here.horizon,
     grade: here.grade,
     tick: here.tick,
-    simplify: here.simplify,
+    simplify: (on) => {
+      here.simplify?.(on);
+      h.cel(on);
+    },
     globe,
     air: here.air,
     weather,
@@ -668,6 +682,51 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   const noonSun = ((noon) => noon.colour.map((c) => c * noon.intensity))(dayLight(50, null).light);
   const fillSky = new THREE.Color(setting.fill[0]).toArray();
   const fillGround = new THREE.Color(setting.fill[1]).toArray();
+  /**
+   * The light where the eye is, as it leaves the air: the ground's (`onGround`, for the Sun's height at the site, as
+   * the day there has it) handed over, by `out` (how far out of the air the eye is: 1 - `airAbove`), to the light
+   * above the air, which is the same at every hour on the clock and changes only with where the eye is:
+   * - the Sun's beam as it reaches the eye (`beam`: sunFrom, through what air is left along the line to it and gone
+   *   behind the Earth's edge over its own breadth), white, at the strength that gives the ground its light at the
+   *   hour the scene was tuned for (derived, as the globe's own sunlight is);
+   * - the exposure the sunlit ground has by day (daysky.ts `DAY_EXPOSURE`) while the Sun shows, the night's
+   *   (`NIGHT_ADAPTATION` times it) in the Earth's shadow, between them as the Sun's disc goes behind the edge
+   *   (estimated: the eye is taken to keep up);
+   * - no sky, and for the fill the sunlit Earth's light (earthshine): its share of the sky round the eye (the square
+   *   of the sine of its angular radius) times how much of the face turned to the eye is lit, `EARTHSHINE` of a day's
+   *   sky for an Earth filling half the sky at full phase (an albedo of 0.3 against a clear sky's fifth of the Sun's
+   *   light: estimated).
+   * Each a smooth function of the eye's height and of the Sun's place over its horizon, so nothing steps as the eye
+   * climbs or goes into the night: a share of the air is a step of half a per cent (`airAbove`). On the ground
+   * (`out` 0) the ground's light is given back as it is, to the bit.
+   */
+  const space = (onGround: DayLight, out: number, beam: RGB, shows: number, height: number): DayLight => {
+    if (out <= 0) return onGround;
+    const keep = 1 - out;
+    // the Sun: the ground's beam (when it is the Sun's) and the beam above the air, mixed by the air
+    const groundSun = onGround.light.from === 'sun' ? onGround.light.intensity : 0;
+    const rgb = [0, 1, 2].map((c) => onGround.light.colour[c]! * groundSun * keep + noonSun[c]! * beam[c]! * out);
+    const sun = Math.max(rgb[0]!, rgb[1]!, rgb[2]!);
+    const moon = onGround.light.from === 'moon' ? onGround.light.intensity * keep : 0;
+    const light: DayLight['light'] =
+      sun >= moon
+        ? sun > 0
+          ? { from: 'sun', colour: rgb.map((v) => v / sun) as unknown as RGB, intensity: sun }
+          : { from: 'none', colour: onGround.light.colour, intensity: 0 }
+        : { from: 'moon', colour: onGround.light.colour, intensity: moon };
+    // the sunlit Earth's light round the eye
+    const r = EARTH_SPHERE / (EARTH_SPHERE + Math.max(height, 0));
+    const earthshine = EARTHSHINE * r * r * 0.5 * (1 + THREE.MathUtils.clamp(h.sunDir.dot(h.up), -1, 1));
+    const exposure = DAY_EXPOSURE * NIGHT_ADAPTATION ** (1 - shows);
+    const mixLog = (a: number, b: number): number => Math.exp(Math.log(a) * keep + Math.log(b) * out);
+    return {
+      ...onGround,
+      light,
+      ambient: Math.max(onGround.ambient * keep + earthshine * out, 0.002),
+      exposure: mixLog(onGround.exposure, exposure),
+      adaptation: mixLog(onGround.adaptation, exposure / DAY_EXPOSURE),
+    };
+  };
   let shownAir = 1;
   let shownRung = 0;
   // What the eye has adapted to beyond the sky's light (eye.ts), and what that changes here: the stars it no longer
@@ -675,9 +734,13 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
   // (far brighter than any lamp-lit ground), where the exposure would dim it with the rest.
   let eyeFactor = 1;
   let moonShine = 0;
+  // (the ground's limit for the Sun's height, the gain, how much of the air is above the eye, the eye's true height)
   let starsShown: [number, number, number, number] = [6.5, 1, 1, 0];
+  // what the eye sees above the air for what is lit in its view (eye.ts StarEye: the stage steps it)
+  let eyeLimit = 6.5;
   const seen = (): void => {
-    const [limit, gain, starAir, height] = starsShown;
+    const [ground, gain, starAir, height] = starsShown;
+    const limit = starLimit(ground, starAir, eyeLimit);
     h.show(eyeFactor < 1 ? limit + 2.5 * Math.log10(eyeFactor) : limit, gain, starAir, height);
     h.moon.uMoonLight.value = eyeFactor < 1 ? moonShine / eyeFactor : moonShine;
   };
@@ -685,6 +748,12 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     eyeFactor = factor;
     seen();
   };
+  setting.stars = (limit) => {
+    if (limit === eyeLimit) return;
+    eyeLimit = limit;
+    seen();
+  };
+  let shownLimb = 0;
   setting.at = (jdUT, height = 0, atOnce = false) => {
     // the wind at the clock's instant: a function of it, so it follows the clock with no step and a jump is shown at once
     if (recovery && recoveryWindow) {
@@ -697,6 +766,16 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     here.blow(blowing);
     globe.seaWind(blowing.wind.speed);
     const air = airAbove(height);
+    // Where the eye is: its plumb line (`attend` has set it) and the Sun's height over the Earth's edge as seen from there,
+    // which from above the air is what says whether the eye and the vehicle are in sunlight (the site's Sun may have
+    // set hours before). The horizon the stars are hidden under follows the eye's true height every frame.
+    h.horizon(height);
+    const dipAt = -Math.acos(EARTH_SPHERE / (EARTH_SPHERE + Math.max(height, 0))) / DEG;
+    const eyeSun = Math.asin(THREE.MathUtils.clamp(h.sunDir.dot(h.up), -1, 1)) / DEG;
+    // (asked again as the Sun crosses the Earth's edge, in steps of a hundredth of its disc: under most of the air the
+    // ground's light has it, and the step is the air's)
+    const overEdge = eyeSun - dipAt;
+    const limb = air > 0.9 ? 0 : Math.round(Math.abs(overEdge) < 1 ? overEdge / 0.005 : overEdge / 0.5);
     const cover = overcast ? nearDeck * (1 - THREE.MathUtils.smoothstep(height, today.deck.height, today.deck.height + DECK_DEPTH)) : 0;
     globe.thin = 1 - air;
     setHazeAbove(globe.thin); // the haze seen from above, on the globe and the land round the site alike (air.ts)
@@ -715,9 +794,18 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     const rung = Math.round(Math.min(Math.max(height, 0), 120_000) / 500);
     const arrived = h.arrived;
     h.arrived = false;
-    if (Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP && !due && !jumped && air === shownAir && rung === shownRung && cover === shownCover)
+    if (
+      Math.abs(jdUT - shownAt) * 86_400 < SKY_STEP &&
+      !due &&
+      !jumped &&
+      air === shownAir &&
+      rung === shownRung &&
+      cover === shownCover &&
+      limb === shownLimb
+    )
       return fading || arrived ? { shadows: false } : null;
     shownCover = cover;
+    shownLimb = limb;
     shownAir = air;
     shownRung = rung;
     if (jdUT !== shownAt) {
@@ -729,18 +817,16 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
       const rate = (skyFrom(site, jdUT + 60 / 86_400).sun.elevation - sky.sun.elevation) / DEG / 60;
       setting.lamps = lampsLit(when.site.lamps ?? DUTY, h.sunElevation, rate);
     }
-    const light = dayLight(h.sunElevation, h.moonUp ? { elevation: h.moonElevation, lit: h.moonLit } : null);
+    const onGround = dayLight(h.sunElevation, h.moonUp ? { elevation: h.moonElevation, lit: h.moonLit } : null);
+    const sunAt = sunFrom(height, eyeSun);
+    setting.space = 1 - air;
+    setting.sunlit = THREE.MathUtils.smoothstep(eyeSun, dipAt - 0.27, dipAt + 0.27);
+    const light = space(onGround, 1 - air, sunAt, setting.sunlit, height);
     setting.lux = light.lux;
     setting.adapted = light.adapted;
-    // The stars come out as the air above the eye thins (daysky.ts: starLimit says what of that is physical), and are
-    // drawn brighter above it, though the Sun is up: the exposure there is still the sunlit ground's (for the look).
-    const out = (1 - air) ** 1.5;
-    starsShown = [
-      starLimit(light.limitingMagnitude, Math.exp(-(rung * 500) / 8000)),
-      (1 + 1.6 * out) / light.adaptation,
-      Math.exp(-(rung * 500) / 8000),
-      rung * 500,
-    ];
+    // The stars come out as the air above the eye thins (daysky.ts: starLimit says what of that is physical), to what the
+    // eye sees for what is lit in its view (`setting.stars`), drawn as bright as that eye sees them (the exposure undone).
+    starsShown = [light.limitingMagnitude, 1 / light.adaptation, Math.exp(-(rung * 500) / 8000), height];
     seen();
     uniforms.uSunSize.value = Math.sin(h.sunRadius);
     const along = Math.sqrt(air); // (toward the horizon the eye looks through more of what air there is)
@@ -754,7 +840,7 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     uniforms.uWisps.value = cumulus || !dayAir.clouds ? 0 : 1 - THREE.MathUtils.smoothstep(height, 2400, 3400);
     // the Sun's disc: from the ground as the day has it; from above the air, as it is there (white, and still up
     // when it has set on the ground below)
-    const above = sunFrom(height, h.sunElevation);
+    const above = sunAt;
     colour(uniforms.uSunLight.value, [0, 1, 2].map((c) => light.sun[c]! + (above[c]! - light.sun[c]!) * (1 - air)) as unknown as RGB);
     uniforms.uGlare.value = along;
     colour(fog.color, light.haze);
@@ -830,12 +916,14 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     // the ground the reflections see is lit by that Sun and that sky
     // (under a veil: the Sun's through it, and what the veil gives back of what it took, as the sky's: VEIL_DOWN)
     const lit =
-      (0.75 * light.light.intensity * Math.max(setting.sunDir.y, 0) * (left + VEIL_DOWN * (1 - left))) / (3.9 * Math.sin(50 * DEG)) +
+      (0.75 * light.light.intensity * Math.max(setting.sunDir.y, 0) * (left + VEIL_DOWN * (1 - left)) * air) / (3.9 * Math.sin(50 * DEG)) +
       0.25 * light.ambient;
     below.color.setRGB((0.42 * lit + 0.0005) * day, (0.39 * lit + 0.0008) * day, (0.33 * lit + 0.0018) * day);
     // (the Sun's patch through the veil, as the eye sees its disc through it: along the slant, clouds.ts)
     const through = veil ? Math.exp(-veil.depth * veil.cover * Math.min(1 / Math.max(h.sunDir.y, 0.05), 6)) : 1;
-    colour(patch.material.color, [30 * light.sun[0] * day * through, 27 * light.sun[1] * day * through, 22 * light.sun[2] * day * through]);
+    // (the Sun as the eye sees it: above the air, from where the eye is, and gone in the Earth's shadow)
+    const seenSun = [0, 1, 2].map((c) => light.sun[c]! + (sunAt[c]! - light.sun[c]!) * (1 - air));
+    colour(patch.material.color, [30 * seenSun[0]! * day * through, 27 * seenSun[1]! * day * through, 22 * seenSun[2]! * day * through]);
     if (overcast) patch.material.color.multiplyScalar(1 - cover);
     patch.position.copy(h.sunDir).multiplyScalar(46);
     // (and how much air is over the eye: it thins the sky the reflections see, above. Left out, a bake made from high up,

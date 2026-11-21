@@ -5,7 +5,6 @@ import { test } from 'node:test';
 import {
   adaptedTo,
   airmass,
-  DAY_ADAPTED,
   dayLight,
   EYE_LEAST,
   LAND_REFLECTANCE,
@@ -20,6 +19,7 @@ import {
 } from '../src/viewer/daysky.ts';
 import { Heavens } from '../src/viewer/heavens.ts';
 import { skyFrom } from '../src/world/ephemeris.ts';
+import { blackBody, starColour, starTemperature } from '../src/world/stars.ts';
 import { DEG } from '../src/world/frames.ts';
 import { julianDate } from '../src/world/time.ts';
 
@@ -192,17 +192,24 @@ test('moved to another instant, the same sky object follows: the vectors shaders
 
 test('the stars come out as the air above the eye thins, a magnitude for each 2.512 times less of it, and no further than the eye allows', () => {
   const noon = limitingMagnitude(50);
-  assert.equal(starLimit(noon, 1), noon, 'at the sea: the ground’s own limit');
-  assert.ok(Math.abs(starLimit(noon, 1 / 2.512) - (noon + 1)) < 1e-3);
+  const sunlit = 5.2; // (an eye with a sunlit vehicle in view: eye.ts limitUnder)
+  assert.equal(starLimit(noon, 1, sunlit), noon, 'at the sea: the ground’s own limit');
+  assert.ok(Math.abs(starLimit(noon, 1 / 2.512, sunlit) - (noon + 1)) < 1e-3);
   let last = noon;
   for (let h = 0; h <= 200_000; h += 500) {
-    const limit = starLimit(noon, Math.exp(-h / 8000));
+    const limit = starLimit(noon, Math.exp(-h / 8000), sunlit);
     assert.ok(limit >= last && limit - last < 0.2, `no step at ${h} m`);
     last = limit;
   }
-  assert.equal(last, DAY_ADAPTED, 'by day above the air: the sunlit eye’s limit');
-  assert.equal(starLimit(limitingMagnitude(-30), 0), 6.5, 'by night: every star the eye sees');
-  assert.equal(starLimit(limitingMagnitude(-30), 1), 6.5);
+  assert.equal(last, sunlit, 'by day above the air: the eye’s own limit for what is lit in its view');
+  assert.equal(starLimit(limitingMagnitude(-30), 0, 6.5), 6.5, 'by night with nothing lit in view: every star the eye sees');
+  assert.equal(starLimit(limitingMagnitude(-30), 1, 6.5), 6.5);
+  assert.equal(starLimit(limitingMagnitude(-30), 0, 5.6), 5.6, 'by night above the air with the sunlit Earth in view: what it leaves');
+  assert.equal(starLimit(limitingMagnitude(-30), 1, 4), 6.5, 'and from the ground a sunlit Earth no one there sees dims nothing');
+  for (let h = 0; h <= 200_000; h += 500) {
+    const a = starLimit(limitingMagnitude(-30), Math.exp(-h / 8000), 5.6);
+    assert.ok(a <= 6.5 && a >= 5.6, `by night, between the two at ${h} m`);
+  }
 });
 
 test('above the air nothing dims a low star, and the horizon it sets behind has dipped', () => {
@@ -214,6 +221,42 @@ test('above the air nothing dims a low star, and the horizon it sets behind has 
   assert.equal(air, 0);
   assert.ok(Math.abs(Math.asin(-dip) / DEG - 12.3) < 0.1, 'from 150 km the horizon is 12.3 degrees under the level');
   assert.deepEqual(h.band.material.uniforms.uAir.value.toArray(), [air, dip], 'and the Milky Way goes by the same');
+});
+
+test('far out, what the stars are hidden behind is the Earth’s own disc round the eye’s plumb line, not the site’s horizon', () => {
+  const h = new Heavens(LC5, true, 1);
+  const [stars] = h.stars.children;
+  const u = stars.material.uniforms;
+  assert.equal(u.uUp.value, h.up, 'the stars’ plumb line is the sky’s');
+  assert.equal(h.band.material.uniforms.uUp.value, h.up, 'and the Milky Way’s');
+  // 100,000 km out over the night side, the plumb line far from the site's: the Earth is 3.4 degrees in radius
+  h.up.set(0.6, -0.8, 0);
+  h.horizon(100_000_000);
+  const dip = u.uAir.value.y;
+  const radius = Math.acos(-dip) / DEG;
+  assert.ok(Math.abs(radius - Math.asin(6371 / 106_371) / DEG) < 0.05, `the hidden cap is the Earth’s disc: ${radius.toFixed(2)} degrees`);
+  // a star under the site's horizon (y < 0) but well off the Earth is in the sky; one beside the nadir is hidden
+  const shown = (d) => d.x * h.up.x + d.y * h.up.y + d.z * h.up.z > dip;
+  assert.ok(shown({ x: 0, y: -1, z: 0 }), 'straight under the site, far from the Earth as seen from out there: shown');
+  assert.ok(!shown({ x: -0.6, y: 0.8, z: 0 }), 'toward the Earth’s middle: hidden');
+  h.horizon(-5);
+  assert.equal(u.uAir.value.y + 0, 0, 'under the sea is the sea’s level');
+});
+
+test('the stars’ shader counts each star from the faintest the eye sees, and the cel look is the same stars', () => {
+  const h = new Heavens(LC5, false, 2);
+  const [stars] = h.stars.children;
+  const source = stars.material.vertexShader;
+  assert.match(source, /uLimit - mag/, 'brightness from the eye’s limit');
+  h.cel(true);
+  assert.equal(stars.material.uniforms.uCel.value, 1);
+  assert.equal(h.band.material.uniforms.uCel.value, 1);
+  h.cel(false);
+  assert.equal(stars.material.uniforms.uCel.value, 0);
+  h.show(4.5, 1);
+  assert.equal(h.band.parent.visible, false, 'with stars of the fifth magnitude gone, the Milky Way is not drawn at all');
+  h.show(6.5, 1);
+  assert.equal(h.band.parent.visible, true);
 });
 
 // ---- the night as there is light (daysky.ts): the published figures, the eye's limits, and nothing that steps
@@ -372,4 +415,24 @@ test('at the four liftoffs from a launch site the day is the one recorded before
     };
     assert.deepStrictEqual(JSON.parse(JSON.stringify(now)), was.light, `${id}: the day's light`);
   }
+});
+
+test('a star’s colour is its black body’s: the Sun cream, Vega a little blue of white, Betelgeuse orange', () => {
+  // Ballesteros: the Sun's B-V of 0.65 is about 5,800 K; Vega's -0.03 about 9,600 K
+  near(starTemperature(0.65), 5800, 150, 'the Sun');
+  near(starTemperature(-0.03), 9600, 1000, 'Vega (a black body: the formula is some 10 % high for a hot star)');
+  // D65 is the screen's white, and a black body of 6,504 K is near it (D65 lies 0.003 off the locus, toward green)
+  const white = blackBody(6504);
+  for (const c of white) near(c / white[1], 1, 0.08, 'a black body at D65’s temperature is all but white');
+  const [r, g, b] = starColour(0.65);
+  assert.ok(r > g && g > b, 'the Sun is warmer than white');
+  const vega = starColour(-0.03);
+  assert.ok(vega[2] > vega[0], 'Vega is bluer than white');
+  const betelgeuse = starColour(1.85);
+  assert.ok(betelgeuse[0] > 2 * betelgeuse[2], 'Betelgeuse is orange');
+  // the locus at 2,000 and 10,000 K: red-orange, and blue-white
+  const [r2, , b2] = blackBody(2000);
+  assert.ok(r2 > 5 * b2);
+  const [r10, , b10] = blackBody(10_000);
+  assert.ok(b10 > r10);
 });

@@ -867,6 +867,24 @@ JavaScript heap and 125 MB of decoded pictures.
 What is seen from above the air is meant to stand beside photographs from orbit (the owner's word: clouds,
 air and flight effects real, the ground near the eye designed). What keeps it so:
 
+- **Above the air the light is where the eye is, not the site's hour.** A ground setting is used all the way up, and
+  its light, exposure, fill and reflections are handed over by the air left above the eye (`airAbove`) from the
+  day at the site to the light above the air (backdrops.ts `space`): the Sun's beam as it reaches the eye (through
+  what air is left, gone behind the Earth's edge seen from the eye's own plumb line and height), the sunlit ground's
+  exposure while the Sun shows and the night's in the Earth's shadow, and for fill the sunlit Earth's light by its
+  share of the sky and its phase. So a vehicle over the night at the Cape is in sunlight and drawn at a day's
+  exposure, and the Earth beside it is not washed out. Each is a smooth function of the eye's height and of the Sun
+  over its horizon (asked again as the Sun crosses the edge, a hundredth of its disc at a time), and on the ground the
+  day is given back to the bit.
+- **The stars are seen by an eye.** Every star is drawn from the faintest the eye sees (heavens.ts `pointsMaterial`):
+  a blur a pixel or so across, more light in it the brighter the star, spreading only past what its middle holds, in
+  its black body's colour (paler the fainter). Above the air that limit is the eye's own for what is lit in view
+  (eye.ts `StarEye`, stepped each frame by `Stage.seeStars`, settled at once on a frozen stage), so beside a sunlit
+  vehicle or Earth the faint stars go and the rest dim, and looking away they come back over minutes. The Milky Way is
+  drawn in proportion to the map's light (no lift of the faint ground), faint, dimmed with the stars. What the Earth
+  hides is the cap under the eye's own horizon (`Heavens.horizon`), never the site's horizon plane: from 100,000 km
+  that was a straight edge across the sky. The cel look draws the same stars as flat dots in five sizes and the band as
+  two flat tones (`Heavens.cel`, through `Setting.simplify`).
 - **Data is baked, cited and dated.** Relief and the sea's bed are ETOPO 2022, the land's colours Blue Marble
   (May 2004), on the globe's cube and, finer, on a plane over the site's region (`pnpm globe:surface`; needs
   GDAL; downloads stay outside the repo; `--region <name>` bakes one region and leaves the others' files as they
@@ -1188,9 +1206,10 @@ terms:
   other nor a block), a block's shadow falls on the ground only, and only the finest map casts the altimeter's
   shadows; from 100 to 1,000 km up the ground is the altimeter's alone and is soft (its 481 m texel is a few pixels);
   the mid part of the path (10,000 to 20,000 km out) is drawn from the 3.7 km map and is soft. The stars are the bright
-  table's 518 to magnitude 4.5, as they were: through six degrees of lens none is in the picture until the camera has
-  settled, when one of magnitude 3.9 is (measured: no lit pixel in the sky at 0, 60 or 200 s), so the sky is black, as a
-  film exposed for this ground has it. Fetching the whole catalogue for a dozen faint points was weighed and left.
+  table's 518, to the limit an eye adapted to the sunlit lunar ground in front of it sees (eye.ts `limitUnder` for that
+  ground's luminance: about the fifth magnitude), drawn with the exposure undone as a flight's sky is: through six
+  degrees of lens none is in the picture until the camera has settled, when one of magnitude 3.9 is, so the sky is all
+  but black. Fetching the whole catalogue for a dozen faint points was weighed and left.
 - **A lost context there is not the page's end**: the picture is taken away and the list of flights stays, over
   black. No word is put up (lost.ts's is a stage's).
 

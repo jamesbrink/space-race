@@ -5,19 +5,20 @@ import type { Target } from '../app/actions.ts';
 import { targetNodes } from '../app/address.ts';
 import { readingFor } from '../sim/mechanism.ts';
 import type { Flight as FlightData, ModelDef } from '../types.ts';
-import { bodyOf, gravityOn } from '../world/bodies.ts';
+import { bodyOf, EARTH_SPHERE, gravityOn } from '../world/bodies.ts';
 import type { Clock } from '../world/clock.ts';
 import { siteFrame, type Vec3 } from '../world/frames.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
 import type { Ascent } from './ascent.ts';
 import { GROUND_Y, type Setting, Settings, unhurried } from './backdrops.ts';
+import { SUN_LUX } from './daysky.ts';
 import { bulkOf } from './bulk.ts';
 import { Cabin, type CabinThing } from './cabin.ts';
 import { Cameras, type RigId, type Scene } from './camera/index.ts';
 import type { MapOf } from './camera/rig.ts';
 import { disposeTree } from './dispose.ts';
 import type { Effects } from './effects.ts';
-import { Eye } from './eye.ts';
+import { Eye, type Glaring, StarEye, veiled } from './eye.ts';
 import { ground, lay, layering } from './laid.ts';
 import { Lamps } from './lamps.ts';
 import { type Levelled, LOD_ABOVE, lodUrl, Scenery, Staged } from './lod.ts';
@@ -105,6 +106,13 @@ LENS.envMapIntensity = 2.4;
 const UP = new THREE.Vector3(0, 1, 0);
 
 /** How much the exposure opens up in a room by day (as a share added), and over how many seconds; how far the rays that ask whether the eye is in one go, metres. */
+/**
+ * The Sun's light square on to it above the air, lux (daysky.ts: the USNO circular's), and the Earth's Bond albedo (NASA
+ * Goddard, "Earth fact sheet": 0.294): what the sunlit Earth and the Sun lay over the stars above the air (`seeStars`).
+ * Documented. And how much of the Sun's light the vehicle gives back: painted metal, white and black, half. Estimated.
+ */
+const EARTH_ALBEDO = 0.294;
+const VEHICLE_ALBEDO = 0.5;
 /** The exposure the eye settles on in a room: 2.1 times the sunlit ground's 0.8 (daysky.ts: DAY_EXPOSURE). */
 const INDOORS_EXPOSURE = 1.68;
 const INDOORS_SECONDS = 0.9;
@@ -1226,6 +1234,8 @@ export class Stage {
     this.fill.groundColor.set(s.fill[1]);
     this.light();
     this.eye.reset();
+    this.starEye.reset();
+    s.stars?.(this.starEye.limit);
     this.eyeCut = true;
     this.expose();
     if (s.floor) this.scene.add(s.floor);
@@ -2099,6 +2109,10 @@ export class Stage {
   private indoors = 0;
   /** What the eye is adapted to beyond the sky's light: the lamps in front of it (eye.ts). */
   readonly eye = new Eye();
+  /** And above the air, what it sees of the stars for what is lit in its view (eye.ts `StarEye`). */
+  readonly starEye = new StarEye();
+  /** The lit things in view above the air, made once and moved each frame: the sunlit Earth, the Sun, the vehicle. */
+  private readonly glare: Glaring[] = [0, 1, 2].map(() => ({ toward: new THREE.Vector3(), radius: 0, lux: 0 }));
   /** The eye is to be settled at once on the next frame: the clock jumped, another place, on or off foot (a cut, not a walk). */
   private eyeCut = true;
   private eyeWalking = false;
@@ -2157,11 +2171,84 @@ export class Stage {
     if (lamps.length) this.camera.updateMatrixWorld();
     const over = lamps.length && !this.warming ? this.eye.measure(this.camera, this.grade, ground, lamps) : 1;
     const rate = this.clock?.running ? Math.max(1, Math.abs(this.clock.rate)) : 1;
-    if (this.eye.step(over, dt * rate, this.frozen || this.eyeCut || this.held || this.warming)) {
+    const atOnce = this.frozen || this.eyeCut || this.held || this.warming;
+    if (this.eye.step(over, dt * rate, atOnce)) {
       this.expose();
       this.dirty = true;
     }
+    this.seeStars(dt * rate, atOnce);
     this.eyeCut = false;
+  }
+
+  /**
+   * Above the air the sky is black at noon, and what hides the stars is what else is lit in view (eye.ts `StarEye`):
+   * the sunlit Earth (a sphere of the Earth's Bond albedo, 0.294, lit as a Lambert surface: its light at the eye by
+   * its phase from here), the Sun itself, and the vehicle (`vehicleSphere`, half of it lit and giving back `VEHICLE_ALBEDO`
+   * of the light: estimated; not while the eye is inside it). Each counts by how far out of the air the eye is
+   * (`Setting.space`), so from the ground nothing does, and the eye follows the veil over its own times.
+   */
+  /**
+   * The vehicle as a sphere where it is now: the one in flight (measured in its own frame when it changes, and every
+   * two seconds as it sheds what it sheds), else the models' bounds (the orbital stage's craft).
+   */
+  private vehicleSphere(): THREE.Sphere {
+    const flier = this.lifted.flying ? (this.flier?.group ?? null) : null;
+    if (!flier) return this.bounds;
+    const sized = this.sized;
+    const now = performance.now();
+    flier.updateWorldMatrix(true, false);
+    if (sized.of !== flier || now - sized.at > 2000) {
+      sized.of = flier;
+      sized.at = now;
+      new THREE.Box3().setFromObject(flier).getBoundingSphere(sized.local);
+      sized.local.applyMatrix4(sized.inverse.copy(flier.matrixWorld).invert());
+    }
+    return sized.world.copy(sized.local).applyMatrix4(flier.matrixWorld);
+  }
+  private readonly sized = {
+    of: null as THREE.Object3D | null,
+    at: 0,
+    local: new THREE.Sphere(),
+    world: new THREE.Sphere(),
+    inverse: new THREE.Matrix4(),
+  };
+
+  private seeStars(dt: number, atOnce: boolean): void {
+    const s = this.setting;
+    if (!s.stars || !s.globe) return;
+    const out = s.space ?? 0;
+    let veil = 0;
+    if (out > 0) {
+      const eye = this.camera.position;
+      const sunlit = s.sunlit ?? 0;
+      const [earth, sun, vehicle] = this.glare as [Glaring, Glaring, Glaring];
+      // the Earth: under the eye's plumb line, at its height plus the Earth's radius
+      s.globe.up(eye, earth.toward).negate();
+      const d = EARTH_SPHERE + Math.max(s.globe.altitude(eye), 0);
+      const r = Math.min(1, EARTH_SPHERE / d);
+      earth.radius = Math.asin(r);
+      const phase = Math.acos(THREE.MathUtils.clamp(-s.globe.sun.dot(earth.toward), -1, 1)); // the Sun and the eye, seen from the Earth
+      earth.lux = (2 / 3) * EARTH_ALBEDO * SUN_LUX * r * r * ((Math.sin(phase) + (Math.PI - phase) * Math.cos(phase)) / Math.PI);
+      sun.toward.copy(s.globe.sun);
+      sun.radius = 0.00465;
+      sun.lux = SUN_LUX * sunlit;
+      const near = this.vehicleSphere();
+      vehicle.toward.copy(near.center).sub(eye);
+      const away = vehicle.toward.length();
+      vehicle.lux = 0;
+      if (away > 1.05 * near.radius && near.radius > 0) {
+        vehicle.toward.divideScalar(away);
+        const across = near.radius / away;
+        vehicle.radius = Math.asin(across);
+        vehicle.lux = 0.5 * VEHICLE_ALBEDO * SUN_LUX * sunlit * across * across;
+      }
+      this.camera.updateMatrixWorld();
+      veil = out * veiled(this.camera, this.glare);
+    }
+    if (this.starEye.step(veil, dt, atOnce)) {
+      s.stars(this.starEye.limit);
+      this.dirty = true;
+    }
   }
 
   /**

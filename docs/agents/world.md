@@ -89,10 +89,17 @@ first frame). Each is carried along its proper motion to the clock's date (`star
 turned by precession, nutation and the Earth's rotation (`j2000ToSite`): to 0.012 degrees against
 the IAU's own routines at liftoff (tests/world.test.mjs; aberration is what is left out). From
 orbit nothing more is done to them: the scene's frame turns with the Earth and the stars do not.
-The Milky Way is NASA's map (`public/sky/milkyway.jpg`), in the same frame. Which stars show is
-one rule (`daysky.ts`: `starLimit`): the ground's limit for the Sun's height, a magnitude fainter
-for each 2.512 times less air above the eye, no further than the eye's own limit. How bright a
-star is drawn against another is compressed for a screen and says so (heavens.ts).
+The Milky Way is NASA's map, in the same frame, kept as its own linear light (`public/sky/milkyway.jpg`, one
+channel by the rule `stars.ts` `MILKY_WAY` gives) and its colour apart (`milkyway.tint.jpg`), so it is drawn in
+proportion to its light and nothing faint is lifted. A star's colour is its black body's for its B-V
+(`starColour`: Ballesteros's temperature, then the Planckian locus). Which stars show is one rule
+(`daysky.ts`: `starLimit`): the ground's limit for the Sun's height, a magnitude fainter for each 2.512 times less
+air above the eye, handed over as the air thins to the eye's own limit above it, which is set by what is lit in its
+view (`viewer/eye.ts` `StarEye`: the sunlit Earth, the Sun, the vehicle, each a veil by Stiles and Holladay, and
+Hecht's threshold against it as Crumey gives it), followed over the eye's own times. Every star is drawn from that
+limit, so as it falls they dim together and the faint ones go in order; how bright a star is drawn against another is
+compressed for a screen and says so (heavens.ts). What the Earth hides is what is under the horizon of the eye's own
+plumb line and true height (`Heavens.horizon`): from the Moon's distance, the Earth's disc.
 
 The Moon has a face (`world/moon.ts`): `moonAxes` is its own frame at an instant (+Z its north pole, +X the mean
 direction of the Earth, as its maps are drawn), from Cassini's laws and Meeus's librations (chapter 53), and
