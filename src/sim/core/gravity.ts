@@ -35,6 +35,20 @@ export interface GravityTerm {
   readonly name: string;
   readonly confidence: Confidence;
   at(r: Vec3, t: number): Vec3;
+  /** The body it is the pull of (or, of a whole field as one term, the one in it), where that is another body than the central one, with a surface a path can pass or meet (`Passed`). */
+  readonly body?: Passed;
+}
+
+/**
+ * Another body a path may pass or meet, as whoever follows a path past it needs it (sim/predict.ts: the nearest it
+ * comes, and whether it meets the surface): its name, its GM, m^3/s^2, its radius, m, and where its centre is from the
+ * central body's in the flight's frame, `t` seconds from liftoff.
+ */
+export interface Passed {
+  readonly name: string;
+  readonly gm: number;
+  readonly radius: number;
+  where(t: number): Vec3;
 }
 
 /** The Earth's own gravity, its point mass and its oblateness (world/orbit.ts: WGS 84's GM and J2). */
@@ -48,12 +62,19 @@ export function centralPoint(name: string, gm: number): GravityTerm {
 /**
  * A third body's pull as a point mass: the difference between its pull at `r` and its pull on the central body (whose
  * frame this is, falling toward it as everything in it does). `where(t)` is its place from the central body's centre in
- * the flight's frame.
+ * the flight's frame. `body` (its name and radius) says it has a surface, for whoever follows a path past it.
  */
-export function pointMass(name: string, gm: number, where: (t: number) => Vec3, confidence: Confidence): GravityTerm {
+export function pointMass(
+  name: string,
+  gm: number,
+  where: (t: number) => Vec3,
+  confidence: Confidence,
+  body?: { name: string; radius: number },
+): GravityTerm {
   return {
     name,
     confidence,
+    ...(body ? { body: { name: body.name, gm, radius: body.radius, where } } : {}),
     at(r, t) {
       const s = where(t);
       const d = sub(s, r);
@@ -75,7 +96,7 @@ function placeOf(body: 'moon' | 'sun', frame: EarthFrame): { where: (t: number) 
 /** The Moon pulling on a flight about the Earth: DE440's place (derived) when it is loaded, else Meeus's (estimated). */
 export const moonOnEarthFlight = (frame: EarthFrame): GravityTerm => {
   const { where, confidence } = placeOf('moon', frame);
-  return pointMass('the Moon', MOON.gm.value, where, confidence);
+  return pointMass('the Moon', MOON.gm.value, where, confidence, { name: MOON.name, radius: MOON.equatorialRadius.value });
 };
 
 /** The Sun pulling on a flight about the Earth: DE440's place (derived) when it is loaded, else Meeus's (estimated). */
@@ -117,11 +138,20 @@ export function termsOf(
   frame: EarthFrame,
 ): readonly GravityTerm[] {
   if (!def) return EARTH_GRAVITY;
-  // (a plan with a sphere: its whole field about the Earth as one term, the same bodies as are summed on either side of it)
+  // (a plan with a sphere: its whole field about the Earth as one term, the same bodies as are summed on either side of it;
+  // and the Moon in it as a body with a surface, so a path is followed past it and ends on it: sim/predict.ts `Pass`)
   if ('sphere' in def && def.sphere) {
     const field = fieldFor(def as GravityNamed, frame);
     const earth = field.about ? field.about('earth') : field;
-    return [{ name: 'the flight’s gravity, about the Earth', confidence: earth.confidence, at: (r, t) => earth.at(r, t) }];
+    const moon = def.terms.includes('moon') ? moonOnEarthFlight(frame).body : undefined;
+    return [
+      {
+        name: 'the flight’s gravity, about the Earth',
+        confidence: earth.confidence,
+        at: (r, t) => earth.at(r, t),
+        ...(moon ? { body: moon } : {}),
+      },
+    ];
   }
   return [
     earthJ2,
