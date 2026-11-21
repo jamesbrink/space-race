@@ -32,8 +32,8 @@ import { elementsOf, gravity, planeThrough, type State, sunlit } from '../world/
 import { ratioOf } from '../world/thermosphere.ts';
 import { julianDate } from '../world/time.ts';
 import { airAt, airDrag } from './air.ts';
-import { centreAt, EARTH_FIELD, type Field, fieldFor, recentred, stepAbout, stepIn, termsOf } from './core/gravity.ts';
 import { atmosphere, meanFreePath } from './atmosphere.ts';
+import { centreAt, EARTH_FIELD, type Field, fieldFor, recentred, stepAbout, stepIn, termsOf } from './core/gravity.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
 import { bankFlown, type EntryDef, type EntryFlown, type EntryHands, type EntryPilot, entryPilot } from './entry.ts';
 import { along } from './fly.ts';
@@ -59,17 +59,17 @@ import {
   coelliptic,
   elevationOf,
   flownFrom,
-  publishedState,
   needsTarget,
+  publishedState,
   reach,
   solveBurn,
   stationPush,
   steeredKind,
   type Target,
 } from './pursuit.ts';
-import type { Fly, Steering } from './steering.ts';
 import { crossing, passed, type Railed, stretches } from './rails.ts';
 import type { CoastRotation } from './rigid.ts';
+import type { Fly, Steering } from './steering.ts';
 
 /**
  * How the ascent is steered (sim/staged.ts): a stated law, not a stored programme, because the programme flown has not
@@ -1531,8 +1531,14 @@ export function flyOrbit(
   const steering: (Steering | undefined)[] = moves.map(() => undefined);
   const thrusts: (Vec3 | null)[] = moves.map(() => null);
   const steeredBurn: (BurnFlown | undefined)[] = moves.map(() => undefined);
-  /** Which manoeuvres lit on an elevation have been lit (`Pursuit.elevation`). */
+  /** Which manoeuvres have been lit: one lit on an elevation is looked for until it is (`Pursuit.elevation`), and those that finish it wait for it (`waits`). */
   const lit: boolean[] = moves.map(() => false);
+  /**
+   * Each manoeuvre's firing's end, and the instant a `reach` is aimed at, s: the record's, or moved with the arrival the
+   * terminal phase they finish solved (`Pursuit`'s `arrival`, `retime`). A braking held on the target comes to rest by its end.
+   */
+  const firing: number[] = moves.map((m) => m.off);
+  const aimedAt: number[] = moves.map((m) => (m.toward && 'reach' in m.toward ? m.toward.at.value : Number.NaN));
   const burns: BurnFlown[] = [];
   const radius = heightsBall(plan, site);
   const interfaceHeight = plan.record?.entryInterface?.value ?? INTERFACE;
@@ -1548,6 +1554,12 @@ export function flyOrbit(
   let t = from ? from.t : ship.orbit.injection.at.value;
   let state: State = from ? { r: from.r, v: from.v } : injectionState(plan, site, frame);
   if (field.about) centre = centreAt(earthSide, state.r, t);
+  // (a burn lit on an elevation whose window had opened before this run begins is the run's before it, lit or not: begun
+  // from a later state, as the landing's aim flies the rest again, the coast does not look for it again, where it would
+  // light it at once at the window's end)
+  moves.forEach((m, i) => {
+    if (m.toward && 'elevation' in m.toward && t > m.on - m.toward.elevation.window.value) lit[i] = true;
+  });
   // (the record's tracking fixes are instants a sample is kept at, so the run can be held against each: they move nothing)
   const fixes = (plan.record?.coastFixes ?? []).filter((fix) => fix.at.value > t);
   let aim: Vec3 = [0, 0, 0];
@@ -1578,7 +1590,7 @@ export function flyOrbit(
     moves.forEach((m, i) => {
       if (!holding[i] || as < m.on || as >= m.off || !m.toward || !('station' in m.toward)) return;
       const want = { ahead: m.toward.station.ahead.value, above: m.toward.station.above.value };
-      out = add(out ?? [0, 0, 0], stationPush(pursued!, s, at, want, ship.moves[i]!.off, m.most!, earthSide));
+      out = add(out ?? [0, 0, 0], stationPush(pursued!, s, at, want, firing[i]!, m.most!, earthSide));
     });
     return out;
   };
@@ -1789,10 +1801,36 @@ export function flyOrbit(
     marks = [...marks, at].sort((p, q) => p - q);
   };
   /**
+   * The burns that finish the terminal phase `of` lights (`Pursuit`'s `arrival`), moved with the arrival it solved,
+   * `arrives`: each still to come lit, aimed and come to rest by as much later than the record's as that arrival is
+   * later than the record's (earlier, earlier), or lit now where that is already past.
+   */
+  const arrivalOf = (x: Move) => (x.toward && ('reach' in x.toward || 'station' in x.toward) ? x.toward.arrival : undefined);
+  /** Whether a burn that finishes a terminal phase lit on an elevation waits for it, not yet lit, rather than light on the clock. */
+  const waits = (x: Move): boolean => {
+    const of = arrivalOf(x)?.of;
+    const k = of === undefined ? -1 : moves.findIndex((y) => y.lit === of);
+    return k >= 0 && !lit[k];
+  };
+  const retime = (of: string, arrives?: number): void => {
+    moves.forEach((x, j) => {
+      const arrival = arrivalOf(x);
+      if (!arrival || arrival.of !== of || lit[j]) return;
+      const by = arrives === undefined ? 0 : arrives - arrival.at.value;
+      const lights = Math.max(t, x.on + by);
+      x.off += lights - x.on;
+      x.on = lights;
+      firing[j] = firing[j]! + by;
+      aimedAt[j] = aimedAt[j]! + by;
+      marks = [...marks, x.on, x.off].sort((p, q) => p - q);
+    });
+  };
+  /**
    * A manoeuvre lit: along the attitude the plan holds, for the record's time; or, made on the target with the target
    * there, as guidance solves it from the state now (sim/pursuit.ts), ending when it has given what was solved.
    */
   const light = (m: Move, i: number): void => {
+    lit[i] = true;
     const planned = aimFor(
       m.aim,
       state.r,
@@ -1838,7 +1876,7 @@ export function flyOrbit(
     if (toward && 'station' in toward) {
       lines[i] = undefined;
       holding[i] = true;
-      endAt(m, toward.until.value);
+      endAt(m, Math.max(toward.until.value, firing[i]!));
       burns.push({ lit: m.lit, cut: m.cut, on: t, off: m.off, velocity: 0, solved: true });
       return;
     }
@@ -1852,7 +1890,7 @@ export function flyOrbit(
             t,
             size,
             { ahead: toward.reach.ahead.value, above: toward.reach.above.value },
-            toward.at.value,
+            aimedAt[i]!,
             scale(record.line, record.velocity),
           )
         : (() => {
@@ -1881,8 +1919,8 @@ export function flyOrbit(
   /** What happens at the instant now reached. */
   const arrive = (): void => {
     moves.forEach((m, i) => {
-      // (a burn lit on an elevation is lit where the target rises to it: `rises`)
-      if (t === m.on && !(m.toward && 'elevation' in m.toward)) light(m, i);
+      // (a burn lit on an elevation is lit where the target rises to it, and one that finishes it once it has: `retime`)
+      if (t === m.on && !(m.toward && 'elevation' in m.toward) && !waits(m)) light(m, i);
     });
     for (const c of ranges) {
       const it = (c.when as { at: number }).at === t ? pursued?.at(t) : undefined;
@@ -2093,13 +2131,17 @@ export function flyOrbit(
       const rose = as >= m.on - window.value && above(last, as) < 0 && above(state, t) >= 0;
       if (!rose && t < m.on + window.value) return;
       if (rose) {
-        t = crossing((to) => above(part(to), to), as, t);
-        state = part(t);
+        // (the state at the crossing before the clock is set back to it: `part` gives the step's end at the clock's instant)
+        const at = crossing((to) => above(part(to), to), as, t);
+        state = part(at);
+        t = at;
       }
       lit[i] = true;
       m.on = t;
       marks = [...marks, t].sort((p, q) => p - q);
       light(m, i);
+      // (its corrections and its braking moved with the arrival it solved; where it was not solved, at the record's instants)
+      retime(m.lit, steeredBurn[i]?.reached?.meetAt);
     });
     // (what the steered manoeuvres gave over the step, as their accelerometers sensed it)
     thrusts.forEach((x, i) => {

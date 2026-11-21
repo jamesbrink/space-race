@@ -123,6 +123,19 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   ground's targeting is the flight ahead on the run's own forces, not the RTCC's. The live deck's lever (with G on) is to
   take its line and its cut from the same `Steering`: not yet wired.
 
+- **A terminal phase lit on its elevation carries its corrections and its braking with it** (sim/plan.ts `Arrival`). A
+  `reach` or a `station` given `arrival: { of, at }` finishes the terminal phase the event `of` lights on an elevation,
+  whose transfer the record had arrive at `at`. It waits for that burn, and once it is lit (`flyOrbit` `retime`) is lit
+  as long before the arrival the burn solved (`reached.meetAt`) as the record's lighting was before `at`: a `reach`
+  aimed at that arrival, a `station` come to rest by its firing's end moved as much (and held to `until`, or to that end
+  where it is later), as the crew made their corrections at so many degrees to go. Where the terminal phase was not
+  solved, they are lit at the record's instants. The trigger's crossing is found within the step and the state flown to
+  it before the clock is set back there. A coast begun after a trigger's window opened (`from`, as the landing's aim
+  flies the rest again from a later state) takes that burn as already the run's before it and never looks for it, so it
+  is not lit a second time at once at the window's end. tests/pursuit.test.mjs holds Gemini VIII's terminal phase to
+  this. Gemini VIII and XII keep theirs on the clock (`reach`): flown on the elevation, the record's checks hold no
+  better (their mission.md files say by how much).
+
 - **What a stopped stage lets out is a force, and its attitude is the law's** (`Craft.vents`, plan.ts `VentDef`;
   staged.ts `stackOf` `vent`, `lawOf` `attachedAt`). A stage still joined after its engine has stopped (an S-IVB in orbit
   with the spacecraft on it) pushes the stack along its long axis by its vents' curves, N against seconds from liftoff,

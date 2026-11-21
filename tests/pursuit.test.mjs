@@ -5,17 +5,19 @@
 // here, another flight's vehicle is where that flight's record run has it, to the bit after the change of clock and
 // frame, and a published orbit is flown from as stated.
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { flight as apollo8 } from '../missions/usa/apollo/flights/apollo-8/flight.ts';
+import { test } from 'node:test';
 import { flight as apollo7 } from '../missions/usa/apollo/flights/apollo-7/flight.ts';
+import { flight as apollo8 } from '../missions/usa/apollo/flights/apollo-8/flight.ts';
+import { flight as gemini8 } from '../missions/usa/gemini/flights/gt-8/flight.ts';
 import { centreAt, fieldFor, RSPHERE, recentred, stepAbout } from '../src/sim/core/gravity.ts';
-import { flyOrbit, heightsBall } from '../src/sim/orbital.ts';
-import { between } from '../src/sim/run.ts';
-import { clockAt } from '../src/sim/plan.ts';
 import { rk4 } from '../src/sim/core/rk4.ts';
+import { flyOrbit, heightsBall } from '../src/sim/orbital.ts';
+import { clockAt } from '../src/sim/plan.ts';
 import { coelliptic, elevationOf, flownFrom, placeFrom, reach, solveBurn, stationPush } from '../src/sim/pursuit.ts';
+import { between } from '../src/sim/run.ts';
+import { flyWhole, steer, targetOf } from '../src/sim/staged.ts';
 import { flyBurn, lambert, thrustLine } from '../src/sim/steering.ts';
 import { EARTH, G0, MOON } from '../src/world/bodies.ts';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -774,4 +776,57 @@ test('in the coast: a burn given an orbit to reach is solved as it lights, steer
   assert.ok(Math.abs(dot(burn.line, unit(cross(s.r, s.v)))) < 1e-9, 'in the plane');
   assert.ok(Math.abs(run.results[`${lit.id}.velocity`] - burn.velocity) < 1e-9);
   assert.ok(burn.fuel > 0);
+});
+
+test('a terminal phase lit on an elevation: its corrections and its braking move with the arrival it solved, and a coast begun after its window does not light it again', () => {
+  // Gemini VIII's terminal phase (its target a published orbit) lit on its elevation, looked for within an hour of the
+  // crew's lighting: the burns that finish it are timed and aimed on the arrival it solves (`Pursuit` `arrival`), not on
+  // the record's clock
+  const f = gemini8;
+  const [site, frame, sea] = [siteFrame(f.site), frameOf(f), f.site.seaLevel.value];
+  const event = (id) => f.plan.events.find((e) => e.id === id);
+  const at = (id) => clockAt(f.plan, event(id));
+  const [tpi, first] = [at('terminal-phase'), at('correction-1')];
+  const towardOf = (id) => event(id).do.find((a) => 'ignite' in a).toward;
+  const arrives = towardOf('correction-1').at.value;
+  const arrival = { of: 'terminal-phase', at: { value: arrives } };
+  const travel = (81.8 * (arrives - tpi)) / (arrives - first);
+  const ANGLE = 26.8;
+  const toward = {
+    'terminal-phase': { elevation: { angle: { value: ANGLE }, travel: { value: travel }, window: { value: 3600 } } },
+    'correction-1': { ...towardOf('correction-1'), arrival },
+    'correction-2': { ...towardOf('correction-2'), arrival },
+    'terminal-braking': { ...towardOf('terminal-braking'), arrival },
+  };
+  const plan = {
+    ...f.plan,
+    events: f.plan.events.map((e) =>
+      e.id in toward ? { ...e, do: e.do.map((a) => ('ignite' in a ? { ...a, toward: toward[e.id] } : a)) } : e,
+    ),
+  };
+  // (from the pad, as the record's run is flown: staged.ts `flyWhole`)
+  const whole = flyWhole(plan, site, frame, sea, steer(plan, site, frame, sea));
+  const run = whole.coast;
+  const target = targetOf(plan, frame, sea, whole.ascent);
+  const burn = (id) => run.burns.find((b) => b.lit === id);
+  const lit = burn('terminal-phase');
+  assert.equal(lit.aim, 'elevation');
+  const there = between(run.samples, lit.on);
+  const seen = elevationOf(there, target.at(lit.on).r) / (Math.PI / 180);
+  assert.ok(Math.abs(seen - ANGLE) < 0.01, `lit with the Agena ${seen} degrees up`);
+  const moved = lit.reached.meetAt - arrives;
+  console.log(
+    `# lit ${(lit.on - tpi).toFixed(1)} s after the record's, ${lit.velocity.toFixed(2)} m/s; its arrival ${moved.toFixed(1)} s after the record's`,
+  );
+  for (const id of ['correction-1', 'correction-2', 'terminal-braking']) {
+    const b = burn(id);
+    assert.ok(b, id);
+    const want = Math.max(lit.on, at(id) + moved);
+    assert.ok(Math.abs(b.on - want) < 1e-6, `${id} lit at ${b.on}, for ${want}`);
+    assert.ok(b.on >= lit.on, `${id} after the terminal phase`);
+  }
+  // begun again from a state after the window has opened (as the landing's aim flies the rest again): not lit again
+  const late = run.samples.find((s) => s.t >= hms(6, 40, 0));
+  const again = flyOrbit(plan, site, frame, sea, 10, { t: late.t, r: late.r, v: late.v }, undefined, undefined, hms(7, 0, 0), target);
+  assert.ok(!(again.burns ?? []).some((b) => b.lit === 'terminal-phase'), 'the terminal phase is not lit a second time');
 });

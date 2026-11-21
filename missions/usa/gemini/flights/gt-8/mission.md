@@ -108,8 +108,17 @@ orbit the run then solves on the Agena lies 5 to 7 km over the record's, about 2
 was 25 (13.5 nautical miles). It closes on the Agena slower: 10 km farther than the record at the lock-on, before the
 coelliptic burn, 37 km farther by 5:14:56. The terminal phase, lit by the clock where the crew lit it on the Agena's
 elevation (26.8°), has the farther to go in the same time and asks nearly three times the record's impulse. Guidance
-that solves the height adjust for its apogee and lights the terminal phase on the elevation (the plan's item A4) closes
-this; nothing here is adjusted to.
+that solves the height adjust for its apogee closes this; nothing here is adjusted to.
+
+**Why the terminal phase stays on the clock.** The elevation trigger works (plan.ts `Pursuit` `elevation`, with the
+corrections and the braking moved with the arrival it solves, `arrival`), and was flown here from the pad on hal9000 on
+21 November 2026. The run's Agena, 37 km farther than the record's, rises through 26.8° only at 5:32:46, 18 minutes after
+the crew's lighting (looked for within an hour of it; within the 15 minutes first tried it never rises so far, and is
+lit at the window's end, 5:29:56, from 36°). Lit there it asks 13.2 m/s (the clock's 22.5, the record's 8.3) and the
+braking 19.9 (29.9, 12.6), but the meeting comes at 6:06 instead of 5:47:46, so the Agena at the record's 5:55 is 12.8
+km off where the clock's run keeps station 150 ft from it, and the orbit read at 6:00 is the transfer's: two checks that
+hold on the clock miss. The clock's run is kept until the four burns before the coelliptic are aimed and the run comes to
+the terminal phase where the record did.
 
 **The corrections solve to nothing** because the run has no navigation, radar or platform error: the terminal phase it
 solves reaches the Agena. The crew's took out theirs.
@@ -155,7 +164,7 @@ computer"); the destroyer *Leonard F. Mason* reported picking it up at 25°22′
 
 - The docking, the docked period and the undocking's attitude (section 4). D3 makes the docking a phase of the same run.
 - The four burns before the coelliptic as aimed (section 3): they are flown as recorded.
-- The terminal phase's trigger on the elevation angle: it is lit by the clock.
+- The terminal phase's trigger on the elevation angle: it is lit by the clock (section 3 says why).
 - Thruster No. 8's push on the pair and on the ship, the roll and the re-entry control system's firings: none is a
   translation on the record.
 - The computer's entry commands as commanded: they are flown by the clock as read off a figure.
