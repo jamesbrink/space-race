@@ -87,8 +87,8 @@ function level(elevation: number): number {
 }
 
 /** Exposure by day, and how many times further the tone mapping's exposure goes by night (the rest is in the light's own levels: `dayLight`). */
-const DAY_EXPOSURE = 0.8;
-const NIGHT_ADAPTATION = 8;
+export const DAY_EXPOSURE = 0.8;
+export const NIGHT_ADAPTATION = 8;
 
 // ---------------------------------------------------------------------------------------------------------------------
 // What light there is, in lux on level ground: documented (docs/sources.md, "The light at night").
@@ -113,7 +113,7 @@ export function circular(elevation: number): { direct: number; sky: number } {
 }
 
 /** The Sun's light square on to it above the air, lux: the circular's (IS = 133775 M). */
-const SUN_LUX = 133_775;
+export const SUN_LUX = 133_775;
 
 /**
  * Light on level ground from the Sun and the sky it lights, lux, by the Sun's apparent elevation (degrees): the
@@ -408,20 +408,26 @@ export function dayLight(sunElevation: number, moon: { elevation: number; lit: n
   };
 }
 
-/** The faintest star an eye set by a sunlit Earth and a sunlit vehicle picks out of a black sky. Estimated. */
-export const DAY_ADAPTED = 5.2;
+/** The faintest star an eye in the dark sees: what every star is drawn from with nothing lit in view (heavens.ts `DARK_LIMIT`). */
+const DARK = 6.5;
 
 /**
  * The faintest star that shows from a height, given the faintest that shows from the ground under the same Sun
- * (`ground`: limitingMagnitude) and how much of the air is still above the eye (`air`: 1 at the sea, 0 above it all).
+ * (`ground`: limitingMagnitude), how much of the air is still above the eye (`air`: 1 at the sea, 0 above it all),
+ * and the faintest the eye sees above the air for what is lit in its view (`eye`: eye.ts `StarEye`, 6.5 with nothing
+ * lit in it).
  *
  * Physical: by day stars are lost in the sky's own light, which is sunlight scattered by the air above the eye, so
  * it dims as that air thins; against a bright ground a point is seen when it is a set fraction of the ground under
- * it (Weber's law), so each 2.512 times less sky shows stars a magnitude fainter. For the look: where that ends.
- * With no sky left the limit is the eye's own, set by what else it is looking at: by day `DAY_ADAPTED` (the sky as
- * it is, not as a pilot's sunlit eye had it: Shepard saw no stars through his periscope); by night the ground's
- * own limit, 6.5.
+ * it (Weber's law), so each 2.512 times less sky shows stars a magnitude fainter. With no sky left the limit is the
+ * eye's own, set by what else it is looking at (the sunlit Earth, the vehicle, the Sun: Shepard saw no stars through
+ * his periscope), which is handed over from the ground's as the air thins, so a night's sky from the ground is not
+ * dimmed by a sunlit Earth no one there can see.
  */
-export function starLimit(ground: number, air: number): number {
-  return Math.min(Math.max(ground, DAY_ADAPTED), ground - 2.5 * Math.log10(Math.max(air, 1e-6)));
+export function starLimit(ground: number, air: number, eye: number): number {
+  return Math.min(
+    Math.max(ground, eye),
+    ground - 2.5 * Math.log10(Math.max(air, 1e-6)),
+    eye + (DARK - eye) * Math.min(Math.max(air, 0), 1),
+  );
 }

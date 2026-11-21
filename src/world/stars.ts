@@ -564,3 +564,50 @@ export function starDirection(ra: number, dec: number, pmRa: number, pmDec: numb
 
 /** Years from 2000.0 to a Julian date (TT): what a proper motion is multiplied by. */
 export const yearsFrom2000 = (jdTT: number): number => (jdTT - 2451545.0) / 365.25;
+
+/**
+ * A star's effective temperature, kelvin, from its B-V colour index: Ballesteros's formula (F. J. Ballesteros, "New
+ * insights into black bodies", EPL 97 (2012) 34008, equation 14), which takes the star for a black body. Documented;
+ * good to a few per cent over the main sequence, less for the coolest giants.
+ */
+export const starTemperature = (bv: number): number => 4600 * (1 / (0.92 * bv + 1.7) + 1 / (0.92 * bv + 0.62));
+
+/**
+ * The colour of a black body at `kelvin` as linear sRGB (primaries of Rec. 709, white D65), at a luminance of 1: its
+ * chromaticity on the Planckian locus by Kim and others' cubic fit (B. Kang, O. Moon, C. Hong, H. Lee, B. Cho and
+ * Y. Kim, "Design of advanced color temperature control system for HDTV applications", Journal of the Korean Physical
+ * Society 41 (2002) 865: within 0.0003 of the locus from 1,667 to 25,000 K, to which the temperature is held), then
+ * IEC 61966-2-1's matrix. A cool star's blue comes out a little under nothing (the screen has no such red) and is
+ * held to nothing. Documented.
+ */
+export function blackBody(kelvin: number): [number, number, number] {
+  const t = Math.min(Math.max(kelvin, 1667), 25_000);
+  const x =
+    t < 4000
+      ? -0.2661239e9 / t ** 3 - 0.2343589e6 / t ** 2 + 0.8776956e3 / t + 0.17991
+      : -3.0258469e9 / t ** 3 + 2.1070379e6 / t ** 2 + 0.2226347e3 / t + 0.24039;
+  const y =
+    t < 2222
+      ? -1.1063814 * x ** 3 - 1.3481102 * x ** 2 + 2.18555832 * x - 0.20219683
+      : t < 4000
+        ? -0.9549476 * x ** 3 - 1.37418593 * x ** 2 + 2.09137015 * x - 0.16748867
+        : 3.081758 * x ** 3 - 5.8733867 * x ** 2 + 3.75112997 * x - 0.37001483;
+  const X = x / y,
+    Z = (1 - x - y) / y;
+  return [
+    Math.max(3.2406 * X - 1.5372 - 0.4986 * Z, 0),
+    Math.max(-0.9689 * X + 1.8758 + 0.0415 * Z, 0),
+    Math.max(0.0557 * X - 0.204 + 1.057 * Z, 0),
+  ];
+}
+
+/** A star's colour from its B-V index, linear sRGB at a luminance of 1: blue-white (Rigel), white (Vega, a little blue of the screen's white), the Sun's cream, orange (Betelgeuse). */
+export const starColour = (bv: number): [number, number, number] => blackBody(starTemperature(bv));
+
+/**
+ * How the Milky Way's map is kept (public/sky/milkyway.jpg and milkyway.tint.jpg; tools/stars.mjs writes them, viewer/heavens.ts reads
+ * them): its light alone in one channel, a byte of `(light / white) ^ (1 / gamma)` (the map's own linear light; what
+ * is over `white`, a few thousandths of a percent of the sky at the hearts of the brightest clusters, is held to it),
+ * and its colour apart at a quarter of the size, each channel the colour's over its luminance, `unit` of a byte for 1.
+ */
+export const MILKY_WAY = { white: 0.5, gamma: 2.2, unit: 128 / 255 } as const;

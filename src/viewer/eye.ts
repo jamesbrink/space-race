@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { smoothstep } from '../util/math.ts';
+import { NIGHT_LUX } from './daysky.ts';
 
 /**
  * The eye on foot or over a place by night: adapted to what it is looking at, lamps and all.
@@ -178,5 +179,119 @@ export class Eye {
   /** Back to the sky's light alone, at once (another place, another flight). */
   reset(): void {
     this.level = this.wanted = 0;
+  }
+}
+
+/**
+ * The eye above the air, among things the Sun lights: what it can still see of the stars.
+ *
+ * Out there the sky is black whatever the hour, and what hides the stars is what else is in view: the sunlit Earth,
+ * the vehicle, the Moon, the Sun itself. Each lays a veil over the whole view (Stiles and Holladay's, `GLARE` above:
+ * its light at the eye over the square of its angle off the line of sight), and against a ground that bright a point
+ * of light is seen only if it is as bright as Hecht's law asks (`faintest`). Both are documented, and taken whole
+ * they say that beside a sunlit spacecraft filling a tenth of the frame no star is seen at all, which is what the
+ * crews said and what their photographs show. The scene keeps a sky all the same (daysky.ts `starLimit` hands over to
+ * this limit as the air thins): of each magnitude the law takes, the picture takes `STAR_KEEP`. Estimated, and the one thing here
+ * that is: the stars are faint beside what is lit, fainter the more of the view it fills, and all there (with the
+ * Milky Way, heavens.ts) only for an eye looking at nothing lit, once it has had the minutes that takes (`adapt`).
+ */
+
+/**
+ * The faintest star seen against a ground of luminance `b` (cd/m²), as a visual magnitude: Hecht's threshold for a
+ * point of light (S. Hecht, "Visual thresholds of steady point sources of light in fields of brightness from dark to
+ * daylight", JOSA 37 (1947) 59), in the units and with the constants A. Crumey gives it ("Human contrast threshold
+ * and astronomical visibility", MNRAS 442 (2014) 2600, equation 20: the least illuminance seen, lux, is
+ * c (1 + sqrt(K b))², with one c and K for the rods and another for the cones, which meet at 0.01645 cd/m²), and
+ * his magnitude for an illuminance (-2.5 log lux - 13.99). 7.93 in the dark. Documented; Crumey shows it is out by up
+ * to half a magnitude between a moonlit sky's ground and twilight's, which the share kept of it here (`STAR_KEEP`)
+ * makes a tenth of one.
+ */
+export function faintest(b: number): number {
+  const [c, k] = b <= 1.645e-2 ? [1.706e-9, 1.259e3] : [4.808e-8, 1.259e-1];
+  return -2.5 * Math.log10(c * (1 + Math.sqrt(k * Math.max(b, 0))) ** 2) - 13.99;
+}
+
+/**
+ * The sky's own ground above the air, cd/m²: the zodiacal light, the galaxy's and the faint stars' (daysky.ts
+ * `NIGHT_LUX`, each the light it sheds on level ground, over π as a sky of even brightness), with no airglow.
+ * Derived.
+ */
+export const SPACE_GROUND = (NIGHT_LUX.zodiacal + NIGHT_LUX.galaxy + NIGHT_LUX.stars) / Math.PI;
+
+/** How much of each magnitude the veil takes off the stars the picture takes off them. Estimated (above). */
+export const STAR_KEEP = 0.15;
+
+/** The faintest star of the catalogue drawn: what an eye in the dark sees (heavens.ts). */
+const DARK_LIMIT = 6.5;
+
+/** The faintest star drawn by an eye adapted to a veil of `veil` cd/m² over the sky's own ground. */
+export const limitUnder = (veil: number): number =>
+  DARK_LIMIT - STAR_KEEP * (faintest(SPACE_GROUND) - faintest(SPACE_GROUND + Math.max(veil, 0)));
+
+/** Something lit in an eye's view above the air: toward it from the eye (a unit vector in the scene), half its width (radians) and its light at the eye, lux. */
+export interface Glaring {
+  toward: THREE.Vector3;
+  radius: number;
+  lux: number;
+}
+
+/**
+ * How far past the frame's edge a light still reaches the eye, radians: a window's frame or a lens's hood shields
+ * what is outside the view, over a few degrees and not at a line. Estimated.
+ */
+const SHIELD = (3 * Math.PI) / 180;
+
+const seenAt = new THREE.Vector3();
+
+/**
+ * The veil the lit things in `camera`'s view lay over it, cd/m² (Stiles and Holladay: 10 E / θ², θ in degrees off
+ * the line of sight, no less than 1.5 nor than the thing's own half width). Only what is in the frame counts, each
+ * coming in over `SHIELD` as it crosses the frame's edge, so a view turned away from the Earth loses its veil
+ * smoothly. The camera's world matrix must be as the frame draws it.
+ */
+export function veiled(camera: THREE.PerspectiveCamera, things: readonly Glaring[]): number {
+  const halfY = THREE.MathUtils.degToRad(camera.fov / 2);
+  const halfX = Math.atan(Math.tan(halfY) * camera.aspect);
+  let veil = 0;
+  for (const thing of things) {
+    if (thing.lux <= 0) continue;
+    seenAt.copy(thing.toward).transformDirection(camera.matrixWorldInverse);
+    const x = Math.abs(Math.atan2(seenAt.x, -seenAt.z));
+    const y = Math.abs(Math.atan2(seenAt.y, Math.hypot(seenAt.x, seenAt.z)));
+    const inside =
+      (1 - smoothstep(halfX + thing.radius - SHIELD, halfX + thing.radius + SHIELD, x)) *
+      (1 - smoothstep(halfY + thing.radius - SHIELD, halfY + thing.radius + SHIELD, y));
+    if (inside <= 0) continue;
+    const off = THREE.MathUtils.radToDeg(Math.max(Math.acos(THREE.MathUtils.clamp(-seenAt.z, -1, 1)), thing.radius));
+    veil += (inside * GLARE * thing.lux) / Math.max(1.5, off) ** 2;
+  }
+  return veil;
+}
+
+/**
+ * The eye's adaptation to that veil, followed over its own times (`adapt`: to more light in under a second, to less
+ * over minutes), and the faintest star it sees for it.
+ */
+export class StarEye {
+  /** The log of the luminance the eye is adapted to, cd/m²: the sky's own ground with nothing lit in view. */
+  private level = Math.log(SPACE_GROUND);
+
+  /** The faintest star drawn, a magnitude: 6.5 in the dark. */
+  get limit(): number {
+    return limitUnder(Math.exp(this.level) - SPACE_GROUND);
+  }
+
+  /** A frame's worth of the eye's time toward a veil of `veil` cd/m²; `atOnce`: settled now. True if the limit has moved enough to be drawn again. */
+  step(veil: number, dt: number, atOnce: boolean): boolean {
+    const wanted = Math.log(SPACE_GROUND + Math.max(veil, 0));
+    const was = this.limit;
+    this.level = atOnce ? wanted : adapt(this.level, wanted, dt);
+    if (Math.abs(this.level - wanted) < 1e-4) this.level = wanted;
+    return Math.abs(this.limit - was) > 1e-4;
+  }
+
+  /** Back to the dark, at once (another place, another flight). */
+  reset(): void {
+    this.level = Math.log(SPACE_GROUND);
   }
 }

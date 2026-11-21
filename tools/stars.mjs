@@ -5,7 +5,9 @@
 //   public/sky/stars.bin      every star of the Bright Star Catalogue with a place and a magnitude (9,096), brightest
 //                             first: six little-endian float32 each, as STARS has them (stars.ts: STAR_STRIDE)
 //   public/sky/milkyway.jpg   the Milky Way and the rest of the sky's unresolved light, 2048 x 1024, equirectangular
-//                             in J2000 (right ascension 0 in the middle, increasing to the left; north up)
+//                             in J2000 (right ascension 0 in the middle, increasing to the left; north up): its
+//                             light alone, one channel (stars.ts: MILKY_WAY says how a byte is its light)
+//   public/sky/milkyway.tint.jpg   its colour, 512 x 256: each channel over the luminance
 //
 // Sources, fetched into the cache (default ~/.cache/space-race/sky; never committed):
 // - Hoffleit and Warren, The Bright Star Catalogue, 5th revised edition (preliminary), 1991: CDS catalogue V/50,
@@ -20,6 +22,8 @@ import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gunzipSync } from 'node:zlib';
+import { MILKY_WAY } from '../src/world/stars.ts';
+import { writeGreyPng, writeRgbPng } from './png.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const args = process.argv.slice(2);
@@ -28,7 +32,7 @@ mkdirSync(cache, { recursive: true });
 mkdirSync(join(root, 'public/sky'), { recursive: true });
 
 const CATALOGUE = 'http://tdc-www.harvard.edu/catalogs/bsc5.dat.gz';
-const MILKY_WAY = 'https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851/milkyway_2020_4k.exr';
+const MILKY_WAY_URL = 'https://svs.gsfc.nasa.gov/vis/a000000/a004800/a004851/milkyway_2020_4k.exr';
 async function fetched(url, name) {
   const path = join(cache, name);
   if (!existsSync(path)) {
@@ -81,19 +85,65 @@ const from = source.indexOf(open),
 if (from < 0 || to < 0) throw new Error('src/world/stars.ts: the table was not found');
 writeFileSync(join(root, 'src/world/stars.ts'), `${source.slice(0, from + open.length)}${bright.map(row).join('\n')}${source.slice(to)}`);
 
-// the Milky Way: the map is linear light; kept as an sRGB JPEG at half its size
-const exr = await fetched(MILKY_WAY, 'milkyway_2020_4k.exr');
-execFileSync('magick', [
-  exr,
-  '-set',
-  'colorspace',
-  'RGB',
-  '-resize',
-  '2048x1024',
-  '-colorspace',
-  'sRGB',
-  '-quality',
-  '86',
-  join(root, 'public/sky/milkyway.jpg'),
-]);
-console.log(`${stars.length} stars (${bright.length} to magnitude 4.0), public/sky/stars.bin, public/sky/milkyway.jpg`);
+// The Milky Way: the map is linear light, 4096 x 2048. Its luminance is kept at half that size, each texel the mean of
+// four of the map's (a texel is 0.18 degrees, about what an eye adapted to a light that faint resolves, and the mean
+// takes out the grain the map has texel to texel, which is its star counts' and not the sky's: estimated), as one
+// channel in the transfer stars.ts gives (MILKY_WAY); its colour apart, at an eighth of the map's size (the eye has
+// next to none for a light so faint, and what the viewer keeps of it is smooth: heavens.ts). Nothing is taken off
+// the map: its faintest ground, toward the galaxy's poles, is the unresolved stars there, a thirtieth of the
+// brightest clouds in Sagittarius.
+const exr = await fetched(MILKY_WAY_URL, 'milkyway_2020_4k.exr');
+const [WIDE, HIGH] = [4096, 2048];
+const floats = execFileSync(
+  'magick',
+  [exr, '-set', 'colorspace', 'RGB', '-depth', '32', '-define', 'quantum:format=floating-point', '-endian', 'LSB', 'rgb:-'],
+  { maxBuffer: 2 ** 28 },
+);
+if (floats.length !== WIDE * HIGH * 12) throw new Error(`the Milky Way's map is not ${WIDE} x ${HIGH}: ${floats.length} bytes`);
+const rgb = new Float32Array(new Uint8Array(floats).buffer);
+const luma = (i) => 0.2126 * rgb[3 * i] + 0.7152 * rgb[3 * i + 1] + 0.0722 * rgb[3 * i + 2];
+const byte = (light) => Math.round(255 * Math.min(1, Math.max(0, light) / MILKY_WAY.white) ** (1 / MILKY_WAY.gamma));
+const jpeg = (png, name, quality, ...more) =>
+  execFileSync('magick', [png, ...more, '-quality', String(quality), '-interlace', 'JPEG', join(root, 'public/sky', name)]);
+/** The map's light, each texel the mean of `by` x `by` of the map's. */
+function lightAt(by) {
+  const [w, h] = [WIDE / by, HIGH / by];
+  const out = new Uint8Array(w * h);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      let sum = 0;
+      for (let dy = 0; dy < by; dy++) for (let dx = 0; dx < by; dx++) sum += luma((y * by + dy) * WIDE + x * by + dx);
+      out[y * w + x] = byte(sum / (by * by));
+    }
+  return { out, w, h };
+}
+{
+  const { out, w, h } = lightAt(2);
+  const png = join(cache, 'milkyway.png');
+  writeGreyPng(png, out, w, h);
+  jpeg(png, 'milkyway.jpg', 82, '-colorspace', 'Gray');
+}
+{
+  const by = 8;
+  const [w, h] = [WIDE / by, HIGH / by];
+  const out = new Uint8Array(w * h * 3);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const sum = [0, 0, 0];
+      let light = 0;
+      for (let dy = 0; dy < by; dy++)
+        for (let dx = 0; dx < by; dx++) {
+          const i = (y * by + dy) * WIDE + x * by + dx;
+          for (let c = 0; c < 3; c++) sum[c] += rgb[3 * i + c];
+          light += luma(i);
+        }
+      for (let c = 0; c < 3; c++)
+        out[3 * (y * w + x) + c] = Math.round(Math.min(255, (255 * MILKY_WAY.unit * sum[c]) / Math.max(light, 1e-9)));
+    }
+  const png = join(cache, 'milkyway.tint.png');
+  writeRgbPng(png, out, w, h);
+  jpeg(png, 'milkyway.tint.jpg', 90, '-sampling-factor', '4:4:4');
+}
+console.log(
+  `${stars.length} stars (${bright.length} to magnitude 4.0), public/sky/stars.bin, public/sky/milkyway.jpg, public/sky/milkyway.tint.jpg`,
+);
