@@ -3,6 +3,7 @@ import type { Flight } from '../../../../../src/types.ts';
 import { LC19_SPECS, lc19Vehicle } from '../../../places/cape-canaveral/lc-19.parts.ts';
 import { LC19 } from '../../../places/cape-canaveral/lc-19.ts';
 import { g4cParts, standing } from '../../crew/g4c-suit.parts.ts';
+import { geminiFlies } from '../../vehicles/gemini-flies.ts';
 import {
   ATDA,
   ATDA_TARGET,
@@ -42,6 +43,8 @@ import {
   thrusters,
   titanEngines,
 } from '../../vehicles/gemini-titan.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
+import { INSERTION, orbital } from './orbital.ts';
 import { pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -636,7 +639,8 @@ export const flight: Flight = {
   docking: {
     controls: geminiControls,
     massProperties: dockingProperties(GIX, 104.84, null, 2006),
-    fixes: [targetFix(GIX + ', table 4.3-V, final insertion', -167970.972, 383.41, 29.03, -69.55, 979526, 25369, -0.01, 89.81)],
+    // (the ATDA at its insertion, the vector the flight's plan flies its target from: orbital.ts `INSERTION`)
+    fixes: [INSERTION],
     interface: 'shrouded',
     target: 'ATDA',
     transfer: crewTransfer(
@@ -992,6 +996,16 @@ export const flight: Flight = {
     ...thrusters('spacecraft 9, whose propulsion its report records as the same as spacecraft 8’s'),
     ...atdaMotors(),
   ],
+  // the flight as an orbit, written from its record: the Titan's two stages, the orbit, the three rendezvous made on the ATDA,
+  // the last separation, the orbit shaping, the retrofire and the lifting entry, each figure with its source (orbital.ts;
+  // mission.md), flown through the day's air over the pad. Fly still opens on the docking chapter (src/app/address.ts `lacks`)
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-9’s own weights and engines, from its mission report, on a stated steering law, and the coast on from the state it leaves. ' +
+    'The ATDA is flown from the report’s tracking at its insertion two days before: the burns that set up each of the three rendezvous are flown at the record’s instants and impulses, and the coelliptic burns, the terminal phases, their corrections and the brakings are solved on the ATDA as each is made. ' +
+    'There was no docking, the ATDA’s shroud still on it; the walk outside is not flown. The last separation, the orbit shaping, the retrofire and the entry are flown as recorded (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot],
   // the place round the pad as it stood that June: as in March 1965 (places/cape-canaveral/lc19/model/1965-03.py)
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',

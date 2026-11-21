@@ -474,7 +474,15 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     `oams.docked`): flown on the spacecraft at the pair's measured impulse, toward its tail, with no fire drawn; the target
     in the run is not moved by them, and nothing after them is made on it. A record whose period is not its heights' orbit
     gives no period (`orbit.period`): Gemini XII's 88.87 min is some 6 km of axis from its heights, and cut on it the
-    rendezvous closed on the wrong phase. The entry body
+    rendezvous closed on the wrong phase. Gemini IX-A's makes three rendezvous on one target (gt-9a/orbital.ts, mission.md):
+    the ATDA from its insertion vector two days before the Titan flew, the first terminal phase lit on the ATDA's elevation
+    (`Pursuit.elevation`, its corrections and braking on the `arrival` it solves), the equi-period one from a radial
+    separation flown as recorded, the one from above on the clock. Its ascent is steered into the target's plane
+    (`Guidance.target.plane: 'target'`, staged.ts `solve`): the yaw (or, with no azimuth, the launch plane) is solved for
+    the node of the target's orbit at the cutoff in place of the inclination, which is then a result and a check, as the
+    radio guidance's yaw steering put the ship into its target's plane. Cut near the top of its latitude, where the yaw
+    turns the node and hardly the inclination, aimed at the inclination alone Gemini IX-A came out 23° of node from the
+    ATDA's. The entry body
     lifts (`AeroDef.lift`, lift over drag against Mach number) while a bank is held (`Hold.bank`, from the event that sets
     it; or the bank an entry steered to a place is flying, `Hold.entry`, "An entry is steered" above): orbital.ts `liftOf`, square to the motion through the air in the plane of the plumb line, turned about the motion by
     the bank. Mercury's and the Vostoks' plans have neither, and fly what they flew before to the last bit. Given up
@@ -1675,9 +1683,9 @@ read gives enough of to fly (issue #10).
 **Not yet under the one-state rule.** The docking deck's chapters (sim/approach.ts, transfer.ts, rendezvous.ts,
 flyby.ts) begin from navigation fixes in the mission reports, and some then place a craft from an observation
 (`startTransfer`'s radar range, `startRendezvous`'s line of sight, `startVisit`'s optical range, `startTether`'s
-extended strap). Gemini IX-A, X, XI and Apollo 9 have no flight from the pad (no `Flight.plan`), so there is no state
-of their own for a chapter to begin from, and their targets' launches are separate flights. Gemini VIII and XII have
-their plans (each rendezvous made on its Agena as a published orbit, then what followed the docked hours to the landing),
+extended strap). Gemini X, XI and Apollo 9 have no flight from the pad (no `Flight.plan`), so there is no state
+of their own for a chapter to begin from, and their targets' launches are separate flights. Gemini VIII, IX-A and XII have
+their plans (each rendezvous made on its target as a published orbit, then what followed to the landing),
 held by the tests and the figures; their Fly still opens on the chapter until the docking is a phase of the same run. What they need is each
 flight's ascent and coast as a plan, its target named as a craft (`FlightPlan.target`: the target's own flight, by its
 id, `TargetDef.flight`, which the simulator now resolves, or a published orbit, `TargetDef.orbit`), and
