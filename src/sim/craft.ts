@@ -9,6 +9,7 @@
  * A state is never changed in place: each act gives a new one, so a simulator's states can be kept and compared.
  * What the machine refused, and why, comes back as `Refusal`s for the simulator to say in its own words.
  */
+import { together } from './components.ts';
 import { handRange, onLever } from './lever.ts';
 import type { Action, EventDef, FlightPlan, JointDef, Trigger } from './plan.ts';
 
@@ -22,8 +23,11 @@ export interface EngineState {
 
 export interface CraftState {
   engines: Readonly<Record<string, EngineState>>;
-  /** Each joint: when it was let go (asked), and when it parted (Infinity: holding). */
-  joints: Readonly<Record<string, { loose: number; gone: number }>>;
+  /**
+   * Each joint: when it was let go (asked), and when it parted (Infinity: holding). A joint made in flight
+   * (`JointDef.formed`) has `made` too, when it was captured (Infinity: not yet, and so not holding).
+   */
+  joints: Readonly<Record<string, { loose: number; gone: number; made?: number }>>;
   /** Each body: when it left (Infinity: aboard). */
   bodies: Readonly<Record<string, number>>;
   /** Each parachute: when it came out and when it was let go (Infinity: not yet). */
@@ -33,6 +37,10 @@ export interface CraftState {
   armed: Readonly<Record<string, number>>;
   /** The attitude held, by id. */
   attitude: string;
+  /** Where each crew member is, by the body they are in (`BodyDef.crew`, `Action.board`): left out of a plan with no crew named. */
+  crew?: Readonly<Record<string, string>>;
+  /** Each formed joint the record's crew are flying the approach to (`Action.dock`), and since when. */
+  docking?: Readonly<Record<string, number>>;
 }
 
 /** What the machine would not do, and why: the simulator says it. */
@@ -42,7 +50,9 @@ export type Refusal =
   | { action: Action; why: 'ground' }
   | { action: Action; why: 'solid' }
   /** The same chambers are burning already, as another of the plan's engines (`EngineDef.again`). */
-  | { action: Action; why: 'burning'; engine: string };
+  | { action: Action; why: 'burning'; engine: string }
+  /** A crew member asked to go to a body of another craft. */
+  | { action: Action; why: 'apart' };
 
 /** What a trigger reads of the flight now. */
 export interface Sense {
@@ -65,27 +75,43 @@ export interface Sense {
 
 const ON = 1e-9;
 
-/** A craft at the pad: nothing lit, everything aboard, the plan's first attitude held. */
+/**
+ * When a body of a craft the plan meets in flight (`FlightPlan.craft` after the first) left the one that leaves the pad:
+ * before anything, for it was never aboard. Finite, so `aboard` says so.
+ */
+export const APART = Number.MIN_SAFE_INTEGER;
+
+/**
+ * A craft at the pad: nothing lit, everything aboard, the plan's first attitude held. The hardware of the craft the plan
+ * meets in flight is in it too, apart from the first craft from the start; a joint made in flight is not yet made; the
+ * crew are where the plan seats them.
+ */
 export function startCraft(plan: FlightPlan): CraftState {
-  const c = plan.craft[0]!;
+  const all = plan.craft;
+  const crew = all.flatMap((c) => c.bodies.flatMap((b) => (b.crew ?? []).map((m) => [m, b.id] as const)));
   return {
-    engines: Object.fromEntries(c.engines.map((e) => [e.id, { lit: Infinity, out: Infinity, starts: 0, throttle: 1 }])),
-    joints: Object.fromEntries(c.joints.map((j) => [j.id, { loose: Infinity, gone: Infinity }])),
-    bodies: Object.fromEntries(c.bodies.map((b) => [b.id, Infinity])),
-    chutes: Object.fromEntries(c.chutes.map((ch) => [ch.id, { out: Infinity, off: Infinity }])),
+    engines: Object.fromEntries(all.flatMap((c) => c.engines.map((e) => [e.id, { lit: Infinity, out: Infinity, starts: 0, throttle: 1 }]))),
+    joints: Object.fromEntries(
+      all.flatMap((c) =>
+        c.joints.map((j) => [j.id, j.formed ? { loose: Infinity, gone: Infinity, made: Infinity } : { loose: Infinity, gone: Infinity }]),
+      ),
+    ),
+    bodies: Object.fromEntries(all.flatMap((c, i) => c.bodies.map((b) => [b.id, i ? APART : Infinity]))),
+    chutes: Object.fromEntries(all.flatMap((c) => c.chutes.map((ch) => [ch.id, { out: Infinity, off: Infinity }]))),
     fired: {},
     armed: {},
     attitude: plan.attitude[0]?.id ?? '',
+    ...(crew.length ? { crew: Object.fromEntries(crew) } : {}),
   };
 }
 
-/** Look-ups by id into a plan's first craft, made once. */
+/** Look-ups by id into a plan's craft, made once. */
 export function lookups(plan: FlightPlan) {
-  const c = plan.craft[0]!;
+  const all = plan.craft;
   return {
-    engine: new Map(c.engines.map((e) => [e.id, e])),
-    joint: new Map(c.joints.map((j) => [j.id, j])),
-    chute: new Map(c.chutes.map((ch) => [ch.id, ch])),
+    engine: new Map(all.flatMap((c) => c.engines.map((e) => [e.id, e]))),
+    joint: new Map(all.flatMap((c) => c.joints.map((j) => [j.id, j]))),
+    chute: new Map(all.flatMap((c) => c.chutes.map((ch) => [ch.id, ch]))),
     event: new Map(plan.events.map((e) => [e.id, e])),
   };
 }
@@ -161,6 +187,8 @@ export function act(plan: FlightPlan, s: CraftState, action: Action, t: number, 
   } else if ('separate' in action) {
     const j = s.joints[action.separate];
     if (!j || Number.isFinite(j.loose)) return { state, refused };
+    // (a joint made in flight parts only once it has been made: undocking what never docked does nothing)
+    if (j.made !== undefined && !(j.made <= t)) return { state, refused };
     state = { ...s, joints: { ...s.joints, [action.separate]: { ...j, loose: t } } };
   } else if ('deploy' in action) {
     const def = l.chute.get(action.deploy);
@@ -180,8 +208,31 @@ export function act(plan: FlightPlan, s: CraftState, action: Action, t: number, 
     if (s.attitude !== action.attitude) state = { ...s, attitude: action.attitude };
   } else if ('arm' in action) {
     if (s.armed[action.arm] === undefined) state = { ...s, armed: { ...s.armed, [action.arm]: t } };
+  } else if ('board' in action) {
+    // (through the craft they are in: a member goes only to a body joined to the one they are in, and never out of a craft)
+    const at = s.crew?.[action.board];
+    if (at === undefined || at === action.to) return { state, refused };
+    if (!together(plan, s, at, action.to, t)) refused.push({ action, why: 'apart' });
+    else state = { ...s, crew: { ...s.crew, [action.board]: action.to } };
+  } else if ('dock' in action) {
+    const j = s.joints[action.dock];
+    if (!j || j.made === undefined || j.made <= t || s.docking?.[action.dock] !== undefined) return { state, refused };
+    state = { ...s, docking: { ...s.docking, [action.dock]: t } };
   }
   return { state, refused };
+}
+
+/**
+ * A joint made in flight is captured at `t` (`JointDef.formed`): from now it holds, and the craft its two ports are on
+ * are one (sim/components.ts). The physics says when (sim/docking.ts `DockPair.attempt`); the machine only records it.
+ */
+export function form(plan: FlightPlan, s: CraftState, joint: string, t: number): CraftState {
+  const def = look(plan).joint.get(joint);
+  const j = s.joints[joint];
+  if (!def?.formed || !j || j.made === undefined || j.made <= t) return s;
+  const docking = { ...s.docking };
+  delete docking[joint];
+  return { ...s, joints: { ...s.joints, [joint]: { ...j, made: t } }, ...(s.docking ? { docking } : {}) };
 }
 
 /**

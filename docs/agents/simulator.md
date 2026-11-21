@@ -238,6 +238,62 @@ produce another impact. `tests/contact.test.mjs` checks momentum, absorbed energ
 a near miss, and leaving and returning. `tests/separation.test.mjs` checks clearance on the historical
 runs. `pnpm test:separation` checks detached nodes in the running viewer.
 
+## Several craft in one run
+
+A run can carry several craft (plan item A3; the batch half). **A craft is a connected set of a plan's bodies under the
+joints that hold now** (sim/components.ts `componentsOf`): two bodies are apart once a joint has parted that lets the
+one go and not the other (`JointDef.gone`); the bodies of each of `FlightPlan.craft` (what leaves the pad, then any the
+plan meets in flight) are apart from the others' from the start; and a **joint made in flight** (`JointDef.formed`:
+its two `PortDef`s, the mechanism's `CaptureDef`, the record crew's `ApproachDef`; its `gone` empty) joins the craft
+its ports are on from its capture to its parting. A craft is named by the last of its bodies in the plan's order, and
+found by any body in it (`craftHolding`, `Run.craft(body).at(t)`).
+
+- **One machine, a view for each craft.** The hardware and the record's events are the machine's (sim/craft.ts
+  `CraftState`: `joints[id].made` for a formed joint, Infinity until it is captured; `crew`, where each crew member is;
+  `docking`, the approaches being flown): no two craft hold the same engine, joint or parachute. Each craft has its own
+  view of it (`viewOf`: its own bodies aboard, its own attitude held), and **an event is done by the craft that holds
+  what it names** (`holderOf`: an engine's body, a joint's side, a parachute's, a crew member's; an event that names no
+  hardware, an attitude or an arming, by `EventDef.craft` or the commander's).
+- **The crew.** `BodyDef.crew` seats them at liftoff, by ids of the plan's own (tests/names.test.mjs holds them out of
+  the code); `Action.board` moves one to a body of the craft they are in, and is refused across craft (`'apart'`). The
+  commander is the first named, reading the bodies from the last back (`commanderOf`); the followed craft is theirs
+  (`followedOf`), and the run's `samples` stay that craft's.
+- **A parting splits a craft** as a rigid body (proximity.ts `splitRigid`, forces.ts `part`): each piece keeps the
+  velocity it had as part of the turning whole, and the joint's push is shared by the masses (`keptShare`).
+- **A formed joint is captured by the physics.** `Action.dock` starts the record crew's approach on the craft holding
+  the approach's thrusters (`ApproachDef.by`, whose `push` and `torque` are the most they give); the two craft are a
+  sim/docking.ts `DockPair` (each a docking body: +Y out of its port, +Z its key, its moments the diagonal of its
+  bodies' along its axis, `BodyDef.rigid`), flown on the run's own field (`DockPair.stepper`); `attempt` each step
+  captures within the mechanism's limits, the machine records it (`form`), and once the probe has drawn them hard the
+  two are one craft at the pair's centre of mass with its momentum, the active craft's bodies laid along the passive's
+  axis (`joined`). The approach (`approachInput`) is sim/approach.ts's transposition controller made general: backed
+  away at `departing`, turned end for end `turnAfter` after it began, held `standOff` off the port, then closed at
+  `closing` so as to reach the port at the record's `contact`; its gains are estimated (decision 7: a record crew is
+  estimated behaviour), its figures the record's, and the run's own capture is a figure held to the record's instant.
+- **The batch run** (staged.ts `flyWhole`): a plan with a formed joint (`formsJoints`) is flown as several craft from
+  the spacecraft's parting (`flySeveral`): the machine as the ascent left it (`machineAt`), the stack split there as a
+  rigid body, every craft the plan meets in flight where its target (`TargetDef.body`) has it, all flown together
+  (sim/proximity.ts `flyProximity`: steps of a quarter second while a pair is flown or two craft are within 2 km, 5 s
+  otherwise, each cut to end on the clock's next event) through every docking and every parting the clock sets off
+  within three hours of the last contact that is not the coast's own (`severalUntil`); then the followed craft is the
+  coast's (flyOrbit from where it was left, its samples there the coast's first) and every other flies on by gravity
+  alone. `FlownWhole.crafts` (`Crafts`) holds every craft's track; `Run.craft` reads it, and a run with no formed joint
+  answers for the bodies aboard its one craft. `TargetDef.craft` names a craft of the same run by a body of it; a
+  `joint` target is then the craft that joint let go. **A plan without a formed joint takes none of this path**, so
+  every flight's figures are what they were.
+- Held in tests/components.test.mjs (the craft as joints part and are made, events done by their holders, boarding
+  within a craft; Apollo 9's transposition and docking flown from its first tracking fix, tests/transposition.mjs: the
+  probe captured at 3:01:59.5 for the record's 3:01:59.3 at 0.300 ft/s, hard 10 s later, the extraction at 4:08:06;
+  each split and the merge keep the mass to a microgram and the momentum to a part in 10^12; Apollo 7's plan, changed for
+  the test to dock with its S-IVB and undock, flown from the pad through the docking to its splashdown) and in
+  tests/onestate.test.mjs (every craft's track one state).
+- Simplified: the moments of inertia are the diagonal along each craft's axis (no products of inertia, no centre off the
+  axis); the thrusters' propellant is not taken off; no engine is lit while craft are flown together (one that is
+  throws: it is the coast's to fly); no air among them; the record crew fly with no error, so the capture is as near the
+  axis as the controller holds it. Not yet: the live half (the followed craft flown live and the others on their
+  records, the crew switch and its key, a craft nobody flies flown by its record crew with G and B on, its burns solved
+  on the live state), and an engine or a solved burn on a craft other than the followed.
+
 ## What is solid at a site
 
 The simulator has no three.js and no GLB loader, so what stands at a site is baked for it. `pnpm collision`
@@ -418,7 +474,8 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - `EventDef`: `{ id, label, when: Trigger[], do: Action[], automatic, at?, record?, source, armed? }`.
     - Every trigger in `when` must hold: `time`, `after` another event (+`wait`), `height` going up or down, `speed`
       (space-fixed, or an engine's `apparent` velocity), `g`, a hand's `command`, `falling`.
-    - `do` lists the actions, in order: `ignite`, `cut`, `throttle`, `separate`, `deploy`, `release`, `attitude`, `arm`.
+    - `do` lists the actions, in order: `ignite`, `cut`, `throttle`, `separate`, `deploy`, `release`, `attitude`, `arm`,
+      `board` (a crew member to a body of their craft) and `dock` (the record crew fly a formed joint's approach: "Several craft in one run").
     - `at` is the record's instant; `record` names the record's own event at that instant (set on every timed event at one),
       or the one it is where the record gives it no instant of the clock's (the pilot set loose at a height).
     - An event marked `armed: false` waits for an `arm`.

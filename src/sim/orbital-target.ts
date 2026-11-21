@@ -44,6 +44,7 @@ const tracks = new WeakMap<Run, Track>();
  */
 export function targetAt(flight: SitedFlight, run: Run, t: number): State | undefined {
   const def = flight.plan?.target;
+  if (def && 'craft' in def) return run.craft(def.craft).at(t);
   if (def && !('joint' in def)) return metOf(def, run.frame, flight.site.seaLevel.value).at(t);
   if (!run.launchAborted) return detachedStageAt(flight, run, t);
 }
