@@ -603,9 +603,31 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - a coast faster than an hour a second: rails.ts. `coast(state, t0, t1, gravity, push)` flies it by an adaptive
     Dormand-Prince 5(4) pair ending exactly on `t1`, the same in one span or in a fast clock's frames; tests/rails.test.mjs
     holds Vostok 1's coast to flyOrbit's within 10 cm and 0.1 mm/s over 3,400 s, in under a hundred steps. `onRails` (nothing
-    burning, above `RAILS_FLOOR`, 120 km, nothing asked of the hands) lets the clock go to `COAST_RATES`, and `due` holds it
-    at the next of the run's events and the record's instants (orbitdeck.ts `rails`). The orbital deck's coast after the
-    parting is a run flown ahead (flyOrbit), so on rails it is played, not flown frame by frame;
+    burning, above `RAILS_FLOOR`, 120 km, nothing asked of the hands; `offRails` says why not) lets the clock go as fast as
+    `railsRate` lets it (world.md, "Faster than an hour a second": by the vehicle's distance from the body it goes round
+    quickest, to ten million times far out, and easing toward what is due), and `due` holds it at the next of the run's
+    events and the record's instants (orbitdeck.ts `rails`, `dues`). The orbital deck's coast after the parting is a run
+    flown ahead (flyOrbit), so on rails it is played, not flown frame by frame;
+  - the live launch vehicle on rails: a stack that is never parted from (a Saturn V's after its injection) is the deck's
+    live vehicle to the end, ticked a hundred times a second, five seconds of flight a frame at most (deck.ts `MOST`),
+    which held a translunar coast to 300 times life's. So from the first tick at which it coasts with nothing to do
+    (stagedlive.ts `coasts`: nothing burning nor dying away, no staging owed or set off, its rates under `RAILS_STILL`,
+    a hundredth of a degree a second, above the rails' floor) and no hand on its controls (orbitdeck.ts `handsOff`), it
+    rides a railway (rails.ts `Railway`, stagedlive.ts `rails`): the adaptive pair's own steps from that state on every
+    force a tick has but the steering's (its gravity, the air at the attitude held, a stopped stage's vent), taken as they
+    are needed and kept, with the quintic between two; its state at a tick is the railway's there, its attitude held as
+    its jets held it. The railway runs to the next instant it must be ticked (`mustTick`: what its plan or its sequencer
+    sets off at a time), or ends where it comes down to the rails' floor, and the clock is held at that end; a hand on the
+    controls takes it off at the tick the clock is at. However the railway is asked (a frame at a time, or a tape flown
+    again in five-second steps, deck/tape.ts) its steps are the same, so a kept run comes back to the bit
+    (tests/stagedlive.test.mjs: ten minutes of Apollo 8's parking orbit on rails against its ticks, and one railway asked
+    two ways). The samples it leaves are kept by `passed`, each reading the railway to the next (`Railed`);
+  - where a warp goes (sim/warp.ts): on a `Track` (a run, `trackOf`, or the live vehicle's railway), the lead-in of
+    each burn ahead (`LEAD_IN`, five minutes, chosen), whatever is due, the crossings of a sphere, the next apsides
+    (where the motion about the body it is flown about turns, by bisection to a millisecond; one of a path not bound to
+    that body is a pass, `once`), and where it comes down to the entry interface (`PlanRecord.entryInterface`, where
+    it is above the rails' floor) or the floor; `nextWarp` is the soonest but an apsis of an orbit that goes round, and
+    `warpStop` stops any warp sooner at whatever is due or a lead-in on its way (tests/warp.test.mjs);
   - a long coast's samples, kept by how fast its motion changes (issue #173): flyOrbit flies every step as ever, and its
     results are its steps' own, but of the samples that fall due while nothing happens (the long step above 150 km,
     nothing burning or near, before the braking burn) it keeps one only where the velocity has changed by a fifth of

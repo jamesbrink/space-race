@@ -1007,3 +1007,44 @@ test('a braking engine lit by hand with its integrator: a Vostok’s TDU (no tan
   assert.ok(Math.abs(c.sensed - k.exhaust * Math.log(c.mass / (c.mass - c.fuel))) < 1e-6, 'the rocket equation’s');
   assert.equal(lit.engines.skd.starts, skd.own.starts.skd - 1);
 });
+
+test('on rails the live vehicle coasts as its ticks fly it, and its railway gives the same state at a tick however it is asked, as a tape flown again needs', () => {
+  const a8 = all.find((f) => f.id === 'usa/apollo/apollo-8');
+  const [site8, dated8, sea8] = [siteFrame(a8.site), frameOf(a8), a8.site.seaLevel.value];
+  const x8 = steer(a8.plan, site8, dated8, sea8);
+  const v = stagedVehicle(a8.plan, site8, dated8, sea8, x8);
+  const options = { guidance: true, sequence: true };
+  const pilot = stagedPilot(v, x8, site8, dated8, sea8, options);
+  const lit = a8.plan.events[0].do.flatMap((a) => ('ignite' in a ? [stagesOf(a8.plan).findIndex((st) => st.engine.id === a.ignite)] : []));
+  let s = v.tick(v.start(), { pitch: 0, yaw: 0, roll: 0, steps: lit.map((stage) => ({ kind: 'ignite', stage })) });
+  // to the parking orbit, and on until it may coast: nothing burning, its turning damped
+  while (s.t < 760 && !s.parted && !s.broke) s = v.tick(s, pilot);
+  assert.ok(!v.coasts(s) || s.t > 700, 'not on rails while it burns');
+  // (guidance off in orbit, as the deck has it taken: the attitude held where it was left, its rates damped)
+  const axis = turn(s.q, [1, 0, 0]);
+  options.guidance = false;
+  options.hold = () => axis;
+  while (!v.coasts(s) && s.t < 1200 && !s.broke) s = v.tick(s, pilot);
+  assert.ok(v.coasts(s), `it may coast by T+${s.t.toFixed(1)}`);
+  const from = s;
+  let ticked = from;
+  for (let i = 0; i < 60_000; i++) ticked = v.tick(ticked, pilot);
+  const rail = v.rails(from, Number.POSITIVE_INFINITY);
+  const railed = rail.at(ticked.ticks);
+  assert.equal(railed.t, ticked.t);
+  const off = length(sub(railed.r, ticked.r));
+  const offV = length(sub(railed.v, ticked.v));
+  console.log(
+    `# ten minutes of the parking orbit from T+${from.t.toFixed(2)}: on rails ${off.toFixed(3)} m and ${(offV * 1000).toFixed(2)} mm/s from the ticks`,
+  );
+  assert.ok(off < 5 && offV < 0.01, `${off} m, ${offV} m/s`);
+  // the same railway asked tick by tick, a frame at a time, or at once: the same state, to the bit
+  const again = v.rails(from, Number.POSITIVE_INFINITY);
+  for (let k = from.ticks; k < ticked.ticks; k += 1777) again.at(k);
+  assert.deepEqual(again.at(ticked.ticks).r, railed.r);
+  assert.deepEqual(again.at(ticked.ticks).v, railed.v);
+  // and it ends where it comes down to the rails' floor, or at the instant it is to be ticked again
+  const short = v.rails(from, from.t + 100.004);
+  short.way.reach(from.t + 1000);
+  assert.equal(short.way.end, from.t + 100.004);
+});

@@ -60,7 +60,7 @@ pnpm test:history     # needs `pnpm dev` running: Back and Forward between the f
 pnpm test:seat        # needs `pnpm dev` running: every seat of every flight sat in from the gallery, by the control and by C, at 1280 and 390
 pnpm test:mem         # needs `pnpm dev` running: what the page holds on the GPU as a phone, against a budget (rendering.md, "Memory")
 pnpm test:wheels      # needs `pnpm dev` running: every slide and drive at each site, each wheel on what it runs on, within 5 mm
-pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through each flight and by scripted hands, seen from each rig, from far out and in the map, its line, the line flown and chips checked (four pages at once)
+pnpm test:path        # needs `pnpm dev` running: the predicted path flown live through each flight and by scripted hands, seen from each rig, from far out and in the map, its line, the line flown and chips checked (four pages at once); `-- --deep`: the coasts to the Moon alone, at a million times
 pnpm test:impact      # needs pnpm dev: a glancing strike spins a capsule, a hard strike releases visible pieces, and a vehicle pushed into its pad strikes what stands there, both looks
 pnpm test:separation  # needs `pnpm dev` running: released hardware moves clear in the rendered flight
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
@@ -257,7 +257,7 @@ sure) in the site's `.md`, so the next flight can tell what to keep.
   site's mark, not a patch it had ([gallery.md](docs/agents/gallery.md), "Icons, flags and emblems").
 - The flight deck (`deck.ts`, `cockpit.css`) is one for every flight: three panels, the navball and path in the left corner, the primary
   figures, the throttle, the G and B switches and the one action (Space) in the middle, the systems as bars and lamps on the right, their
-  readings folded under Details (a chevron and a `Pref`); its keys fold to one line (steering, the time's pace), the rest behind Keys, what flies
+  readings folded under Details (a chevron and a `Pref`); its keys fold to one line (steering, the time's pace and, on a coast, K, the warp to the next thing ahead: world.md), the rest behind Keys, what flies
   first. Its prompt is an instrument's line, a line or two with the whole of it in its title, not a paragraph; the diagnostics are away while it is flown. The throttle is one lever for every flight and every liquid engine (the arrows, Z full, Cut; sim/lever.ts `handRange`: the engine's
   own range, or the game's, estimated and said so, where it ran at one thrust); a solid's row says it burns until spent. Every key it shows is also a button that does what the key does (`data-do` a command, `data-hold` a key held
   while pressed, `data-press` the key itself, dispatched); only its panels take the pointer. It tells the stage how

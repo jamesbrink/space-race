@@ -139,7 +139,26 @@ in 2.6 s), and `clock.allow(3600)` or a reset closes them; `setRate` is held to 
 is 170 s to half an hour of the world, so nothing may integrate the frame's span as one step: what is flown is flown on
 rails, and the clock is told the next instant that must not be skipped (`clock.hold(t)`: a frame that would cross it
 stops on it, and the rate goes back to 1, still running). On the ground they are not for offering: at 100,000x the day
-passes in under a second. What the simulator provides for a coast on rails (sim/rails.ts: `coast`, `due`, `onRails`;
+passes in under a second.
+
+Past a day a second there is `DEEP_RATES` (200,000 to ten million, in ones, twos and fives), reached only as far as the
+coast itself lets the clock go: whatever flies it calls `clock.allow(railsRate(...))` every frame (sim/rails.ts), and that
+limit follows from where the vehicle is and what is coming, never from which flight or phase it is. It is `TURNS` (20)
+revolutions a second of a circular orbit at the vehicle's distance from each body (the Earth, and the Moon where the
+flight's gravity names it), taken about the one whose orbit there is quickest: about 100,000 in a low orbit, as always, a
+million from 30,000 km out, ten million past 136,000 km; and never more than leaves the next instant held (or a warp's end)
+`EASE` (a quarter of a second) of ours away, down to an hour a second, so a clock at ten million times comes down toward
+an instant over a second or so and meets it at an hour a second, without a leap. Both are chosen, and say so.
+
+A warp (`clock.warpTo(t, what)`) runs the clock as fast as it is let, keeping up with the limit as it rises and falls,
+and lands on `t` exactly at real time, still running; it stops sooner on an instant held, and ends on anything that sets
+the rate (`step`, `setRate`, `endWarp`), a seek past it or a reset. `clock.warp` is where it is going and in what words,
+for the time bar to show. What it goes to is the simulator's to find (sim/warp.ts: a burn's lead-in, `LEAD_IN` before
+it, whatever is due, a crossing of the sphere, an apsis, the air come down to, a time typed; simulator.md, "The core"), and
+the deck's to ask for (K, `deck.warp`). Apollo 8's 72 hours from its injection to the Moon go by in about 1.6 s
+(tests/rails.test.mjs).
+
+What the simulator provides for a coast on rails (sim/rails.ts: `coast`, `due`, `onRails`, `railsRate`, `Railway`;
 simulator.md, "The core"), to this note:
 
 - `coast(state, t0, t1, gravity): state`: the adaptive propagator (sim/predict.ts `propagate`, a quiet flier: nothing
@@ -154,7 +173,9 @@ simulator.md, "The core"), to this note:
   air); while it is false the clock must not be allowed past 3600 (`clock.allow(3600)`), and the live fixed-step
   simulation goes on as it does now.
 - Back off rails the state is handed to the live simulation as it stands at the clock's instant, so the hand-over is in
-  place and velocity exactly where the coast left it.
+  place and velocity exactly where the coast left it. The live launch vehicle (a Saturn V's stack after its injection, which
+  never parts from its spacecraft here) rides a `Railway` from the first tick it coasts with nothing to do, to the next
+  tick it must take (sim/stagedlive.ts `rails`; simulator.md).
 - A run flown ahead keeps its quiet coast the same way: only the samples its motion changed between, and the stretch
   between two of them flown again by `coast` when something reads there (`stretches`; simulator.md, "The core"). So a
   frame of half an hour reads the run at its instant as exactly as a frame of a sixtieth of a second does.

@@ -8,6 +8,11 @@ import { flight } from '../missions/ussr/vostok/flights/vostok-1/flight.ts';
 import { airAt } from '../src/sim/air.ts';
 import { coastOf, flyOrbit, KEPT, shipPush, solarAt } from '../src/sim/orbital.ts';
 import { apart, coast, coastBy, due, KEPT_TURN, onRails, RAILS_FLOOR, stretches } from '../src/sim/rails.ts';
+import * as rails from '../src/sim/rails.ts';
+import { EARTH_GRAVITY, fieldOf } from '../src/sim/core/gravity.ts';
+import { acceleration } from '../src/sim/core/rk4.ts';
+import { EARTH } from '../src/world/bodies.ts';
+import { Clock, COAST_RATES, DEEPEST, RATES } from '../src/world/clock.ts';
 import { attend, between, either, filled, orbitalFlown, orbitalRecord, shownAt } from '../src/sim/run.ts';
 import { flyWhole, recordSamples } from '../src/sim/staged.ts';
 import { frameOf } from '../src/world/earthframe.ts';
@@ -189,4 +194,99 @@ test('the record’s run as the scene shows it is the same between its samples, 
   const n = copy.length;
   attend(copy, [at, at + 4]);
   assert.equal(copy.length, n, 'done again, nothing more');
+});
+
+// ---- the deep coast's pace (sim/rails.ts `railsRate`), the live vehicle's railway (`Railway`), and a warp landing on its instant
+
+test('how fast a coast on rails may go follows from its distance from the body it is nearest and from what is due, not from the flight', () => {
+  const { railsRate, bodiesAt, EASE } = rails;
+  const earth = (km) => railsRate([{ r: [km * 1000, 0, 0], gm: EARTH.gm.value }]);
+  const leo = earth(6_578);
+  assert.ok(leo >= 100_000 && leo < 120_000, `a low orbit: ${leo.toFixed(0)} times, about the 100,000 every coast always had`);
+  assert.equal(earth(1_000), COAST_RATES.at(-1), 'never less than the coast always had (an orbit quicker than any about the Earth)');
+  const out = earth(30_000);
+  assert.ok(out > 0.9e6 && out < 1.2e6, `30,000 km out: ${out.toFixed(0)} times, a million`);
+  assert.equal(earth(200_000), DEEPEST, 'from 140,000 km on, ten million times');
+  // by the Moon the Moon's orbit is the quick one: 1,850 km from its centre, 384,000 from the Earth's
+  const moon = railsRate(bodiesAt([384e6, 0, 0], 0, () => ({ r: [384e6 - 1.85e6, 0, 0] })));
+  assert.ok(moon >= 100_000 && moon < 200_000, `in a low lunar orbit: ${moon.toFixed(0)} times`);
+  // and what is due: never less than EASE seconds of ours away, down to an hour a second
+  assert.equal(railsRate(bodiesAt([2e8, 0, 0], 0, null), 1000), 1000 / EASE);
+  assert.equal(railsRate(bodiesAt([2e8, 0, 0], 0, null), 100), RATES.at(-1));
+  assert.equal(railsRate(bodiesAt([2e8, 0, 0], 0, null), 1e12), DEEPEST);
+});
+
+test('a railway is the coast `coast` flies, step for step to the last bit, however it is asked; and it ends where its floor is met', () => {
+  const field = fieldOf(EARTH_GRAVITY);
+  const accel = (t, r, v) => acceleration(field(r, t), drag(t, r, v));
+  const t1 = first.t + 3000;
+  const one = coast(first, first.t, t1, undefined, drag);
+  const way = new rails.Railway(first, t1, accel);
+  assert.deepEqual(way.at(t1), { r: one.r, v: one.v }, 'at its end, the coast to it to the bit');
+  // asked a frame at a time (a sixtieth of a second at 1,000 times) and at once: the same railway
+  const framed = new rails.Railway(first, t1, accel);
+  for (let t = first.t; t < t1; t += 16.7) framed.at(t);
+  const mid = first.t + 1234.5;
+  assert.deepEqual(framed.at(mid), way.at(mid), 'the same state at the same instant, whatever was asked before');
+  assert.deepEqual(framed.at(t1), way.at(t1));
+  // between its steps, the coast flown there
+  const off = apart(way.at(mid), coast(first, first.t, mid, undefined, drag));
+  assert.ok(off.r < 0.01 && off.v < 1e-5, `between its steps: ${off.r} m, ${off.v} m/s`);
+  // a floor met: it ends there, to a millisecond
+  const floored = new rails.Railway(first, t1, accel, (t) => first.t + 500.25 - t);
+  floored.at(t1);
+  assert.ok(Math.abs(floored.end - (first.t + 500.25)) < 1e-3, `ends at ${floored.end - first.t} s`);
+  assert.deepEqual(floored.at(t1), floored.at(floored.end), 'and goes no further');
+});
+
+test('a warp of days lands exactly on its instant at an hour a second, easing into it from a million times, and stops for anything due on the way', () => {
+  const { railsRate, bodiesAt } = rails;
+  // (Apollo 8's coast from its injection to its pass of the Moon, 200,000 km out: the clock as the deck drives it, each frame)
+  const fly = (clock, held) => {
+    let frames = 0;
+    let fastest = 0;
+    let leap = 0;
+    while (clock.warp && frames < 100_000) {
+      const stop = Math.min(clock.warp.t, held ?? Infinity);
+      clock.allow(railsRate(bodiesAt([2e8, 0, 0], clock.t, null), stop - clock.t));
+      clock.hold(held ?? Number.NaN);
+      const left = stop - clock.t;
+      clock.advance(1 / 60);
+      frames++;
+      fastest = Math.max(fastest, clock.rate);
+      // (no frame takes more than a fifteenth of what is left while it eases: EASE is a quarter of a second, 15 frames)
+      if (clock.warp && clock.rate > RATES.at(-1)) leap = Math.max(leap, (stop - clock.t) / left);
+    }
+    return { frames, fastest, leap };
+  };
+  const clock = new Clock('1968-12-21T12:51:00Z');
+  clock.seek(10_500);
+  clock.allow(railsRate(bodiesAt([2e8, 0, 0], 10_500, null), 271_256.3 - 10_500));
+  clock.warpTo(271_256.3, 'the Moon');
+  assert.ok(clock.running, 'a warp runs the clock');
+  const went = fly(clock);
+  assert.equal(clock.t, 271_256.3, 'it stops on the instant, not a frame past it');
+  assert.equal(clock.rate, 1, 'at real time');
+  assert.equal(clock.warp, null, 'and the warp is over');
+  console.log(
+    `# 72 hours in ${went.frames} frames (${(went.frames / 60).toFixed(2)} s at 60 a second), up to ${went.fastest.toFixed(0)} times`,
+  );
+  assert.ok(went.frames < 180, `in under three seconds: ${went.frames} frames`);
+  assert.ok(went.fastest > 1e6, `at up to ${went.fastest.toFixed(0)} times`);
+  // something due on the way: the warp stops on it
+  const again = new Clock('1968-12-21T12:51:00Z');
+  again.seek(10_500);
+  again.allow(DEEPEST);
+  again.warpTo(271_256.3, 'the Moon');
+  fly(again, 100_000);
+  assert.equal(again.t, 100_000, 'stopped on what was due');
+  assert.equal(again.warp, null);
+  // a hand on the controls: over at once, at real time
+  const hand = new Clock('1968-12-21T12:51:00Z');
+  hand.allow(DEEPEST);
+  hand.warpTo(200_000, 'a time');
+  hand.advance(1 / 60);
+  hand.endWarp();
+  assert.equal(hand.rate, 1);
+  assert.equal(hand.warp, null);
 });

@@ -11,6 +11,7 @@
 .time-local { color: var(--ink); }
 .time-count { color: var(--faint); }
 .timebar.away .time-count { color: var(--amber); }
+.time-warp { color: var(--amber); max-width: 34ch; overflow: hidden; text-overflow: ellipsis; }
 .time-toggle { width: 28px; height: 28px; color: var(--faint); }
 .time-toggle:hover { color: var(--ink); }
 .timebar.folded .time-body { display: none; }

@@ -17,6 +17,8 @@ import { dp45 } from './core/dp45.ts';
 import { acceleration } from './core/rk4.ts';
 import { EARTH_GRAVITY, fieldOf, type GravityTerm } from './core/gravity.ts';
 import { length, sub, type Vec3 } from '../world/frames.ts';
+import { EARTH, MOON } from '../world/bodies.ts';
+import { COAST_RATES, DEEPEST, RATES } from '../world/clock.ts';
 
 /** Anything but gravity on a coast, m/s^2, at an instant and a state. */
 export type Push = (t: number, r: Vec3, v: Vec3) => Vec3;
@@ -99,7 +101,49 @@ export function crossing(f: (t: number) => number, t0: number, t1: number, withi
  * to an hour a second (`clock.allow(3600)`).
  */
 export function onRails(sample: { altitude: number; burning?: readonly unknown[] }, asked = false): boolean {
-  return !asked && !(sample.burning?.length ?? 0) && sample.altitude > RAILS_FLOOR;
+  return offRails(sample, asked) === null;
+}
+
+/** Why a flight may not be coasted on rails at a sample (`onRails`), in words, or null when it may. */
+export function offRails(sample: { altitude: number; burning?: readonly unknown[] }, asked = false): string | null {
+  if (sample.burning?.length) return 'Not while an engine burns';
+  if (!(sample.altitude > RAILS_FLOOR)) return `Not in the air: under ${RAILS_FLOOR / 1000} km the clock runs an hour a second at most`;
+  if (asked) return 'Not with something asked of the hands still to come';
+  return null;
+}
+
+/**
+ * How many times round, at most, a second of ours may take a vehicle on rails, on a circular orbit at its distance from
+ * the centre of the body it is flown about: twenty, which in a low orbit (88 minutes round) is about a day a second, the
+ * 100,000 times a coast was always let go at, and grows as the orbit's own time does with distance (as the 1.5th power).
+ * Chosen: fast enough that the 73 hours from a translunar injection to the Moon go by in seconds, slow enough that a low
+ * orbit goes no faster than it always went.
+ */
+export const TURNS = 20;
+
+/**
+ * Seconds of ours, at least, that the next instant due is ahead at the rate the clock runs: a quarter of a second. Past
+ * an hour a second the clock comes down toward an instant as it nears it, rather than meeting it in one frame from ten
+ * million times, and lands on it at an hour a second at most (world/clock.ts `hold`). Chosen: a warp of days eases in
+ * over a second or so and arrives without a leap.
+ */
+export const EASE = 0.25;
+
+/**
+ * The fastest a coast on rails lets the clock run, seconds a second: `TURNS` revolutions a second of a circular orbit
+ * at the vehicle's distance from each body in `bodies` (its place from the body's centre, and the body's GM: the Earth's,
+ * and the Moon's where the flight's gravity names it), taken about the one whose orbit there is quickest, never under the 100,000 times every coast has (world/clock.ts `COAST_RATES`) and never over
+ * ten million (`DEEPEST`); and no faster than leaves `remaining` seconds of the flight (to the next instant due, or
+ * a warp's end) `EASE` seconds of ours away, down to an hour a second. The distance and the dues set it, nothing about
+ * which flight it is: in a low orbit about 100,000 times, from 30,000 km out a million, from 136,000 km ten million.
+ */
+export function railsRate(bodies: readonly { r: Vec3; gm: number }[], remaining = Number.POSITIVE_INFINITY): number {
+  // (the orbit's own time, its period over two pi, sqrt(r^3 / GM), about the body it is least about)
+  let own = Number.POSITIVE_INFINITY;
+  for (const b of bodies) own = Math.min(own, Math.sqrt(length(b.r) ** 3 / b.gm));
+  const far = Math.min(DEEPEST, Math.max(COAST_RATES[COAST_RATES.length - 1]!, TURNS * 2 * Math.PI * own));
+  const near = remaining > 0 ? Math.max(RATES[RATES.length - 1]!, remaining / EASE) : RATES[RATES.length - 1]!;
+  return Math.min(far, near);
 }
 
 /** The same coast in pieces of `span` seconds (a frame's at a fast clock), each ending where the next begins: as `coast` flies a clock's frames. */
@@ -259,4 +303,128 @@ export function stretches(
       due * s.dv[k]!;
     return { r: [at(0), at(1), at(2)], v: [rate(0), rate(1), rate(2)] };
   };
+}
+
+/**
+ * The bodies `railsRate` is given, at `t`: the Earth (the flight's frame is from its centre) and, where `moon` gives
+ * the Moon's place from the Earth's centre in that frame, the Moon.
+ */
+export function bodiesAt(r: Vec3, t: number, moon: ((t: number) => { r: Vec3 }) | null): { r: Vec3; gm: number }[] {
+  const out = [{ r, gm: EARTH.gm.value }];
+  if (moon) out.push({ r: sub(r, moon(t).r), gm: MOON.gm.value });
+  return out;
+}
+
+/**
+ * A coast on rails flown as far as it is asked, from one state on (`start`): the pair's own steps (core/dp45.ts, at
+ * `TOLERANCE`, as `coast` takes them), taken as they come to be needed and kept, and a state between two of them the
+ * quintic Hermite through them (as `stretches` has it). However it is asked (a frame at a time at life's pace, or at once
+ * from days on), its steps are the same, so the same instant gives the same state to the last bit: what a run kept as a
+ * tape and flown again depends on (deck/tape.ts). It runs to `until` (its last step ends there), or less far, where
+ * `above` (its height over a floor, m) comes down through nothing: it ends there (`end`).
+ */
+export class Railway {
+  readonly from: number;
+  private readonly until: number;
+  private readonly accel: (t: number, r: Vec3, v: Vec3) => Vec3;
+  private readonly above: ((t: number, r: Vec3, v: Vec3) => number) | null;
+  private readonly t: number[];
+  private readonly r: Vec3[];
+  private readonly v: Vec3[];
+  private readonly a: Vec3[];
+  private h: number;
+  private stop = Number.NaN;
+  private readonly kr: Vec3[] = new Array(7);
+  private readonly kv: Vec3[] = new Array(7);
+
+  constructor(
+    start: { t: number; r: Vec3; v: Vec3 },
+    until: number,
+    accel: (t: number, r: Vec3, v: Vec3) => Vec3,
+    above: ((t: number, r: Vec3, v: Vec3) => number) | null = null,
+  ) {
+    this.from = start.t;
+    this.until = until;
+    this.accel = accel;
+    this.above = above;
+    this.t = [start.t];
+    this.r = [start.r];
+    this.v = [start.v];
+    this.a = [accel(start.t, start.r, start.v)];
+    this.h = Math.min(Math.max(0, until - start.t), 10);
+  }
+
+  /** Where it ends: `until`, or the instant it came down to its floor, once flown that far (`reach`). */
+  get end(): number {
+    return Number.isNaN(this.stop) ? this.until : this.stop;
+  }
+
+  /** Flown on, step by step, until a step ends at `t` or past it, or it has ended. */
+  reach(t: number): void {
+    const { kr, kv } = this;
+    while (Number.isNaN(this.stop) && this.t[this.t.length - 1]! < Math.min(t, this.until)) {
+      const n = this.t.length - 1;
+      const [t0, r0, v0, a0] = [this.t[n]!, this.r[n]!, this.v[n]!, this.a[n]!];
+      let h = this.h;
+      if (t0 + h > this.until) h = this.until - t0;
+      const step = dp45(t0, r0, v0, h, a0, this.accel, kr, kv);
+      const err = step.er;
+      if (err <= TOLERANCE || Math.abs(h) < 1e-6) {
+        const t1 = Math.abs(this.until - (t0 + h)) < 1e-9 * Math.max(1, Math.abs(this.until)) ? this.until : t0 + h;
+        this.t.push(t1);
+        this.r.push(step.r);
+        this.v.push(step.v);
+        this.a.push(kv[6]!);
+        // (come down to its floor within the step: it ends where it did)
+        if (this.above && this.above(t1, step.r, step.v) <= 0) {
+          const s = this.state(t0);
+          if (this.above(t0, s.r, s.v) > 0) this.stop = crossing((x) => this.above!(x, this.state(x).r, this.state(x).v), t0, t1, 1e-3);
+          else this.stop = t0;
+        }
+      }
+      // (the step's next size from its error, as the pair's order has it, kept within a factor of five either way)
+      const k = err > 0 ? 0.9 * (TOLERANCE / err) ** 0.2 : 5;
+      this.h = h * Math.min(5, Math.max(0.2, k));
+    }
+  }
+
+  /** The state at `t` (from its start to its end), flown to as far as that needs. */
+  at(t: number): { r: Vec3; v: Vec3 } {
+    this.reach(t);
+    return this.state(Math.max(this.from, Math.min(t, this.end)));
+  }
+
+  /** The instants of its steps from `from` to `to`, flown to as far as that needs: where an apsis is looked for between two. */
+  steps(from: number, to: number): number[] {
+    this.reach(to);
+    return this.t.filter((x) => x >= from && x <= Math.min(to, this.end));
+  }
+
+  /** The quintic Hermite through the two steps either side of `t`, already flown. */
+  private state(t: number): { r: Vec3; v: Vec3 } {
+    const T = this.t;
+    if (!(t > T[0]!)) return { r: this.r[0]!, v: this.v[0]! };
+    // (the step that holds it: by halving, the steps being kept in order)
+    let [lo, hi] = [0, T.length - 1];
+    if (t >= T[hi]!) return { r: this.r[hi]!, v: this.v[hi]! };
+    while (hi - lo > 1) {
+      const mid = (lo + hi) >> 1;
+      if (T[mid]! <= t) lo = mid;
+      else hi = mid;
+    }
+    const i = lo;
+    const h = T[i + 1]! - T[i]!;
+    const x = (t - T[i]!) / h;
+    const [x2, x3, x4, x5] = [x * x, x ** 3, x ** 4, x ** 5];
+    const p = [1 - 10 * x3 + 15 * x4 - 6 * x5, x - 6 * x3 + 8 * x4 - 3 * x5, 0.5 * x2 - 1.5 * x3 + 1.5 * x4 - 0.5 * x5];
+    const q = [10 * x3 - 15 * x4 + 6 * x5, -4 * x3 + 7 * x4 - 3 * x5, 0.5 * x3 - x4 + 0.5 * x5];
+    const dp = [-30 * x2 + 60 * x3 - 30 * x4, 1 - 18 * x2 + 32 * x3 - 15 * x4, x - 4.5 * x2 + 6 * x3 - 2.5 * x4];
+    const dq = [30 * x2 - 60 * x3 + 30 * x4, -12 * x2 + 28 * x3 - 15 * x4, 1.5 * x2 - 4 * x3 + 2.5 * x4];
+    const [r0, v0, a0, r1, v1, a1] = [this.r[i]!, this.v[i]!, this.a[i]!, this.r[i + 1]!, this.v[i + 1]!, this.a[i + 1]!];
+    const at = (k: number): number =>
+      p[0]! * r0[k]! + h * p[1]! * v0[k]! + h * h * p[2]! * a0[k]! + q[0]! * r1[k]! + h * q[1]! * v1[k]! + h * h * q[2]! * a1[k]!;
+    const rate = (k: number): number =>
+      (dp[0]! * r0[k]! + dq[0]! * r1[k]!) / h + dp[1]! * v0[k]! + dq[1]! * v1[k]! + h * (dp[2]! * a0[k]! + dq[2]! * a1[k]!);
+    return { r: [at(0), at(1), at(2)], v: [rate(0), rate(1), rate(2)] };
+  }
 }
