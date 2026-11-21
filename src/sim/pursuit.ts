@@ -232,13 +232,55 @@ export function reach(
 }
 
 /**
+ * The burn along the level motion (forward, or back where `guess` is negative) that puts the target so far ahead of the
+ * craft, or so far above it, at the instant `at`: lit at `t` from `state`, pushing `accel` m/s^2 along the line the level
+ * motion has as it lights for as long as it takes. Found as `reach` finds its burn, on its one unknown (Newton's method,
+ * its slope by a difference of 5 cm/s), from the record's own impulse; within a metre. Null where the target is not there
+ * to aim at or no such burn does it.
+ */
+export function level(
+  ahead: Ahead,
+  target: Target,
+  state: State,
+  t: number,
+  accel: number,
+  want: { ahead: number } | { above: number },
+  at: number,
+  guess: number,
+): Burn | null {
+  const there = target.at(at);
+  if (!there || !(at > t) || !(accel > 0)) return null;
+  const up = unit(state.r);
+  const forward = unit(sub(state.v, scale(up, dot(state.v, up))));
+  const lineOf = (dv: number): Vec3 => scale(forward, dv < 0 ? -1 : 1);
+  const miss = (dv: number): number => {
+    const size = Math.abs(dv);
+    const end = ahead(state, t, at, size > 0 ? { line: lineOf(dv), accel, until: Math.min(at, t + size / accel) } : undefined);
+    const p = placeFrom(end, there.r);
+    return 'ahead' in want ? p.ahead - want.ahead : p.above - want.above;
+  };
+  let dv = guess;
+  const STEP = 0.05;
+  for (let k = 0; k < 30; k++) {
+    const f = miss(dv);
+    if (Math.abs(f) < 1) return { line: lineOf(dv), length: Math.abs(dv) / accel };
+    const slope = (miss(dv + STEP) - f) / STEP;
+    if (!(Math.abs(slope) > 1e-9)) return null;
+    // (never more than 30 m/s at once, as `reach`)
+    dv += Math.max(-30, Math.min(30, -f / slope));
+  }
+  return null;
+}
+
+/**
  * The change of velocity that leaves a craft on an orbit of the target's shape (coelliptic: the same centre and the same
  * line of apsides, the height between the two the same all the way round), m/s: the target is taken where it passes
  * over the craft's place (a little before or after now, by the angle between them), and the craft is given the axis
  * shorter by the height between them there, the climb the target has there scaled by the axes' ratio to the power 3/2,
- * and the level speed that axis gives, in its own plane. Null where the target is not there.
+ * and the level speed that axis gives, in its own plane (with `inPlane`, in the target's: the level motion laid along the
+ * target's plane where the craft is). Null where the target is not there.
  */
-export function coelliptic(target: Target, state: State, t: number, gm = EARTH.gm.value): Vec3 | null {
+export function coelliptic(target: Target, state: State, t: number, gm = EARTH.gm.value, inPlane = false): Vec3 | null {
   let over = target.at(t);
   let dt = 0;
   for (let k = 0; over && k < 4; k++) {
@@ -253,7 +295,7 @@ export function coelliptic(target: Target, state: State, t: number, gm = EARTH.g
   const climb = (dot(over.v, over.r) / theirs) * (axis / own) ** 1.5;
   const level = Math.sqrt(gm * (2 / mine - 1 / own) - climb * climb);
   const up = unit(state.r);
-  const forward = cross(unit(cross(state.r, state.v)), up);
+  const forward = inPlane ? unit(cross(unit(cross(over.r, over.v)), up)) : cross(unit(cross(state.r, state.v)), up);
   return sub(add(scale(forward, level), scale(up, climb)), state.v);
 }
 

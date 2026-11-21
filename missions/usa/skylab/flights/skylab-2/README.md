@@ -32,6 +32,14 @@ In the Gallery, choose *Skylab workshop* to see the station as the crew found it
 
 CSM-116 pulled away from the station at 08:55 UTC on 22 June. Four hours later the crew fired the service engine to leave orbit. The command module splashed down in the Pacific after 28 days, 49 minutes and 49 seconds. USS *Ticonderoga* lifted the capsule aboard with the astronauts still inside. [NASA mission chronology, pp. 151–152](https://www.nasa.gov/wp-content/uploads/2023/04/1973.pdf) · [Historical Data Book, vol. III, table 2-49](https://ntrs.nasa.gov/citations/19880016046)
 
+## Fly
+
+[Fly Skylab 2](https://jamesbrink.online/space-race/#usa/skylab/skylab-2/fly) from the pad: the S-IB and the S-IVB to the
+orbit SA-206 reached, the five rendezvous firings solved on the workshop where it is, the braking to station-keeping
+off its docking port, the 27 days beside it under time-warp, the two deorbit firings and the entry to the Pacific. The
+docking itself, the stand-up EVA and the failed captures are marks: the simulator does not yet join two craft. The record,
+its sources and what the run misses it by are set out in [mission.md](mission.md).
+
 ## Sources and reconstruction limits
 
 - [Launch pressure garments](../../crew/a7lb.md) identifies the suit fittings, insignia and crew-specific proportions used on the approach and tower.

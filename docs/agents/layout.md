@@ -48,6 +48,9 @@ missions/                             the record: one folder per nation, program
                                       model sheds and burns (`saturnIBFlies`);
                                       sm-rcs.ts, the service module's reaction control system as the attitude is flown with it (`smRcsChambers`,
                                       the sixteen chambers at their quads; `smRcsSet`, with the SCS's deadbands and minimum impulse; `massRow`);
+                                      skylab/vehicles/skylab-plan.ts, what the Skylab visits' plans share: the workshop as a target given by
+                                      its orbit (`workshopTarget`, `workshopInPlane`, `WORKSHOP_DRAG_AREA`), the escape from Pad 39B
+                                      (`skylabAborts`), the steered entry (`skylabEntry`), the flight scene (`skylabFlies`);
                                       command-module-aero.ts, the Block II command module's trim drag (CM-107's, TN D-6725);
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,
                                       the type's specs (`SPEC`) and engines (`vostokMotors`), `along` and the azimuths;
