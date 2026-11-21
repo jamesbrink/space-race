@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { FlightPath } from '../src/viewer/path.ts';
 
+/** A curve of no points: a display whose flight has left it cannot be measured against it (path.ts `leftBy`). */
+const NONE = { n: 0 };
+
 function pausedDisplay(jobTime, jobPlan) {
   const view = Object.create(FlightPath.prototype);
   Object.assign(view, {
@@ -14,14 +17,16 @@ function pausedDisplay(jobTime, jobPlan) {
     others: new Map(),
     refMarks: [],
     refApsis: null,
+    heavens: [],
+    leftNow: new Float64Array(6),
     sample: { t: 12 },
     wantedAt: null,
     want: () => ({ key: '12|manual', plan: 'manual' }),
-    shown: { key: '12|manual', plan: 'manual', result: { from: 12 } },
+    shown: { key: '12|manual', plan: 'manual', result: { from: 12 }, curve: NONE },
     job: { key: jobTime + '|' + jobPlan, from: jobTime, plan: jobPlan, run: { run: () => true, result: { from: jobTime } } },
     spent: { slice: 0, frames: 0 },
     build(result, key, plan) {
-      this.shown = { key, plan, result };
+      this.shown = { key, plan, result, curve: NONE };
     },
     place() {},
   });
@@ -54,7 +59,7 @@ test('job age and simulation timestamps stay separate while a paused display is 
 test('a queued UI job is superseded when the existing display is valid again', () => {
   const path = pausedDisplay(10, 'manual');
   let slices = 0;
-  path.shown = { key: '9|manual', result: { from: 9 }, plan: 'manual' };
+  path.shown = { key: '9|manual', result: { from: 9 }, plan: 'manual', curve: NONE };
   path.job = null;
   path.doneAt = -Infinity;
   path.sample.t = 10;

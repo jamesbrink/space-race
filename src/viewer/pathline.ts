@@ -20,6 +20,29 @@
 /** Pixels: the most a chord drawn may stray from the curve it stands for, as seen from the eye. */
 export const ERROR_PX = 0.35;
 
+/**
+ * How far the body may turn before a path comes down, radians, for it still to be drawn over the ground it comes down
+ * on: an eighth of a turn, three hours of the Earth's. A lob, an ascent cut short and a return from a low orbit come
+ * down well within it (at most a revolution and the parachute's minutes); a fall from the Moon's distance takes days,
+ * and drawn over the ground would be wound round the Earth once for each. Estimated: chosen between the two.
+ */
+export const WOUND = Math.PI / 4;
+
+/**
+ * The frame a path is drawn in, from the path alone: over the turning ground (`surface`) or as it lies among the stars
+ * (`orbit`). `turned` is how far the body turns before the path comes down, radians (null: it does not come down);
+ * `beyond`, whether it reaches past the stationary radius, where the ground turns under a path faster than the path
+ * goes round; `mapped`, whether the view is the map; `chosen`, the navball's frame. One that comes down before the
+ * body has turned `WOUND` under it is drawn over the ground, where it comes down. Any other (it goes round, runs out
+ * its time, passes the Moon, leaves, or comes down days from now) is drawn among the stars on the map and wherever it
+ * reaches beyond the stationary radius, where a line over the turning ground is the body's turning and not the path;
+ * otherwise in the navball's frame.
+ */
+export function drawnIn(turned: number | null, beyond: boolean, mapped: boolean, chosen: 'surface' | 'orbit'): 'surface' | 'orbit' {
+  if (turned !== null && turned <= WOUND) return 'surface';
+  return mapped || beyond ? 'orbit' : chosen;
+}
+
 /** A path: `n` instants, a place (x, y, z) and a velocity at each, in one frame that does not turn. */
 export interface Curve {
   t: Float64Array;
@@ -239,8 +262,14 @@ export interface Lens {
   near: number;
 }
 
-/** Halvings of a piece at most (the coarsest piece cut to a sixteen-millionth of itself). */
+/**
+ * Halvings of a piece at most (the coarsest piece cut to a sixteen-millionth of itself), and more where a piece is so
+ * long that that would leave it longer than `FINEST` s: a line of days (a path to the Moon) is cut first into pieces of
+ * hours, and the chord by the eye, in the seat, must still be cut as fine as on a line of six hours, whose pieces are
+ * half an hour at the most (2048 s, a sixteen-millionth of which is `FINEST`).
+ */
 const DEEPEST = 24;
+const FINEST = 2 ** -13;
 /** Pieces the span is first cut into, at least; and the most of the curve's own points one chord may stand for unexamined. */
 const FIRST = 8;
 const KNOTS = 64;
@@ -252,7 +281,7 @@ export const SHORTEST_PX = 0.75;
  * most `most` of them. The span is first cut at the multiples of a power of two seconds (an eighth of it or less), so
  * that as `t0` moves on the cuts stay where they were; each piece is then halved until neither its middle nor any of
  * the curve's own points within it (`knots`, in order) is more than `error` pixels from its chord as seen from the eye
- * (`lens`), or it has been halved `DEEPEST` times. A piece that holds more than `KNOTS` of the curve's points is halved
+ * (`lens`), or it has been halved `DEEPEST` times (or to `FINEST` s, where that is more). A piece that holds more than `KNOTS` of the curve's points is halved
  * without being looked at. Returns how many points it laid.
  */
 export function sample(
@@ -311,6 +340,7 @@ export function sample(
     return (Math.hypot(cx, cy, cz) / far) * lens.pxPerRad;
   };
   const step = 2 ** Math.floor(Math.log2((t1 - t0) / FIRST));
+  const deepest = Math.max(DEEPEST, Math.ceil(Math.log2(step / FINEST)));
   const starts: number[] = [];
   for (let k = Math.floor(t0 / step) + 1; k * step < t1; k++) starts.push(k * step);
   starts.push(t1);
@@ -318,9 +348,9 @@ export function sample(
   place(t0, a, 0);
   put(t0, a, 0);
   // (a piece's end, the stack of ends still to go to: depth-first, so the points come out in order of time)
-  const stackT = new Float64Array(DEEPEST + 2);
-  const stackP = new Float64Array((DEEPEST + 2) * 3);
-  const stackD = new Int32Array(DEEPEST + 2);
+  const stackT = new Float64Array(deepest + 2);
+  const stackP = new Float64Array((deepest + 2) * 3);
+  const stackD = new Int32Array(deepest + 2);
   for (let s = 0; s < starts.length; s++) {
     stackT[0] = starts[s]!;
     place(starts[s]!, stackP, 0);
@@ -334,7 +364,7 @@ export function sample(
       const oa = (n - 1) * 3;
       const tm = 0.5 * (ta + tb);
       place(tm, mid, 0);
-      let split = depth < DEEPEST && n + top + (starts.length - s) < most - 1; // (room left: every end still to go must be laid too)
+      let split = depth < deepest && n + top + (starts.length - s) < most - 1; // (room left: every end still to go must be laid too)
       if (split) {
         const k0 = after(ta);
         const k1 = after(tb - 1e-12 * Math.abs(tb));
