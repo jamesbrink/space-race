@@ -2,6 +2,7 @@
 
 import math
 
+import bpy
 from mathutils import Matrix, Vector
 
 from srlib import IN, TAU, MeshBuilder, frame, group, interior, mark_shells, material, prof
@@ -254,12 +255,23 @@ def second_stage(parent, metal, warm, dark, *, spheres_per_bank=4):
     finish(equipment, "SIVB_HeliumSpheres", metal, parent)
 
 
+def paints():
+    """The cutaway's alloy, bulkhead and thrust-frame materials, made once per scene and shared after that."""
+
+    def made(name, *args, **kw):
+        return bpy.data.materials.get(name) or material(name, *args, **kw)
+
+    return (
+        made("saturn-interior-alloy", (0.63, 0.67, 0.68), 0.55, 0.47, double_sided=True),
+        made("saturn-tank-bulkhead", (0.60, 0.53, 0.38), 0.38, 0.55, double_sided=True),
+        made("saturn-thrust-frame", (0.32, 0.36, 0.38), 0.55, 0.6, double_sided=True),
+    )
+
+
 def build(groups, *, spheres_per_bank=4, s150=False):
     if not interior():
         return
-    metal = material("saturn-interior-alloy", (0.63, 0.67, 0.68), 0.55, 0.47, double_sided=True)
-    warm = material("saturn-tank-bulkhead", (0.60, 0.53, 0.38), 0.38, 0.55, double_sided=True)
-    dark = material("saturn-thrust-frame", (0.32, 0.36, 0.38), 0.55, 0.6, double_sided=True)
+    metal, warm, dark = paints()
     first_stage(groups["FirstStageTankStructure"], metal, warm, dark)
     second_stage(groups["SecondStageTankStructure"], metal, warm, dark, spheres_per_bank=spheres_per_bank)
     instrument_bay(groups["InstrumentUnitEquipment"], dark, metal, s150)
