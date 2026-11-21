@@ -201,6 +201,7 @@ src/
                                       aborts, the parting), the coast (the lock, the hands), a burn (the braking burn, the manoeuvres), entry (the
                                       descent's events by hand), down (the card)
   deck/flown.ts                       the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it
+  deck/fit.ts                         a figure of the deck's middle panel made to fit its cell at every magnitude: fewer decimals, then a larger unit (km, Mm, Gm), never into the next
   deck/navball.ts                     the navball: attitude against the local horizon, prograde and retrograde, guidance's aim (`ballOf` is the mathematics, pure)
   viewer/dispose.ts                   letting go of a tree's geometries, materials and pictures on the GPU (a flight or a place the stage has left)
   viewer/programs.ts                  the place's number in every program's key: another place or day is built again under its own shaders' text

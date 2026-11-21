@@ -1414,17 +1414,18 @@ export class OrbitDeck extends Deck {
     // the phase it is in (phases/phase.ts), and what the middle panel shows in it
     const here = { down, alone, burning: thrust > 0, entering: s.entered || t > handed, altitude: s.altitude };
     this.figures(PHASES[phaseOf(here)].figures(here));
-    set('altitude', down ? '0.00' : (Math.max(0, s.altitude) / KM).toFixed(s.altitude < 99_950 ? 2 : 1));
-    set('speed', (alone || high ? s.speed : t > 0 && !down ? s.groundSpeed : 0).toFixed(0));
-    set('climb', (t > 0 && !down ? s.groundSpeed * Math.sin(s.groundClimb * DEG) : 0).toFixed(0));
+    this.figure('altitude', down ? 0 : Math.max(0, s.altitude) / KM, down || s.altitude < 99_950 ? 2 : 1);
+    this.figure('speed', alone || high ? s.speed : t > 0 && !down ? s.groundSpeed : 0, 0);
+    this.figure('climb', t > 0 && !down ? s.groundSpeed * Math.sin(s.groundClimb * DEG) : 0, 0);
     set('g', t > 0 && !down ? s.g.toFixed(2) : '1.00'); // (on the pad it stands on the launch system, and on the ground: one g)
-    set('mach', down ? '0.00' : s.mach.toFixed(2));
+    this.figure('mach', down ? 0 : s.mach, 2);
+    // (each figure fits its cell at every magnitude: fewer decimals, then a larger unit, as it grows: fit.ts)
     // (an ellipse that reaches the Moon's sphere, or past what the Earth holds, is not what it will do: its far end names
     // what it meets instead of a height it never comes to, and it has no period; the path, J and M, flies what happens)
     const meets = orbit ? reaches(s.r, s.v, t, this.pulling()) : null;
-    set('apogee', !orbit || meets === 'escape' ? '—' : (meets ?? ((el.a * (1 + el.e) - ball) / KM).toFixed(0)));
-    set('perigee', orbit ? ((el.a * (1 - el.e) - ball) / KM).toFixed(0) : '—');
-    set('period', orbit && !meets && el.a > ball ? (period(el.a) / 60).toFixed(1) : '—');
+    this.figure('apogee', !orbit || meets === 'escape' ? null : (meets ?? (el.a * (1 + el.e) - ball) / KM), 0);
+    this.figure('perigee', orbit ? (el.a * (1 - el.e) - ball) / KM : null, 0);
+    this.figure('period', orbit && !meets && el.a > ball ? period(el.a) / 60 : null, 1);
     if (this.flight.flies?.target) {
       const target = targetAt(this.flight, this.run, t);
       const delta = target && sub(target.r, s.r);

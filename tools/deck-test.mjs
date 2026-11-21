@@ -193,6 +193,42 @@ for (const [w, h, touch] of process.env.SR_ONLY && !staging ? [] : SIZES) {
       return [...range.getClientRects()].every((line) => line.left >= button.left && line.right <= button.right);
     });
     if (!labelFits) fail(where, `the next action's label extends beyond its button: "${await label()}"`);
+    // the figures fit at every magnitude (deck/fit.ts): each shown at the widest the deck can give it (ROOM digits, a sign and
+    // a point, in its longest unit) stays inside its own cell, and no two touch
+    const crowded = await page.evaluate(() => {
+      const gauges = [...document.querySelectorAll('#ui > .cockpit .gauge')].filter((g) => g.getBoundingClientRect().width > 0);
+      const kept = gauges.map((g) => [g.querySelector('b').textContent, g.querySelector('i').textContent]);
+      const bad = [];
+      for (const text of ['8888.8', '88888', '-888.8', '-8888']) {
+        for (const g of gauges) {
+          g.querySelector('b').textContent = text;
+          const unit = g.querySelector('i');
+          if (unit.textContent === 'm/s') unit.textContent = 'km/s';
+        }
+        const boxes = gauges.map((g) => {
+          const cell = g.getBoundingClientRect();
+          const parts = [...g.children].filter((c) => c.getBoundingClientRect().width > 0);
+          const range = document.createRange();
+          const inside = parts.every((c) => {
+            range.selectNodeContents(c);
+            return [...range.getClientRects()].every((r) => r.left >= cell.left - 0.5 && r.right <= cell.right + 0.5);
+          });
+          // (the name and the unit share a line: they may not run into each other either)
+          const [name, unit] = [g.querySelector('span').getBoundingClientRect(), g.querySelector('i').getBoundingClientRect()];
+          const apart = unit.width === 0 || name.right <= unit.left + 0.5 || name.bottom <= unit.top + 0.5;
+          return { label: g.querySelector('span').textContent, inside, apart };
+        });
+        for (const b of boxes)
+          if (!b.inside || !b.apart)
+            bad.push(`${b.label} ${text}${b.inside ? '' : ' leaves its cell'}${b.apart ? '' : ' touches its unit'}`);
+      }
+      gauges.forEach((g, i) => {
+        g.querySelector('b').textContent = kept[i][0];
+        g.querySelector('i').textContent = kept[i][1];
+      });
+      return bad;
+    });
+    for (const c of crowded) fail(where, `a figure does not fit: ${c}`);
     if (id.startsWith('ussr') && w === 1280) {
       // taken over in the ascent with real keys: G takes it, W held turns it (the attitude held), B and Space drop the strap-ons
       for (let i = 0; i < 100 && (await page.evaluate(() => window.sr.clock.t)) < 50; i++) {
