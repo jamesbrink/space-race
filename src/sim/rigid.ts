@@ -94,6 +94,25 @@ export function euler(w: Vec3, torque: Vec3, roll: number, across: number): Vec3
   return [(torque[0] - g[0]) / roll, (torque[1] - g[1]) / across, (torque[2] - g[2]) / across];
 }
 
+/**
+ * Euler's equations for a body whose principal axes are its own axes: the rates' derivative under a torque, both in the
+ * body's axes. `inertia` is the moments about the long axis (+X), +Y and +Z through the centre of mass, kg m^2.
+ */
+export function eulerOf(w: Vec3, torque: Vec3, inertia: Vec3): Vec3 {
+  const g = cross(w, [inertia[0] * w[0], inertia[1] * w[1], inertia[2] * w[2]]);
+  return [(torque[0] - g[0]) / inertia[0], (torque[1] - g[1]) / inertia[1], (torque[2] - g[2]) / inertia[2]];
+}
+
+/** The turn a quaternion makes, as a rotation vector (its axis times its angle, radians, the short way round). */
+export function rotationOf(q: Quat): Vec3 {
+  const s = q[0] < 0 ? -1 : 1;
+  const v: Vec3 = [s * q[1], s * q[2], s * q[3]];
+  const n = length(v);
+  if (n < 1e-12) return [2 * v[0], 2 * v[1], 2 * v[2]];
+  const angle = 2 * Math.atan2(n, s * q[0]);
+  return scale(v, angle / n);
+}
+
 export interface MassProperties {
   /** kg */
   mass: number;

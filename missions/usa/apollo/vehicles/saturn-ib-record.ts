@@ -24,6 +24,7 @@ import type {
   PlanRecord,
   Pursuit,
   TargetDef,
+  ThrusterSet,
   VentDef,
 } from '../../../../src/sim/plan.ts';
 import type { Curve } from '../../../../src/types.ts';
@@ -102,6 +103,12 @@ export interface SaturnIBRecord {
     separation: { at: Measure; push: Measure };
     /** The command module let go of the service module: when, the command module's mass after, the service module's, and its push, m/s. */
     modules: { at: Measure; after: Measure; leaves: Measure; push: Measure };
+    /**
+     * The service module's reaction control system as the attitude is flown with it alone in orbit (sm-rcs.ts, sim/attitude.ts):
+     * the centre of mass its chambers are placed about (XA, inches), its propellant load, kg, and the record's mass properties
+     * through the free flight. Left out, the attitude is turned as a hand turns it, at the hand's rate.
+     */
+    rcs?: { centre: Measure; load: Measure; inertia: NonNullable<ThrusterSet['inertia']> };
   };
   /** The firings in orbit, in the order they are flown. */
   burns: Burn[];

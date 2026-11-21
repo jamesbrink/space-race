@@ -158,6 +158,8 @@ export interface NavSample {
   landed?: boolean;
   /** Its launch vehicle's engines burning (fly.ts `Doing`): what guidance has to steer with. */
   powered?: boolean;
+  /** The attitude jets' propellant, kg, where they are hardware (sim/attitude.ts): what is left of what they held. */
+  gas?: { left: number; full: number };
 }
 
 const SVG = (body: string, box = '0 0 24 24'): string =>
@@ -238,6 +240,7 @@ export class Navball {
         <button data-nav="mode" title="Which speed the markers show: over the turning Earth (Surface) or in the frame that does not turn (Orbit) (O)"><kbd>O</kbd> <b data-cell="mode"></b></button>
         <p class="navball-speed" title="Speed in that frame"><b data-cell="speed">0</b><i>m/s</i></p>
         <p class="navball-att"><span title="Where the nose points, degrees from north">HDG <b data-cell="heading">–</b></span><span title="The nose above the level">PIT <b data-cell="pitch">–</b></span><span title="Roll: positive is right side down">ROL <b data-cell="roll">–</b></span></p>
+        <p class="navball-rcs" title="The attitude jets' propellant left, of what they held" hidden>RCS <b data-cell="rcs">–</b></p>
       </div>
       <div class="navball-ball" role="img" aria-label="Attitude ball">
         <canvas></canvas>
@@ -328,6 +331,9 @@ export class Navball {
     set('heading', `${(Math.round(ball.heading) % 360).toString().padStart(3, '0')}°`);
     set('pitch', `${ball.pitch.toFixed(0)}°`);
     set('roll', `${ball.roll.toFixed(0)}°`);
+    const rcs = this.root.querySelector<HTMLElement>('.navball-rcs')!;
+    if (rcs.hidden !== !s.gas) rcs.hidden = !s.gas;
+    if (s.gas) set('rcs', `${Math.round((100 * s.gas.left) / s.gas.full)} %`);
 
     const css = this.canvas.clientWidth;
     if (!css) return;

@@ -69,6 +69,17 @@ early and final chambers retain internal dimensions does not establish the
 unchanged external profile of an early prototype. The prototype's overall
 dimensions are not copied as flight nozzle dimensions.
 
+## In the simulator
+
+`sm-rcs.ts` flies the attitude with these quads once the spacecraft is alone in orbit (sim/attitude.ts): sixteen
+chambers, each quad's four at its reference point, pushing opposite their canted plumes, 100 lbf each (the News
+Reference, p. 149, assumed for CSM-101) at an estimated 280 s, about the centre of mass the flight gives (Apollo 7: XA
+951.6, Table A.5-I). Which command opens a chamber is the axis it turns most about: the axial pair of the quads by ±Z
+pitches the craft, of those by ±Y yaws it, and the across ones roll it. Because the quads stand 7.25 degrees off the axes
+a pitch pair also yaws the craft by that angle's tangent (and a yaw pair pitches it), which the hold corrects as the
+real autopilots did. The hold's figures are the stabilization and control system's (Operations Handbook §2.3.4.4.2):
+15 ms least pulse, 0.2 degree attitude and 0.2 deg/s rate deadbands at the low rate.
+
 ## Simplifications and things still wrong
 
 - These are nominal quad reference positions and directions. The box-shaped
@@ -79,6 +90,14 @@ dimensions are not copied as flight nozzle dimensions.
   estimated. Correct axes and exit diameter do not validate those inherited
   geometric dimensions.
 - Propellant tanks, plumbing, insulation, cork, wiring and servicing fittings
-  remain unbuilt. No thruster force or flight simulation is assigned.
+  remain unbuilt.
+- In the simulator: a quad's four engines push from its reference point, not from
+  their own places in the housing (the roll engines' offset is not modelled); the
+  engines' specific impulse is estimated; a pulse gives its thrust times its time,
+  with none of Figure 2.5-9's spike and tail-off; the quads draw on one supply as
+  loaded (the four quads' propellant together, not each quad's own, nor what the
+  flight drew before a hand took the attitude); the jets' push along the craft
+  (translation) is not flown; the computer's digital autopilot and its jet selection
+  are not modelled, only the SCS's hold.
 - Quads remain attached to the service module throughout the exploded exhibit;
   that layout is not a historical separation trajectory.

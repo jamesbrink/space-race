@@ -32,6 +32,7 @@
 /* three figures that hold their columns as they turn over */
 .navball-att { display: flex; gap: 5px; letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 .navball-att b { display: inline-block; min-width: 3ch; }
+.navball-rcs { letter-spacing: 0.02em; font-variant-numeric: tabular-nums; }
 .path-read p { display: flex; gap: 8px; align-items: baseline; margin-top: 3px; font-variant-numeric: tabular-nums; }
 .path-read p[hidden] { display: none; }
 .path-read p span { flex: none; width: 4.6em; text-transform: uppercase; letter-spacing: 0.12em; }

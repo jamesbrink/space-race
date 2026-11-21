@@ -25,6 +25,7 @@ import type {
 } from '../../../../src/sim/plan.ts';
 import type { ShedBody } from '../../../../src/types.ts';
 import { cmAero } from './command-module-aero.ts';
+import { smRcsSet } from './sm-rcs.ts';
 import type { Burn, H1Figures, SaturnIBRecord } from './saturn-ib-record.ts';
 import { event, j2 } from './saturn-v-plan.ts';
 
@@ -231,6 +232,8 @@ export function saturnIBPlan(o: SaturnIBRecord): FlightPlan {
         0.7,
         'Apollo Operations Handbook, Block II vol. 1 §2.3, stabilization and control, proportional rate table: LOW setting, all three axes',
       ),
+      // (its chambers as hardware, where the record gives the attitude's figures: the craft alone a rigid body they turn)
+      ...(csm.rcs ? smRcsSet(csm.rcs) : {}),
     },
   ];
   const sheds: ShedBody[] = [

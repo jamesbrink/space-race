@@ -14,6 +14,7 @@ import { flights } from '../missions/index.ts';
 import { flight as freedom7 } from '../missions/usa/mercury/flights/mr-3-freedom-7/flight.ts';
 import { leftWhen, runs, MOST as STORE_MOST, useStore } from '../src/app/runs.ts';
 import { hash, pack, readTape, replay, SAVE, stampOf, unpack } from '../src/deck/tape.ts';
+import { advance, advanceTo, attitudeOf, attitudeStart, sameControls } from '../src/sim/attitude.ts';
 import { autopilot, blend } from '../src/sim/autopilot.ts';
 import { hasLeft } from '../src/sim/craft.ts';
 import { ballisticOf } from '../src/sim/fly.ts';
@@ -560,6 +561,87 @@ test('Apollo 7’s SPS lit by hand in orbit, throttled, cut, lit again: written 
     console.log(
       `# Apollo 7's SPS at T+${instant.t.toFixed(0)} (${instant.what}): ${taped.entries.length} entries, ${a.state.burns.length} burns`,
     );
+  }
+});
+
+/**
+ * Apollo 7's spacecraft alone in orbit, its attitude a rigid body its service module jets turn (sim/attitude.ts, as the
+ * coast's `rigidTo` flies it): turned under Hold by the keys, Hold off and a roll begun direct and left to tumble, the clock
+ * run fast, Hold on again to damp it. No frame is written (the rigid body's steps do not depend on the frames): written at
+ * each instant and flown again from what was written (in the replay's own slices), the same to the last bit, and flown on
+ * beside the run never left, the same.
+ */
+class Turning extends Flier {
+  constructor(f) {
+    super(f.launch);
+    this.a = attitudeOf(f.plan);
+    const t = f.plan.record.orbit.injection.at.value;
+    this.att = attitudeStart(this.a, t, [1, 0, 0, 0]);
+    this.hold = true;
+    this.mass = 14_000;
+    this.n = 0;
+    this.ctl = null;
+    this.last = t;
+    this.clock.seek(t);
+  }
+  get ticks() {
+    return this.n;
+  }
+  print() {
+    return pack([this.att, this.hold, this.n]);
+  }
+  follow() {
+    const axis = (plus, minus) => Number(this.held.has(plus)) - Number(this.held.has(minus));
+    const c = { hold: this.hold, stick: [axis('e', 'q'), axis('w', 's'), axis('a', 'd')], mass: this.mass };
+    const t = this.clock.t;
+    // (as the coast's rigidTo: controls changed since the last follow are taken from its instant)
+    if (this.ctl && !sameControls(this.ctl, c) && this.last > this.att.t)
+      this.att = advanceTo(this.a, this.att, this.ctl, this.last, () => this.n++);
+    this.att = advance(this.a, this.att, c, t, () => this.n++);
+    this.ctl = c;
+    this.last = t;
+  }
+  command(what) {
+    if (what === 'undefined') return;
+    if (what === 'play') this.clock.play(true);
+    else if (what === 'hold') this.hold = !this.hold;
+    else if (what.startsWith('rate:')) this.clock.setRate(Number(what.slice(5)));
+  }
+}
+
+test('Apollo 7’s attitude on its jets, turned, tumbled and damped: written and flown again at each instant, the same, and the same flown on', () => {
+  const f = flights.find((x) => x.id === 'usa/apollo/apollo-7');
+  const t0 = f.plan.record.orbit.injection.at.value;
+  const list = frames(60 * 60 * 2, 29);
+  const hands = () => [
+    { at: t0, kind: 'c', payload: ['play'] },
+    { at: t0 + 1, kind: 'h', payload: ['w'] },
+    { at: t0 + 4, kind: 'h', payload: [''] },
+    { at: t0 + 8, kind: 'c', payload: ['hold'] },
+    { at: t0 + 9, kind: 'h', payload: ['q'] },
+    { at: t0 + 11, kind: 'h', payload: [''] },
+    { at: t0 + 14, kind: 'c', payload: ['rate:32'] },
+    { at: t0 + 200, kind: 'c', payload: ['hold'] },
+    { at: t0 + 400, kind: 'c', payload: ['rate:1'] },
+  ];
+  const at = [
+    { t: t0 + 3, is: (s) => Math.abs(s.w[1]) > 0, what: 'turning under Hold' },
+    { t: t0 + 60, is: (s) => Math.abs(s.w[0]) > 0.1 * DEG, what: 'tumbling in roll, Hold off' },
+    { t: t0 + 420, is: (s) => Math.abs(s.w[0]) < 0.5 * DEG, what: 'damped by Hold again' },
+  ];
+  for (const instant of at) {
+    const a = new Turning(f);
+    const hs = hands();
+    const n = drive(a, hs, instant.t, list);
+    assert.ok(instant.is(a.att), `at T+${instant.t.toFixed(0)} it is ${instant.what}`);
+    const taped = a.written();
+    assert.ok(!taped.entries.some((e) => e[0] === 'f'), 'no frame written');
+    const b = new Turning(f);
+    assert.ok(flyAgain(taped, b), `T+${instant.t.toFixed(0)}: flown again to the same steps and state`);
+    assert.equal(b.print(), a.print());
+    flyOnBoth(a, b, hs, list, n, 600);
+    assert.equal(b.print(), a.print(), `T+${instant.t.toFixed(0)}: and on, the same`);
+    console.log(`# Apollo 7's attitude at T+${instant.t.toFixed(0)} (${instant.what}): ${taped.entries.length} entries, ${a.n} steps`);
   }
 });
 

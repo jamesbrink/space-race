@@ -27,6 +27,8 @@ missions/                             the record: one folder per nation, program
                                       gemini-titan-plan.ts, a Gemini-Titan's record (`GeminiTitanRecord`, its flight's orbital.ts) and the
                                       plan written from it (`geminiTitanPlan`: the Titan's two stages hot-staged, the burns in orbit, the
                                       lifting entry); gemini-flies.ts, what its parts do in flight (`geminiFlies`, `geminiCommands`, the chutes);
+                                      oams-attitude.ts, the orbit attitude and manoeuvre system's eight attitude chambers and the attitude
+                                      control electronics' figures as the attitude is flown with them (`OAMS_ATTITUDE`, `OAMS_ATTITUDE_SET`);
                                       gemini-targets.ts, what a Gemini went up to meet: the Agena's and the ATDA's nodes, figures and motors,
                                       and the heading a target stands under beside its flight's vehicle (`TARGET_GROUP`, `lifted`);
                                       target-flight.ts, target-launches.ts, target-pad.ts, an uncrewed target's flight (`targetFlight`, its
@@ -44,6 +46,8 @@ missions/                             the record: one folder per nation, program
                                       to the orbit, the tower, the spacecraft parted, its firings in orbit as `Burn`s, the modules parted, the
                                       entry, the Earth landing system to the sea; `localAim`, `CSM_OUTSIDE`, `CSM_MATING_HEIGHT`) and what its
                                       model sheds and burns (`saturnIBFlies`);
+                                      sm-rcs.ts, the service module's reaction control system as the attitude is flown with it (`smRcsChambers`,
+                                      the sixteen chambers at their quads; `smRcsSet`, with the SCS's deadbands and minimum impulse; `massRow`);
                                       command-module-aero.ts, the Block II command module's trim drag (CM-107's, TN D-6725);
                                       vostok-stack.ts, a Vostok on its 8K72K: `vostokStack`, `vostokParts` (each part's place), the views,
                                       the type's specs (`SPEC`) and engines (`vostokMotors`), `along` and the azimuths;
@@ -386,7 +390,8 @@ src/
   sim/staged.ts                       an orbital flight's powered ascent, flown whole: stages burning together and in turn, dropped as the record says, on its steering law
   sim/stagedlive.ts                   the same ascent stepped a tick at a time and steered by hand or by guidance
   sim/staging.ts                      what happens when a hand stages a vehicle: the rules every vehicle is held to, whatever it is
-  sim/craftlive.ts                    a spacecraft in orbit flown live: its own engines lit, throttled, cut and lit again by hand, tick by tick, on the coast's forces and the rocket equation
+  sim/craftlive.ts                    a spacecraft in orbit flown live: its own engines lit, throttled, cut and lit again by hand, tick by tick, on the coast's forces and the rocket equation; guidance's steering of a burn lit so (`guide`)
+  sim/attitude.ts                     a spacecraft's attitude in orbit as a rigid body its own jets turn (`ThrusterSet.chambers`, the record's mass properties): Hold its autopilot (deadbands, rate damping, minimum impulse), the keys a rate or the jets direct; stepped so a kept run flies again the same
   sim/lever.ts                        the throttle lever as a hand has it, and every liquid engine's hand range (`handRange`: its own, or the game's where it ran at one thrust)
   sim/misses.ts                       the recorded misses: where a flown run falls outside a documented check's tolerance, and why
   sim/heating.ts                      the air's heat: stagnation-point heat flux (Sutton and Graves) and each named surface's temperature as a lump
@@ -518,6 +523,7 @@ where it was left.
 - `tools/docking.mjs` flies the Apollo and Gemini decks in Chrome, including a saved joint maneuver.
 
 - `tests/onestate.test.mjs` holds every flight into orbit to one state from the pad to the ground (simulator.md, "One state, changed only by what pushes it"): between any two samples of the record's run the velocity changes by gravity and by what the run says was pushing, the only step at one instant is the parting joint's push, the coast begins from the state the ascent left, a last stage cut by its guidance on the orbit leaves the record's period (on changed copies of three flights too), and every flight leaves its pad along its azimuth in the batch run, the samples drawn and the live vehicle.
+- `tests/attitude.test.mjs` holds the attitude in orbit on its jets (sim/attitude.ts): a chamber's torque against the record's moment of inertia, the gas it burns, a free tumble's momentum and energy, Hold damping a tumble into its deadbands, the keys' rate, steps that do not depend on how often they are asked, and guidance steering and cutting a burn lit by hand.
 - `tests/longrun.test.mjs` holds a flight of days to what a phone can hold (issue #173): Gemini VII's record run, fourteen days, by how many samples it keeps and how much heap it holds; `tests/rails.test.mjs` holds a coast kept by how fast its motion changes to the one that kept every step, between its samples.
 - `tests/lunargravity.test.mjs` holds the Moon's field to the published table and to its potential's gradient, the Moon's axes to the IAU's pole, the two sides of the sphere to the same gravity, and a coast through the sphere (Apollo 8's injection as the run reaches it) to one state across the crossing, to the same coast on rails, and to the Mission Report's pericynthion (a recorded miss).
 - `tests/cislunar.test.mjs` checks the path beyond a low orbit: a low orbit predicted to the bit as before, an orbit of more than six hours followed once round, a path that leaves the Earth's sphere, one that meets the Moon and one that passes it, Apollo 10's record predicted on from its injection to the Moon near the record's time (and to the same passing under a sphere's whole field), and the frame a path is drawn in.

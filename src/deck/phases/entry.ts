@@ -233,8 +233,8 @@ export function switchEntry(deck: OrbitDeck): void {
   deck.host.say?.(
     'Guidance',
     on
-      ? 'On: the computer has the bank again, and steers for its target'
-      : 'Off: the bank is yours. Roll the lift with the roll keys; Hold keeps it where you leave it',
+      ? 'On: the computer steers a burn lit by hand, and has the bank again and steers for its target'
+      : 'Off: a burn lit is yours to point and cut, and the bank is yours. Roll the lift with the roll keys; Hold keeps it where you leave it',
   );
 }
 

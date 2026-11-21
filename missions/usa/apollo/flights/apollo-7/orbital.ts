@@ -10,6 +10,7 @@ import { cross, dot, ecefToGeodetic, enuAxes, scale, sub, unit } from '../../../
 import { step } from '../../../../../src/world/orbit.ts';
 
 import { CSM_OUTSIDE, localAim, saturnIBPlan } from '../../vehicles/saturn-ib-plan.ts';
+import { massRow } from '../../vehicles/sm-rcs.ts';
 import type { Burn, SaturnIBRecord } from '../../vehicles/saturn-ib-record.ts';
 import { aborts, escapeEngine } from './escape.ts';
 
@@ -581,6 +582,29 @@ export const orbital: SaturnIBRecord = {
       after: doc(12_356 * LB, `${WEIGHTS}, CM at entry interface`),
       leaves: serviceMass,
       push: derived(27.5 * FT, `${REPORT}, §3.4, reconstructed 25–30 ft/s posigrade; midpoint modeled as axial clearance`),
+    },
+    rcs: {
+      centre: doc(
+        951.6,
+        `${WEIGHTS}, row 4 (coast after the first service propulsion firing): XA 951.6 in, the CSM's free flight running from 950.4 to 973.0`,
+      ),
+      load: doc(
+        (443.3 + 898.4) * LB,
+        `${REPORT}, §5.21.2, service module reaction control propellant loaded: 443.3 lb of fuel and 898.4 lb of oxidizer in the four quads (943.8 lb consumed in flight). As loaded: what the flight drew before a hand takes the attitude is not taken off`,
+      ),
+      // (the CSM in free flight, rows 3 to 17: from the first service propulsion firing to the last; Ix, Iy and Iz about the body's axes)
+      inertia: [
+        massRow(32_356, 18_129, 56_210, 59_982, `${WEIGHTS}, row 3`),
+        massRow(31_711, 17_774, 55_638, 59_073, `${WEIGHTS}, row 4`),
+        massRow(31_057, 17_470, 55_112, 58_246, `${WEIGHTS}, row 6`),
+        massRow(30_050, 17_096, 54_373, 57_175, `${WEIGHTS}, row 8`),
+        massRow(29_731, 17_032, 54_253, 57_044, `${WEIGHTS}, row 10`),
+        massRow(29_607, 16_978, 54_159, 56_973, `${WEIGHTS}, row 11`),
+        massRow(25_077, 14_632, 45_675, 46_274, `${WEIGHTS}, row 12`),
+        massRow(24_927, 14_574, 45_459, 46_044, `${WEIGHTS}, row 14`),
+        massRow(24_295, 14_268, 43_773, 44_090, `${WEIGHTS}, row 16`),
+        massRow(23_453, 13_829, 40_971, 40_878, `${WEIGHTS}, row 18, the command and service modules at their separation`),
+      ],
     },
   },
   burns: [formationBurn, separationBurn, ...rcsBurns, ...spsBurns],

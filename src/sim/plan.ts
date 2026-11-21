@@ -16,7 +16,7 @@
  */
 import type { Confidence, Measure } from '../measure.ts';
 import type { OrbitalFix } from '../types/flight.ts';
-import type { AbortRecord, AbortSequence, Aloft, Body, Burns, Curve, Heating, ShedBody, Thruster, Winds } from '../types.ts';
+import type { AbortRecord, AbortSequence, Aloft, Body, Burns, Curve, Heating, RcsSupply, ShedBody, Thruster, Winds } from '../types.ts';
 import type { Vec3 } from '../world/frames.ts';
 import type { PeriodKind } from '../world/meanelements.ts';
 import type { EntryDef } from './entry.ts';
@@ -317,8 +317,24 @@ export interface ThrusterSet {
   /** The supply that feeds them, and who works them. */
   tank?: string;
   mode: 'automatic' | 'manual';
-  /** Every chamber, where they are known as hardware. */
+  /**
+   * Every chamber, where they are known as hardware: with `supplies` and `inertia` the craft alone in orbit is a rigid body
+   * these turn (sim/attitude.ts), each drawing on the supply it names.
+   */
   chambers?: Thruster[];
+  /** What feeds the chambers (`Thruster.supply` names one): what can be used of it, kg, and its specific impulse. */
+  supplies?: RcsSupply[];
+  /**
+   * The moments of inertia of what they turn (the spacecraft alone, about its own axes through its centre of mass: roll
+   * about the long axis, pitch about +Y, yaw about +Z), kg m^2, at the masses the record tabulates them at, kg: taken
+   * between the two rows the mass lies between, and the nearest row's beyond them (sim/attitude.ts `inertiaAt`).
+   */
+  inertia?: { mass: Measure; roll: Measure; pitch: Measure; yaw: Measure }[];
+  /** The least time a chamber is opened for, s: what a pulse of the attitude control gives at the least (its minimum impulse). */
+  minimum?: Measure;
+  /** The attitude hold's deadband, degrees, and its rate deadband, degrees a second: what the craft's own autopilot lets pass. */
+  deadband?: Measure;
+  rateband?: Measure;
   /** Otherwise the torque they give about each axis at full command, N m, or the angular acceleration, deg/s^2, alike about each. */
   torque?: { roll: Measure; pitch: Measure; yaw: Measure };
   authority?: Measure;
@@ -920,6 +936,9 @@ export function problems(plan: FlightPlan): string[] {
     for (const t of c.thrusters) {
       need(n.bodies, 'body', t.body, `thruster set '${t.id}'`);
       if (t.tank) need(n.tanks, 'tank', t.tank, `thruster set '${t.id}'`);
+      for (const ch of t.chambers ?? [])
+        if (t.supplies && !t.supplies.some((s) => s.name === ch.supply))
+          out.push(`thruster set '${t.id}': chamber '${ch.name}' draws on supply '${ch.supply}', which the set does not have`);
       if (!t.does.length) out.push(`thruster set '${t.id}' does nothing`);
     }
     for (const ch of c.chutes) {

@@ -1,16 +1,31 @@
+import { advanceTo, aimed, type AttitudeState, stepAttitude } from '../../sim/attitude.ts';
 import { type CraftState, type CraftVehicle, craftVehicle } from '../../sim/craftlive.ts';
 import { handRange } from '../../sim/lever.ts';
-import { coastEngineState, coastEvents, coastOf, craftAt, crewWords, type Move, shipOf } from '../../sim/orbital.ts';
-import { clockAt, type EngineDef } from '../../sim/plan.ts';
+import {
+  aimFor,
+  aimOf,
+  coastEngineState,
+  coastEvents,
+  coastOf,
+  craftAt,
+  crewWords,
+  heightsBall,
+  type Move,
+  shipOf,
+} from '../../sim/orbital.ts';
+import { clockAt, type EngineDef, type FlightPlan } from '../../sim/plan.ts';
+import { needsTarget, steeredKind } from '../../sim/pursuit.ts';
 import { multiply, turn } from '../../sim/rigid.ts';
+import type { Steering } from '../../sim/steering.ts';
 import { orbitalFlown, type Run } from '../../sim/run.ts';
 import { byHand, madeBy } from '../../sim/staged.ts';
 import { type LiveSample, TICK } from '../../sim/vehicle.ts';
 import { G0 } from '../../world/bodies.ts';
-import { add, angleBetween, cross, DEG, length, scale, sub, unit, type Vec3 } from '../../world/frames.ts';
+import { sunPosition } from '../../world/ephemeris.ts';
+import { add, angleBetween, cross, DEG, length, scale, siteFrame, sub, unit, type Vec3 } from '../../world/frames.ts';
 import { KEEP, MOST, type ThrottleView } from '../deck.ts';
 import type { OrbitDeck } from '../orbitdeck.ts';
-import { handAxis, turnTo } from './coast.ts';
+import { controlsOf, handAxis, logged, turnTo } from './coast.ts';
 
 /**
  * A burn (phase.ts): the coast's braking burn (`burnNext`, `fire`, `retroWhy`) and the record's manoeuvres (`nextMove`,
@@ -18,7 +33,16 @@ import { handAxis, turnTo } from './coast.ts';
  * cut by the braking engine's integrator, or a solid spent (`burnOn`). Then it is written into the plan as what it was
  * (staged.ts `madeBy`, `byHand`'s `made`: lit and cut at its instants, its impulse the one it gave) and the rest of the
  * flight flown again from where it left the spacecraft (`OrbitDeck.burnt`). Functions of the deck's state (orbitdeck.ts).
+ *
+ * Its axis at each tick is the attitude's: the rigid body's (sim/attitude.ts), stepped with the burn's own ticks, where the
+ * craft's jets are hardware; else the hand's. With guidance on (G) as it lights, the computer steers it (sim/steering.ts,
+ * `CraftVehicle.guide`): solved for what the record's burn was for where that needs no target, else External ΔV of
+ * the record's impulse along the record's line at the lighting; its thrust line each tick is the line the axis is pointed
+ * along (through the autopilot, or at once for a craft turned by hand) and its cut an instant the engine stops at.
  */
+
+/** How near its burn's line guidance lights a burn on a craft its jets turn, radians: estimated, the game's (the computer's own test is not modelled). */
+const ALIGNED = 5 * DEG;
 
 /** A burn lit by hand and flown live until it stops (`burnOn`): what it stands for and how it is drawn. */
 export interface LiveBurn {
@@ -36,6 +60,10 @@ export interface LiveBurn {
   /** How many of the run's samples are kept (one a tenth of a second, and at its stop), and how many of its notes said. */
   kept: number;
   heard: number;
+  /** Guidance's steering of it, where G was on as it lit (and not thrown off since), or null. */
+  steering: Steering | null;
+  /** The rigid body's state, stepped with the burn's ticks, where the craft's jets are hardware. */
+  att?: AttitudeState;
 }
 
 /**
@@ -43,10 +71,9 @@ export interface LiveBurn {
  * lock opened), or, for a spacecraft whose hand controls had no lock (`PlanRecord.manual` without a `code`), before the
  * record's own burn is made: its pilot's next act in the record's order, before the parting that follows it.
  */
-export function burnNext(deck: OrbitDeck): boolean {
+export function burnNext(deck: OrbitDeck, t = deck.clock.t): boolean {
   if (deck.can('retro')) return true;
   const manual = deck.recordPlan.record?.manual;
-  const t = deck.clock.t;
   if (!deck.on || deck.burn || !manual || manual.code || deck.free || deck.fired !== null || !(t > deck.parting)) return false;
   if (deck.mine === null && t >= coastOf(deck.recordPlan).on) return false;
   return retroWhy(deck) === null;
@@ -83,13 +110,12 @@ export function fire(deck: OrbitDeck, t: number): void {
  * the coast's burn not yet fired, and the thrusters still aboard (their body not let go by the clock on the flight as it
  * stands).
  */
-export function nextMove(deck: OrbitDeck): Move | null {
+export function nextMove(deck: OrbitDeck, t = deck.clock.t): Move | null {
   if (!deck.free || deck.hand === null || deck.fired !== null || deck.aborted) return null;
   const plan = deck.recordPlan;
   const index = deck.priorMoves + deck.moved.length;
   const m = shipOf(plan).moves[index];
   if (!m) return null;
-  const t = deck.clock.t;
   // (not while a burn burns; and not before the record's own last manoeuvre has ended where the hands took over in it)
   if (deck.burn) return null;
   const previous = shipOf(plan).moves[index - 1];
@@ -135,21 +161,38 @@ function light(
   const craft = craftVehicle(plan, deck.frame, deck.flight.site.seaLevel.value, {
     engines: [id],
     ...(what.cutAt !== undefined ? { cutAt: { [id]: what.cutAt } } : {}),
+    ...(plan.record?.orbit ? { radius: heightsBall(plan, siteFrame(deck.flight.site)) } : {}),
   });
   const range = handRange(what.engine);
   if (range && deck.lever.at < range.least - 1e-9) deck.leverTo(range.most);
-  const axis = handAxis(deck, t);
+  // (the rigid body flown to the lighting itself: from here it is stepped with the burn's ticks)
+  const a = deck.attitude;
+  const h = deck.hand!;
+  const att = a && h.att ? advanceTo(a, h.att, controlsOf(deck), t) : undefined;
+  const axis = att ? turn(att.q, [1, 0, 0]) : handAxis(deck, t);
   const s0 = craft.start({ t, r: sub(at.centre, offset), v: at.v, mass: own.mass, tanks: own.tanks, starts: own.starts, axis });
-  const s1 = craft.tick(s0, { axis, light: [id], lever: deck.lever.at });
+  const { rails: _, rotation: __, throttles: ___, ...template } = at;
+  const guided = deck.guidesBurns(t);
+  // (guidance lights a burn in its attitude, as the computer did, turned there by the autopilot first: `burnAim`)
+  const wanted = guided && att ? burnAim(deck, t) : null;
+  const off = wanted ? angleBetween(axis, wanted) : 0;
+  if (off > ALIGNED) {
+    deck.host.say?.('Not lit', `Guidance is turning to the burn's attitude: ${(off / DEG).toFixed(0)} degrees to go`);
+    return;
+  }
+  const steering = guided ? steerOf(deck, plan, craft, { ...s0, lever: deck.lever.at }, what) : null;
+  const burn: LiveBurn = { ...what, engine: id, craft, state: s0, offset, template, kept: 0, heard: 0, steering, ...(att ? { att } : {}) };
+  const s1 = tickBurn(deck, burn, s0, [id]);
   if (!craft.burning(s1, id)) {
     for (const n of s1.said) deck.host.say?.(n.title, n.text);
     return;
   }
-  const { rails: _, rotation: __, throttles: ___, ...template } = at;
-  const burn: LiveBurn = { ...what, engine: id, craft, state: s1, offset, template, kept: 0, heard: s1.said.length };
+  burn.state = s1;
+  burn.heard = s1.said.length;
+  if (burn.att) Object.assign(h, { att: burn.att, t: s1.t, q: burn.att.q });
   const run = deck.run!;
   const samples = (run.samples as LiveSample[]).filter((x) => x.t < t - 1e-9);
-  samples.push(sampleOf(deck, burn, s0, true), sampleOf(deck, burn, s1));
+  samples.push(sampleOf(deck, burn, s0, true, att), sampleOf(deck, burn, s1));
   burn.kept = samples.length;
   deck.burn = burn;
   // (while it burns its fire is drawn from its lighting, on and on: the run's fires as they would be with it burning)
@@ -164,16 +207,115 @@ function light(
   deck.host.fly(deck.run);
   deck.host.say?.(
     what.label,
-    `Lit by hand${range ? ` at ${Math.round(craft.share(s1, id) * 100)} %` : ''}: ${what.engine.kind === 'solid' ? 'a solid, it burns until it is spent' : 'cut it with the lever, or Cut'}`,
+    `Lit by hand${range ? ` at ${Math.round(craft.share(s1, id) * 100)} %` : ''}: ${
+      what.engine.kind === 'solid'
+        ? 'a solid, it burns until it is spent'
+        : steering
+          ? 'guidance steers it and cuts it'
+          : 'cut it with the lever, or Cut'
+    }`,
   );
   if (!deck.clock.running) deck.clock.play(true);
 }
 
+/**
+ * Where guidance points the nose before a burn it will steer (as the computer turned the craft to its burn attitude before
+ * ignition): along the line the next burn a hand can light would push, as its record's attitude gives it now (the nose's
+ * way for an engine that pushes toward the tail), or null where none is next.
+ */
+export function burnAim(deck: OrbitDeck, t: number): Vec3 | null {
+  const m = nextMove(deck, t);
+  const engine = m
+    ? deck.recordPlan.craft[0]!.engines.find((e) => e.id === m.engine)
+    : burnNext(deck, t)
+      ? coastEvents(deck.recordPlan).burn
+      : undefined;
+  if (!engine || engine.kind === 'solid') return null;
+  const s = deck.sampleAt(t);
+  // (from the centre of mass, which the attitude drawn does not move)
+  const r = s.centre ?? s.r;
+  const frame = deck.frame;
+  const sun = () => frame.fromDate(sunPosition(frame.jdTT(t)));
+  const up = () => frame.upOver(frame.place(r, t), t);
+  try {
+    const push = m ? scale(aimFor(m.aim, r, s.v, sun, up), m.accel < 0 ? -1 : 1) : aimOf(deck.planned ?? deck.givenUp(), r, s.v, sun, up);
+    return scale(push, engine.astern ? -1 : 1);
+  } catch {
+    // (a coast with no aim for its burn: nothing to turn to)
+    return null;
+  }
+}
+
+/**
+ * Guidance's steering of a burn lit now (sim/craftlive.ts `guide`): for a manoeuvre of the record's, what it was for where
+ * that is solved without a target, else its impulse along its line as the record's attitude gives it here; for the braking
+ * burn, its integrator's impulse along the coast's aim. Null where there is nothing to steer to (a solid).
+ */
+function steerOf(
+  deck: OrbitDeck,
+  plan: FlightPlan,
+  craft: CraftVehicle,
+  s: CraftState,
+  what: { kind: LiveBurn['kind']; index: number; engine: EngineDef; cutAt?: number },
+): Steering | null {
+  const frame = deck.frame;
+  const sun = () => frame.fromDate(sunPosition(frame.jdTT(s.t)));
+  const up = () => frame.upOver(frame.place(s.r, s.t), s.t);
+  if (what.kind === 'braking') {
+    if (what.cutAt === undefined) return null;
+    try {
+      return craft.guide(s, what.engine.id, { line: aimOf(plan, s.r, s.v, sun, up), size: what.cutAt });
+    } catch {
+      // (a coast with no aim for its burn: the hands point it)
+      return null;
+    }
+  }
+  const m: Move | undefined = shipOf(deck.recordPlan).moves[what.index];
+  if (!m) return null;
+  const line = scale(aimFor(m.aim, s.r, s.v, sun, up), m.accel < 0 ? -1 : 1);
+  const toward = m.toward && steeredKind(m.toward) && !needsTarget(m.toward) ? m.toward : undefined;
+  return craft.guide(s, what.engine.id, { line, size: Math.abs(m.accel) * (m.off - m.on), ...(toward ? { toward } : {}) });
+}
+
+/**
+ * One tick of a burn flown live: guidance's thrust line (where it steers) the axis is pointed along and its cut, the axis
+ * the attitude's at the tick's start, the craft's tick, what the accelerometers sensed given back to guidance, and the rigid
+ * body stepped over the same tick (or, a craft turned by hand, pointed at once).
+ */
+function tickBurn(deck: OrbitDeck, burn: LiveBurn, s: CraftState, light?: string[], frame = s.t): CraftState {
+  const st = burn.steering;
+  const engine = burn.craft.engines[0]!;
+  let aim: Vec3 | null = null;
+  let stop: Record<string, number> | undefined;
+  if (st && (light || burn.craft.burning(s, burn.engine))) {
+    const thrust = st.thrustAt({ r: s.r, v: s.v }, s.t);
+    if (length(thrust) > 0) aim = scale(unit(thrust), engine.def.astern ? -1 : 1);
+    if (st.cutAt !== undefined) stop = { [burn.engine]: st.cutAt };
+  }
+  const a = deck.attitude;
+  const h = deck.hand!;
+  if (!burn.att && aim) {
+    h.q = aimed(h.q, aim);
+    const last = h.log.at(-1)!;
+    if (angleBetween(turn(last.q, [1, 0, 0]), turn(h.q, [1, 0, 0])) > 0.5 * DEG) h.log.push({ t: s.t, q: h.q });
+  }
+  const axis = burn.att ? turn(burn.att.q, [1, 0, 0]) : aim ? turn(h.q, [1, 0, 0]) : handAxis(deck, frame);
+  const before = s.burns.at(-1)?.push ?? [0, 0, 0];
+  const opened = s.burns.length;
+  const next = burn.craft.tick(s, { axis, lever: deck.lever.at, ...(light ? { light } : {}), ...(stop ? { stop } : {}) });
+  if (st && next.burns.length) st.felt(sub(next.burns.at(-1)!.push, next.burns.length > opened ? [0, 0, 0] : before), 1);
+  if (burn.att && a) {
+    burn.att = stepAttitude(a, burn.att, { ...controlsOf(deck, aim), mass: s.mass });
+    logged(deck, burn.att);
+  }
+  return next;
+}
+
 /** A state of a burn flown live as the run's sample: the template's, moved to where the craft is and lying as the hand holds it. */
-function sampleOf(deck: OrbitDeck, burn: LiveBurn, s: CraftState, before = false): LiveSample {
+function sampleOf(deck: OrbitDeck, burn: LiveBurn, s: CraftState, before = false, att = burn.att): LiveSample {
   const centre = add(s.r, burn.offset);
   const drift = deck.encounters?.contacts.rotation?.(s.t);
-  const q = drift ? multiply(deck.hand!.q, drift.delta) : deck.hand!.q;
+  const q = att ? att.q : drift ? multiply(deck.hand!.q, drift.delta) : deck.hand!.q;
   const axis = turn(q, [1, 0, 0]);
   const here = deck.frame.place(s.r, s.t);
   const wind = sub(s.v, cross(deck.frame.spin, s.r));
@@ -209,13 +351,13 @@ export function burnOn(deck: OrbitDeck, t: number): void {
   const burn = deck.burn!;
   let s = burn.state;
   if (t <= s.t) return;
-  turnTo(deck, t);
-  const axis = handAxis(deck, t);
+  // (a craft turned by hand: the keys turn it on to the clock; a rigid body is stepped with the ticks below)
+  if (!burn.att) turnTo(deck, t);
   const run = deck.run! as Run & { samples: LiveSample[] };
   const upTo = s.t + Math.min(t - s.t, MOST);
   let lit = true;
   while (s.t < upTo - TICK / 2) {
-    s = burn.craft.tick(s, { axis, lever: deck.lever.at });
+    s = tickBurn(deck, burn, s, undefined, t);
     lit = burn.craft.burning(s, burn.engine);
     const last = run.samples[burn.kept - 1]!;
     const end = !lit || s.t >= upTo - TICK / 2;
@@ -226,6 +368,7 @@ export function burnOn(deck: OrbitDeck, t: number): void {
     if (!lit) break;
   }
   burn.state = s;
+  if (burn.att) Object.assign(deck.hand!, { att: burn.att, t: s.t, q: burn.att.q });
   for (const n of s.said.slice(burn.heard)) deck.host.say?.(n.title, n.text);
   burn.heard = s.said.length;
   if (lit) {
@@ -243,6 +386,8 @@ function made(deck: OrbitDeck): void {
   const b = s.burns.at(-1)!;
   deck.burn = null;
   deck.craftTicks += s.ticks;
+  // (the ship as the burn left it: the rigid body's moments are read at its mass from here)
+  if (deck.hand?.att) deck.hand.mass = s.mass;
   const base = deck.planned ?? deck.givenUp();
   const engine = burn.craft.engines[0]!;
   // (the line it pushed along on the whole: the nose's way for one that pushes toward the tail, as the plan's aim is read)
@@ -257,9 +402,14 @@ function made(deck: OrbitDeck): void {
   }
   deck.burnt = { t: s.t, r: s.r, v: s.v, past: (deck.run!.samples as LiveSample[]).slice() };
   deck.refly();
-  const why = { cut: 'Cut', lever: 'Cut by the lever', dry: 'Tanks empty', integrator: 'Cut by its integrator', spent: 'Burned out' }[
-    b.ended ?? 'cut'
-  ];
+  const why = {
+    cut: 'Cut',
+    lever: 'Cut by the lever',
+    dry: 'Tanks empty',
+    integrator: 'Cut by its integrator',
+    spent: 'Burned out',
+    guidance: 'Cut by guidance',
+  }[b.ended ?? 'cut'];
   deck.host.say?.(
     burn.label,
     `${why}: ${(b.off - b.on).toFixed(1)} s, ${b.sensed.toFixed(1)} m/s${engine.tank ? `, ${b.fuel.toFixed(0)} kg drawn` : ''}`,
