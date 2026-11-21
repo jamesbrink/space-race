@@ -453,16 +453,22 @@ export type Action =
  * at, from the record; the impulse it took is then a check.
  */
 export type Pursuit =
-  /** Aimed so that the target is at this place from the craft at the instant `at`, s from liftoff, and in its plane. */
-  | { reach: { ahead: Measure; above: Measure }; at: Measure }
+  /**
+   * Aimed so that the target is at this place from the craft at the instant `at`, s from liftoff, and in its plane. With
+   * `arrival`, a midcourse correction of a terminal phase: lit, and aimed, as long before the arrival that phase solved as
+   * the record's lighting and `at` were before the record's.
+   */
+  | { reach: { ahead: Measure; above: Measure }; at: Measure; arrival?: Arrival }
   /** Leaves the craft on an orbit of the target's shape, the height between them the same all the way round. */
   | { coelliptic: true }
   /**
    * Braked to rest with the target at this place from it by the firing's recorded end, and held there until `until`,
    * s from liftoff: thrust commanded all the while from the range and its rate, within what the engine can give. The
-   * crew's own pulses are not on any record read.
+   * crew's own pulses are not on any record read. With `arrival`, the braking of a terminal phase: lit, and come to rest
+   * by, as long before or after the arrival that phase solved as the record's lighting and the firing's end were from the
+   * record's (held to `until` all the same, or to the firing's end where that is later).
    */
-  | { station: { ahead: Measure; above: Measure }; until: Measure }
+  | { station: { ahead: Measure; above: Measure }; until: Measure; arrival?: Arrival }
   /** A midcourse correction on the way out: its nearest to the Moon `height` m above the Moon's mean sphere, at `at`, s from liftoff. */
   | { pericynthion: { height: Measure; at: Measure } }
   /** An orbit about the body the craft is about as the burn ends (lunar orbit insertion, descent orbit insertion): its highest and lowest heights above that body's mean sphere (the Earth's: the orbit's reference ball), m. */
@@ -483,6 +489,18 @@ export type Pursuit =
    * risen so far), aimed to meet the target once it has gone `travel` degrees round its orbit.
    */
   | { elevation: { angle: Measure; travel: Measure; window: Measure } };
+
+/**
+ * The arrival of a terminal phase's transfer that its later burns are timed and aimed on (`Pursuit.reach`,
+ * `Pursuit.station`): `of`, the id of the event that lit the terminal phase (a burn lit on an `elevation`), and `at`, s
+ * from liftoff, when the record had that transfer arrive. The phase lit where the target rose to its elevation, its
+ * corrections and its braking move with the arrival it solved, as the crew's were made at so many degrees to go and the
+ * braking on the range closing; where it was not solved (no target to aim at), they are lit at the record's instants.
+ */
+export interface Arrival {
+  of: string;
+  at: Measure;
+}
 
 /**
  * Another craft a flight's manoeuvres are made on (sim/pursuit.ts `Target`): a craft of its own, which nothing the
