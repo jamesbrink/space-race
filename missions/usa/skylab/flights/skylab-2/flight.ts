@@ -5,6 +5,7 @@ import { nodes } from '../../../apollo/vehicles/stack-gallery.ts';
 import { LC39B } from '../../../places/cape-canaveral/lc-39.ts';
 import { sl2Ingress as ingress, sa206Elevation, skylabLauncher } from '../../../places/cape-canaveral/lc39-skylab.ts';
 import { spacecraftMotors } from '../../vehicles/csm-motors.ts';
+import { workshopModel } from '../../vehicles/workshop-gallery.ts';
 import { launchCrew } from './crew.ts';
 import { command, csmViews, port, service } from './csm116.ts';
 import { specs, timeline } from './record.ts';
@@ -61,5 +62,6 @@ export const flight: Flight = {
     },
     skylabLauncher,
     ...launchCrew,
+    workshopModel(2),
   ],
 };
