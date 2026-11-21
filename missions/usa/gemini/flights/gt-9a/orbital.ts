@@ -951,7 +951,7 @@ export const orbital: GeminiTitanRecord = {
       },
     },
     {
-      id: 'separation',
+      id: 'atda-separation',
       label: 'Separation: back from the ATDA, for the rendezvous from above',
       thrusters: 'forward',
       attitude: {
@@ -1429,7 +1429,7 @@ export const orbital: GeminiTitanRecord = {
       at: doc(T(6, 36, 0), `"The crew reported that station keeping began at 6 hours 36 minutes g.e.t." (${GIXA}, 4.3.1.2.2)`),
     },
     {
-      id: 'separation',
+      id: 'atda-separation',
       label: 'Separation for the rendezvous from above',
       at: doc(PARTING, `${GIXA}, Table 4.2-II, by the pilot’s report`),
     },
