@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CLOUD_FRAME_GLSL, CloudFrame } from './cloudframe.ts';
 import { type Day, DECK_DEPTH } from './day.ts';
 import { fieldAs, noise2 } from './field.ts';
 import { deckPatchGlsl, deckRegionalGlsl } from './weather.ts';
@@ -69,6 +70,25 @@ export const cloudUniform: THREE.IUniform<typeof DRIFT> = { value: DRIFT };
  */
 export const uCloudsLeft: THREE.IUniform<number> = { value: 1 };
 for (const lib of Object.values(THREE.ShaderLib)) lib.uniforms.uCloudDrift = cloudUniform;
+
+/**
+ * The frame the clouds are worked out in (cloudframe.ts): the scene's own while the eye is near the site, rolled after
+ * the eye over the Earth once it is not. Slots, as `cloudUniform` is, shared by reference by every material and
+ * written by the air on the stage (`PlaceAir.follow`): the turn from the scene's axes to the frame's and back (each a
+ * matrix by columns, as GLSL has them), what keeps the Earth's middle in its place under it, and what is added to a
+ * point of the frame for its place on the clouds' plane. Plain arrays and objects, so three's copying of a
+ * material's uniforms shares them. `cloudChart` is the same in doubles, for whoever works in JavaScript (clouds.ts).
+ */
+const IDENTITY = [1, 0, 0, 0, 1, 0, 0, 0, 1];
+export const cloudFrameUniforms = {
+  uCloudFrame: { value: new Float32Array(IDENTITY) },
+  uCloudSite: { value: new Float32Array(IDENTITY) },
+  uCloudShift: { value: { x: 0, y: 0, z: 0 } },
+  uCloudRoll: { value: { x: 0, y: 0 } },
+};
+for (const lib of Object.values(THREE.ShaderLib)) Object.assign(lib.uniforms, cloudFrameUniforms);
+/** The clouds' frame now: its turn (by rows, the scene's axes to its own) and its roll (metres). */
+export const cloudChart: { turn: readonly number[]; roll: readonly [number, number] } = { turn: IDENTITY, roll: [0, 0] };
 
 /**
  * How far the eye has risen out of the air, 0 on the ground to 1 above it (the globe sets it:
@@ -143,6 +163,8 @@ export class PlaceAir {
   private rise = 0;
   /** The wind the clouds drift on now (the scene's x and z, m/s): the day's at liftoff until the hour's is given (`blow`). */
   private wind: readonly [number, number];
+  /** The frame its clouds are worked out in: the scene's until the eye has left the site's country (cloudframe.ts). */
+  private readonly frame = new CloudFrame();
 
   constructor(air: Air) {
     this.air = air;
@@ -165,6 +187,17 @@ export class PlaceAir {
     this.put();
   }
 
+  /**
+   * The eye is here (the scene's frame): the clouds' frame goes with it once it is far from the site (cloudframe.ts).
+   * Asked each frame before anything is drawn (the setting's `attend`), so the clouds and their shadows on the Earth
+   * are of one frame. `unseen`: none of the day's cloud is drawn from there. True if the frame moved.
+   */
+  follow(eye: { x: number; y: number; z: number }, unseen = false): boolean {
+    const moved = this.frame.follow(eye.x, eye.y - (this.air.base - EARTH_SPHERE), eye.z, unseen);
+    this.put();
+    return moved;
+  }
+
   /** Move the clouds on by `dt` seconds of wind. */
   tick(dt: number): void {
     const wind = this.air.clouds ? this.wind : [0, 0];
@@ -178,6 +211,22 @@ export class PlaceAir {
     DRIFT.x = this.x;
     DRIFT.z = this.z;
     cloudRise.value = this.rise;
+    const { turn, roll } = this.frame;
+    const u = cloudFrameUniforms;
+    for (let r = 0; r < 3; r++)
+      for (let c = 0; c < 3; c++) {
+        u.uCloudFrame.value[c * 3 + r] = turn[r * 3 + c]!;
+        u.uCloudSite.value[r * 3 + c] = turn[r * 3 + c]!;
+      }
+    // (the Earth's middle, under the site's origin, stays where it is: the turn is about it)
+    const cy = this.air.base - EARTH_SPHERE;
+    u.uCloudShift.value.x = -cy * turn[1];
+    u.uCloudShift.value.y = cy * (1 - turn[4]);
+    u.uCloudShift.value.z = -cy * turn[7];
+    u.uCloudRoll.value.x = roll[0];
+    u.uCloudRoll.value.y = roll[1];
+    cloudChart.turn = turn;
+    cloudChart.roll = roll;
   }
 }
 
@@ -287,7 +336,7 @@ const cloudField = (c: Clouds | undefined, deckHeight: number, base: number) =>
   // the point, not before it, and there read a cloud that is not between it and the Sun: a vehicle in space, sweeping
   // over that point at kilometres a second, dimmed and brightened frame to frame.
   float underLayer(float h, float lo, float hi) { return 1.0 - smoothstep(lo, hi, h); }
-  // How much of the direct light toward \`toLight\` (the scene's frame) reaches a point of the scene: read where the ray
+  // How much of the direct light toward \`toLight\` reaches a point (both in the clouds' frame: cloudWorld): read where the ray
   // toward it crosses the layer's middle, which far off is lower in the scene's frame as the sea falls away round the
   // Earth's curve. Where a cloud's shadow is under a pixel (\`fp\`, metres), the record's cover dims it evenly instead,
   // so a far coast does not crawl as the shadows drift.
@@ -296,7 +345,7 @@ const cloudField = (c: Clouds | undefined, deckHeight: number, base: number) =>
     float below = underLayer(airHeight(world), 0.5 * (uCloudDrift.y + uCloudDrift.w) - ${base.toFixed(2)}, uCloudDrift.w - ${base.toFixed(2)});
     if (below <= 0.0) return 1.0;
     float layer = 0.5 * (uCloudDrift.y + uCloudDrift.w) - dot(world.xz, world.xz) / ${(2 * EARTH_SPHERE).toFixed(1)};
-    vec2 under = world.xz + toLight.xz / toLight.y * (layer - world.y);
+    vec2 under = world.xz + uCloudRoll + toLight.xz / toLight.y * (layer - world.y);
     float w = 0.25 * fp / ${c.size.toFixed(1)};
     // (a cloud stands where the noise is over its cut (clouds.ts), and the Sun's disc blurs the shadow of one 720 m up
     // by ten metres: so the shadow is the cloud's own size and darkens over 180 m in from its edge, as the cloud thickens)
@@ -342,6 +391,7 @@ function installAir(air: Air): void {
         uniform float fogFar;
       #endif
       uniform vec4 uCloudDrift;
+      ${c ? CLOUD_FRAME_GLSL : ''}
       uniform vec2 uHazeAbove;
       uniform vec2 uDeckShade;${veiled ? '\n      uniform vec2 uVeilLight;' : ''}
       // the haze's colour as seen from where the eye is: hazeAboveUniform
@@ -350,14 +400,14 @@ function installAir(air: Air): void {
         deck.overcast
           ? `#define LOCAL_OVERCAST
       float cloudCeiling(vec3 world) {
-        float nearSite = 1.0 - ${deckRegionalGlsl('world')};
+        float nearSite = 1.0 - ${deckRegionalGlsl('length(world)')};
         return nearSite * (1.0 - smoothstep(${(air.base + deck.height).toFixed(1)}, ${(air.base + deck.height + DECK_DEPTH).toFixed(1)}, world.y));
       }
       float ceilingBeam(vec3 world) { return 1.0 - 0.95 * cloudCeiling(world); }`
           : ''
       }
       ${cloudField(c, deck.height, air.base)}
-      ${c ? `float deckShadeHere(vec3 world, vec3 toLight) { return mix(1.0, deckShadeAt(world, toLight, ${air.base.toFixed(2)}, ${deck.cover.toFixed(2)}), underLayer(airHeight(world), ${deck.height.toFixed(1)}, ${(deck.height + DECK_DEPTH).toFixed(1)})); }` : ''}
+      ${c ? `float deckShadeHere(vec3 world, vec3 toLight) { return mix(1.0, deckShadeAt(vec3(world.x + uCloudRoll.x, world.y, world.z + uCloudRoll.y), toLight, ${air.base.toFixed(2)}, ${deck.cover.toFixed(2)}), underLayer(airHeight(world), ${deck.height.toFixed(1)}, ${(deck.height + DECK_DEPTH).toFixed(1)})); }` : ''}
       // how much of the haze lies between the eye and a point, as a fraction of the light lost: 1 - exp(-tau)
       float airFog(vec3 at) {
         vec3 eye = cameraPosition + uOrigin;
@@ -389,10 +439,12 @@ function installAir(air: Air): void {
       {${
         c
           ? /* glsl */ `
-        vec3 toLight = transpose(mat3(viewMatrix)) * directionalLights[0].direction;
-        airShade = cloudShade(vFogWorld, toLight, length(fwidth(vFogWorld.xz)));
+        // (in the clouds' frame, which far from the site is not the scene's: cloudframe.ts)
+        vec3 inAir = cloudWorld(vFogWorld);
+        vec3 toLight = uCloudFrame * (transpose(mat3(viewMatrix)) * directionalLights[0].direction);
+        airShade = cloudShade(inAir, toLight, length(fwidth(inAir.xz)));
         // and the middle deck's, from above (deckShadeUniform): its patches near the site, where its cover is the record's
-        if (uDeckShade.x > 0.0) airShade *= mix(1.0, deckShadeHere(vFogWorld, toLight), uDeckShade.x);`
+        if (uDeckShade.x > 0.0) airShade *= mix(1.0, deckShadeHere(inAir, toLight), uDeckShade.x);`
           : ''
       }${veil}${overcast}
         reflectedLight.directDiffuse *= airShade;

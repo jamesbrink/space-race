@@ -55,7 +55,7 @@ const sheetsShade = (day: Day | null | undefined): string => /* glsl */ `
             vec2 pd = world.xz + lean * ${deckHeightGlsl(day)};
             // (the deck's patches, as the scene's own ground has them: deckShadeAt)
             shade *= deckShadeAt(vec3(world.x, 0.0, world.z), vec3(sun.x, max(mu, 0.08), sun.z), 0.0, deckCoverAt(weatherAt(pd), pd));
-            ${day?.deck.overcast ? 'shade = mix(shade, 0.05, cloudCeiling(world));' : ''}
+            ${day?.deck.overcast ? 'shade = mix(shade, 0.05, cloudCeiling(scene));' : ''}
             vec2 pc = world.xz + lean * ${(day?.high.height ?? HIGH_HEIGHT).toFixed(1)};
             return shade * ${highOf(day) ? 'veilShade(highCoverAt(weatherAt(pc), pc), mu)' : '(1.0 - 0.5 * cirrusAt(pc, fp, weatherAt(pc).g))'};`;
 
@@ -1295,8 +1295,12 @@ export class Globe {
           // weather has them there (clouds.ts draws the same field: farCumulus), the middle deck and the cirrus, each
           // read where the ray toward the Sun crosses its height. \`mu\`: the Sun's height there, as a cosine from
           // straight up; \`fp\`: metres a pixel. Where a cloud's shadow is under a pixel the cover dims it evenly.
-          float globeShade(vec3 world, vec3 sun, float mu, float fp) {
+          float globeShade(vec3 scene, vec3 sun, float mu, float fp) {
             if (mu <= 0.02) return 1.0;
+            // (on the clouds' plane, which far from the site is not the scene's x and z: cloudframe.ts)
+            vec3 world = cloudWorld(scene);
+            world.xz += uCloudRoll;
+            sun = uCloudFrame * sun;
             vec2 lean = sun.xz / max(mu, 0.08);
             vec2 p = world.xz + lean * ${(c.height + 0.5 * c.depth).toFixed(1)};
             vec3 w;
@@ -1304,7 +1308,7 @@ export class Globe {
             float bias = cumulusBias((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, p, w, streets);
             float soft = 0.25 * fp / ${c.size.toFixed(1)};
             // (the same shapes the clouds are drawn in from here: the field's own near the eye, its cells from far above)
-            float cells = cellsShare(distance(world, cameraPosition + uOrigin) * uGlobePixel);
+            float cells = cellsShare(distance(scene, cameraPosition + uOrigin) * uGlobePixel);
             float shapes = cells < 1.0 ? cloudNoise(p - uCloudDrift.xz) + bias - ${cloudMiddle(c).toFixed(3)} : 0.0;
             if (cells > 0.0) shapes = cellsBlend(shapes, cumulusCells((p - uCloudDrift.xz) / ${c.size.toFixed(1)}, bias, ${cloudMiddle(c).toFixed(3)}, fp / ${c.size.toFixed(1)}), cells);
             // (a cell's shadow by how thick it is: a puff's is faint; and none from the skirt outside it)
@@ -1322,8 +1326,12 @@ export class Globe {
           ${weatherGlsl(day)}
           ${sheetsGlsl('air_', day)}
           // (a day with no cumulus: only the sheets over it)
-          float globeShade(vec3 world, vec3 sun, float mu, float fp) {
+          float globeShade(vec3 scene, vec3 sun, float mu, float fp) {
             if (mu <= 0.02) return 1.0;
+            // (on the clouds' plane, which far from the site is not the scene's x and z: cloudframe.ts)
+            vec3 world = cloudWorld(scene);
+            world.xz += uCloudRoll;
+            sun = uCloudFrame * sun;
             vec2 lean = sun.xz / max(mu, 0.08);
             float shade = 1.0;${sheetsShade(day)}
           }
@@ -1380,7 +1388,7 @@ export class Globe {
             ${
               this.clouds || this.sheets
                 ? `#ifdef USE_FOG
-            float footprint = length(fwidth(vFogWorld.xz));
+            float footprint = length(fwidth(cloudWorld(vFogWorld).xz));
             sceneShade = airShade;   // (the shared chunk's own, just worked out: what is taken back out below is what it put in)
             ${this.day?.deck.overcast ? 'sceneShade *= ceilingBeam(vFogWorld);' : ''}
             sunShade = mix(1.0, globeShade(vFogWorld, uGlobeSun, dot(normalize(vGlobeNormal), uGlobeSun), footprint), uCloudsLeft);

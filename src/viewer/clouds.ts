@@ -3,7 +3,9 @@ import type { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { FullScreenQuad, Pass } from 'three/addons/postprocessing/Pass.js';
 import {
   type Clouds,
+  cloudChart,
   cloudCutGlsl,
+  cloudFrameUniforms,
   cloudMiddle,
   cloudNoiseGlsl,
   cloudRise,
@@ -60,6 +62,11 @@ type Blend = 'blending' | 'blendSrc' | 'blendDst' | 'blendSrcAlpha' | 'blendDstA
  * the horizon's sky and the ground light the base, grey-blue. Each step is seen through
  * the haze between it and the eye, as anything else is (air.ts). The layer lies on the Earth's
  * curve, so downrange the clouds stay at their height over the sea.
+ *
+ * All of it is worked out in the clouds' own frame (cloudframe.ts): the scene's while the eye is near the site, and
+ * rolled after the eye over the Earth once it is not, since the field is a field on a plane and no plane maps a
+ * sphere (on the site's own, a quarter of the way round, every cloud was a streak to the horizon). `render` turns the
+ * eye, the camera and the ways to the Sun into it; nothing below knows.
  *
  * Far off, past what is baked or where a cloud is a few of the march's pixels across (`near`), the
  * same field is drawn flat on a shell through the layer instead (`farCover`), fading in as the
@@ -240,7 +247,7 @@ const VERTEX = /* glsl */ `
 const bakeShader = (c: Clouds, day: Day | null | undefined) => /* glsl */ `
   precision highp float; precision highp int;
   uniform vec2 uCorner;
-  uniform vec2 uBakeDrift;   // the clouds' drift when this was baked: the field's frame to the scene's
+  uniform vec2 uBakeDrift;   // the clouds' drift when this was baked: the field's frame to the clouds' plane
   out vec4 oValue;
   ${fieldAs('bake_')}
   ${cloudNoiseGlsl(c, 'bake_')}
@@ -755,7 +762,7 @@ export const overGlsl = (day: Day | null | undefined): string => {
   uniform highp sampler3D tBillows;
   uniform float uRise;
   uniform float uDome;       // a dome's height for each metre^DOME in from its edge
-  uniform vec2 uEyeXZ;       // the eye in the scene's frame
+  uniform vec2 uEyeXZ;       // the eye on the clouds' plane (the scene's x and z while the frame is the scene's: cloudframe.ts)
   ${fieldAs('over_')}
   ${cloudNoiseGlsl(UNIT, 'over_')}
   ${weatherGlsl(day)}
@@ -807,7 +814,7 @@ export const overGlsl = (day: Day | null | undefined): string => {
   vec3 sunOn(float h, vec3 up, vec3 v) {
     vec3 scene = mix(uSunLight, vec3(dot(uSunLight, LUMA)), 0.33) * smoothstep(-0.05, 0.25, dot(up, uSun));
     vec3 true_ = uAtmSunLight * atmSunAt(h, dot(up, uTrueSun)) / 3.14159265;
-    return mix(scene, mix(true_, vec3(dot(true_, LUMA)), 0.33), uAbove * smoothstep(60000.0, 300000.0, length(uEyeXZ + v.xz)));
+    return mix(scene, mix(true_, vec3(dot(true_, LUMA)), 0.33), uAbove * smoothstep(60000.0, 300000.0, fromSite(uEyeXZ + v.xz)));
   }${
     high
       ? /* glsl */ `
@@ -1089,7 +1096,7 @@ export const overGlsl = (day: Day | null | undefined): string => {
       day?.deck.overcast
         ? `
     // Stratocumulus thins at its boundaries. Integrate a density that tapers at both faces.
-    if (kind == 0) through = mix(smoothstep(0.0, 1.0, through), through, ${deckRegionalGlsl('uEyeXZ')});`
+    if (kind == 0) through = mix(smoothstep(0.0, 1.0, through), through, ${deckRegionalGlsl('fromSite(uEyeXZ)')});`
         : ''
     }
     float limb, tm = shellHit(dir, !within ? mid : ud > 0.0 ? 0.5 * (uEyeH + hi) : 0.5 * (uEyeH + lo), limb);
@@ -1136,7 +1143,7 @@ ${
         ? `
     // The light inside a solid bank is diffuse. Its small folds lose contrast as the deck closes.
     if (kind == 0) {
-      float bank = 1.0 - ${deckRegionalGlsl('xz')};
+      float bank = 1.0 - ${deckRegionalGlsl('fromSite(xz)')};
       slope *= 1.0 - 0.85 * bank;
       shaded = mix(shaded, 1.0, 0.85 * bank);
       thick = mix(thick, 0.8, 0.8 * bank);
@@ -1567,6 +1574,9 @@ export class CloudPass extends Pass {
     uVeilGlow: { value: new THREE.Color(0, 0, 0) },
     ...this.mapSlots,
     ...atmosphereUniforms,
+    // (toward the Sun in the clouds' frame, as every way here is: the shared one is the scene's)
+    uTrueSun: { value: new THREE.Vector3(0, 1, 0) },
+    ...cloudFrameUniforms,
   };
   /** The Sun's light on the marched cumulus: the scene's, through whatever high cloud the record has over the site (air.ts: veilLightUniform). */
   private readonly sunUnder = { value: new THREE.Color() };
@@ -1580,6 +1590,9 @@ export class CloudPass extends Pass {
   private sun: THREE.DirectionalLight | null = null;
   private sky: THREE.HemisphereLight | null = null;
   private readonly eye = new THREE.Vector3();
+  /** The eye in the clouds' frame (cloudframe.ts), and that frame's turn from the scene's axes. */
+  private readonly inAir = new THREE.Vector3();
+  private readonly frame = new THREE.Matrix3();
   private readonly turn = new THREE.Matrix4();
 
   private readonly scene: THREE.Scene;
@@ -1791,9 +1804,20 @@ export class CloudPass extends Pass {
     const camera = this.camera;
     // the eye in the scene's frame: the scene is drawn from it (origin.ts), so it is the origin's place plus the camera's
     const o = uOrigin.value;
-    const eye = this.eye.set(camera.position.x + o.x, camera.position.y + o.y, camera.position.z + o.z);
-    const fx = eye.x - cloudUniform.value.x,
-      fz = eye.z - cloudUniform.value.z;
+    const seen = this.eye.set(camera.position.x + o.x, camera.position.y + o.y, camera.position.z + o.z);
+    // Everything from here on is worked out in the clouds' frame: the scene's own while the eye is near the site, and
+    // rolled after the eye once it is not (cloudframe.ts; the place's air has followed the eye already this frame,
+    // air.ts `PlaceAir.follow`). The eye, the camera's turn and the ways to the Sun are turned into it here, and the
+    // shaders are told nothing: their x and z are the frame's, their plane is the clouds'.
+    const q = cloudChart.turn;
+    this.frame.set(q[0]!, q[1]!, q[2]!, q[3]!, q[4]!, q[5]!, q[6]!, q[7]!, q[8]!);
+    const middle = air.base - EARTH; // (the Earth's middle, under the site's origin: the turn is about it)
+    const eye = this.inAir.set(seen.x, seen.y - middle, seen.z).applyMatrix3(this.frame);
+    eye.y += middle;
+    const gx = eye.x + cloudChart.roll[0],
+      gz = eye.z + cloudChart.roll[1];
+    const fx = gx - cloudUniform.value.x,
+      fz = gz - cloudUniform.value.z;
     if (clouds) {
       this.bake(renderer, clouds, fx, fz);
       const baked = this.baked!;
@@ -1801,14 +1825,14 @@ export class CloudPass extends Pass {
       u.uCumulus.value.set(clouds.size, cloudMiddle(clouds), clouds.cover);
     }
     u.uField.value.set(fx, fz);
-    u.uEyeXZ.value.set(eye.x, eye.z);
+    u.uEyeXZ.value.set(gx, gz);
     u.uScale.value = air.scale;
     // the Earth's centre lies under the site's origin, its radius below the sea
     const cy = eye.y - (air.base - EARTH);
     const r = Math.hypot(eye.x, cy, eye.z);
     // Recovery observations place ceilings above local mean sea level on the ellipsoid. Anchor the local
     // spherical shell there rather than keep the launch site's small angular approximation 1,600 km away.
-    u.uEyeH.value = recovery && this.altitude ? THREE.MathUtils.lerp(r - EARTH, this.altitude(eye), recovery) : r - EARTH;
+    u.uEyeH.value = recovery && this.altitude ? THREE.MathUtils.lerp(r - EARTH, this.altitude(seen), recovery) : r - EARTH;
     u.uRe.value = EARTH + u.uEyeH.value;
     u.uUp.value.set(eye.x / r, cy / r, eye.z / r);
     if (clouds) {
@@ -1817,7 +1841,7 @@ export class CloudPass extends Pass {
     }
     u.uProjInv.value.copy(camera.projectionMatrixInverse);
     u.uRange.value.set(camera.near, camera.far);
-    u.uTurn.value.setFromMatrix4(this.turn.extractRotation(camera.matrixWorld));
+    u.uTurn.value.setFromMatrix4(this.turn.extractRotation(camera.matrixWorld)).premultiply(this.frame);
     const tall = 2 * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     u.uPixel.value = u.uGrain.value = tall / u.uLow.value.y;
     u.uFine.value = tall / readBuffer.height;
@@ -1868,7 +1892,7 @@ export class CloudPass extends Pass {
     renderer.setRenderTarget(this.low);
     this.quad.material = this.march;
     this.quad.render(renderer);
-    const still = this.settle(renderer, eye);
+    const still = this.settle(renderer, seen);
 
     // the outlines again, finer: found in the blend the composite reads, so they are where it would have had steps
     const from = this.fine[this.pong]!,
@@ -2150,6 +2174,7 @@ export class CloudPass extends Pass {
         uCorner: { value: new THREE.Vector2() },
         uBakeDrift: { value: new THREE.Vector2() },
         ...this.mapSlots,
+        ...cloudFrameUniforms,
       });
       this.reduce.uniforms.uOccupied!.value = (BELOW + reaches(SIDE_PER_SIZE * clouds.size)) / RANGE - 0.5 / 255;
     }
@@ -2183,8 +2208,9 @@ export class CloudPass extends Pass {
         if ((o as THREE.HemisphereLight).isHemisphereLight && !this.sky) this.sky = o as THREE.HemisphereLight;
       });
     const u = this.uniforms;
+    u.uTrueSun.value.copy(atmosphereUniforms.uTrueSun.value).applyMatrix3(this.frame);
     if (this.sun) {
-      u.uSun.value.subVectors(this.sun.position, this.sun.target.position).normalize();
+      u.uSun.value.subVectors(this.sun.position, this.sun.target.position).normalize().applyMatrix3(this.frame);
       u.uSunLight.value.copy(this.sun.color).multiplyScalar(this.sun.intensity / Math.PI);
     }
     if (this.sky) {

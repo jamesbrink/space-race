@@ -15,6 +15,12 @@
  * - cover varies over hundreds of kilometres with the weather, and somewhere in two thousand
  *   kilometres there is a front: a band of layered cloud with a cirrus shield ahead of it.
  *
+ * The map is the site's and ends 2,048 km from it. Past it, all round the Earth, the weather is `farWeatherAt`'s: the
+ * same kinds of weather with nothing of the land under them, made of noise in space (a plane is no map of a sphere),
+ * read by the shaders as a cube (`tWeatherFar`); the one gives way to the other short of the map's edge (`MAP_HELD`).
+ * And the shaders read all of it at a point of the clouds' plane, which goes with the eye once it is far from the site
+ * (cloudframe.ts): the place's own x and z from the site are found from it (`siteAt`) wherever the site matters.
+ *
  * What is documented is the flight's (types.ts: DayWeather; viewer/day.ts), and it holds whatever this file does:
  *
  * - at the site, layer by layer: the record's cumulus cover replaces the map's within `NEAR[0]` of the site and
@@ -43,9 +49,11 @@
  */
 import type { WeatherBeyond } from '../types.ts';
 import { smoothstep } from '../util/math.ts';
+import { EARTH_SPHERE } from '../world/bodies.ts';
 import { DEG } from '../world/frames.ts';
+import { CLOUD_FRAME_GLSL } from './cloudframe.ts';
 import { type Day, DECK_HEIGHT, deckPatches, type RecoveryDay, reportReach, VEIL_FORWARD } from './day.ts';
-import { fbm2, hash2, noise2 } from './field.ts';
+import { fbm2, fbm3, hash2, noise2, noise3 } from './field.ts';
 
 /** The map's breadth, metres: from 187 km up the horizon is 1,540 km off. */
 export const EXTENT = 4_096_000;
@@ -55,9 +63,9 @@ export const SIDE = 1024;
 export const NEAR: readonly [number, number] = [12_000, 40_000];
 /** Distance over which the station's layered-cloud observation gives way to the regional pattern, metres. */
 export const DECK_REACH = [40_000, 150_000] as const;
-/** Regional weight, zero at the station, one beyond the reach of its report. */
-export const deckRegionalGlsl = (point: string): string =>
-  `smoothstep(${DECK_REACH[0].toFixed(1)}, ${DECK_REACH[1].toFixed(1)}, length(${point}))`;
+/** Regional weight, zero at the station, one beyond the reach of its report. `distance`: GLSL for how far from the site, metres. */
+export const deckRegionalGlsl = (distance: string): string =>
+  `smoothstep(${DECK_REACH[0].toFixed(1)}, ${DECK_REACH[1].toFixed(1)}, ${distance})`;
 /** No more of the sky than this is covered by cumulus anywhere: past it the field's noise has no clear air left to cut. */
 export const MOST = 0.85;
 
@@ -230,6 +238,123 @@ export function weatherAt(east: number, north: number, place: Place, day: MapDay
 }
 
 /**
+ * The map is the site's weather and ends 2,048 km from it: how far from its middle, as a share of its breadth, it is
+ * all there is, and by where it has given way to the far weather (`farWeatherAt`). Short of its edge, whose texels a
+ * reading past it would otherwise draw out to the horizon in bands.
+ */
+export const MAP_HELD: readonly [number, number] = [0.4, 0.49];
+/** Texels a side of each face of the far weather's cube: 78 km at a face's middle. */
+export const FAR_SIDE = 128;
+/** How far apart in the noise two days' far weather is read, metres along each axis for each day between them (as `APART`). */
+const FAR_APART: readonly [number, number, number] = [7_919_000, -4_211_000, 5_347_000];
+
+/**
+ * The weather far from the site, past its map: anywhere on the Earth, by the way there from the Earth's middle (any
+ * length; the axes are the scene's, which are fixed to the Earth). **Estimated, all of it**: nobody here has read
+ * the weather of any day past its site, and this is not it. It is what `weatherAt` takes the open sea to have (the
+ * trades' clusters with clear lanes between, decks of cells where the weather thickens, a front's band of layered
+ * cloud here and there with its shield of cirrus ahead of it, patches of altocumulus and of cirrus), with nothing of
+ * the land under it, made of noise in space, not on a plane: a plane is no map of a sphere (cloudframe.ts), and a
+ * field read in space has no edge and no pole. What is seen from orbit past the site's own country is then weather
+ * of the size and kinds the Earth has, standing still over the ground; which weather stood where that day is not known.
+ */
+export function farWeatherAt(x: number, y: number, z: number, day: MapDay = FIRST_DAY): Weather {
+  const r = Math.hypot(x, y, z) || 1;
+  const px = (x / r) * EARTH_SPHERE + day.apart * FAR_APART[0],
+    py = (y / r) * EARTH_SPHERE + day.apart * FAR_APART[1],
+    pz = (z / r) * EARTH_SPHERE + day.apart * FAR_APART[2];
+  const at = (across: number, off: number, seed: number, octaves = 3): number =>
+    fbm3(px / across + off, py / across + 0.7 * off + 1.9, pz / across + 1.3 * off + 4.2, seed, octaves) / (1 - 0.5 ** octaves);
+  const synoptic = at(900 * KM, 3.1, 611);
+  const clusters = smoothstep(0.36, 0.7, at(160 * KM, 5.3, 621)) ** 1.5;
+  const trades = 0.01 + 0.19 * clusters;
+  // decks of cells where the weather thickens: closed 0.62 of the sky on the mean, open 0.3 (the cells themselves are
+  // 42 km across, under a texel of this map: their mean)
+  const thick = smoothstep(0.5, 0.78, synoptic);
+  const cells =
+    0.3 + 0.32 * smoothstep(0.45, 0.8, thick + 0.25 * noise3(px / (300 * KM) + 2.3, py / (300 * KM) + 6.1, pz / (300 * KM) + 8.8, 649));
+  let cumulus = trades + (cells - trades) * thick;
+  cumulus *= 0.3 + 1.3 * synoptic;
+  cumulus *= 0.12 + 1.2 * smoothstep(0.36, 0.62, at(255 * KM, 6.6, 695));
+  // a front: a band some 400 km across and thousands long, where a noise 2,200 km broad crosses its middle, and only
+  // along some of that line
+  const ridge = at(2200 * KM, 2.2, 651, 2) - 0.5;
+  const some = smoothstep(0.42, 0.6, noise3(px / (2600 * KM) + 9.4, py / (2600 * KM) + 1.6, pz / (2600 * KM) + 5.5, 655));
+  const band = Math.exp(-((ridge / 0.045) ** 2)) * some;
+  let deck = band * smoothstep(0.25, 0.6, at(170 * KM, 7.7, 661) + 0.5 * band - 0.2);
+  const shield = Math.exp(-(((ridge - 0.07) / 0.08) ** 2)) * some * smoothstep(0.3, 0.75, at(260 * KM, 1.3, 671) + 0.25);
+  const cirrus = Math.min(1, 0.9 * shield + 0.7 * smoothstep(0.62, 0.86, at(360 * KM, 9.9, 681)));
+  deck = Math.min(1, deck + 0.25 * smoothstep(0.6, 0.85, at(260 * KM, 4.2, 691)) * (1 - band));
+  cumulus *= 1 - 0.7 * deck * band;
+  return { cumulus: Math.min(MOST, Math.max(0, cumulus)), cirrus, deck };
+}
+
+/** A face of a cube as OpenGL reads it: the way to its middle, and the ways its columns and rows run. */
+const CUBE_FACES: readonly (readonly [
+  readonly [number, number, number],
+  readonly [number, number, number],
+  readonly [number, number, number],
+])[] = [
+  [
+    [1, 0, 0],
+    [0, 0, -1],
+    [0, -1, 0],
+  ],
+  [
+    [-1, 0, 0],
+    [0, 0, 1],
+    [0, -1, 0],
+  ],
+  [
+    [0, 1, 0],
+    [1, 0, 0],
+    [0, 0, 1],
+  ],
+  [
+    [0, -1, 0],
+    [1, 0, 0],
+    [0, 0, -1],
+  ],
+  [
+    [0, 0, 1],
+    [1, 0, 0],
+    [0, -1, 0],
+  ],
+  [
+    [0, 0, -1],
+    [-1, 0, 0],
+    [0, -1, 0],
+  ],
+];
+
+/**
+ * The far weather as a cube's six faces (+X, -X, +Y, -Y, +Z, -Z of the scene's axes about the Earth's middle, as a
+ * shader's `texture(samplerCube, way)` reads them), `side` texels each way: red the cumulus cover, green the high
+ * cloud, blue the middle deck, as the site's map has them; alpha nothing (no land is known to it: the field is
+ * organised as over the sea). A generator, a row at a time, so whoever makes it can stop between rows.
+ */
+export function* farWeatherFaces(day: MapDay = FIRST_DAY, side = FAR_SIDE): Generator<undefined, Uint8Array[]> {
+  const faces: Uint8Array[] = [];
+  for (const [major, s, t] of CUBE_FACES) {
+    const data = new Uint8Array(side * side * 4);
+    for (let j = 0; j < side; j++) {
+      const v = (2 * (j + 0.5)) / side - 1;
+      for (let i = 0; i < side; i++) {
+        const u = (2 * (i + 0.5)) / side - 1;
+        const far = farWeatherAt(major[0] + u * s[0] + v * t[0], major[1] + u * s[1] + v * t[1], major[2] + u * s[2] + v * t[2], day);
+        const k = 4 * (j * side + i);
+        data[k] = Math.round(255 * far.cumulus);
+        data[k + 1] = Math.round(255 * far.cirrus);
+        data[k + 2] = Math.round(255 * far.deck);
+      }
+      yield;
+    }
+    faces.push(data);
+  }
+  return faces;
+}
+
+/**
  * How far a place is from the site as the record of fibrous high cloud is taken to hold, metres: its distance, longer
  * and shorter by up to a half in lobes 20 to 90 km across, so that the report gives way along a ragged line, as a
  * field of cirrus thins out in sheaves, and not along a circle (which from height, and in the cel look with an edge,
@@ -275,14 +400,19 @@ export const highOf = (day: Day | null | undefined): { cover: number; depth: num
     : null;
 
 /**
- * GLSL: the map read at a point of the site's plane (the scene's x and z, metres), on a day (day.ts).
+ * GLSL: the weather read at a point of the clouds' plane (metres: the scene's x and z while the eye is near the site,
+ * rolled after it once it is not, cloudframe.ts), on a day (day.ts). The map is the site's and is read at the place's
+ * own x and z from the site (`siteAt`); past it, and on the far half of the Earth, the far weather's cube is read
+ * along the way to the place (`tWeatherFar`: `farWeatherAt`), the one giving way to the other short of the map's
+ * edge (`MAP_HELD`).
  * `uWeather`: the bearing of the scene's +X as its sine and cosine, one over the map's breadth, and the record's
  * cumulus cover at the site. `weatherAt(xz)`: cumulus cover (with the record's at the site), high cloud, deck.
  */
 export const weatherGlsl = (day: Day | null | undefined): string => {
   const high = highOf(day);
   return /* glsl */ `
-  uniform sampler2D tWeather;${
+  uniform sampler2D tWeather;
+  uniform samplerCube tWeatherFar;${
     day?.recovery
       ? `
   uniform sampler2D tRecovery;
@@ -292,12 +422,18 @@ export const weatherGlsl = (day: Day | null | undefined): string => {
   }
   uniform vec4 uWeather;
   uniform float uWeatherIn;   // how far the map has come in since it arrived, 0 to 1: before, the site's cover everywhere
+  ${CLOUD_FRAME_GLSL}
   float gLand;   // how much of the place weatherAt last read is land, 0 to 1 (the map's fourth channel)
   vec3 weatherAt(vec2 xz) {
-    vec2 en = vec2(xz.x * uWeather.x + xz.y * uWeather.y, xz.x * uWeather.y - xz.y * uWeather.x);
+    vec3 s = siteAt(xz);
+    vec2 en = vec2(s.x * uWeather.x + s.z * uWeather.y, s.x * uWeather.y - s.z * uWeather.x);
     vec2 uv = en * uWeather.z + 0.5;
     vec4 map = texture(tWeather, vec2(uv.x, 1.0 - uv.y));
     ${day?.recovery ? 'map.rgb = mix(map.rgb, texture(tRecovery, vec2(uv.x, 1.0 - uv.y)).rgb, uRecovery);' : ''}
+    // (past the map, and on the far half of the Earth, whose x and z are a near place's: the far weather)
+    vec2 edge = abs(uv - 0.5);
+    float held = s.y < 0.0 ? 0.0 : 1.0 - smoothstep(${MAP_HELD[0].toFixed(2)}, ${MAP_HELD[1].toFixed(2)}, max(edge.x, edge.y));
+    if (held < 1.0) map = mix(textureLod(tWeatherFar, s, 0.0), map, held);
     gLand = map.a;
     vec3 w = mix(vec3(uWeather.w, 0.0, 0.0), map.rgb, uWeatherIn);${
       high
@@ -306,7 +442,7 @@ export const weatherGlsl = (day: Day | null | undefined): string => {
     w.g = mix(${high.cover.toFixed(3)}, map.g, uWeatherIn);`
         : ''
     }
-    w.r = mix(uWeather.w, w.r, smoothstep(${NEAR[0].toFixed(1)}, ${NEAR[1].toFixed(1)}, length(xz)));
+    w.r = mix(uWeather.w, w.r, smoothstep(${NEAR[0].toFixed(1)}, ${NEAR[1].toFixed(1)}, siteFar(s)));
     return w;
   }`;
 };
@@ -322,7 +458,7 @@ export const toScene = (e: number, n: number, bearing: number): [number, number]
  * covers what the map says there and not the site's cover everywhere: the difference of the two covers' cuts
  * (`cloudCutAt`, air.ts: cloudCutGlsl), and away from the site streets along the wind (a noise 50 km long and 4 km
  * across, as cumulus line up over warm ground and sea in a steady wind; its strength estimated). Nothing at the
- * site. `q`: the place in the field's own frame, in cells; `xz`: in the scene's; `w`: the weather there; `streets`:
+ * site. `q`: the place in the field's own frame, in cells; `xz`: on the clouds' plane; `w`: the weather there; `streets`:
  * the streets' part of what is returned.
  * Needs weatherGlsl, cloudCutAt and `<prefix>noise2`; `uWeatherWind`: the low wind's way in the scene's x and z.
  */
@@ -359,7 +495,7 @@ export const cumulusBiasGlsl = (prefix: string): string => /* glsl */ `
   float cumulusBias(vec2 q, vec2 xz, out vec3 w, out float streets) {
     w = weatherAt(xz);
     float land = gLand;
-    float away = smoothstep(${NEAR[0].toFixed(1)}, ${NEAR[1].toFixed(1)}, length(xz));
+    float away = smoothstep(${NEAR[0].toFixed(1)}, ${NEAR[1].toFixed(1)}, fromSite(xz));
     streets = away * cumulusLanes(q, land);
     // and clusters of them, 19 and 50 km across, with clearer air between: so the field has every size from a puff
     // to a cluster of cells, and from far off its large shapes stand out more than its small ones (estimated); over
@@ -483,8 +619,8 @@ export const deckPatchGlsl = (prefix: string, height: number | string): string =
     tex = deckTex(xz, fp);
     return mix(smoothstep(cut - soft, cut + soft, tex), cover, even);
   }
-  // How much of the Sun the deck takes from a point \`world\` of the scene (its frame, metres; \`seaY\`: the sea's height
-  // in it) toward \`toLight\`: the deck where the ray to the Sun crosses it, as its patches with the share of each that
+  // How much of the Sun the deck takes from a point \`world\` (in the clouds' frame, its x and z on the clouds' plane:
+  // cloudframe.ts; metres; \`seaY\`: the sea's height in it) toward \`toLight\`: the deck where the ray to the Sun crosses it, as its patches with the share of each that
   // is cloud, 0.7 of the light under all of it. Not its cloudlets: they are read as if a pixel were 120 m, the
   // patches' dapple, which is what the shadow of a deck of cloudlets 70 to 220 m across is from far above (the Sun's
   // disc blurs it by 33 m; estimated). \`cover\`: deckCoverAt there.
@@ -523,7 +659,7 @@ export const sheetsGlsl = (prefix: string, day: Day | null | undefined): string 
   // record's cover of cloud that day (day.ts: deckPatches). On 5 May 1961 0.30, which is an eighth of the sky in
   // cloud (one okta of altocumulus at 3,600 m at Patrick at 10:00, NOAA ISD: documented for that hour, taken for
   // the morning), since its cloudlets cover some 0.45 of a patch there
-  float deckCoverAt(vec3 w, vec2 xz) { return mix(${deck.cover.toFixed(2)}, w.b, ${deckRegionalGlsl('xz')}); }
+  float deckCoverAt(vec3 w, vec2 xz) { return mix(${deck.cover.toFixed(2)}, w.b, ${deckRegionalGlsl('fromSite(xz)')}); }
   float gDeckThick;   // how thick the middle deck is where deckAt last looked: 0 at a cloudlet's rim, 1 at its heart
   vec2 gDeckSlope;    // and how its top slopes there (rise over run, along the scene's x and z): 0 where it is too fine to light
   vec3 gDeckSun = vec3(0.0, 0.0, 1e3);   // toward the Sun along the scene's x and z (a unit vector), and the tangent of its height: set before deckAt
@@ -695,11 +831,12 @@ export const sheetsGlsl = (prefix: string, day: Day | null | undefined): string 
   // holds from the site, the map's beyond.
   ${
     high.veil
-      ? `float highCoverAt(vec3 w, vec2 xz) { return mix(${high.cover.toFixed(3)}, w.g, smoothstep(${high.reach[0].toFixed(1)}, ${high.reach[1].toFixed(1)}, length(xz))); }`
+      ? `float highCoverAt(vec3 w, vec2 xz) { return mix(${high.cover.toFixed(3)}, w.g, smoothstep(${high.reach[0].toFixed(1)}, ${high.reach[1].toFixed(1)}, fromSite(xz))); }`
       : `// (fibres: given way along a ragged line, as the map has it: heldDistance)
   float highHeld(vec2 xz) {
-    vec2 en = vec2(xz.x * uWeather.x + xz.y * uWeather.y, xz.x * uWeather.y - xz.y * uWeather.x);
-    return length(en) * (0.5 + (0.55 * ${prefix}noise2(en / 90000.0 + vec2(3.7, 8.1), 519) + 0.45 * ${prefix}noise2(en / 22000.0 + vec2(1.3, 4.4), 523)));
+    vec3 s = siteAt(xz);
+    vec2 en = vec2(s.x * uWeather.x + s.z * uWeather.y, s.x * uWeather.y - s.z * uWeather.x);
+    return siteFar(s) * (0.5 + (0.55 * ${prefix}noise2(en / 90000.0 + vec2(3.7, 8.1), 519) + 0.45 * ${prefix}noise2(en / 22000.0 + vec2(1.3, 4.4), 523)));
   }
   float highCoverAt(vec3 w, vec2 xz) { return mix(${high.cover.toFixed(3)}, w.g, smoothstep(${high.reach[0].toFixed(1)}, ${high.reach[1].toFixed(1)}, highHeld(xz))); }`
   }

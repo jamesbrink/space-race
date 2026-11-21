@@ -1088,10 +1088,45 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   left out softens the cut (`cloudNoiseKept`, deckAt's `left`), so the cover is kept and a row far aslant is a soft
   band. Point-sampled, each row was another place: dashes along the horizon from the pad, and 1,700 pixels a frame
   flipping in the chase view at T+20 (now 6 over the scene's own). Measure the chase view with the clouds on.
+- **The clouds' plane goes with the eye, and past the site's map the weather is the far weather's.** A layer of cloud
+  is a field on a plane (noise in metres, a map, streets along a wind), and for as far as a flight could be seen from
+  its pad that plane was the site's own: a point of the Earth put straight down onto the scene's x and z. No plane is
+  a map of a sphere. A quarter of the way round, the ground stands on edge to the site's plane and the field on it was
+  drawn out fifty times along the way there, in streaks running to the horizon; further, the far side was laid back
+  over the near; and past the map's edge, 2,048 km from the site, its last texels were ruled across the sea in bands
+  (the owner's Apollo, coasting at T+28:34 after a time lapse; the lapse had nothing to do with it but to carry the
+  eye there: the clouds drift by the frame's seconds, and the clock put on eight hours at a site leaves them as they
+  were). Three things, each stated once:
+  - **The frame** (`viewer/cloudframe.ts`, the place's air: air.ts `PlaceAir.follow`, asked by the setting's
+    `attend` before anything of a frame is drawn). Within 300 km of the site it is the scene's, to the bit: every
+    picture of a site is what it was. Past that it is rolled after the eye over the Earth without slipping or
+    twisting, so the ground under the eye keeps its place on the plane and everything in view is within a few degrees
+    of the frame's pole. The cloud pass turns the eye, the camera and the ways to the Sun into the frame and its
+    shaders are told nothing; what is drawn in the scene's own frame (the globe's shadows, the shared chunk's) goes
+    through `cloudWorld`. A cloud and its shadow are read through the one frame, so they go together.
+  - **What it costs.** Away from under the eye the field slips over the ground as the eye goes: by 1 - cos of how far
+    round from the eye a place is, of the eye's speed (3 % at the horizon from 190 km). Which cloud stands where far
+    from the site depends on the way there. And the roll is put back before a float loses the metre (`SOFT`, `HARD`):
+    unseen if it can be (a cut, a time lapse, too far out for cloud), else in one frame, which small cloud stands
+    where changing while the weather they make up stays; at life's pace in a low orbit once in fifty minutes at the
+    most. All said in cloudframe.ts; `tests/cloudframe.test.mjs` holds the arithmetic.
+  - **The weather is not read through the roll.** How much cloud there is at a place is the place's: the map is read
+    at the place's own x and z from the site (`siteAt`), every distance from the site likewise (`fromSite`: the
+    record holds round the site and not again on the far side, whose x and z are a near place's), and from 40 % of
+    the map's breadth out it gives way to the **far weather** (`weather.ts farWeatherAt`, `tWeatherFar`): a cube read
+    along the way from the Earth's middle, made in the page from noise in space, which has no edge and no pole. It is
+    what the map takes the open sea to have (clusters and lanes, decks of cells, a front's band and its cirrus here
+    and there), a day's own, and **estimated, all of it**: nobody here has read any day's weather past its site, and
+    it knows no land. The day's own cloud all round the Earth (ERA5's, as the front page's Earth has one hour of it)
+    would go in the same cube: not done.
+  `pnpm test:clouds` (`--part far`) puts the eye 190 km over the site and over 17 places round the Earth from it,
+  straight down, and holds that the frame's pole is under the eye at each and that what the clouds add to the frame is
+  nowhere drawn out more than 12 to 1 (cirrus is fibres, to 6 to 1; the site's plane gave 50 and the map's edge ruled lines).
 - **From far out the day's cloud is let go.** The weather is the place's and its day's: layers over the ground round
   the site, which from a few hundred kilometres up is the sky as it was. From where the whole Earth is in the frame it
-  is a few layers wrapped round a globe whose weather that day nobody here has read, and it drew as bands and streaks
-  across continents. So it is drawn in full to an eye 1,000 km up and not at all from 2,500 km, by the height's
+  is a few layers wrapped round a globe whose weather that day nobody here has read, on a plane that serves the part
+  of the Earth round the eye and no more (above: a third of the way to the horizon's 44 degrees it is already drawn
+  out by a tenth). So it is drawn in full to an eye 1,000 km up and not at all from 2,500 km, by the height's
   logarithm between (clouds.ts `CLOUDS_FROM`, `CLOUDS_TO`, estimated; air.ts `uCloudsLeft`): one number for the clouds
   laid over the frame, for what is drawn under them (overlay.ts `cloudAhead`) and for their shadows on the globe
   (globe.ts), so a cloud and its shadow go together and nothing is cut. No view of a flight reaches that height (the

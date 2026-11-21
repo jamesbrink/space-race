@@ -3,7 +3,7 @@ import { DEG } from '../world/frames.ts';
 import type { Day } from './day.ts';
 import { later } from './later.ts';
 import { queued } from './pack.ts';
-import { EXTENT } from './weather.ts';
+import { EXTENT, FAR_SIDE, farWeatherFaces, mapDayOf } from './weather.ts';
 
 /**
  * The weather map (weather.ts) as the shaders read it: one texture and its placing, shared by
@@ -16,8 +16,35 @@ import { EXTENT } from './weather.ts';
 const none = new THREE.DataTexture(new Uint8Array([26, 0, 0, 255]), 1, 1, THREE.RGBAFormat);
 none.needsUpdate = true;
 
+/** A cube of six faces of bytes (red, green, blue, alpha), read between its texels: the far weather (weather.ts `farWeatherFaces`). */
+function cubeOf(faces: Uint8Array[], side: number): THREE.CubeTexture {
+  const cube = new THREE.CubeTexture(
+    faces.map((data) => {
+      const face = new THREE.DataTexture(data, side, side, THREE.RGBAFormat);
+      face.needsUpdate = true;
+      return face;
+    }),
+  );
+  cube.format = THREE.RGBAFormat;
+  cube.type = THREE.UnsignedByteType;
+  cube.colorSpace = THREE.NoColorSpace;
+  cube.generateMipmaps = false;
+  cube.minFilter = cube.magFilter = THREE.LinearFilter;
+  cube.needsUpdate = true;
+  return cube;
+}
+/** The far weather before it is made, and on a day with no map: one texel a face, the same cover everywhere and no other cloud. */
+const sameEverywhere = (cover: number): THREE.CubeTexture =>
+  cubeOf(
+    Array.from({ length: 6 }, () => new Uint8Array([Math.round(cover * 255), 0, 0, 0])),
+    1,
+  );
+const noneFar = sameEverywhere(26 / 255);
+
 export const weatherSlots = () => ({
   tWeather: { value: none as THREE.Texture },
+  /** The weather past the map, anywhere on the Earth: a cube read along the way from the Earth's middle, in the scene's axes. */
+  tWeatherFar: { value: noneFar as THREE.CubeTexture },
   tRecovery: { value: none as THREE.Texture },
   uRecovery: { value: 0 },
   /** The bearing of the scene's +X as its sine and cosine, one over the map's breadth, the record's cumulus cover at the site. */
@@ -44,6 +71,8 @@ export class WeatherMap {
   /** Its one texel until the map has come: the record's cover everywhere. */
   private readonly blank: THREE.DataTexture;
   private map: THREE.Texture | null = null;
+  private readonly blankFar: THREE.CubeTexture;
+  private far: THREE.CubeTexture | null = null;
   private recovery: THREE.Texture | null = null;
   private recoveryShare = 0;
   private gone = false;
@@ -56,6 +85,8 @@ export class WeatherMap {
     this.blank = new THREE.DataTexture(new Uint8Array([Math.round(cover * 255), 0, 0, 255]), 1, 1, THREE.RGBAFormat);
     this.blank.needsUpdate = true;
     this.uniforms.tWeather.value = this.blank;
+    this.blankFar = sameEverywhere(cover);
+    this.uniforms.tWeatherFar.value = this.blankFar;
     this.uniforms.uWeatherIn.value = 0;
     this.uniforms.uRecovery.value = 0;
     this.uniforms.tRecovery.value = none;
@@ -72,7 +103,7 @@ export class WeatherMap {
     // (not seen from the site: within 12 km the cover is the record's, and the map's part lies along the horizon)
     if (map)
       this.want = later(() => {
-        void this.load(map);
+        void this.load(map, day);
         if (day.recovery) void this.loadRecovery(day.recovery.map);
       });
   }
@@ -94,11 +125,15 @@ export class WeatherMap {
   dispose(): void {
     this.gone = true;
     this.uniforms.tWeather.value = none;
+    this.uniforms.tWeatherFar.value = noneFar;
     this.uniforms.uWeatherIn.value = 0;
     this.uniforms.tRecovery.value = none;
     this.uniforms.uRecovery.value = 0;
     this.arrived.clear();
     this.blank.dispose();
+    this.blankFar.dispose();
+    this.far?.dispose();
+    this.far = null;
     if (this.map) {
       this.map.dispose();
       (this.map.image as ImageBitmap | null)?.close?.();
@@ -144,19 +179,45 @@ export class WeatherMap {
     });
   }
 
-  private async load(map: string): Promise<void> {
-    const texture = await this.textureFor(map);
-    if (!texture) return;
+  /**
+   * The far weather of the day (weather.ts `farWeatherAt`), made here and not fetched: a few milliseconds at a time
+   * with the frames between, while the map is on its way.
+   */
+  private async farOf(day: Day): Promise<THREE.CubeTexture | null> {
+    const making = farWeatherFaces(mapDayOf(day));
+    let began = performance.now();
+    for (;;) {
+      const next = making.next();
+      if (next.done) return this.gone ? null : cubeOf(next.value, FAR_SIDE);
+      if (this.gone) return null;
+      if (typeof requestAnimationFrame !== 'undefined' && performance.now() - began > 4) {
+        await new Promise((r) => setTimeout(r));
+        began = performance.now();
+      }
+    }
+  }
+
+  private async load(map: string, day: Day): Promise<void> {
+    const [texture, far] = await Promise.all([this.textureFor(map), this.farOf(day)]);
+    if (!texture || !far) {
+      texture?.dispose();
+      (texture?.image as ImageBitmap | undefined)?.close?.();
+      far?.dispose();
+      return;
+    }
     // (taken up in a frame of its own: its upload is not to land with another map's: pack.ts)
     await queued(() => {
       if (this.gone) return;
       this.map = texture;
+      this.far = far;
       this.uniforms.tWeather.value = texture;
+      this.uniforms.tWeatherFar.value = far;
     });
     if (this.gone) {
       if (this.map !== texture) {
         texture.dispose();
         (texture.image as ImageBitmap).close();
+        far.dispose();
       }
       return;
     }

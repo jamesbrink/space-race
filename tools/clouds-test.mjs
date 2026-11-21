@@ -1,6 +1,6 @@
 // The clouds stand in the air, not round the eye (rendering.md, "The weather is a day's": a cloud moves with the day's
 // wind and with nothing else). Checked in the running page, on the day of each flight with cloud:
-//   pnpm dev, then: node tools/clouds-test.mjs [url] [--shots <dir>] [--only <flight id>] [--part climb|sheets|above|glow]
+//   pnpm dev, then: node tools/clouds-test.mjs [url] [--shots <dir>] [--only <flight id>] [--part climb|sheets|above|far|glow]
 // For each flight (Freedom 7's cumulus and deck, Liberty Bell 7's cumulus, deck and veil, Vostok 1's cirrus, Friendship 7's
 // deck over Complex 14), in both looks:
 //  - the climb: the camera is flown straight up at a vehicle's speed (250 m/s, a frame every 0.1 s) through the cumulus
@@ -19,6 +19,16 @@
 //    does over the same 1.6 m with the clouds left off is not theirs, and is taken off (and said).
 //  - from 300 m, 2, 8 and 25 km over each layer, straight down, the eye moved across by a hundredth of its height, two ways:
 //    under 1 % of the frame's edges may stay at the same pixel, the same (an edge kept round the eye).
+//  - far from the site the clouds are still clouds: the eye put 190 km over the site, then over places 24, 45, 89 and 135
+//    degrees round the Earth from it on four bearings and over the far side, looking straight down. What the clouds
+//    add to each frame (the frame less the same frame drawn without them) is measured for streaks: how many times as
+//    long as broad its grain is (from the structure tensor of its gradients: 1 a field with no grain, without end for
+//    ruled lines). Wherever there is cloud in daylight it must be under 12 (`FAR_DRAWN`), the frame's pole within 4
+//    degrees of under the eye, and some such place must be found past 40 degrees. (Read on the site's own plane, the
+//    field was drawn out into streaks to the horizon a quarter of the way round, 22 to 26 times as long as broad at 89
+//    degrees, and past the map's edge its last texels were ruled across the sea in bands: the owner's Apollo, T+28:34;
+//    rolled with the eye, 5.4 at the most, where the cirrus's fibres are.) And the
+//    clock put on eight hours at the site leaves the field over it as it was: the clouds go by the wind, not the clock's span.
 //  - the glow of entry round Freedom 7 hides nothing: from its wake at 5 m and beside it at 9 m, at 390 and 1280,
 //    no pixel darker with it than without it (it had cut the cloud behind it out of a disc round the view).
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -30,7 +40,7 @@ import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 const args = process.argv.slice(2);
 const shots = opt(args, '--shots', null);
 const only = opt(args, '--only', null);
-/** `--part climb|sheets|above|glow`: only that part (the climb through the cumulus, the sheets, straight down from over each layer, the glow). */
+/** `--part climb|sheets|above|far|glow`: only that part (the climb through the cumulus, the sheets, straight down from over each layer, far from the site, the glow). */
 const part = opt(args, '--part', null);
 const doing = (name) => !part || part === name;
 const url = urlOf(args);
@@ -62,6 +72,13 @@ const LOOKS = ['real', 'cel'];
 /** The climb: metres a second, and seconds a frame. */
 const SPEED = 250;
 const DT = 0.1;
+/**
+ * Far from the site: the least mean square of the gradient of what the clouds add to a frame (levels, on the mean of
+ * each 4 x 4 pixels) for their grain to be read; and how many times as long as broad that grain may be. Cirrus is
+ * fibres by design, up to 6 to 1 where it is thick (weather.ts `cirrusAt`).
+ */
+const FAR_ENERGY = 0.5;
+const FAR_DRAWN = 12;
 /** The march's tolerance on where a surface is, as a share of how far off it is (and never under 8 m). */
 const TOLERANCE = 0.03;
 
@@ -249,6 +266,101 @@ function install() {
       }
     return out;
   };
+  /**
+   * Put the eye `height` m over the place `round` degrees round the Earth from the site on `bearing` (degrees from
+   * the scene's +X toward +Z), looking straight down with the way on round the Earth up the frame, and draw.
+   */
+  T.over = async (round, bearing, height) => {
+    const R = 6371000,
+      a = (round * Math.PI) / 180,
+      b = (bearing * Math.PI) / 180;
+    const cy = p.airShown.base - R;
+    const cam = st.camera;
+    cam.position.set(Math.sin(a) * Math.cos(b) * (R + height), cy + Math.cos(a) * (R + height), Math.sin(a) * Math.sin(b) * (R + height));
+    cam.up.set(Math.cos(a) * Math.cos(b), -Math.sin(a), Math.cos(a) * Math.sin(b));
+    cam.lookAt(0, cy, 0);
+    cam.updateMatrixWorld();
+    const at = cam.position.clone();
+    for (let i = 0; i < 6; i++) {
+      st.dirty = true;
+      await frame();
+    }
+    if (cam.position.distanceTo(at) > 1)
+      throw new Error(`the eye was put ${round} degrees round and is ${cam.position.distanceTo(at).toFixed(0)} m off it`);
+  };
+  /** The camera's own up again, after `over`. */
+  T.level = () => st.camera.up.set(0, 1, 0);
+  /** Wait (six seconds at the most) for the day's weather to have come in: its map, and the far weather with it. */
+  T.weather = async () => {
+    const began = performance.now();
+    while (p.uniforms.uWeatherIn.value < 1 && performance.now() - began < 6000) await frame();
+    return p.uniforms.uWeatherIn.value;
+  };
+  /**
+   * What the clouds add to the frame as it stands (the frame less the same frame drawn without them), measured for
+   * streaks: `cover`, the share of the frame they change by 6 levels or more; `energy`, the mean square of that
+   * difference's gradient; `drawn`, how many times as long as broad its grain is (from the structure tensor of its
+   * gradients: 1 for a field with no grain, without end for ruled lines); `under`, how nearly the clouds' frame has
+   * its pole under the eye (the cosine of the angle between them).
+   */
+  T.streaks = async (keep) => {
+    const draw = async () => {
+      for (let i = 0; i < 3; i++) {
+        st.dirty = true;
+        await frame();
+      }
+      return T.grab();
+    };
+    const a = await draw();
+    const picture = keep ? T.picture() : null;
+    T.cloudless(true);
+    const b = await draw();
+    T.cloudless(false);
+    await draw();
+    const { w, h } = a;
+    const lum = (d, i) => 0.2126 * d[4 * i] + 0.7152 * d[4 * i + 1] + 0.0722 * d[4 * i + 2];
+    const diff = new Float32Array(w * h);
+    let covered = 0;
+    for (let i = 0; i < w * h; i++) {
+      diff[i] = lum(a.data, i) - lum(b.data, i);
+      if (Math.abs(diff[i]) >= 6) covered++;
+    }
+    // (the mean of each 4 x 4 pixels first: the two frames differ by a level here and there, which has no direction)
+    const bw = w >> 2,
+      bh = h >> 2;
+    const small = new Float32Array(bw * bh);
+    for (let y = 0; y < bh; y++)
+      for (let x = 0; x < bw; x++) {
+        let sum = 0;
+        for (let j = 0; j < 4; j++) for (let i = 0; i < 4; i++) sum += diff[(4 * y + j) * w + 4 * x + i];
+        small[y * bw + x] = sum / 16;
+      }
+    let xx = 0,
+      yy = 0,
+      xy = 0,
+      n = 0;
+    for (let y = 1; y < bh - 1; y++)
+      for (let x = 1; x < bw - 1; x++) {
+        const i = y * bw + x;
+        const gx = small[i + 1] - small[i - 1],
+          gy = small[i + bw] - small[i - bw];
+        xx += gx * gx;
+        yy += gy * gy;
+        xy += gx * gy;
+        n++;
+      }
+    const spread = Math.hypot(xx - yy, 2 * xy);
+    return {
+      cover: covered / (w * h),
+      energy: (xx + yy) / n,
+      // (how many times as long as it is broad the grain is: the root of the ratio of the tensor's two eigenvalues)
+      drawn: Math.sqrt((xx + yy + spread) / Math.max(xx + yy - spread, 1e-9)),
+      // (the cosine of how far the eye is from the pole of the frame the clouds are worked out in: cloudframe.ts)
+      under: p.uniforms.uUp.value.y,
+      left: p.uniforms.uCloudsLeft.value,
+      picture,
+    };
+  };
   window.cloudsTest = T;
 }
 
@@ -349,6 +461,51 @@ for (const id of FLIGHTS) {
           `${where}: ${layer}, ${gap} m over it, straight down: ${got.kept} of ${got.edges} edges kept round the eye as it moved (${(100 * share).toFixed(2)} %)`,
         );
       }
+
+    // Far from the site (the header): straight down from 190 km over the site and over places round the Earth from it.
+    // (The cel look for the first flight only: where the field is read is the same in both.)
+    if (doing('far') && (day.cumulus || layers.length) && (look === 'real' || id === FLIGHTS[0])) {
+      const places = [[0, 0], ...[24, 45, 89, 135].flatMap((round) => [75, 165, 255, 345].map((bearing) => [round, bearing])), [180, 0]];
+      const seen = [];
+      for (const [round, bearing] of places) {
+        const got = await page.evaluate(
+          async ([round, bearing, keep]) => {
+            const T = window.cloudsTest;
+            await T.over(round, bearing, 190_000);
+            const came = await T.weather();
+            return { came, ...(await T.streaks(keep)) };
+          },
+          [round, bearing, Boolean(shots)],
+        );
+        if (shots)
+          writeFileSync(join(shots, `${name}-${look}-far-${round}-${bearing}.jpg`), Buffer.from(got.picture.split(',')[1], 'base64'));
+        seen.push({ round, bearing, ...got });
+      }
+      // (cloud in daylight: enough of the frame changed by it, and by enough, for its grain to be read)
+      const lit = seen.filter((s) => s.cover > 0.03 && s.energy > FAR_ENERGY);
+      const said = (s) => `${s.round} degrees round on ${s.bearing}`;
+      // the frame the clouds are worked out in has gone with the eye: its pole within 4 degrees of under it, everywhere
+      const off = seen.filter((s) => !(s.under > Math.cos((4 * Math.PI) / 180)));
+      check(
+        off.length === 0,
+        `${where}: the clouds' plane lies under the eye at each of ${seen.length} places round the Earth${off.length ? `: not ${off.map((s) => `${said(s)} (${((Math.acos(s.under) * 180) / Math.PI).toFixed(0)} degrees off)`).join(', ')}` : ''}`,
+      );
+      for (const s of lit)
+        check(
+          s.drawn < FAR_DRAWN,
+          `${where}: 190 km over the place ${said(s)}: the cloud's grain is ${s.drawn.toFixed(1)} times as long as broad (cloud over ${(100 * s.cover).toFixed(0)} % of the frame)`,
+        );
+      check(
+        lit.some((s) => s.round >= 40),
+        `${where}: cloud seen in daylight past 40 degrees from the site at ${lit.filter((s) => s.round >= 40).length} of ${seen.filter((s) => s.round >= 40).length} places`,
+      );
+      // (and back over the site, so the clouds' frame is the scene's again before anything else is measured: a part that
+      // reads the frame's Sun from the last frame drawn would have read the far side's night)
+      await page.evaluate(async () => {
+        await window.cloudsTest.over(0, 0, 190_000);
+        window.cloudsTest.level();
+      });
+    }
 
     if (day.cumulus && doing('climb')) {
       // An edge pixel can be opaque from above with clear air under the camera looking forward and up.
@@ -613,6 +770,48 @@ for (const id of FLIGHTS) {
 // looking down the stream at the cloud far below, and beside it at 9 m), at a desk's width and a phone's, in both
 // looks. Light only adds: with the glow, no pixel may be darker than without it by 24 levels or more (fewer than
 // 0.2 % of them). It had hidden the cloud behind it and not the sea: a disc round the view with the cloud cut away.
+// The clock put on eight hours at a launch site (its own page: there the clock is the day's and flies nothing), seen
+// straight down from 190 km over the site before and after: the cloud's grain is what it was. In daylight with cloud
+// both times, or it is not asked.
+for (const id of doing('far') ? ['usa/mercury/mr-3-freedom-7', 'usa/apollo/apollo-8'].filter((f) => FLIGHTS.includes(f)) : []) {
+  const name = id.split('/').at(-1);
+  const { page, errors, close } = await open(browser, `${url}#${id}/site/vehicle`, { viewport: [1280, 800], timeout: 240000 });
+  await page.addStyleTag({ content: '#ui, #gallery, #title, .notes, .deck, #cockpit { display: none !important }' });
+  await page.evaluate(() => {
+    window.sr.clock.pause();
+    window.sr.clock.seek(0);
+  });
+  await page.evaluate(install);
+  const hours = await page.evaluate(async () => {
+    const T = window.cloudsTest;
+    const sr = window.sr;
+    await T.over(0, 0, 190_000);
+    await T.weather();
+    const before = await T.streaks(false);
+    sr.clock.seek(8 * 3600);
+    await T.over(0, 0, 190_000);
+    const after = await T.streaks(false);
+    T.level();
+    return { before, after, t: sr.clock.t };
+  });
+  const both = [hours.before, hours.after].every((s) => s.cover > 0.03 && s.energy > FAR_ENERGY);
+  const said = `${name}: 190 km over the site with the clock put on eight hours (T+${hours.t})`;
+  if (both)
+    check(
+      hours.after.drawn < FAR_DRAWN && hours.after.drawn < 1.5 * hours.before.drawn + 0.5,
+      `${said} the cloud's grain is ${hours.after.drawn.toFixed(1)} times as long as broad, ${hours.before.drawn.toFixed(1)} at liftoff`,
+    );
+  else
+    console.log(
+      `  --   ${said}: not in daylight with cloud both times (${hours.before.cover.toFixed(2)}, ${hours.after.cover.toFixed(2)} of the frame), not asked`,
+    );
+  check(
+    errors.length === 0,
+    `${name}, the site's clock put on: no errors on the page${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`,
+  );
+  await close();
+}
+
 if (FLIGHTS.includes('usa/mercury/mr-3-freedom-7') && doing('glow'))
   for (const [w, h] of [
     [390, 844],
