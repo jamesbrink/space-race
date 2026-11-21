@@ -128,12 +128,15 @@ def seats(mission, m):
             for y in (cy + 1.97, cy + 2.93):
                 tube(buckles, (-8.24, y, 24.6), (-7.42, y, 25.02), 0.105)
             tube(buckles, (-7.42, cy + 1.97, 25.02), (-7.42, cy + 2.93, 25.02), 0.15)
-        hip = group("LRV_" + role + "Hip", part)
+        # (where a figure sits, to the vehicle contract: at the hips, facing the node's -Y; tools/blender/vehicles.py)
+        hip = group("LRV_" + role + "Hip", part, seat=1)
         hip.location = point(-10, cy, 24)
         hip.rotation_euler.z = pi / 2
         eye = group("LRV_" + role + "Eye", part)
         eye.location = point(-10, cy, 54)
         eye.rotation_euler.z = pi / 2
+    # where the driver stands to get on: on the ground outboard of his seat, between the wheels (estimated)
+    group("LRV_Stand_Driver", part, stand=1).location = point(-8, 40, 0)
     for mesh, tag, mat in (
         (rails, "FoldingSeatFrames", "alloy"),
         (cloth, "SeatSlings", "ivory"),
@@ -277,6 +280,18 @@ def controls(m):
         mesh.build("LRV_" + tag, m[mat], panel, smooth=False)
 
 
+def saddle_release(m):
+    """The saddle release cable's handle on the left rear side of the forward frame (LS006-002-2H section 1.9.3.5): pulled
+    up, it lets the saddle go and the rover is free of its LM. Its shape and its place are estimated."""
+    node = group("LRV_SaddleRelease")
+    node.location = point(30.0, 17.6, 21.6)
+    handle, cable = MeshBuilder(), MeshBuilder()
+    tube(handle, (0, -1.3, 1.25), (0, 1.3, 1.25), 0.24)
+    tube(cable, (0, 0, -0.4), (0, 0, 1.25), 0.1)
+    handle.build("LRV_SaddleReleaseHandle", m["ochre"], node)
+    cable.build("LRV_SaddleReleaseCable", m["hardware"], node)
+
+
 def build(mission):
     m = {
         name: material("lrv-" + name, color, metal, rough, double_sided=name in ("titanium", "amber", "ivory", "web", "belt"))
@@ -305,6 +320,7 @@ def build(mission):
     seats(mission, m)
     batteries(mission, m)
     controls(m)
+    saddle_release(m)
     equipment(mission)
     # one node to the vehicle contract, hung on the hinges the deployment moves (lrv_deploy.py)
     assemble()

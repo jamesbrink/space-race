@@ -2509,6 +2509,7 @@ export class Stage {
     this.settle(dt);
     this.onFoot.runWorks(dt);
     this.onFoot.runDriven();
+    this.onFoot.settleVehicles(dt);
     this.hands.run(dt);
     if (this.walk.active) {
       this.onFoot.stepWalk(dt);

@@ -2,10 +2,16 @@
   "about": "What each rover gallery scene shows at its site. Where the site is comes from lunar-sites.json (missions/usa/places/moon/).",
   "sites": {
     "hadley": {
+      "unloaded": [
+        "LM10_RoverThermalCover"
+      ],
       "sunAt": "1971-08-01T11:48:48Z",
       "lander": "models/usa/apollo/apollo-15/falcon.glb"
     },
     "descartes": {
+      "unloaded": [
+        "LM11_RoverThermalCover"
+      ],
       "sunAt": "1972-04-22T16:33:35Z",
       "lander": "models/usa/apollo/apollo-16/orion.glb"
     },

@@ -1,4 +1,5 @@
 import { LUNAR_SITES as LUNAR_SITE_DEFS } from '../../missions/usa/places/moon/sites.ts';
+import * as THREE from 'three';
 import type { ModelDef, SitedFlight } from '../types.ts';
 import { landerAt, landerPose, lunarGround } from '../viewer/lunar/ground.ts';
 import type { LunarSite } from '../world/lunar-terrain.ts';
@@ -47,6 +48,9 @@ export async function lunarStay(flight: SitedFlight, id: LunarSite, whole: Sited
       sequence: undefined,
       with: undefined,
     });
+  // its rover, where it flew one: stowed in its quadrant of the LM, to be taken out by hand (ModelDef.lunarRover.deploy)
+  const rover = whole.models.find((m) => m.lunarRover?.deploy && m.lunarRover.site === id);
+  if (rover && lm) models.push(stowedRover(rover, pose));
   // the crew who went out, a step apart on the ground before the forward pad, facing the LM
   const out = flight.models.filter((m) => m.walker && m.surface);
   const ahead = { x: Math.cos(pose.rotationY), z: -Math.sin(pose.rotationY) };
@@ -78,4 +82,32 @@ export async function lunarStay(flight: SitedFlight, id: LunarSite, whole: Sited
     flies: undefined,
     opens: undefined,
   } as SitedFlight;
+}
+
+/**
+ * The rover as it stood at its site on the day: stowed in quadrant I of its LM, the model's vehicle node where it will
+ * stand once deployed (`deploy.from`, in the LM's frame), the LM's pose carried over to it, so that stowed it is in the
+ * LM's bay however the LM came to rest; its slider is its deployment, worked by hand (its parts' `functions`), and
+ * once it is off its saddle it is driven (`drives`) and stands on the ground on its own suspension.
+ */
+function stowedRover(rover: ModelDef, lm: ReturnType<typeof landerPose>): ModelDef {
+  const deploy = rover.lunarRover!.deploy!;
+  const [x, y, z, yaw] = deploy.from;
+  const turn = new THREE.Quaternion().setFromEuler(new THREE.Euler(lm.attitude.roll, lm.rotationY, lm.attitude.pitch, 'YZX'));
+  const at = new THREE.Vector3(x, y, z).applyQuaternion(turn);
+  const own = new THREE.Euler().setFromQuaternion(turn.multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), yaw)), 'YZX');
+  return {
+    id: rover.id,
+    name: rover.name,
+    url: rover.url,
+    scale: rover.scale,
+    backdrop: 'moon',
+    slider: deploy.slider,
+    parts: deploy.parts,
+    views: [],
+    position: [at.x, lm.y + at.y, at.z],
+    rotationY: own.y,
+    attitude: { pitch: own.z, roll: own.x },
+    absent: deploy.absent,
+  };
 }

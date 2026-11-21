@@ -325,6 +325,12 @@ export interface Part {
      */
     needs?: { node: string; atLeast?: number; atMost?: number; why: string }[];
   }[];
+  /**
+   * It is a vehicle (its node built to the vehicle contract: onfoot/drive.ts) that will be driven only once these are so:
+   * its functions (by their first node, as `functions`' `needs`), each at least or at most this far along its travel.
+   * `why` is said when it is refused: a rover still pinned to its saddle at the LM.
+   */
+  drives?: { needs: { node: string; atLeast?: number; atMost?: number; why: string }[] };
   /** What can be done to it from close by, on foot, beyond reading about it (see Action). */
   actions?: Action[];
   /**
@@ -607,8 +613,18 @@ export interface MechanismDef {
 export interface ModelDef {
   /** A separate gallery configuration of hardware that has another model at the launch site. */
   galleryOnly?: boolean;
-  /** The deployed lunar rover's surface, and its seated EVA crew shown while driving. */
-  lunarRover?: { site: RoverSite; riders?: string };
+  /**
+   * The deployed lunar rover's surface, and its seated EVA crew shown while driving (the gallery's quick drive). `deploy`:
+   * the rover as it stood at its landing site, stowed in its LM and taken out by hand (app/surface.ts stands it there):
+   * where its vehicle's node stands once deployed, in the LM's own frame (`from`: x, y, z in metres and its turn about
+   * the vertical, radians, as the model's extras `lander_place` have it), the slider of its deployment, the parts that do
+   * it (their `moves`, `functions` and `drives`) and what of the model is not on it there.
+   */
+  lunarRover?: {
+    site: RoverSite;
+    riders?: string;
+    deploy?: { from: [number, number, number, number]; slider: [string, string]; parts: Part[]; absent?: string[] };
+  };
   /** The complete spacecraft stands inside an opaque fairing on the assembled launch vehicle. */
   enclosedSpacecraft?: boolean;
   /**

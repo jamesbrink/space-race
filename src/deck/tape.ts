@@ -38,6 +38,12 @@ export interface Taped {
   end: { t: number; ticks: number; print: string };
   /** The clock as it was left (the instant, its pace, whether it ran): where Resume takes it up. */
   view: { t: number; rate: number; running: boolean };
+  /**
+   * What was left on a body's surface on foot, which no deck flies: how far each function there was worked by hand and
+   * where what was driven was left (the page's: CockpitHost `surface`). Kept with the run and given back with it, never
+   * flown again; a run without it left nothing there.
+   */
+  surface?: unknown;
 }
 
 /**

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import type { Driving } from '../../sound/audio.ts';
 import type { Part } from '../../types.ts';
+import { fitPlane } from '../runs.ts';
+import { type Corner, cornersOf, standCorners, steerCorners } from './suspension.ts';
 import type { Solids } from './walk.ts';
 
 /**
@@ -13,7 +15,15 @@ import type { Solids } from './walk.ts';
  * physics engine can take the place of `roll` later without anything above it changing.
  *
  *   roll     where a vehicle is a moment later, given the pedals and the wheel (pure)
+ *   rollOn   the same for one on its own suspension, whose motors, brakes and turns are what the ground gives (pure)
  *   Vehicle  one vehicle's nodes: it is put where `roll` says, its wheels turned and steered
+ *
+ * A vehicle whose model says more (vehicles.py's extras) is driven as it says. `rear_steer`: both ends steer, opposed,
+ * and it turns about the middle of its wheelbase, where its origin is. `suspension: 'wishbone'`: its wheels hang on
+ * double wishbones (suspension.ts) and it rides on them under the place's gravity (`Vehicle.gravity`): its frame heaves,
+ * pitches and rolls on their springs at a fixed rate, a wheel that is lifted off the ground hangs, and with none on the
+ * ground it flies; its motors, its brakes and how tight it can turn are what the ground under its wheels gives
+ * (`rollOn`). The lunar rover is the one.
  */
 
 export interface Motion {
@@ -37,6 +47,8 @@ export interface Chassis {
   /** Flat out, forward and in reverse, m/s. */
   top: number;
   reverse: number;
+  /** How fast its wheels are turned, radians a second of `steer` (left out: `WHEEL`, a car's). */
+  rate?: number;
 }
 
 /** What a turning circle (between kerbs, metres) means for the front wheels of a wheelbase: how far they turn at full lock. */
@@ -71,10 +83,67 @@ export function roll(from: Motion, pedal: number, wheel: number, dt: number, cha
   } else speed = Math.abs(speed) <= DRAG * dt ? 0 : speed - Math.sign(speed) * DRAG * dt;
   const most = chassis.lock / (1 + (speed / CALM) ** 2);
   const want = Math.max(-1, Math.min(1, wheel)) * most;
-  steer = Math.abs(want - steer) <= WHEEL * dt ? want : steer + Math.sign(want - steer) * WHEEL * dt;
+  const rate = chassis.rate ?? WHEEL;
+  steer = Math.abs(want - steer) <= rate * dt ? want : steer + Math.sign(want - steer) * rate * dt;
   steer = Math.max(-most, Math.min(most, steer));
   const heading = from.heading + (speed / chassis.wheelbase) * Math.tan(steer) * dt;
   // (forward of a heading is (cos, -sin) over the ground: the viewer's +X turned to the left is toward -Z)
+  const mid = (from.heading + heading) / 2;
+  const halted = speed === 0 && p < 0 ? (from.halted ?? 0) + dt : 0;
+  return { x: from.x + Math.cos(mid) * speed * dt, z: from.z - Math.sin(mid) * speed * dt, heading, speed, steer, halted };
+}
+
+/** What the ground gives a vehicle on its own suspension (`rollOn`), and what pulls it. */
+export interface Traction {
+  /** What falls here falls by, m/s². */
+  gravity: number;
+  /** All it weighs as it is driven, kg, and its motors' power together, W. */
+  mass: number;
+  power: number;
+  /** The most the ground gives its tyres along or across, as a share of its weight (a coefficient of friction). */
+  grip: number;
+  /** What it loses to rolling, as a share of its weight. */
+  rolling: number;
+  /** The sine of its slope along its nose, positive with its nose up. */
+  slope: number;
+  /** The share of its wheels bearing on the ground, 0 to 1: nothing drives, brakes or steers it with none. */
+  bearing: number;
+}
+
+/**
+ * A vehicle on its own suspension a moment later: `roll`'s pedals and wheel, but what drives it is its motors' power
+ * over its speed and what stops it its brakes, neither more than the ground under its wheels gives (`grip`); it loses
+ * speed rolling and to the slope; and it turns as its wheels point only as tight as the ground holds it across, past
+ * which it slides wide (its wheels still pointing as they are steered). Its wheel turns at `chassis.rate` and is not
+ * cut back with speed: the ground does that. With no wheel on the ground nothing it does changes where it goes.
+ */
+export function rollOn(from: Motion, pedal: number, wheel: number, dt: number, chassis: Chassis, t: Traction): Motion {
+  let { speed, steer } = from;
+  const p = Math.max(-1, Math.min(1, pedal));
+  const held = t.grip * t.gravity * t.bearing;
+  const drive = Math.min(held, t.power / (t.mass * Math.max(Math.abs(speed), 0.5)));
+  if (p > 0) {
+    if (speed < 0) speed = Math.min(0, speed + held * p * dt);
+    else if (speed < chassis.top) speed = Math.min(chassis.top, speed + drive * p * dt);
+  } else if (p < 0) {
+    if (speed > 0) speed = Math.max(0, speed - held * -p * dt);
+    else if (speed > -chassis.reverse && (speed < 0 || (from.halted ?? 0) >= PAUSE)) speed = Math.max(-chassis.reverse, speed - drive * 0.6 * -p * dt);
+  }
+  // (rolling, and the slope's pull while it moves: stood still, its brakes hold it)
+  if (speed !== 0 || p !== 0) {
+    const lost = t.rolling * t.gravity * t.bearing * dt;
+    speed = Math.abs(speed) <= lost && p === 0 ? 0 : speed - Math.sign(speed) * Math.min(Math.abs(speed), lost);
+    speed -= t.gravity * t.slope * t.bearing * dt;
+  }
+  const want = Math.max(-1, Math.min(1, wheel)) * chassis.lock;
+  const rate = chassis.rate ?? WHEEL;
+  steer = Math.abs(want - steer) <= rate * dt ? want : steer + Math.sign(want - steer) * rate * dt;
+  // how tight it turns: as its wheels point, as far as the ground holds it across
+  let curve = Math.tan(steer) / chassis.wheelbase;
+  const across = speed * speed * Math.abs(curve);
+  if (across > held) curve = held > 0 ? (Math.sign(curve) * held) / (speed * speed) : 0;
+  if (t.bearing === 0) curve = 0;
+  const heading = from.heading + speed * curve * dt;
   const mid = (from.heading + heading) / 2;
   const halted = speed === 0 && p < 0 ? (from.halted ?? 0) + dt : 0;
   return { x: from.x + Math.cos(mid) * speed * dt, z: from.z - Math.sin(mid) * speed * dt, heading, speed, steer, halted };
@@ -137,8 +206,52 @@ const find = (root: THREE.Object3D, name: string): THREE.Object3D | undefined =>
 const GEARING = 16;
 const COLUMN = new THREE.Vector3(0, 1, 0);
 const spin = new THREE.Quaternion();
+const AXLE_Z = new THREE.Vector3(0, 0, 1);
+const AXLE_X = new THREE.Vector3(1, 0, 0);
 /** The tallest kerb its wheels take, metres: more than that ahead is a wall. */
 const KERB = 0.25;
+/** What falls on the Earth falls by, m/s²: a vehicle not told where it is (`Vehicle.gravity`). */
+const G0 = 9.80665;
+/** A vehicle on its suspension is stepped at this rate whatever the frames, the rest carried (walking.md, "Loose things tick at a fixed rate"), s. */
+const TICK = 1 / 120;
+/**
+ * On its suspension, estimated: the share of its weight its tyres take along or across before they slip (wire mesh in
+ * the lunar soil: the mobility reports in docs/sources.md, not read for a figure), what rolling costs it, how far a wheel
+ * goes up past where it rides before it meets its bump stop (m), how much stiffer that stop is than the spring, and the
+ * dampers' share of critical. Its reverse, m/s.
+ */
+const GRIP = 0.6;
+const ROLLING = 0.08;
+const JOUNCE = 0.1;
+const STOP = 20;
+const DAMPING = 0.3;
+const BACKING = 1.5;
+/** The hand controller's throw, radians: forward to its hard stop (about 14 degrees) and to the side (LS006-002-2H figures 1-12 and 1-13). */
+const STICK_PITCH = 0.24;
+const STICK_ROLL = 0.21;
+
+/**
+ * How a vehicle on its own suspension stands and moves up and down on it, in the world: its origin's height and how fast
+ * that changes, and its pitch (nose up) and roll (its right side down), each with its rate; each wheel's spring as it was
+ * a tick ago (for its damper); and the time not yet stepped.
+ */
+interface Bounce {
+  vy: number;
+  pitch: number;
+  wp: number;
+  roll: number;
+  wr: number;
+  last: number[];
+  owed: number;
+  /** Its springs: rate (N/m a wheel), its weight's share at rest (m of spring), its dampers (N·s/m), what it weighs (kg) and how it turns (kg·m²). */
+  k: number;
+  rest: number;
+  damper: number;
+  mass: number;
+  pitchInertia: number;
+  rollInertia: number;
+  power: number;
+}
 
 export class Vehicle {
   readonly root: THREE.Object3D;
@@ -171,6 +284,18 @@ export class Vehicle {
   private throttle = 0;
   /** What held it this frame, named (`Road.struck`): null while it is not held. */
   blockedBy: string | null = null;
+  /** Both ends steer, opposed (extras `rear_steer`): it turns about the middle of its wheelbase, where its origin is. */
+  readonly rearSteer: boolean;
+  /** Its wheels on their double wishbones (extras `suspension: 'wishbone'`), each with whether it bears. Empty for a vehicle without. */
+  readonly corners: Corner[] = [];
+  /** How it rides on them: null for a vehicle without its own suspension, which is put on the ground as it goes. */
+  private readonly bounce: Bounce | null = null;
+  /** What falls where it is falls by, m/s² (the walker's place: OnFoot tells it). */
+  gravity = G0;
+  /** Its hand controller (extras `controller`, or `<name>_HandController`), and how it sat when found: it leans with the pedals and the wheel. */
+  private stick: { node: THREE.Object3D; rest: THREE.Quaternion } | undefined;
+  /** How far it has gone, metres, forward or back. */
+  distance = 0;
 
   /** `root` is the vehicle's node. Left out of its extras, a figure is taken: 3 m of wheelbase, 0.35 m wheels, an 12 m turning circle. */
   constructor(root: THREE.Object3D) {
@@ -178,7 +303,50 @@ export class Vehicle {
     const u = root.userData;
     const wheelbase = Number(u.wheelbase) || 3;
     this.radius = Number(u.wheel_radius) || 0.35;
-    this.chassis = { wheelbase, lock: lockFor(wheelbase, Number(u.turning_circle) || 12), top: Number(u.top_speed) || 11, reverse: 3 };
+    this.rearSteer = Boolean(u.rear_steer);
+    // (both ends steering, opposed, it turns as a bicycle of half its wheelbase about its middle)
+    const turns = this.rearSteer ? wheelbase / 2 : wheelbase;
+    const inner = Number(u.inner_lock);
+    const track = Number(u.track) || 1.5;
+    // where the model gives its inner wheel's lock, that is its lock (the outer wheel's follows); else its turning circle's
+    const lock = inner ? Math.atan(turns / (track / 2 + turns / Math.tan(THREE.MathUtils.degToRad(inner)))) : lockFor(turns, Number(u.turning_circle) || 12);
+    const wishbones = u.suspension === 'wishbone';
+    this.chassis = {
+      wheelbase: turns,
+      lock,
+      top: Number(u.top_speed) || 11,
+      reverse: wishbones ? Math.min(BACKING, Number(u.top_speed) || BACKING) : 3,
+      // (lock to lock in `steer_time` seconds, where the model says)
+      ...(Number(u.steer_time) ? { rate: (2 * lock) / Number(u.steer_time) } : {}),
+    };
+    if (wishbones) {
+      this.corners = cornersOf(root);
+      // its springs, from how far it sat down under its payload at the gravity it was rated for (extras): derived; its
+      // dampers, stops and how it turns: estimated (a box of its length, breadth and a metre's height)
+      const empty = Number(u.mass) || 200;
+      const payload = Number(u.payload) || 0;
+      const rated = Number(u.rated_gravity) || G0;
+      const sag = Math.max(0.01, (Number(u.clearance_empty) || 0) - (Number(u.clearance_loaded) || 0));
+      const mass = empty + payload;
+      const k = payload ? (payload * rated) / (4 * sag) : (mass * rated) / (4 * 0.1);
+      const length = 2 * Math.max(...this.corners.map((c) => Math.abs(c.hub.x)), 1) + 2 * this.radius;
+      this.bounce = {
+        vy: 0,
+        pitch: 0,
+        wp: 0,
+        roll: 0,
+        wr: 0,
+        last: [],
+        owed: 0,
+        k,
+        rest: (mass * rated) / (4 * k),
+        damper: 2 * DAMPING * Math.sqrt((k * mass) / 4),
+        mass,
+        pitchInertia: (mass * (length * length + 1)) / 12,
+        rollInertia: (mass * (track * track + 1)) / 12,
+        power: Number(u.power) || 1000,
+      };
+    }
     // Its pieces are found by what the model says they are (extras `steer`, `seat`, `stand`,
     // `steering`), and failing that by the names the contract gives them.
     let seat: THREE.Object3D | undefined;
@@ -189,6 +357,7 @@ export class Vehicle {
       if (/^_(Steer)?Wheel_\d+$/.test(tail)) this.rolling.push(o);
       if (o.userData.steer || /^_Knuckle_\d+$/.test(tail)) this.knuckles.push(o);
       if (!this.tiller && (o.userData.steering || /^_SteeringWheel$/.test(tail))) this.tiller = { node: o, rest: o.quaternion.clone() };
+      if (!this.stick && (o.userData.controller || /^_HandController$/.test(tail))) this.stick = { node: o, rest: o.quaternion.clone() };
       // (the driver's is the seat called so, or the first there is)
       if (o.userData.seat && (!seat || /driver/i.test(o.name)) && !/driver/i.test(seat?.name ?? '')) seat = o;
       if (o.userData.stand && (!stand || /driver/i.test(o.name)) && !/driver/i.test(stand?.name ?? '')) stand = o;
@@ -322,7 +491,52 @@ export class Vehicle {
     const m = this.root.matrixWorld.elements;
     this.motion = { x: p.x, z: p.z, heading: Math.atan2(-m[2]!, m[0]!), speed: 0, steer: 0 };
     this.y = p.y;
+    const b = this.bounce;
+    if (b) {
+      // (on its suspension it is taken as it stands, tipped however it is: heading, then pitch, then roll)
+      const turned = new THREE.Euler().setFromQuaternion(this.root.getWorldQuaternion(new THREE.Quaternion()), 'YZX');
+      this.motion.heading = turned.y;
+      Object.assign(b, { vy: 0, pitch: turned.z, wp: 0, roll: turned.x, wr: 0, last: [], owed: 0 });
+    }
     this.measure();
+  }
+
+  /**
+   * Stand it at rest on the ground under its wheels where it is, facing as it does: on its suspension, its frame on the
+   * plane through the ground under its four hubs, each spring holding its share of its weight; without, on the ground
+   * under its axles. What it is first stood on, before anything moves it.
+   */
+  stand(road: Road): void {
+    const b = this.bounce;
+    if (!b) {
+      this.drive(0, 0, 0, road);
+      return;
+    }
+    const { x, z, heading } = this.motion;
+    const cos = Math.cos(heading);
+    const sin = Math.sin(heading);
+    const touches = this.corners.map(({ hub }) => {
+      const dx = hub.x * cos + hub.z * sin;
+      const dz = -hub.x * sin + hub.z * cos;
+      return { x: dx, z: dz, d: road.ground(x + dx, z + dz, this.y + 1) ?? this.y };
+    });
+    const plane = fitPlane(touches, 0);
+    const normal = new THREE.Vector3(-plane.b, 1, -plane.c).normalize();
+    const front = new THREE.Vector3(cos, plane.b * cos - plane.c * sin, -sin).normalize();
+    const right = new THREE.Vector3().crossVectors(front, normal).normalize();
+    const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(front, normal, right));
+    const turned = new THREE.Euler().setFromQuaternion(q, 'YZX');
+    this.y = plane.a - plane.b * plane.x - plane.c * plane.z;
+    this.motion = { ...this.motion, heading: turned.y, speed: 0 };
+    Object.assign(b, { vy: 0, pitch: turned.z, wp: 0, roll: turned.x, wr: 0, last: [], owed: 0 });
+    this.ride(0, 0, 0, road, b);
+  }
+
+  /** At rest on its suspension, or with none: nothing more will happen to it until it is driven. */
+  get still(): boolean {
+    const b = this.bounce;
+    if (this.motion.speed || this.motion.steer) return false;
+    return !b || (Math.abs(b.vy) < 0.002 && Math.abs(b.wp) < 0.002 && Math.abs(b.wr) < 0.002 && this.corners.every((c) => c.contact));
   }
 
   /** Where the driver's hips are, and where one stands to get in or has got out to, in the world. */
@@ -343,6 +557,10 @@ export class Vehicle {
    * whatever ground is under its axles, nose up or down as that lies.
    */
   drive(pedal: number, wheel: number, dt: number, road: Road): void {
+    if (this.bounce) {
+      this.ride(pedal, wheel, dt, road, this.bounce);
+      return;
+    }
     const was = this.motion;
     let next = roll(was, pedal, wheel, dt, this.chassis);
     // (the throttle is what drives it: forward, or the brake pedal once it has stopped and backs; braking is not)
@@ -390,6 +608,104 @@ export class Vehicle {
   }
 
   /**
+   * A frame of a vehicle on its own suspension: what is in its way is looked for once, then it is stepped at `TICK`
+   * whatever the frame, each step its springs pushing its frame off the ground under each wheel, the place's gravity
+   * pulling it down, and `rollOn` moving it over the ground; then it is put where it is and each wheel stood on the
+   * ground, or let hang.
+   */
+  private ride(pedal: number, wheel: number, dt: number, road: Road, b: Bounce): void {
+    const was = this.motion;
+    const ahead = Math.abs(was.speed) * dt + 1;
+    const middle = new THREE.Vector3(was.x, this.y + this.top / 2, was.z);
+    road.around?.(middle, Math.max(this.nose, this.tail) + ahead + this.half, this.top / 2 + 3, this.top / 2 + 1);
+    // (going, what is ahead of its nose or behind its tail within a frame's travel and a little: a wall stops it)
+    const going = Math.sign(was.speed || pedal);
+    this.blockedBy = null;
+    let blocked = false;
+    if (going) {
+      const way = new THREE.Vector3(Math.cos(was.heading) * going, 0, -Math.sin(was.heading) * going);
+      const side = new THREE.Vector3(-way.z, 0, way.x);
+      const reach = going > 0 ? this.nose : this.tail;
+      const travel = Math.abs(was.speed) * dt + 0.15;
+      for (const off of [-this.half, 0, this.half])
+        for (const up of [KERB + 0.05, 0.6]) {
+          const from = new THREE.Vector3(was.x, this.y + up, was.z).addScaledVector(side, off);
+          const hit = road.ahead(from, way, reach + travel);
+          if (hit !== null && hit < reach + travel) {
+            blocked = true;
+            this.blockedBy = road.struck?.() ?? '(something solid)';
+          }
+        }
+    }
+    this.throttle = pedal > 0 && was.speed >= 0 ? pedal : pedal < 0 && was.speed < 0 ? -pedal : 0;
+    b.owed += Math.min(dt, 0.25);
+    const g = this.gravity;
+    const turn = new THREE.Quaternion();
+    const euler = new THREE.Euler(0, 0, 0, 'YZX');
+    const at = new THREE.Vector3();
+    const hub = new THREE.Vector3();
+    let gone = 0;
+    while (b.owed >= TICK) {
+      b.owed -= TICK;
+      const m = this.motion;
+      turn.setFromEuler(euler.set(b.roll, m.heading, b.pitch, 'YZX'));
+      // each wheel's spring: how far the ground under it puts its hub over where it rides, and what that pushes
+      let lift = 0;
+      let nose = 0;
+      let side = 0;
+      let bearing = 0;
+      this.corners.forEach((c, i) => {
+        at.set(m.x, this.y, m.z).add(hub.copy(c.hub).applyQuaternion(turn));
+        const ground = road.ground(at.x, at.z, at.y);
+        const spring = ground === null ? -1 : b.rest + ground + c.radius - at.y;
+        const rate = b.last[i] === undefined ? 0 : (spring - b.last[i]!) / TICK;
+        b.last[i] = spring;
+        c.contact = spring > 0;
+        if (!c.contact) return;
+        bearing++;
+        const past = spring - b.rest - JOUNCE;
+        const force = Math.max(0, b.k * spring + b.damper * rate + (past > 0 ? STOP * b.k * past : 0));
+        lift += force;
+        nose += force * c.hub.x;
+        side -= force * c.hub.z;
+      });
+      b.vy += (lift / b.mass - g) * TICK;
+      b.wp += (nose / b.pitchInertia) * TICK;
+      b.wr += (side / b.rollInertia) * TICK;
+      this.y += b.vy * TICK;
+      b.pitch += b.wp * TICK;
+      b.roll += b.wr * TICK;
+      const traction: Traction = {
+        gravity: g,
+        mass: b.mass,
+        power: b.power,
+        grip: GRIP,
+        rolling: ROLLING,
+        slope: Math.sin(b.pitch),
+        bearing: bearing / Math.max(1, this.corners.length),
+      };
+      let next = rollOn(m, blocked ? 0 : pedal, wheel, TICK, this.chassis, traction);
+      // (held by what is in its way: it does not go on into it)
+      if (blocked && Math.sign(next.speed) === going) next = { ...next, x: m.x, z: m.z, heading: m.heading, speed: 0 };
+      gone += Math.hypot(next.x - m.x, next.z - m.z) * Math.sign(next.speed || m.speed);
+      this.motion = next;
+    }
+    this.distance += Math.abs(gone);
+    this.place(b.pitch, b.roll);
+    this.turned += gone / this.radius;
+    // its wheels: steered and rolled for the turn, then each stood on the ground under it or let hang
+    steerCorners(this.corners, Math.tan(this.motion.steer) / this.chassis.wheelbase, gone);
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.root.getWorldQuaternion(new THREE.Quaternion()));
+    standCorners(this.corners, up, (x, z) => road.ground(x, z, this.y + 1) ?? this.y - 10, -b.rest);
+    if (this.stick)
+      this.stick.node.quaternion
+        .copy(this.stick.rest)
+        .premultiply(spin.setFromAxisAngle(AXLE_Z, pedal < 0 ? STICK_PITCH * 1.33 : -pedal * STICK_PITCH))
+        .premultiply(spin.setFromAxisAngle(AXLE_X, -wheel * STICK_ROLL));
+    this.root.updateMatrixWorld(true);
+  }
+
+  /**
    * It as it is heard (sound/audio.ts), but for what is under each of its wheels, which the walker asks of the solids:
    * its engine over its front axle, by the name its model gives it (`engine` from a drive's machine, else its `vehicle`),
    * and where each of its wheels is.
@@ -406,14 +722,26 @@ export class Vehicle {
       top: this.chassis.top,
       throttle: this.throttle,
       engine: name,
-      wheels: this.rolling.map((w) => w.getWorldPosition(hub).toArray()),
+      wheels: (this.corners.length ? this.corners.map((c) => c.wheel) : this.rolling).map((w) => w.getWorldPosition(hub).toArray()),
     };
   }
 
-  /** Put the node where the motion has it, in whatever frame its parent is in. */
-  private place(pitch: number): void {
+  /** Put the node where the motion has it, in whatever frame its parent is in, its parent turned and tipped however it is. */
+  private place(pitch: number, roll?: number): void {
     const parent = this.root.parent;
     const at = new THREE.Vector3(this.motion.x, this.y, this.motion.z);
+    if (roll !== undefined) {
+      const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(roll, this.motion.heading, pitch, 'YZX'));
+      if (parent) {
+        parent.updateWorldMatrix(true, false);
+        parent.worldToLocal(at);
+        q.premultiply(parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+      }
+      this.root.position.copy(at);
+      this.root.quaternion.copy(q);
+      this.root.updateMatrixWorld(true);
+      return;
+    }
     let turn = this.motion.heading;
     if (parent) {
       parent.updateWorldMatrix(true, false);

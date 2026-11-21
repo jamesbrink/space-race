@@ -6,7 +6,7 @@ import type { Clock } from '../../world/clock.ts';
 import type { Setting } from '../backdrops.ts';
 import type { Cabin } from '../cabin.ts';
 import type { Cameras } from '../camera/index.ts';
-import type { Fn } from '../explode.ts';
+import { type Fn, refusal } from '../explode.ts';
 import type { Scenery, Staged } from '../lod.ts';
 import type { Looks } from '../look.ts';
 import type { CabinView } from '../stage/cabinview.ts';
@@ -115,6 +115,7 @@ export class OnFoot {
     this.unseen = false;
     this.satIn = null;
     this.driven.clear();
+    this.settling.clear();
     this.works = new Works();
     this.operating = null;
   }
@@ -429,9 +430,15 @@ export class OnFoot {
    */
   walkDrive(): boolean {
     const root = this.aim?.vehicle;
+    this.driveRefused = null;
     if (!root || this.wheel || this.boarding) return false;
-    let vehicle = this.vehicles.get(root);
-    if (!vehicle) this.vehicles.set(root, (vehicle = new Vehicle(root)));
+    // (one that may not be driven yet is not got into: a rover still in its LM, or pinned to its saddle)
+    const notYet = this.drivesRefusal(root);
+    if (notYet) {
+      this.driveRefused = notYet;
+      return false;
+    }
+    const vehicle = this.vehicleOf(root);
     if (!vehicle.drivable) return false;
     // through the driver's door, if it has one: it opens, he gets in, it shuts
     const door = vehicle.door ? this.doorOf(vehicle.door) : null;
@@ -443,6 +450,122 @@ export class OnFoot {
     );
     this.setAim(null);
     return true;
+  }
+
+  /** Why the vehicle looked at was not got into (`walkDrive` refused it), or null. */
+  driveRefused: string | null = null;
+
+  /** The vehicle a node is (made the first time it is asked for, told the place's gravity). */
+  private vehicleOf(root: THREE.Object3D): Vehicle {
+    let vehicle = this.vehicles.get(root);
+    if (!vehicle) {
+      this.vehicles.set(root, (vehicle = new Vehicle(root)));
+      vehicle.gravity = this.gravity;
+    }
+    return vehicle;
+  }
+
+  /**
+   * Why a vehicle that is a model's part will not be driven yet, by its part's `drives` (types.ts Part.drives): each of
+   * its functions it needs where it needs it. Null if it may be, or says nothing.
+   */
+  private drivesRefusal(root: THREE.Object3D): string | null {
+    const owner = this.ownerOf(root);
+    if (!owner) return null;
+    const def = this.h.defs()[owner.at]!;
+    const needs = def.parts.find((p) => p.node === owner.node)?.drives?.needs;
+    if (!needs?.length) return null;
+    const fns = this.h.functions(def.id, owner.node);
+    return refusal({ needs } as Fn, (id) => fns.find((f) => f.fn.id === id)?.value ?? 0);
+  }
+
+  /** The vehicles that stand on their own suspension, let go by what held them (`Part.drives`), each settling on the ground until it is still. */
+  private readonly settling = new Set<Vehicle>();
+  /** Those that have been let go once: they are not stood again until they are driven. */
+  private readonly loosed = new WeakSet<THREE.Object3D>();
+
+  /**
+   * A frame of the vehicles that ride on their own suspension and are nobody's to drive: one a part says may be driven now
+   * (`Part.drives`; a rover the moment its saddle is let go) is let go of the slider where it stands, and rides down
+   * onto the ground under it under the place's gravity until it is still, then is left there.
+   */
+  settleVehicles(dt: number): void {
+    const defs = this.h.defs();
+    const staged = this.h.staged();
+    defs.forEach((def, at) => {
+      for (const part of def.parts) {
+        if (!part.drives) continue;
+        const root = staged[at]?.shown.getObjectByName(part.node);
+        if (!root || this.loosed.has(root) || !root.userData.suspension || this.drivesRefusal(root)) continue;
+        this.loosed.add(root);
+        root.updateWorldMatrix(true, true);
+        const vehicle = this.vehicleOf(root);
+        vehicle.read();
+        this.driven.set(`${at}/${root.name}`, { at, node: root.name });
+        staged[at]!.loosen(root.name, true);
+        this.settling.add(vehicle);
+      }
+    });
+    if (!this.settling.size) return;
+    const walk = this.h.walk;
+    for (const vehicle of this.settling) {
+      if (vehicle === this.wheel) {
+        this.settling.delete(vehicle);
+        continue;
+      }
+      // (it is not under itself: left out of the solids while it is stood)
+      const without = walk.solids.without;
+      walk.solids.without = [vehicle.root, ...this.twinsOf(vehicle.root)];
+      vehicle.drive(0, 0, dt, roadOn(walk.solids, (x, z) => this.h.groundAt(x, z)));
+      walk.solids.without = without;
+      this.mirror(vehicle.root);
+      this.h.redraw();
+      this.h.renderer.shadowMap.needsUpdate = true;
+      if (vehicle.still) this.settling.delete(vehicle);
+    }
+  }
+
+  /**
+   * Where a model's vehicle has been left (driven or let go of its slider), in the world over the ground, and how far it
+   * has gone; null where it has not been moved by hand.
+   */
+  vehicleState(model: string, node: string): { x: number; z: number; heading: number; distance: number } | null {
+    const at = this.h.defs().findIndex((m) => m.id === model);
+    // (in whichever of its levels of detail it was got into or let go in)
+    for (const level of this.h.staged()[at]?.group.children ?? []) {
+      const root = level.getObjectByName(node);
+      const vehicle = root && this.vehicles.get(root);
+      if (root && vehicle && (this.loosed.has(root) || this.wheel === vehicle)) return this.stateOf(vehicle);
+    }
+    return null;
+  }
+
+  private stateOf(v: Vehicle): { x: number; z: number; heading: number; distance: number } {
+    const { x, z, heading } = v.motion;
+    return { x, z, heading, distance: v.distance };
+  }
+
+  /**
+   * Put a model's vehicle where it was left (`vehicleState`): stood there facing so, it settles onto the ground under it
+   * once its part lets it go (`settleVehicles`). Nothing if the model has no such node.
+   */
+  placeVehicle(model: string, node: string, state: { x: number; z: number; heading: number; distance: number }): void {
+    const at = this.h.defs().findIndex((m) => m.id === model);
+    const root = this.h.staged()[at]?.shown.getObjectByName(node);
+    if (!root?.parent) return;
+    const parent = root.parent;
+    parent.updateWorldMatrix(true, false);
+    const ground = this.h.groundAt(state.x, state.z) ?? root.getWorldPosition(new THREE.Vector3()).y;
+    root.position.copy(parent.worldToLocal(new THREE.Vector3(state.x, ground, state.z)));
+    root.quaternion
+      .setFromAxisAngle(UP, state.heading)
+      .premultiply(parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+    root.updateMatrixWorld(true);
+    this.mirror(root);
+    const vehicle = this.vehicleOf(root);
+    vehicle.distance = state.distance;
+    // (it is let go and stood again, from there)
+    this.loosed.delete(root);
   }
 
   /** The working of a door a model marks (`door`, `swing`): the same one the wheel's Open and Close use, so the two agree on how it stands. */
@@ -478,6 +601,8 @@ export class OnFoot {
       this.wheel = null;
       b.vehicle.motion.speed = 0;
       this.h.walk.sit(null, b.vehicle.standing(new THREE.Vector3()));
+      // (one on its own suspension comes to rest on it as he leaves it)
+      if (b.vehicle.corners.length) this.settling.add(b.vehicle);
     } else this.takeWheel(b.vehicle);
     if (b.door && this.works.isOpen(b.door.key)) this.works.toggle(b.door.key, b.door.action, b.door.levels, b.door.under);
   }
@@ -497,7 +622,7 @@ export class OnFoot {
     const owner = root && this.ownerOf(root);
     if (!owner) return null;
     const def = this.h.defs()[owner.at]!;
-    return this.h.functions(def.id, owner.node).find((f) => f.fn.nodes.includes(owner.node))?.refused ?? null;
+    return this.drivesRefusal(root) ?? this.h.functions(def.id, owner.node).find((f) => f.fn.nodes.includes(owner.node))?.refused ?? null;
   }
 
   /**

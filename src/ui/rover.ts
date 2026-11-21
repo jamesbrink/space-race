@@ -213,7 +213,7 @@ export class RoverDrive {
       this.rover.body.add(crew);
       this.rider = crew.getObjectByName('LRV_Driver') as Group | undefined;
     }
-    this.scene.add(ground.group, this.rover.body);
+    this.scene.add(ground.group, this.rover.holder);
     this.looks.add(this.scene);
     // (what draws itself in both looks: the whole Moon past the grids)
     this.scene.add(...(ground.setting.selfDrawn ?? []));

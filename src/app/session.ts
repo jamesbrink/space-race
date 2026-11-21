@@ -227,6 +227,8 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       sound.fly(run);
     },
     goOut: () => goOut(),
+    // (what was left on the Moon on foot, kept with the run: Taped.surface)
+    surface: { kept: () => surfaceLeft(), take: (state) => takeSurface(state) },
     piloting: (on) => {
       if (on && stage.walk.active) stage.onFoot.exitWalk();
       if (!on) for (const m of mechanisms) stage.setMechanism(m.id, null); // (back on the record's clock)
@@ -435,6 +437,8 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     if (!ready || site === onMoon) return false;
     if (stage.walk.active) stage.onFoot.exitWalk();
     if (demo.active) demo.stop(true);
+    // (what was left where it stood is kept as it was left: surfaceLeft)
+    if (onMoon) surfaceLeft();
     if (at !== undefined) clock.seek(at);
     const stay = site ? await lunarStay(flight, site, whole) : flight;
     if (gone) return false;
@@ -470,6 +474,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       shown = stay;
       cockpit.onSurface(moonPlace);
       if (site) surfaceTime();
+      if (site && surfaceKept?.site === site) standSurface(surfaceKept);
       else if (onMoonWas) {
         // (back from the Moon: its holds on the clock let go)
         clock.hold(Number.NaN);
@@ -501,6 +506,44 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       surfaceTime();
     }
     return stage.enterWalk(who.id, out.at, out.facing);
+  }
+
+  /**
+   * What was left on the surface on foot, which no deck flies (tape.ts `Taped.surface`): how far each function of what
+   * stands there was worked by hand (a rover let out of its LM) and where each vehicle there was left (driven, or let go
+   * of its saddle). Kept with the run, in place of the browser's session storage; taken up again with it.
+   */
+  interface SurfaceKept {
+    site: LunarSite;
+    works: { model: string; node: string; fn: string; v: number }[];
+    vehicles: { model: string; node: string; at: { x: number; z: number; heading: number; distance: number } }[];
+  }
+  let surfaceKept: SurfaceKept | null = null;
+  /** The surface as it stands now, while the stage stands on it; else what was last kept of it. */
+  function surfaceLeft(): SurfaceKept | null {
+    if (!onMoon) return surfaceKept;
+    const works: SurfaceKept['works'] = [];
+    const vehicles: SurfaceKept['vehicles'] = [];
+    for (const def of shown.models)
+      for (const part of def.parts) {
+        for (const { fn, value } of stage.hands.functions(def.id, part.node))
+          if (value > 0) works.push({ model: def.id, node: part.node, fn: fn.id, v: value });
+        const at = part.drives && stage.onFoot.vehicleState(def.id, part.node);
+        if (at) vehicles.push({ model: def.id, node: part.node, at });
+      }
+    surfaceKept = works.length || vehicles.length ? { site: onMoon, works, vehicles } : null;
+    return surfaceKept;
+  }
+  /** A kept run's surface given back (`surfaceLeft`): stood so now if the stage is on that site, else when it next is. */
+  function takeSurface(state: unknown): void {
+    const s = state as SurfaceKept | null;
+    surfaceKept = s && typeof s.site === 'string' && Array.isArray(s.works) && Array.isArray(s.vehicles) ? s : null;
+    if (surfaceKept && onMoon === surfaceKept.site) standSurface(surfaceKept);
+  }
+  function standSurface(s: SurfaceKept): void {
+    // (in the order their functions were found: each one's interlocks are those before it)
+    for (const w of s.works) stage.hands.set(w.model, w.node, w.fn, w.v);
+    for (const v of s.vehicles) stage.onFoot.placeVehicle(v.model, v.node, v.at);
   }
 
   /**
@@ -832,6 +875,10 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
         ui.setWalkNote(
           why ? `It will not drive: ${why} · E get out` : 'W throttle · S brake, then reverse · A D steer · C view · E get out',
         );
+      } else if (stage.onFoot.driveRefused) {
+        // (not got into at all: a rover still in its LM or on its saddle)
+        ui.setWalkNote(`Not yet: ${stage.onFoot.driveRefused}`);
+        setTimeout(() => !stage.onFoot.driving && ui.setWalkNote(null), 4000);
       }
     } else if (verb.do === 'become') {
       ui.showWalkCard(null);

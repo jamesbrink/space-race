@@ -19,7 +19,7 @@ Operations Handbook (Boeing LS006-002-2H, 19 April 1971, section 1.9.3 and figur
 stowed to where it stands on its wheels, in the frame of its place beside the LM (`LANDER_PLACE`).
 """
 
-from math import cos, pi, radians, sin, sqrt
+from math import pi, radians, sqrt
 
 import bpy
 from mathutils import Matrix, Vector
@@ -51,6 +51,9 @@ CONTRACT = dict(
     suspension="wishbone",
     clearance_loaded=round(14 * IN, 4),
     clearance_empty=round(17 * IN, 4),
+    # (the clearances are the LRV's on the Moon, where it was rated to work: the Moon's surface gravity, its GM over its
+    # mean radius squared, as world/bodies.ts gravityOn has it)
+    rated_gravity=1.624,
 )
 
 # The hinges. The end frames' hinge pins are at 18.16 in (the model's ChassisHinges); the axes they fold about are put
@@ -124,10 +127,12 @@ def phase_three(u):
 
 
 def held_up(alpha):
-    """The rover's pose with its rear wheels' treads on the ground where they stand once it is deployed and its front up
-    `alpha` degrees (phase IV lets it down to level about them, their brakes on: section 1.9.3.3)."""
-    a = radians(alpha)
-    return Matrix.Translation(Vector((-45.0 + 45.0 * cos(a), 0.0, 45.0 * sin(a)))) @ Matrix.Rotation(-a, 4, "Y")
+    """The rover's pose with its rear wheels on the ground where they stand once it is deployed (each hub its radius over
+    the ground, straight over where it touches) and its front up `alpha` degrees: phase IV lets it down to level about
+    them, their brakes on (section 1.9.3.3)."""
+    turn = Matrix.Rotation(-radians(alpha), 4, "Y")
+    hub = Vector((-45.0, 0.0, 32.19 / 2))
+    return Matrix.Translation(hub - turn @ hub) @ turn
 
 
 def body_three(u):
@@ -232,7 +237,8 @@ def deployment_runs(steps=160):
     if gap > 0.01:
         raise ValueError(f"lrv_deploy: phase III ends {gap:.3f} in from where phase IV begins")
     low = lowest(us)
-    print(f"LRV deployment: from quadrant I ({BAY_OUT:.1f} in out) to {OUT:.1f} in out; lowest point before the rear wheels land {low:.1f} in")
+    if low < -0.05:
+        raise ValueError(f"lrv_deploy: a wheel goes {-low:.2f} in under the ground before the rear wheels land")
 
 
 def lowest(us):

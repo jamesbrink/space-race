@@ -64,6 +64,11 @@ export interface CockpitHost {
    * foot, through the forward hatch onto the porch (the deck's Go out). False, with nothing done, where nobody can.
    */
   goOut?(): boolean;
+  /**
+   * What the page has left on the surface on foot (a rover deployed and where it was parked), kept with the run as it is
+   * written (tape.ts `Taped.surface`), and given back when the run is taken up again.
+   */
+  surface?: { kept(): unknown; take(state: unknown): void };
   /** Something to say across the page: a title and a line (a mechanism worked by hand says where it is sent). */
   say?(title: string, line: string): void;
   /**
@@ -809,7 +814,8 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     // (nothing to keep: lost by going only if it has just come down, its result not yet read: leaving.ts)
     if (!view || !this.tape) return !(this.on && verdict({ ...this.stake, saved: false }, 'beyond') === 'ask');
     const end = { t: this.reachT, ticks: this.ticks, print: this.print() };
-    const run: Taped = { v: SAVE, setup: this.tape.setup, entries: this.tape.entries, end, view };
+    const surface = this.pageHost.surface?.kept();
+    const run: Taped = { v: SAVE, setup: this.tape.setup, entries: this.tape.entries, end, view, ...(surface ? { surface } : {}) };
     const ok = runs.write({
       flight: this.flight.id,
       stamp: stampOf(this.flight),
@@ -1338,6 +1344,8 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       this.stored = null;
       this.pageClock.seek(tape.view.t);
       this.restore();
+      // (and what was left on the surface on foot: the page stands it so)
+      if (tape.surface !== undefined) this.pageHost.surface?.take(tape.surface);
       this.drawThrottle(); // (the clock is held: nothing else draws it)
       this.showKept(tape.view.t, title, Deck.why(kept.note.phase, kept.note.left), true);
       this.sync();

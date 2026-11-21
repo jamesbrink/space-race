@@ -1,4 +1,102 @@
-import type { ModelDef, Part, ViewDef } from '../../../../src/types.ts';
+import type { Machine, ModelDef, Move, Part, ViewDef } from '../../../../src/types.ts';
+
+/**
+ * Where the rover's vehicle node stands once deployed, in its LM's own frame: x, y, z in metres and its turn about the
+ * vertical, radians. The model's own figure (lrv_deploy.py `lander_place`, written into the node's extras), quoted here
+ * so the site can stand it before the model is loaded; tests/lunar-rover-clearance.test.mjs holds the two together.
+ */
+export const LANDER_PLACE: [number, number, number, number] = [2.7749, 0, -2.7749, -2.356194];
+
+/**
+ * The deployment's stretches of its slider (lrv_deploy.py): phases II and III, the outer tapes (it is let out of quadrant
+ * I and unfolds until its rear wheels are down), phase IV, the centre tape (its front let down), and phase V, the saddle
+ * let go (LRV Operations Handbook LS006-002-2H section 1.9.3). Where each ends on the slider is layout.
+ */
+const OUTER = 0.62;
+const CENTRE = 0.9;
+const HAND: Machine = {
+  kind: 'hand',
+  confidence: 'documented',
+  source: 'LS006-002-2H section 1.9.3: the astronaut pays its braked reels out by their operating tapes and pulls its release cables',
+};
+/** The nodes phase III moves, each by its own motion in its extras (`run`), written by lrv_deploy.py. */
+const UNFOLDS = ['LRV_Tilt', 'LRV_Fore', 'LRV_Aft', 'LRV_Corner_FL', 'LRV_Corner_FR', 'LRV_Corner_RL', 'LRV_Corner_RR'];
+
+/** What the rover carried once it was loaded, which it did not have as it came off its LM: not on it at the site. */
+const PAYLOAD = [
+  'RoverLCRU',
+  'RoverTV',
+  'RoverHighGain',
+  'RoverLowGain',
+  'RoverToolCarrier',
+  'RoverGeology',
+  'RoverSoilTools',
+  'RoverSamples',
+  'RoverCameras',
+  'RoverScience',
+  'RoverGravimeter',
+  'RoverSEP',
+  'RoverSeismicCarrier',
+  'RoverLRVSampler',
+  'LRV_MapFenderRepair',
+];
+
+/** The rover at its landing site, stowed in quadrant I and deployed by hand (ModelDef.lunarRover.deploy). */
+function deployment(serial: number, crew: string[]): NonNullable<NonNullable<ModelDef['lunarRover']>['deploy']> {
+  const moves: Move[] = [
+    ...UNFOLDS.map((node): Move => ({ kind: 'run', node, from: 0, to: OUTER, machine: HAND })),
+    { kind: 'run', node: 'LRV_Lower', from: OUTER, to: CENTRE, machine: HAND },
+    // (the release cable's handle, pulled up: estimated)
+    { kind: 'swing', node: 'LRV_SaddleRelease', axis: [0, 0, 1], angle: 0.9, from: CENTRE, to: 1, machine: HAND },
+  ];
+  const offSaddle = { node: 'LRV_SaddleRelease', atMost: 0, why: 'it is off its saddle: what took it out of the LM has let it go' };
+  return {
+    from: LANDER_PLACE,
+    slider: ['Stowed in quadrant I', 'Off its saddle'],
+    absent: PAYLOAD,
+    parts: [
+      {
+        node: 'LRV',
+        name: `Lunar Roving Vehicle ${serial}`,
+        summary: 'It came folded in quadrant I of the descent stage and was let down to the ground by hand.',
+        detail: `${crew[0]} and ${crew[1]} pulled the D-handle on the porch to free it and paid out the braked reels' tapes: it tipped out on its hinges, the aft frame unfolded and its wheels sprang out, then the forward frame and its wheels, until the rear wheels were on the ground; the centre tape let the front down, and the saddle was let go. The handbook's angles are kept; the times between them, and where its hinges fold, are estimated.`,
+        facts: [
+          ['Deployment', 'Five phases · LRV Operations Handbook LS006-002-2H §1.9.3'],
+          ['Turning radius', '122 in wall to wall · LS006-002-2H §1.3.4'],
+          ['Speed', 'Up to 14 km/h · LS006-002-2H §7.1.1'],
+        ],
+        explode: [0, 0, 0],
+        order: 0,
+        moves,
+        functions: [
+          {
+            nodes: UNFOLDS,
+            name: 'Outer tapes: let it out',
+            ends: ['Stowed in quadrant I', 'Rear wheels down'],
+            // (the record's took 2 to 6 minutes with its stops: ALSJ, Apollo 15 120:14:15 to 120:18:34, Apollo 17 117:26:29 to 117:28:15)
+            seconds: 90,
+            needs: [{ node: 'LRV_Lower', atMost: 0, why: 'its front is let down: take the centre tape in first' }, offSaddle],
+          },
+          {
+            nodes: ['LRV_Lower'],
+            name: 'Centre tape: let its front down',
+            ends: ['Front held up', 'All four wheels down'],
+            seconds: 40,
+            needs: [{ node: 'LRV_Tilt', atLeast: 1, why: 'its rear wheels are not down yet: pay out the outer tapes' }, offSaddle],
+          },
+          {
+            nodes: ['LRV_SaddleRelease'],
+            name: 'Saddle release',
+            ends: ['On its saddle', 'Released'],
+            seconds: 2,
+            needs: [{ node: 'LRV_Lower', atLeast: 1, why: 'its front wheels are not down yet: pay out the centre tape' }],
+          },
+        ],
+        drives: { needs: [{ node: 'LRV_SaddleRelease', atLeast: 1, why: 'it is still pinned to its saddle at the LM' }] },
+      },
+    ],
+  };
+}
 
 /** Deployed surface configuration. The folded vehicle on the lander is separate hardware in the launch stack. */
 export function roverModel(mission: 15 | 16 | 17): ModelDef {
@@ -39,12 +137,15 @@ export function roverModel(mission: 15 | 16 | 17): ModelDef {
     ],
   );
   part(
-    'RoverSuspension',
+    'LRV_Corner_FL',
     'Independent suspension',
     chassis,
     'Each wheel hung from its own pair of wishbones and torsion bars.',
-    'Follow the upper and lower links from the chassis to one upright. A damper checked the wheel’s travel. Front and rear steering links let both axles turn.',
-    [['Suspension', 'Independent double wishbones · LRV Operations Handbook']],
+    'Follow the upper and lower links from the chassis to one upright. A damper checked the wheel’s travel. Front and rear steering links let both axles turn. Each suspension folded about 135 degrees for the rover to fit in the LM.',
+    [
+      ['Suspension', 'Independent double wishbones · LRV Operations Handbook'],
+      ['Ground clearance', '14 in loaded, 17 in empty · LS006-002-2H §1.3.3'],
+    ],
   );
   for (const [end, prefix, fore] of [
     ['front', 'F', 1],
@@ -283,7 +384,12 @@ export function roverModel(mission: 15 | 16 | 17): ModelDef {
     view('sampler', 'Rover sampling tool', ['RoverLRVSampler'], [0.56, 0.38, 1]);
     view('carrier', 'Seismic carrier', ['RoverSeismicCarrier'], [-0.65, 0.6, -1]);
   }
-  view('running-gear', 'Chassis and suspension', ['RoverChassis', 'RoverSuspension'], [-0.8, 0.25, -1]);
+  view(
+    'running-gear',
+    'Chassis and suspension',
+    ['RoverChassis', 'RoverForeChassis', 'RoverAftChassis', 'LRV_Corner_FL', 'LRV_Corner_FR', 'LRV_Corner_RL', 'LRV_Corner_RR'],
+    [-0.8, 0.25, -1],
+  );
   view('wheel', 'Wire wheel and fender', ['LRV_Steer_FL'], [0.54, 0.24, -1]);
   view('hub', 'Traction motor and brake', ['LRV_Drive_FL'], [0.62, 0.25, 1]);
   view('mesh', 'Wire tire and bump stop', ['LRV_Wheel_FL'], [0.48, 0.25, -1]);
@@ -328,7 +434,11 @@ export function roverModel(mission: 15 | 16 | 17): ModelDef {
     scale: '122 in long · 90 in wheelbase · 72 in track',
     backdrop: 'studio',
     galleryFrom: [0.78, 0.35, 1],
-    lunarRover: { site: taurus ? 'taurus-littrow' : hadley ? 'hadley' : 'descartes', riders: `${folder}/riders.glb` },
+    lunarRover: {
+      site: taurus ? 'taurus-littrow' : hadley ? 'hadley' : 'descartes',
+      riders: `${folder}/riders.glb`,
+      deploy: deployment(serial, crew),
+    },
     boardingLabel: 'Take a rover seat',
     slider: ['Ready for a traverse', 'Equipment separated'],
     cutaway: true,
