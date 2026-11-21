@@ -29,8 +29,29 @@ export const TRANQUILITY = landingSite({
       'The report’s positions are in the selenographic frame of 1969, some 1.2 km from the mean Earth frame at the site: 0.15 degrees here',
   },
   landed: {
-    at: '1969-07-20T20:17:40Z',
+    value: Date.parse('1969-07-20T20:17:39.9Z') / 1000,
+    confidence: 'derived',
     source:
-      'Apollo 11 Mission Report, MSC-00171, table 3-I (sequence of events): landing at 102:45:39.9 GET from liftoff at 13:32:00 GMT, 16 July 1969 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+      'the range zero and the elapsed time of the landing, both read on the page, added: Apollo 11 Mission Report, MSC-00171 (November 1969), table 3-I (sequence of events), p. 3-4: "Range zero - 13:32:00 G.m.t., July 16, 1969" and "Lunar landing 102:45:39.9". UTC, seconds from 1970',
+  },
+  rest: {
+    heading: {
+      value: 268.64,
+      confidence: 'estimated',
+      source:
+        'the report gives no heading at rest: section 5.4 (p. 5-6) has a slight yaw right as it touched down, and table 9.6-IV (p. 9-12) a yaw of 13.3 degrees in a frame it does not name. Taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead)',
+    },
+    pitch: {
+      value: 4.5,
+      confidence: 'documented',
+      source:
+        'Apollo 11 Mission Report, MSC-00171, section 11.1.3, p. 11-6: "The lunar module was tilted 4.5 degrees east (backward) on the lunar surface" (the guidance’s own alignments on the surface, table 9.6-IV p. 9-12, have 4.40 degrees of pitch)',
+    },
+    roll: {
+      value: 0,
+      confidence: 'estimated',
+      source:
+        'level across: the report gives no roll at rest in its own words; the guidance’s alignments on the surface (MSC-00171 table 9.6-IV, p. 9-12) have half a degree of roll, in a frame and to a side the table does not say',
+    },
   },
 });

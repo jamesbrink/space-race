@@ -29,8 +29,29 @@ export const FRA_MAURO = landingSite({
       'the planned approach azimuth of -76.31 degrees puts the track at 7.2 S there), to the LM, its heading at the LM; 493 km',
   },
   landed: {
-    at: '1971-02-05T09:18:11Z',
+    value: Date.parse('1971-02-05T09:18:11Z') / 1000,
+    confidence: 'derived',
     source:
-      'Apollo 14 Mission Report, MSC-04112, table 3-I (sequence of events): landing at 108:15:09.3 GET from liftoff at 21:03:02 GMT, 31 January 1971 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+      'the range zero and the elapsed time of the landing, both read on the page, added: Apollo 14 Mission Report, MSC-04112 (April 1971), table 6-I (sequence of events), p. 6-2: "Range zero - 21:03:02 G.m.t., January 31, 1971" and "Lunar landing 108:15:09". UTC, seconds from 1970',
+  },
+  rest: {
+    heading: {
+      value: 283.96,
+      confidence: 'estimated',
+      source:
+        'Apollo 14 Mission Report, MSC-04112, section 9, p. 9-8: "within 1 degree of zero in pitch and yaw attitudes", in a frame the page does not name; taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead)',
+    },
+    pitch: {
+      value: 0,
+      confidence: 'documented',
+      source:
+        'Apollo 14 Mission Report, MSC-04112, section 9 (pilots’ report), p. 9-8: "the vehicle came to rest within 1 degree of zero in pitch and yaw attitudes, and with a 7-degree right roll attitude (northeast tilt)"',
+    },
+    roll: {
+      value: 7,
+      confidence: 'documented',
+      source:
+        'Apollo 14 Mission Report, MSC-04112, section 9, p. 9-8: "with a 7-degree right roll attitude (northeast tilt)" (right positive)',
+    },
   },
 });
