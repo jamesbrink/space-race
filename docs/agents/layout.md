@@ -359,8 +359,11 @@ src/
   sim/descent.ts                      one body of an orbital descent as it comes down (`Descent`): its mass, drag, parachutes and their tearing; flyDown and the path ahead both fly it
   sim/orbital-target.ts               a flight's target, where it is on a run: the stage a spacecraft left in orbit and went back to, flown on its own forces, or another flight's vehicle or a published orbit's craft (`targetAt`)
   sim/pursuit.ts                      manoeuvres made on another craft: the target as an integrated craft (`flownFrom`), a published orbit as a state (`fixState`, `elementsState`), where the target is from the spacecraft (`placeFrom`),
-                                      and the guidance that solves a burn on the two as they are (`reach`, `coelliptic`, `stationPush`)
+                                      and the guidance that solves a burn on the two as they are (`reach`, `coelliptic`, `stationPush`); a burn solved on the run's own state for
+                                      what it is for, an orbit, a pericynthion, an entry, a phasing, a plane, an intercept from an elevation (`solveBurn`, `steeredKind`)
   sim/roster.ts                       the flights there are, by id, for a plan that names another flight as its target (`TargetDef.flight`): missions/index.ts enrols them all, a Gemini target enrols itself
+  sim/steering.ts                     the Apollo computer's powered-flight guidance: Lambert's problem (`lambert`), cross-product steering (`thrustLine`, `Steering`: External ΔV
+                                      and the Lambert aim point, the 2 s cycle, the cut at four seconds to go), a steered burn flown ahead (`flyBurn`), the impulse that does what is asked (`solveImpulse`)
   sim/launchescape.ts                 tower escape and service-module abort branches from the live state at the pilot’s command
   sim/orbital.ts                      a flight into orbit: the coast flown from its plan (`flyOrbit`), the descent (`flyDown`), the steering law's shape (`Guidance`), the drag of a body in orbit (`orbitDrag`, `ORBIT_DRAG`: free-molecular to continuum)
   sim/staged.ts                       an orbital flight's powered ascent, flown whole: stages burning together and in turn, dropped as the record says, on its steering law

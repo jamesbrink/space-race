@@ -95,6 +95,34 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   impulse along the record's attitude. Apollo 7's rendezvous with its S-IVB is flown so. The predicted path
   (fliers.ts `spacecraft`) does not yet solve these burns: it shows the record's.
 
+- **A burn made for an end is solved on the run's own state and steered as the computer steered it** (sim/pursuit.ts
+  `solveBurn`, sim/steering.ts; R-577 §5.3.3). Six more `Pursuit` kinds say what a burn was for: `orbit` (apoapsis and
+  periapsis about the body the craft is about as the burn ends: LOI, DOI), `pericynthion` (its nearest to the Moon and when:
+  a midcourse correction), `entry` (the space-fixed flight-path angle through the interface, and its instant where given:
+  TEI, a return correction), `phase` (CSI: level along the motion, so that after the coelliptic burn at the next apsis the
+  target stands at the terminal phase's elevation at its instant), `plane` (into the target's plane where the two cross),
+  and `elevation` (TPI: lit as the target rises through the angle, looked for within a window of the record's lighting, and
+  aimed to meet it once it has gone so far round). The first three need no target. As the burn lights (`flyOrbit` `light`),
+  the first five are solved as External ΔV: an impulse in the local vertical, flown out ahead on the run's own forces under
+  its steering (`flyBurn`, one step of `flyOrbit`'s integrator each: `flyStep`, the coast ahead on steps of a two-hundredth
+  of a radian of the motion) and corrected by what the flight ahead missed by (`solveImpulse`: Gauss and Newton, damped, and
+  where there are fewer conditions than components, on to the least impulse that meets them, as the ground's targeting
+  sought). `elevation` is a Lambert aim point, offset twice by what the coast ahead misses it by (P34's offset target). In
+  the run the burn is then flown by `Steering`: every 2 s the velocity to be gained is brought up to date (External ΔV: less
+  what was sensed; Lambert: solved again, with its b term and the oblateness allowance), the thrust turned to it by the
+  cross-product condition, its size the engine's thrust over the ship's mass as its propellant goes, and the engine cut at
+  the instant the time to go gives once it is under four seconds (`endAt`). Its account (`BurnFlown`) carries what it was
+  for (`aim`) and what the burn flown ahead reached (`reached`); its impulse is `<event>.velocity`, which a check of the
+  record's holds, and tools/residuals.mjs prints both. The figures a kind is given are what the burn was aimed at; the
+  impulse the record has is never an input, nor a first guess. No flight's plan uses these kinds yet (the lunar plans, G0,
+  will): tests/pursuit.test.mjs holds each against a closed form (Hohmann's first burn, 2 v sin(Δi/2), an entry from
+  apogee by the conic, an intercept met under J2) and against Apollo 8's Mission Report (LOI solved from Table 5-II's
+  ignition for its 168.5 by 60.0 n. mi.: 2990 ft/s in 246.6 s for the record's 2997 in 246.9; the first midcourse
+  correction solved for the pericynthion it reached: 16.6 ft/s for the 20.4 achieved). Simplified: the attitude is where
+  steering commands it, with no autopilot lag; no tail-off after the cut; the time to go by the rocket equation; the
+  ground's targeting is the flight ahead on the run's own forces, not the RTCC's. The live deck's lever (with G on) is to
+  take its line and its cut from the same `Steering`: not yet wired.
+
 - **What a stopped stage lets out is a force, and its attitude is the law's** (`Craft.vents`, plan.ts `VentDef`;
   staged.ts `stackOf` `vent`, `lawOf` `attachedAt`). A stage still joined after its engine has stopped (an S-IVB in orbit
   with the spacecraft on it) pushes the stack along its long axis by its vents' curves, N against seconds from liftoff,
