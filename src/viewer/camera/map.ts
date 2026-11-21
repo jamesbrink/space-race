@@ -16,8 +16,8 @@ import { ease } from '../../util/math.ts';
  * distance is set by hand. The reset gives both back to it. A change of what it turns about is eased, never cut.
  */
 
-/** What the map turns about: the vehicle, or the body it flies round. */
-export type MapFocus = 'craft' | 'body';
+/** What the map turns about: the vehicle, the body it flies round, or the Moon where it is drawn (`MapOf.moon`). */
+export type MapFocus = 'craft' | 'body' | 'moon';
 
 /** How much of what the controls leave clear of the frame's height the whole of what is shown fills. */
 const FILL = 0.8;
@@ -67,12 +67,27 @@ export function focusOf(extent: number, radius: number, was: MapFocus): MapFocus
  * height, and in its width too where the frame is narrower than it is tall (`aspect`, width over height: a phone held
  * upright sees less across than up and down).
  */
-export function mapFit(focus: MapFocus, of: Pick<MapOf, 'radius' | 'reach' | 'extent'>, fov: number, clear: number, aspect = 1): number {
+export function mapFit(
+  focus: MapFocus,
+  of: Pick<MapOf, 'radius' | 'reach' | 'extent'> & { moonReach?: number },
+  fov: number,
+  clear: number,
+  aspect = 1,
+): number {
   const fill = Math.min(FILL * Math.min(1, Math.max(0.2, clear)), FILL_ACROSS * Math.max(0.1, aspect));
-  // (about the body: the ball that holds the path; about the vehicle: the ball round it that does)
-  const across = focus === 'body' ? 2.1 * Math.max(of.reach, of.radius) : Math.max(LEAST, 2.2 * of.extent);
+  // (about the body: the ball that holds the path; about the vehicle: the ball round it that does; about the Moon: the
+  // ball round it that holds it and the vehicle)
+  const across =
+    focus === 'body'
+      ? 2.1 * Math.max(of.reach, of.radius)
+      : focus === 'moon'
+        ? 2.2 * (of.moonReach ?? 0)
+        : Math.max(LEAST, 2.2 * of.extent);
   return fitDistance(across, fov, fill);
 }
+
+/** The most the Moon's ball takes in round it when the map turns about it, in its radii: the vehicle further off than this is not framed with it. */
+const MOON_MOST = 40;
 
 export class MapRig extends OrbitRig {
   override readonly id: RigId = 'map';
@@ -102,15 +117,30 @@ export class MapRig extends OrbitRig {
     const of = this.of;
     const craft = this.world.craft();
     if (this.focus === 'craft' && craft) return out.copy(craft.centre).applyMatrix4(craft.matrix);
+    if (this.focus === 'moon' && of?.moon) return out.copy(of.moon.centre);
     return of ? out.copy(of.centre) : out.copy(this.pivot);
+  }
+
+  /** The body what it turns about is on or near: the Moon's while it turns about the Moon, else the one the flight is round. */
+  private bodyOf(of: MapOf): { centre: THREE.Vector3; radius: number } {
+    return this.focus === 'moon' && of.moon ? of.moon : of;
+  }
+
+  /** How far round the Moon it takes in about it: the Moon and the vehicle with it, out to `MOON_MOST` of its radii. */
+  private moonReach(of: MapOf): number {
+    const moon = of.moon;
+    if (!moon) return 0;
+    const craft = this.world.craft();
+    const off = craft ? v.copy(craft.centre).applyMatrix4(craft.matrix).distanceTo(moon.centre) : 0;
+    return Math.min(MOON_MOST * moon.radius, Math.max(2 * moon.radius, off));
   }
 
   /** How far off everything shown is taken in from, and the limits of the zoom for what it turns about. */
   private fit(): number {
     const of = this.of;
     if (!of) return this.distance;
-    const fit = mapFit(this.focus, of, this.fov, this.clear, this.aspect);
-    this.min = this.focus === 'body' ? NEAR_BODY * of.radius : NEAR;
+    const fit = mapFit(this.focus, { ...of, moonReach: this.moonReach(of) }, this.fov, this.clear, this.aspect);
+    this.min = this.focus === 'craft' ? NEAR : NEAR_BODY * this.bodyOf(of).radius;
     this.max = Math.max(FAR_TIMES * fit, FAR_RADII * of.radius);
     return fit;
   }
@@ -128,8 +158,8 @@ export class MapRig extends OrbitRig {
       return;
     }
     this.slide = null;
-    if (!this.focusSet) this.focus = craft ? focusOf(of.extent, of.radius, 'craft') : 'body';
-    if (!craft) this.focus = 'body';
+    if (!this.focusSet || (this.focus === 'moon' && !of.moon)) this.focus = craft ? focusOf(of.extent, of.radius, 'craft') : 'body';
+    if (!craft && this.focus === 'craft') this.focus = 'body';
     this.frame();
     const fit = this.fit();
     const middle = this.at(new THREE.Vector3());
@@ -196,21 +226,33 @@ export class MapRig extends OrbitRig {
     this.zoomer.goal = Math.log(this.handSet ? THREE.MathUtils.clamp(Math.exp(this.zoomer.goal), this.min, this.max) : fit);
   }
 
-  /** The other thing to turn about, chosen by hand (C). Says which it now is. */
+  /**
+   * The next thing to turn about, chosen by hand (C): the vehicle, the body it flies round, and the Moon where it is drawn,
+   * in that order round. Says which it now is.
+   */
   refocus(): MapFocus {
     this.of = this.world.map?.() ?? this.of;
     this.focusSet = true;
     // (from as far off as it is: the distance is kept, and is from now on the one that was chosen)
     this.handSet = true;
-    this.turnAbout(this.focus === 'body' && this.world.craft() ? 'craft' : 'body');
+    this.turnAbout(this.next);
     return this.focus;
+  }
+
+  /** What C would turn about next. */
+  get next(): MapFocus {
+    const craft = Boolean(this.world.craft());
+    const order: MapFocus[] = [...(craft ? (['craft'] as const) : []), 'body', ...(this.of?.moon ? (['moon'] as const) : [])];
+    return order[(order.indexOf(this.focus) + 1) % order.length]!;
   }
 
   override update(dt: number, keys: ReadonlySet<string>, fast: boolean): void {
     const of = (this.of = this.world.map?.() ?? this.of);
     if (of) {
-      if (!this.world.craft()) this.turnAbout('body');
-      else if (!this.focusSet) this.turnAbout(focusOf(of.extent, of.radius, this.focus));
+      // (the Moon gone from the map, or no vehicle to turn about: the body the flight is round)
+      if ((this.focus === 'moon' && !of.moon) || (this.focus === 'craft' && !this.world.craft())) this.turnAbout('body');
+      else if (!this.focusSet && this.focus !== 'moon')
+        this.turnAbout(this.world.craft() ? focusOf(of.extent, of.radius, this.focus) : 'body');
       // (what is shown has grown or shrunk, or what the controls leave clear has changed: a view nobody has set takes it all in again)
       const fit = this.fit();
       if (!this.handSet && !this.journey && Math.abs(Math.log(fit) - this.zoomer.goal) > 1e-3) this.zoomer.goal = Math.log(fit);
@@ -238,9 +280,10 @@ export class MapRig extends OrbitRig {
     if (!of) return;
     const offset = this.eye(v).sub(this.pivot);
     let d = offset.length();
-    const up = w.copy(this.pivot).sub(of.centre);
+    const body = this.bodyOf(of);
+    const up = w.copy(this.pivot).sub(body.centre);
     const p = up.length();
-    const floor = of.radius + CLEAR;
+    const floor = body.radius + CLEAR;
     if (d < 1 || p < 1 || offset.clone().add(up).length() >= floor) return;
     if (d < floor - p + CLEAR) {
       d = floor - p + CLEAR;

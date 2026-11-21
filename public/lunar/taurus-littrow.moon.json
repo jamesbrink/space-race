@@ -1,0 +1,42 @@
+{
+  "about": "The Moon round Taurus–Littrow, for the flight scene (viewer/flightmoon.ts): written by tools/front-moon.mjs --sites; do not edit.",
+  "site": "taurus-littrow",
+  "landing": [
+    20.1911,
+    30.7723
+  ],
+  "uprange": 200000,
+  "near": {
+    "file": "taurus-littrow.near.jpg",
+    "centre": [
+      0.7426088281258013,
+      0.5758738519470694,
+      0.3419085185152146
+    ],
+    "east": [
+      -0.6128056629107104,
+      0.7902336486790252,
+      0
+    ],
+    "north": [
+      -0.27018761610071806,
+      -0.20952347634353496,
+      0.9397332413864753
+    ],
+    "half": 0.21262862861745602,
+    "side": 1536,
+    "metres": 481.0169002082918,
+    "low": -4900,
+    "high": 3300,
+    "at": {
+      "longitude": 37.79264831272365,
+      "latitude": 19.993194059261207
+    },
+    "height": "taurus-littrow.near.height.png",
+    "heightMetres": 962.0338004165836,
+    "horizon": 0.7853981633974483,
+    "colour": "taurus-littrow.near.colour.jpg"
+  },
+  "cast": "east",
+  "data": "NASA Scientific Visualization Studio, CGI Moon Kit (E. Wright, 2019; svs.gsfc.nasa.gov/4720): colour from the Lunar Reconnaissance Orbiter Camera wide-angle mosaic, heights from the Lunar Orbiter Laser Altimeter. Public domain; credit NASA/GSFC/Arizona State University"
+}

@@ -89,6 +89,8 @@ export class OrbitRig implements Rig {
   protected insetNow = 0;
   /** The pivot can be slid by hand (not when it is a vehicle's). */
   protected pans = true;
+  /** A pose put anywhere for a test or a picture (Cameras.place's `anywhere`): the pivot is not held to the place until the rig is taken up again. */
+  anywhere = false;
   private readonly spinT = new Coast();
   private readonly spinP = new Coast();
 
@@ -133,6 +135,7 @@ export class OrbitRig implements Rig {
   }
 
   enter(from: Pose, pivot: THREE.Vector3): void {
+    this.anywhere = false;
     this.pivot.copy(pivot);
     this.frame();
     this.keepPivot(); // (before the view is measured from it: the eye stays where it is, and looks at where the pivot may be)
@@ -343,7 +346,7 @@ export class OrbitRig implements Rig {
 
   /** A pivot that can be slid stays within reach of the place and above its ground. */
   protected keepPivot(): void {
-    if (!this.pans) return;
+    if (!this.pans || this.anywhere) return;
     const { centre, radius } = this.world.reach();
     const off = v.copy(this.pivot).sub(centre);
     if (off.length() > radius) this.pivot.copy(centre).add(off.setLength(radius));

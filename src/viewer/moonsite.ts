@@ -1,5 +1,6 @@
-import type { Vec3 } from '../world/frames.ts';
-import { MOON_RADIUS } from '../world/moon.ts';
+import { DEG, type Vec3 } from '../world/frames.ts';
+import type { BodyGround } from '../world/lunar-ground.ts';
+import { MOON_RADIUS, selenographic } from '../world/moon.ts';
 
 /**
  * The ground round the place the front page's camera starts from, as the laser altimeter has it, whole: heights
@@ -32,7 +33,17 @@ export interface SiteMeta {
   clear: { over: number[]; least: number[] };
 }
 
-export class SiteGround {
+/** The ground round a site as the apron (viewer/moon.ts) is made from: the front page's `SiteGround`, or a landing site's `LandingApron`. */
+export interface ApronGround {
+  readonly meta: { ground: number; up: Vec3; east: Vec3; north: Vec3 };
+  /** The ground's height at a place on the site's plane, metres above the site's own. */
+  height(x: number, y: number): number;
+  direction(x: number, y: number): Vec3;
+  point(x: number, y: number, lift?: number): Vec3;
+  readonly origin: Vec3;
+}
+
+export class SiteGround implements ApronGround {
   readonly meta: SiteMeta;
   private readonly grid: Int16Array;
   /** How far from the site the heights reach, metres. */
@@ -110,5 +121,53 @@ export class SiteGround {
     let k = 0;
     while (k < h.length - 2 && h[k + 1]! < over) k++;
     return Math.min(least[k]!, least[k + 1]!);
+  }
+}
+
+/**
+ * A landing site's ground as the apron is made from it (the flight scene's: viewer/flightmoon.ts): its heights the landing
+ * ground's (world/lunar-ground.ts `LandingGround`: LROC's stereo round the LM, SLDEM2015 along the descent), read in
+ * doubles at each place, on the plane touching the Moon at the LM. A place on the plane is as `SiteGround`'s: metres east
+ * and north, its direction's east and north parts times the Moon's radius.
+ */
+export class LandingApron implements ApronGround {
+  readonly meta: { ground: number; up: Vec3; east: Vec3; north: Vec3 };
+  private readonly ground: BodyGround;
+
+  /** `landing`: the LM's latitude and longitude, degrees; `height`: the ground under it over the Moon's sphere, metres. */
+  constructor(landing: readonly [number, number], height: number, ground: BodyGround) {
+    const [lat, lon] = [landing[0] * DEG, landing[1] * DEG];
+    const up: Vec3 = [Math.cos(lat) * Math.cos(lon), Math.cos(lat) * Math.sin(lon), Math.sin(lat)];
+    const east: Vec3 = [-Math.sin(lon), Math.cos(lon), 0];
+    const north: Vec3 = [up[1] * east[2] - up[2] * east[1], up[2] * east[0] - up[0] * east[2], up[0] * east[1] - up[1] * east[0]];
+    this.meta = { ground: height, up, east, north };
+    this.ground = ground;
+  }
+
+  height(x: number, y: number): number {
+    const d = this.direction(x, y);
+    const at = selenographic(d);
+    return this.ground.height(at.latitude, at.longitude) - this.meta.ground;
+  }
+
+  direction(x: number, y: number): Vec3 {
+    const { east: e, north: n, up: u } = this.meta;
+    const [a, b] = [x / MOON_RADIUS, y / MOON_RADIUS];
+    const c = Math.sqrt(Math.max(0, 1 - a * a - b * b));
+    return [a * e[0] + b * n[0] + c * u[0], a * e[1] + b * n[1] + c * u[1], a * e[2] + b * n[2] + c * u[2]];
+  }
+
+  point(x: number, y: number, lift = 0): Vec3 {
+    const d = this.direction(x, y);
+    const g = this.meta.ground;
+    const r = MOON_RADIUS + g + this.height(x, y) + lift;
+    const u = this.meta.up;
+    return [d[0] * r - u[0] * (MOON_RADIUS + g), d[1] * r - u[1] * (MOON_RADIUS + g), d[2] * r - u[2] * (MOON_RADIUS + g)];
+  }
+
+  get origin(): Vec3 {
+    const u = this.meta.up;
+    const r = MOON_RADIUS + this.meta.ground;
+    return [u[0] * r, u[1] * r, u[2] * r];
   }
 }

@@ -1220,6 +1220,61 @@ air and flight effects real, the ground near the eye designed). What keeps it so
 - **Nothing costs on the ground that is not seen there.** The ball and the globe are not drawn until the eye
   can see past the site; the sheets and far cumulus are worked out only for pixels that meet their shells.
 
+## The Moon in the flight scene
+
+Above the air a flight's scene draws the Moon as a body (`viewer/flightmoon.ts` `FlightMoon`, held by the ground setting as
+`Setting.moon`), the front page's own (`viewer/moon.ts` `MoonBody` in its flight mode), from a dot beside the Earth to the
+ground under a spacecraft 15 km over a landing site. What keeps it right:
+
+- **Where the flight's gravity has it.** Its centre is sim/core/gravity.ts's place (DE440's where it is loaded, Meeus's of
+  date otherwise), taken over the turning Earth and into the site's frame as the vehicle is (`EarthFrame.toFixed`,
+  `ecefToSite`), so what the run has 110 km over the Moon is drawn 110 km over it. It is turned to its mean-Earth frame
+  (world/moon.ts `meanEarthAxes`), the frame its maps and the landing sites are in. Placed for the instant in `Setting.at`
+  and seen from the eye after the camera has moved (`Stage.attend`), never a frame behind: in the Earth's frame the Moon
+  goes 28 km a second.
+- **Drawn from the eye.** The shader is given the eye in the Moon's own frame, worked out in doubles, and the turn from that
+  frame to the scene's (`uTurn`); every vertex is placed from the eye, so no float holds 384,000 km and a metre together.
+- **Fine where the eye is.** Its rings are made about +Z and turned each frame to be about the point under the eye
+  (`uCentre`): from low orbit the mesh is finest below and across to the horizon wherever the eye has gone round. From
+  beyond 40,000 km a coarse mesh (40,000 triangles) is drawn instead: from there the most its relief can lift its edge is a
+  quarter of a pixel, so the change is not seen.
+- **A landing site's maps where it is near.** The whole Moon's maps are the front page's (public/front/moon.whole.jpg and
+  moon.colour.jpg). Within 4,000 km of the ground the nearest Apollo landing site's finest map (481 m a texel, 728 km
+  across, centred 200 km back along the way its LM came in: tools/front-moon.mjs `--sites`, public/lunar/<site>.near.*) is
+  fetched and faded in with the made craters on it, and its ground whole round the LM (the apron, from
+  world/lunar-ground.ts `LandingGround`: LROC's stereo and SLDEM2015); another site's fade in for it as the eye comes to be
+  over that one (`MoonBody.detail`: out over 0.8 s, in over as long). A site's cast shadows are worked out toward the east
+  at every texel, the lunar morning every LM came down in, and believed only while the Sun's bearing over its map is within
+  3 to 8 degrees of that.
+- **Nothing held on the ground.** Nothing of it is made or fetched until the eye is out of the air (as a phone, `pnpm
+  test:mem` counts 426 MiB in flight against the budget's 450 with it: Freedom 7 at T+150 s is out of the air, and holds the
+  whole Moon's maps at 1024 and the coarse mesh); from 24 to 48 km up
+  (the setting's `space` from 0.95 to 1) it is laid over the sky's disc of the Moon by its alpha, and the disc is let go by
+  as much (`Setting.eye`'s Moon, backdrops.ts), so nothing steps. The disc's sunlit radiance (heavens.ts, 0.16) and the
+  body's (an albedo of 0.12 in the Sun's light above the air, 0.17) are within a few per cent.
+- **Its depth.** It writes depth like the globe, and is drawn after it, so whichever is nearer covers the other (the Earth
+  rising over its limb). The near plane is never past its highest ground (`HIGHEST`, 10,786 m over its sphere) and the far
+  plane takes in its far side (pipeline.ts `fitDepth`); the eye stays over that ground too (`World.clearance`).
+- **Its light, and the light it makes.** It is lit by the Sun's light above the air, the globe's figure, whatever the eye's
+  own light (the eye in its shadow still sees its sunlit ground). It hides the Sun from an eye behind it (`sunShown`: the
+  two discs' overlap, which dims the beam, sends the exposure toward the night's and takes the vehicle's light), lends the
+  fill its sunlit share of the sky as the Earth does (backdrops.ts `MOONSHINE`: the Earth's figure times 0.12 over 0.3),
+  and lays its light over the stars (stage.ts `seeStars`, its Bond albedo 0.11). Each is a smooth function of where the eye
+  is; the sky is taken up again as either changes by a two-hundredth.
+- **The cel look** draws its light in the toon ramp's flat tones (`uCel`).
+- **The reflections hold the Sun far out.** The reflections are baked at a day's brightness (backdrops.ts: the gain is one
+  over the light round the eye), which far from the Earth, with nothing round the eye, put the Sun's patch at 24,000: its
+  blur overflowed the bake's half floats, the reflection on the vehicle was not a number, and the glow spread that over
+  the frame, so every frame from some 76,000 km out was black. The gain is now held so that the patch is at most
+  `BAKE_MOST` (4,000) and `environmentIntensity` undoes it, so what is seen is the same and nothing nearer the Earth
+  changes.
+
+What is simplified: only the six landing sites have maps finer than the whole Moon's 5.3 km a texel, so most of the Moon,
+the far side among it, is soft from low orbit and has no made craters; away from a site's apron the near plane and the eye
+are kept over the Moon's highest ground, not the ground under them; it casts no shadow on the vehicle (its eclipse dims the
+Sun's light at the eye instead); the page loads no DE440 today, so it and the flight's gravity are both Meeus's (world.md).
+To look at it: `sr.stage.moonPose(latitude, longitude, height, azimuth, elevation)` after setting the clock.
+
 ## The front page's picture
 
 The Earth from out by the Moon (`src/app/front/`, its Moon `viewer/moon.ts`) is a scene of its own, on its own canvas and renderer, and not a

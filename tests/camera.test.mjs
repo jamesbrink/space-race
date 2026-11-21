@@ -779,7 +779,17 @@ function mapWorld(craft, state) {
     clearance: (p) => p.distanceTo(centre) - R,
     upAt: (p, out) => out.copy(p).sub(centre).normalize(),
     map: () =>
-      state.none ? null : { centre, pole: V(0, 0, 1), radius: R, turned: state.turned, reach: state.reach, extent: state.extent },
+      state.none
+        ? null
+        : {
+            centre,
+            pole: V(0, 0, 1),
+            radius: R,
+            turned: state.turned,
+            reach: state.reach,
+            extent: state.extent,
+            ...(state.moon ? { moon: state.moon } : {}),
+          },
   };
 }
 
@@ -902,6 +912,46 @@ test('the map rig stands still among the stars while the Earth turns, goes with 
   assert.ok(near(rig.distance, mapFit('craft', rig.world.map(), 35, 1), 1e-3 * rig.distance));
 });
 
+test('the map turns about the Moon where it is drawn: C goes vehicle, Earth, Moon and round, the pivot slides there, and the eye stays out of it', () => {
+  const M = 1_737_400;
+  const moonAt = V(0, -R, 384_000e3);
+  const craft = craftAt(V(0, -R + 2_000e3, 383_000e3), 3);
+  const state = { turned: 0, reach: 390_000e3, extent: 400_000e3, moon: { centre: moonAt, radius: M } };
+  const rig = new MapRig(mapWorld(craft, state), 35);
+  rig.enter({ position: V(0, -R + 2_000e3, 382_000e3), quaternion: new THREE.Quaternion(), fov: 35 }, V(0, -R + 2_000e3, 383_000e3));
+  rig.update(0, NONE, false);
+  assert.equal(rig.focus, 'body', 'a path to the Moon: about the Earth');
+  rig.refocus();
+  assert.equal(rig.next, 'craft', 'about the Moon next, then the vehicle');
+  assert.equal(rig.focus, 'moon');
+  let last = rig.pivot.clone();
+  let most = 0;
+  run(rig, 3, 60, () => {
+    most = Math.max(most, rig.pivot.distanceTo(last));
+    last = rig.pivot.clone();
+  });
+  assert.ok(rig.pivot.distanceTo(moonAt) < 1e-6, 'about the Moon');
+  assert.ok(most < 0.05 * 384_000e3, `the pivot went ${Math.round(most / 1000)} km in a frame at most`);
+  for (let i = 0; i < 80; i++) {
+    rig.zoom(-0.5, null);
+    run(rig, 0.2, 60);
+  }
+  const at = posed(rig).position;
+  assert.ok(at.distanceTo(moonAt) > M, `the eye is ${Math.round((at.distanceTo(moonAt) - M) / 1000)} km over the Moon`);
+  assert.ok(at.distanceTo(moonAt) < 2 * M, 'and it comes in close to it');
+  rig.refocus();
+  assert.equal(rig.focus, 'craft');
+  rig.refocus();
+  assert.equal(rig.focus, 'body');
+  // the Moon gone from the map (not drawn): about the Earth again, and C no longer offers it
+  rig.refocus();
+  assert.equal(rig.focus, 'moon');
+  state.moon = undefined;
+  run(rig, 0.1, 60);
+  assert.equal(rig.focus, 'body');
+  assert.equal(rig.next, 'craft');
+});
+
 test('the map is M`s: C never offers it, it comes back to the view it was taken from, and there is none without something to map', async () => {
   const element = () => ({
     style: {},
@@ -941,8 +991,8 @@ test('the map is M`s: C never offers it, it comes back to the view it was taken 
   assert.equal(cams.rig, 'map');
   assert.ok(camera.position.distanceTo(V(0, -R, 0)) > 3 * R, 'pulled out to the whole Earth');
   assert.equal(cams.next(), 'map', 'C in the map is the map`s own (what it turns about)');
-  assert.equal(cams.refocus(), 'craft');
-  assert.equal(cams.refocus(), 'body');
+  assert.deepEqual(cams.refocus(), { focus: 'craft', next: 'body' });
+  assert.deepEqual(cams.refocus(), { focus: 'body', next: 'craft' });
   cams.refind();
   assert.equal(cams.rig, 'map', 'the reset stays in the map');
   cams.mapped(false);

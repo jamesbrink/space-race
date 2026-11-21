@@ -432,6 +432,12 @@ export class Pipeline {
     const globe = setting.globe;
     if (globe?.mesh.visible) near = Math.min(near, (0.9 * globe.altitude(eye)) / corner);
     let far = Math.max(toCentre + bounds.radius + (setting.horizon ?? 10), globe?.reach(eye) ?? 0);
+    // the Moon, once it is drawn: seen out to its far side, and the plane never past its highest ground (flightmoon.ts)
+    const moon = setting.moon;
+    if (moon?.drawn) {
+      far = Math.max(far, moon.reach(eye));
+      near = Math.min(near, (0.9 * Math.max(moon.altitude(eye), 0)) / corner);
+    }
     // a vehicle in flight is seen as far off as it is, and the near plane is never beyond it
     const flier = d.flying();
     if (flier) {

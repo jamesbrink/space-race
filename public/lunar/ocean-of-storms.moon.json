@@ -1,0 +1,42 @@
+{
+  "about": "The Moon round Ocean of Storms, for the flight scene (viewer/flightmoon.ts): written by tools/front-moon.mjs --sites; do not edit.",
+  "site": "ocean-of-storms",
+  "landing": [
+    -3.0128,
+    -23.4219
+  ],
+  "uprange": 200000,
+  "near": {
+    "file": "ocean-of-storms.near.jpg",
+    "centre": [
+      0.9531727924230283,
+      -0.29155748444225543,
+      -0.08034837304009758
+    ],
+    "east": [
+      0.29250319324100127,
+      0.9562645460037811,
+      0
+    ],
+    "north": [
+      0.07683430046733135,
+      -0.02350215568594772,
+      0.9967668428222367
+    ],
+    "half": 0.21262862861745602,
+    "side": 1536,
+    "metres": 481.0169002082918,
+    "low": -4300,
+    "high": 1200,
+    "at": {
+      "longitude": -17.007878132448713,
+      "latitude": -4.608590503142423
+    },
+    "height": "ocean-of-storms.near.height.png",
+    "heightMetres": 962.0338004165836,
+    "horizon": 0.7853981633974483,
+    "colour": "ocean-of-storms.near.colour.jpg"
+  },
+  "cast": "east",
+  "data": "NASA Scientific Visualization Studio, CGI Moon Kit (E. Wright, 2019; svs.gsfc.nasa.gov/4720): colour from the Lunar Reconnaissance Orbiter Camera wide-angle mosaic, heights from the Lunar Orbiter Laser Altimeter. Public domain; credit NASA/GSFC/Arizona State University"
+}

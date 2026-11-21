@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { FootRig, type FootView, ShoulderRig } from './foot.ts';
 import { FreeRig } from './free.ts';
 import { type Hands, listen, SPOKEN } from './input.ts';
-import { MapRig } from './map.ts';
+import { type MapFocus, MapRig } from './map.ts';
 import { anchorOk, blendPose, finitePose, fitDistance, nudgeIntoFrame } from './maths.ts';
 import { OnboardRig } from './onboard.ts';
 import { ChaseRig, OrbitRig } from './orbit.ts';
@@ -297,9 +297,9 @@ export class Cameras {
     if (this.active === this.map) this.set(about ? 'chase' : 'orbit');
   }
 
-  /** In the map: turn about the other of the vehicle and the body (C). Says which, or null out of the map. */
-  refocus(): 'craft' | 'body' | null {
-    return this.active === this.map ? this.map.refocus() : null;
+  /** In the map: turn about the next of the vehicle, the body and the Moon (C). Says which, and which C would go to next; null out of the map. */
+  refocus(): { focus: MapFocus; next: MapFocus } | null {
+    return this.active === this.map ? { focus: this.map.refocus(), next: this.map.next } : null;
   }
 
   /** The view an exhibit's seat was taken from (`set`): where leaving the seat goes back to, as it was left. */
@@ -428,12 +428,16 @@ export class Cameras {
     o.goTo(pivot, pivot.clone().add(offset), false);
   }
 
-  /** For tests and screenshots: the orbiting rig, exactly here, looking straight at `pivot`, and still. */
-  place(pivot: THREE.Vector3, eye: THREE.Vector3): void {
+  /**
+   * For tests and screenshots: the orbiting rig, exactly here, looking straight at `pivot`, and still. `anywhere`: the pivot
+   * is not held within reach of the place (a pose over the Moon: Stage.moonPose).
+   */
+  place(pivot: THREE.Vector3, eye: THREE.Vector3, anywhere = false): void {
     this.set('orbit', true);
     this.blend = null;
     this.orbit.drift = false;
     this.orbit.centred = true;
+    this.orbit.anywhere = anywhere;
     this.orbit.goTo(pivot, eye, true);
     this.orbit.settle();
     this.orbit.handSet = true;

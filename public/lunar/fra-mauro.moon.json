@@ -1,0 +1,42 @@
+{
+  "about": "The Moon round Fra Mauro, for the flight scene (viewer/flightmoon.ts): written by tools/front-moon.mjs --sites; do not edit.",
+  "site": "fra-mauro",
+  "landing": [
+    -3.64589,
+    -17.47194
+  ],
+  "uprange": 200000,
+  "near": {
+    "file": "fra-mauro.near.jpg",
+    "centre": [
+      0.9774196091829838,
+      -0.19079362330518845,
+      -0.09082235897983301
+    ],
+    "east": [
+      0.19158542495279912,
+      0.9814759421125184,
+      0
+    ],
+    "north": [
+      0.08913996034461295,
+      -0.01740024024036698,
+      0.9958671091613274
+    ],
+    "half": 0.21262862861745602,
+    "side": 1536,
+    "metres": 481.0169002082918,
+    "low": -3600,
+    "high": 2400,
+    "at": {
+      "longitude": -11.045322260363845,
+      "latitude": -5.21091855402383
+    },
+    "height": "fra-mauro.near.height.png",
+    "heightMetres": 962.0338004165836,
+    "horizon": 0.7853981633974483,
+    "colour": "fra-mauro.near.colour.jpg"
+  },
+  "cast": "east",
+  "data": "NASA Scientific Visualization Studio, CGI Moon Kit (E. Wright, 2019; svs.gsfc.nasa.gov/4720): colour from the Lunar Reconnaissance Orbiter Camera wide-angle mosaic, heights from the Lunar Orbiter Laser Altimeter. Public domain; credit NASA/GSFC/Arizona State University"
+}
