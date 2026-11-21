@@ -106,9 +106,15 @@ export interface SaturnIBRecord {
     /**
      * The service module's reaction control system as the attitude is flown with it alone in orbit (sm-rcs.ts, sim/attitude.ts):
      * the centre of mass its chambers are placed about (XA, inches), its propellant load, kg, and the record's mass properties
-     * through the free flight. Left out, the attitude is turned as a hand turns it, at the hand's rate.
+     * through the free flight, and any quad the record has isolated for a fault, by its letter, from when (`isolated`). Left
+     * out, the attitude is turned as a hand turns it, at the hand's rate.
      */
-    rcs?: { centre: Measure; load: Measure; inertia: NonNullable<ThrusterSet['inertia']> };
+    rcs?: {
+      centre: Measure;
+      load: Measure;
+      inertia: NonNullable<ThrusterSet['inertia']>;
+      isolated?: Partial<Record<'A' | 'B' | 'C' | 'D', Measure>>;
+    };
   };
   /** The firings in orbit, in the order they are flown. */
   burns: Burn[];

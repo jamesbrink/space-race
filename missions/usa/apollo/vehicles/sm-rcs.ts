@@ -53,8 +53,11 @@ export const SCS_RATEBAND = assumed(
   'Apollo Operations Handbook, Block II, vol. 1, §2.3.4.4.2, table p. 2.3-36A: the rate deadband at the RATE switch’s LOW setting, ±0.2 deg/s (HIGH ±2)',
 );
 
-/** The sixteen chambers about the centre of mass at station `centre` (XA, inches): quad by quad, +X and -X, then roll each way. */
-export function smRcsChambers(centre: number, centreSource: string): Thruster[] {
+/**
+ * The sixteen chambers about the centre of mass at station `centre` (XA, inches): quad by quad, +X and -X, then roll each
+ * way. `isolated`: a quad shut off for a fault the record has, by its letter, from the instant given (`Thruster.isolated`).
+ */
+export function smRcsChambers(centre: number, centreSource: string, isolated: Partial<Record<'A' | 'B' | 'C' | 'D', Measure>> = {}): Thruster[] {
   const out: Thruster[] = [];
   const quads: [name: string, angle: number][] = [
     // (the angle of each quad's outward line about +X from +Y toward +Z: A by -Z, B by +Y, C by +Z, D by -Y, each turned 7.25 degrees the clockwise way looking aft)
@@ -82,6 +85,7 @@ export function smRcsChambers(centre: number, centreSource: string): Thruster[] 
         at,
         push,
         thrust: SM_RCS_THRUST.value,
+        ...(isolated[name as 'A' | 'B' | 'C' | 'D'] ? { isolated: isolated[name as 'A' | 'B' | 'C' | 'D'] } : {}),
         confidence: 'assumed',
         source: `${R547}; the Operations Handbook’s 10 degree cant; the four engines of a quad taken at its reference point (their offsets in the housing are not modelled). The centre of mass: ${centreSource}. ${SM_RCS_THRUST.source}`,
       });
@@ -113,9 +117,10 @@ export function smRcsSet(f: {
   centre: Measure;
   load: Measure;
   inertia: NonNullable<ThrusterSet['inertia']>;
+  isolated?: Partial<Record<'A' | 'B' | 'C' | 'D', Measure>>;
 }): Pick<ThrusterSet, 'chambers' | 'supplies' | 'inertia' | 'minimum' | 'deadband' | 'rateband'> {
   return {
-    chambers: smRcsChambers(f.centre.value, f.centre.source),
+    chambers: smRcsChambers(f.centre.value, f.centre.source, f.isolated),
     supplies: [{ name: 'sm-rcs', mode: 'automatic', propellant: f.load, isp: SM_RCS_ISP }],
     inertia: f.inertia,
     minimum: SM_RCS_MINIMUM,

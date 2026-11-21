@@ -148,6 +148,11 @@ export interface Thruster {
   /** N. On or off, unless `least` is given: then the chamber is throttled by the command between `least` and this. */
   thrust: number;
   least?: number;
+  /**
+   * From when it gives nothing, s from liftoff: the chamber shut off for a fault the record has (a service module quad
+   * isolated for a leak). Left out, it works throughout.
+   */
+  isolated?: Measure;
   confidence: Confidence;
   source: string;
 }
