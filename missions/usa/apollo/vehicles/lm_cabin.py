@@ -20,7 +20,16 @@ def label(mesh, words, origin, size, font):
     mesh.add([(origin[0] * IN, origin[1] * IN - v[0], origin[2] * IN + v[1]) for v in verts], [tuple(reversed(f)) for f in faces])
 
 
-def build(owner, boards, silver, panel, black, ivory, glass):
+def build(owner, boards, silver, panel, black, ivory, glass, hatch_top=None):
+    """`hatch_top`, the forward hatch's top edge, inches, for a LM that landed, whose forward hatch is swung in to go out
+    (lunar_module.py `landed`). The handbook has the hatch "just below the lower display panels" (LMA790-3-LM,
+    1.2.2.1.2), and nothing stood in its swing; here the panels are built from estimates that came down in front of it,
+    so their lower edge is kept an inch above its top and the switches on the floor's edge out of its way (lunar-module.md,
+    "On the Moon")."""
+    hatch_way = hatch_top is not None
+    lift = hatch_top + 1 - 166 if hatch_way else 0  # how far the two main panels' lower edge rises, inches
+    lift_mid = hatch_top + 1 - 162 if hatch_way else 0  # and the centre panel's, and its keyboard
+    keys = 3 if hatch_way else 0
     # Blender -Y becomes glTF +Z (forward); both astronauts face model +X.
     for name, y in (("LM_CommanderStation", 17), ("LM_PilotStation", -17)):
         eye = group(name, owner)
@@ -98,16 +107,17 @@ def build(owner, boards, silver, panel, black, ivory, glass):
 
     for side in (-1, 1):
         y = side * 21
-        box(cases, (69, y, 174), (6, 21, 16))
-        box(fascias, (66.08, y, 174), (0.34, 20.7, 15.6))
-        instrument(y, 176.5, 3.2)
+        # (with the hatch's way kept clear the panels keep their tops and lose what came below its top)
+        box(cases, (69, y, 174 + lift / 2), (6, 21, 16 - lift))
+        box(fascias, (66.08, y, 174 + lift / 2), (0.34, 20.7, 15.6 - lift))
+        instrument(y, 176.5 + lift / 2, 3.2)
         for dy in (-6, 6):
-            instrument(y + dy, 175.5, 1.65)
+            instrument(y + dy, 175.5 + lift / 2, 1.65)
         for dy in range(-7, 8, 3):
-            levers.tube(p((65.6, y + dy, 169)), p((64.4, y + dy, 169.6)), 0.22 * IN)
+            levers.tube(p((65.6, y + dy, 169 + lift)), p((64.4, y + dy, 169.6 + lift)), 0.22 * IN)
         label(legends, "ATTITUDE", (65.46, y + 4, 181), 1.15, font)
-    box(cases, (68, 0, 178), (4, 13, 32))
-    box(fascias, (65.7, 0, 178), (0.32, 12.5, 31.5))
+    box(cases, (68, 0, 178 + lift_mid / 2), (4, 13, 32 - lift_mid))
+    box(fascias, (65.7, 0, 178 + lift_mid / 2), (0.32, 12.5, 31.5 - lift_mid))
     # LM display and keyboard: three register rows, annunciators, 19 keycaps.
     for j in range(4):
         box(gauges, (65.37, -2, 188 - j * 1.68), (0.22, 6.4, 1.15))
@@ -116,12 +126,12 @@ def build(owner, boards, silver, panel, black, ivory, glass):
             box(pointers, (65.35, 3 + col * 0.54, 188 - j * 1.24), (0.24, 0.4, 0.64))
     for row, count in enumerate((4, 5, 5, 5)):
         for col in range(count):
-            box(levers, (65.14, 4.4 - col * 2, 177.8 - row * 1.9), (0.58, 1.45, 1.4))
-    label(legends, "VERB    NOUN", (65.31, 4.8, 181.6), 1.0, font)
+            box(levers, (65.14, 4.4 - col * 2, 177.8 + keys - row * 1.9), (0.58, 1.45, 1.4))
+    label(legends, "VERB    NOUN", (65.31, 4.8, 181.6 + keys), 1.0, font)
     for side in (-1, 1):
         for row in range(3):
             for col in range(5):
-                y = side * (7 + col * 2)
+                y = side * ((17 if hatch_way else 7) + col * 2)
                 box(gauges, (62, y, 156 + row * 1.85), (0.8, 1.3, 1.35))
         # Hand controller and boot projecting inward from the angled side console.
         box(cases, (52, side * 31, 163), (12, 6, 5))

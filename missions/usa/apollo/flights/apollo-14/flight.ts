@@ -1,6 +1,6 @@
 import type { Flight } from '../../../../../src/types.ts';
 import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
-import { lc39Crew } from '../../crew/lc39.ts';
+import { lc39Crew, moonSuits } from '../../crew/lc39.ts';
 import { WEATHER } from './weather.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
@@ -164,7 +164,7 @@ export const flight: Flight = {
           scale: 'Shepard · 5 ft 11 in stature · A7L EV launch suit with commander’s bands',
         },
       ],
-      true,
+      moonSuits('apollo-14', ['Shepard', 'Mitchell'], 'A7L', 6),
     ),
   ],
 };

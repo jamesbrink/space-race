@@ -1,6 +1,6 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
 import { LC39A_EDT, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
-import { lc39Crew } from '../../crew/lc39.ts';
+import { lc39Crew, moonSuits } from '../../crew/lc39.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { APOLLO11_THRUST } from '../../vehicles/propulsion.ts';
@@ -468,6 +468,6 @@ export const flight: Flight = {
       terminalConfidence: 'documented',
       terminalSource: 'AS-506 Flight Evaluation Report §3.6.2(a) and table 4-1. Apollo 11 Press Kit, Mobile Launcher.',
     }),
-    ...lc39Crew(['Armstrong', 'Collins', 'Aldrin'], true, [], true),
+    ...lc39Crew(['Armstrong', 'Collins', 'Aldrin'], true, [], moonSuits('apollo-11', ['Armstrong', 'Aldrin'], 'A7L', 6)),
   ],
 };

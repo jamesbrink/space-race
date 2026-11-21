@@ -11,6 +11,12 @@ from srlib import IN, MeshBuilder, group
 
 
 def surface_equipment(commander):
+    leva(commander)
+    backpack()
+
+
+def leva(commander):
+    """The lunar extravehicular visor assembly over the pressure helmet (shape and sizes estimated)."""
     body = fl.B
     helmet = fl.group("Helmet")
     cover, visor, edging, strips = (MeshBuilder() for _ in range(4))
@@ -48,6 +54,13 @@ def surface_equipment(commander):
     fl.emit(edging, "Helmet_VisorRim", black, helmet)
     if commander:
         fl.emit(strips, "Helmet_CommanderBand", a7l.paint("a7l-commander-red", (0.58, 0.035, 0.025), roughness=0.9), helmet)
+
+
+def backpack():
+    """The riders' back package, low enough to settle against the open seat (estimated)."""
+    body = fl.B
+    white = a7l.paint("lrv-emu-thermal-cloth", (0.87, 0.85, 0.79), roughness=0.87, double_sided=True)
+    black = a7l.paint("lrv-emu-dark-trim", (0.12, 0.12, 0.115), roughness=0.68)
     trunk = fl.group("Torso")
     case, rcu, connections, antenna, trim = (MeshBuilder() for _ in range(5))
 

@@ -246,6 +246,7 @@ export const {
   stageParts,
   facts,
   false,
+  'fra-mauro',
 );
 
 antaresViews.push(
