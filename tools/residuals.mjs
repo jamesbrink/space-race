@@ -83,7 +83,8 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root }).s
         : null,
     ends: whole.coast.samples.at(-1).phase,
     fixes,
-    // the coast's manoeuvres as flown (guidance's own where it solved one on the flight's target: sim/pursuit.ts), each
+    // the coast's manoeuvres as flown (guidance's own where it solved one on the flight's target or on the state, and what
+    // the burn flown ahead at its lighting reached: sim/pursuit.ts `solveBurn`), each
     // against the record's impulse where a check holds it, and the target's range at the instants the record has one
     burns: (whole.coast.burns ?? []).map((b) => ({
       ...b,
@@ -114,7 +115,13 @@ else {
       );
     for (const b of r.burns)
       console.log(
-        `| &nbsp; ${b.lit} at ${b.on.toFixed(1)} s, ${b.solved ? 'solved on the target' : 'as recorded'} | | | | ${b.velocity.toFixed(2)} m/s in ${(b.off - b.on).toFixed(1)} s${b.solved && b.record !== null ? ` (record ${b.record.toFixed(2)} m/s)` : ''} | | |`,
+        `| &nbsp; ${b.lit} at ${b.on.toFixed(1)} s, ${b.aim ? `solved on the state for its ${b.aim}, steered` : b.solved ? 'solved on the target' : 'as recorded'} | | | | ${b.velocity.toFixed(2)} m/s in ${(b.off - b.on).toFixed(1)} s${b.solved && b.record !== null ? ` (record ${b.record.toFixed(2)} m/s)` : ''}${
+          b.reached
+            ? `; reached ${Object.entries(b.reached)
+                .map(([k, v]) => `${k} ${v.toFixed(k.endsWith('At') ? 0 : 3)}`)
+                .join(', ')}`
+            : ''
+        } | | |`,
       );
     for (const x of r.ranges)
       console.log(

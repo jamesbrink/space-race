@@ -444,10 +444,13 @@ export type Action =
   | { arm: string };
 
 /**
- * What a burn made on another craft is for (`Action.ignite.toward`): the command guidance carries out on the live state
- * of both (sim/pursuit.ts), as the ground or the crew worked it from where the two then were. Where the target is from
- * the craft is given the same way throughout: `ahead`, m along the craft's orbit (the arc between the two, on the
- * target's radius), and `above`, the target's distance from the Earth's centre less the craft's.
+ * What a burn is for (`Action.ignite.toward`): the command guidance carries out on the live state (sim/pursuit.ts), as
+ * the ground or the crew worked it from where the craft (and the other craft, where it was made on one) then were. Where
+ * the target is from the craft is given the same way throughout: `ahead`, m along the craft's orbit (the arc between the
+ * two, on the target's radius), and `above`, the target's distance from the Earth's centre less the craft's. The last six
+ * are solved at lighting as External ΔV or a Lambert aim point and steered by cross products (sim/steering.ts, R-577
+ * §5.3.3); `orbit`, `pericynthion` and `entry` need no target. The figures they are given are what the burn was aimed
+ * at, from the record; the impulse it took is then a check.
  */
 export type Pursuit =
   /** Aimed so that the target is at this place from the craft at the instant `at`, s from liftoff, and in its plane. */
@@ -459,7 +462,27 @@ export type Pursuit =
    * s from liftoff: thrust commanded all the while from the range and its rate, within what the engine can give. The
    * crew's own pulses are not on any record read.
    */
-  | { station: { ahead: Measure; above: Measure }; until: Measure };
+  | { station: { ahead: Measure; above: Measure }; until: Measure }
+  /** A midcourse correction on the way out: its nearest to the Moon `height` m above the Moon's mean sphere, at `at`, s from liftoff. */
+  | { pericynthion: { height: Measure; at: Measure } }
+  /** An orbit about the body the craft is about as the burn ends (lunar orbit insertion, descent orbit insertion): its highest and lowest heights above that body's mean sphere (the Earth's: the orbit's reference ball), m. */
+  | { orbit: { apoapsis: Measure; periapsis: Measure } }
+  /** The return (transearth injection, a return correction): through the entry interface, `height` m above the Earth's surface, at a space-fixed flight-path angle of `flightPathAngle` degrees (negative: going down), and at `at`, s from liftoff, where given. */
+  | { entry: { flightPathAngle: Measure; height: Measure; at?: Measure } }
+  /**
+   * The coelliptic sequence's start (CSI, P32): level along the motion, so that after the coelliptic burn at the next
+   * apsis (impulsive, as P32 predicted it) the target stands `elevation` degrees above the craft's level at `at`, s from
+   * liftoff: the terminal phase's instant.
+   */
+  | { phase: { elevation: Measure; at: Measure } }
+  /** Into the target's plane, lit where the two planes cross. */
+  | { plane: true }
+  /**
+   * The terminal phase's start (TPI, P34): lit as the target rises through `angle` degrees above the craft's level (looked
+   * for from `window` seconds before the record's lighting to as long after it, and lit at the end of that where it has not
+   * risen so far), aimed to meet the target once it has gone `travel` degrees round its orbit.
+   */
+  | { elevation: { angle: Measure; travel: Measure; window: Measure } };
 
 /**
  * Another craft a flight's manoeuvres are made on (sim/pursuit.ts `Target`): a craft of its own, which nothing the

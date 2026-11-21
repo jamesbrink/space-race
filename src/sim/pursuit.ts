@@ -9,7 +9,7 @@
  * attitude and the ranges the crew read are what the run is then compared with (sim/misses.ts, tools/residuals.mjs).
  */
 import type { OrbitalFix } from '../types/flight.ts';
-import { EARTH } from '../world/bodies.ts';
+import { EARTH, MOON } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import {
   add,
@@ -27,9 +27,10 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { stateOfMean } from '../world/meanelements.ts';
-import { hermite, meanAnomaly, type State, stateOf, trueAnomaly } from '../world/orbit.ts';
+import { elementsOf, hermite, meanAnomaly, type State, stateOf, trueAnomaly } from '../world/orbit.ts';
 import { EARTH_FIELD, type Field, stepIn } from './core/gravity.ts';
-import type { OrbitElements, TargetOrbit } from './plan.ts';
+import type { OrbitElements, Pursuit, TargetOrbit } from './plan.ts';
+import { type Condition, externalDv, type Fly, flyBurn, lambert, localVertical, type Steered, Steering, solveImpulse } from './steering.ts';
 
 /**
  * A craft flown on its own forces from `from`, s from liftoff: its state at an instant, or nothing before it began or
@@ -237,7 +238,7 @@ export function reach(
  * shorter by the height between them there, the climb the target has there scaled by the axes' ratio to the power 3/2,
  * and the level speed that axis gives, in its own plane. Null where the target is not there.
  */
-export function coelliptic(target: Target, state: State, t: number): Vec3 | null {
+export function coelliptic(target: Target, state: State, t: number, gm = EARTH.gm.value): Vec3 | null {
   let over = target.at(t);
   let dt = 0;
   for (let k = 0; over && k < 4; k++) {
@@ -246,7 +247,6 @@ export function coelliptic(target: Target, state: State, t: number): Vec3 | null
     over = target.at(t + dt);
   }
   if (!over) return null;
-  const gm = EARTH.gm.value;
   const [theirs, mine] = [length(over.r), length(state.r)];
   const axis = 1 / (2 / theirs - dot(over.v, over.v) / gm);
   const own = axis - (theirs - mine);
@@ -292,3 +292,396 @@ export function stationPush(
   const size = length(wish);
   return size > cap ? scale(wish, cap / size) : wish;
 }
+
+/** How high a craft sees a point above its horizontal, radians: the angle from its level to the line of sight (both from the same centre). */
+export function elevationOf(craft: State, point: Vec3): number {
+  const sight = sub(point, craft.r);
+  return Math.asin(Math.max(-1, Math.min(1, dot(sight, unit(craft.r)) / length(sight))));
+}
+
+/** A state about the body a craft is flown about at an instant, with that body's gravitational parameter and the radius heights are above, m. */
+export interface Centred {
+  body: 'earth' | 'moon';
+  s: State;
+  gm: number;
+  radius: number;
+}
+
+/**
+ * What a burn solved on the run's own state is solved with (`solveBurn`): the run's forces one step ahead (`fly`, states
+ * about the Earth in the flight's axes, as the coast keeps them: one step of the integrator) and gravity on a state, about
+ * the body it is about (`gravity`, for the Lambert mode); the state about the body it is about (`about`); the height above the Earth's surface (`height`, for the entry
+ * interface); the Moon's place and velocity from the Earth's centre (`moon`, for a pericynthion); the central body's
+ * acceleration less its point mass's (`oblate`, about the Earth only); the thrust's acceleration at an instant
+ * (`accel`) and the exhaust's speed (`exhaust`), m/s; the target where there is one.
+ */
+export interface BurnContext {
+  fly: Fly;
+  gravity(s: State, t: number): Vec3;
+  about(s: State, t: number): Centred;
+  height(s: State, t: number): number;
+  moon?(t: number): State;
+  oblate?(r: Vec3): Vec3;
+  accel(t: number): number;
+  exhaust?: number;
+  target?: Target;
+}
+
+/** A burn solved on the run's state: its steering from ignition, the burn as it was flown ahead, and what it was found to reach. */
+export interface Solved {
+  steering: () => Steering;
+  burn: Steered;
+  reached: Record<string, number>;
+}
+
+/** The coast's step ahead, s: a two-hundredth of a radian of the motion about the centre where it is, between 10 s and 10 minutes. */
+function coastStep(ctx: BurnContext, s: State, t: number): number {
+  const c = ctx.about(s, t);
+  const r = length(c.s.r);
+  return Math.max(10, Math.min(600, 0.005 * Math.sqrt((r * r * r) / c.gm)));
+}
+
+/**
+ * The coast flown ahead from a state until `event` (a function of the state and the instant) passes from below nought to
+ * nought or above, the instant found by bisection to a millisecond from the step it fell in; null where it does not
+ * within `limit` seconds.
+ */
+function coastTo(
+  ctx: BurnContext,
+  s: State,
+  t: number,
+  event: (s: State, t: number) => number,
+  limit: number,
+): { s: State; t: number } | null {
+  let [x, at] = [s, t];
+  let was = event(x, at);
+  while (at < t + limit) {
+    const h = coastStep(ctx, x, at);
+    const next = ctx.fly(x, at, at + h);
+    const now = event(next, at + h);
+    if (was < 0 && now >= 0) {
+      let [lo, hi] = [0, h];
+      while (hi - lo > 1e-3) {
+        const mid = (lo + hi) / 2;
+        if (event(ctx.fly(x, at, at + mid), at + mid) < 0) lo = mid;
+        else hi = mid;
+      }
+      return { s: ctx.fly(x, at, at + hi), t: at + hi };
+    }
+    [x, at, was] = [next, at + h, now];
+  }
+  return null;
+}
+
+/** The coast flown ahead from a state to the instant `to`, its last step cut to end there. */
+function coastFor(ctx: BurnContext, s: State, t: number, to: number): State {
+  let [x, at] = [s, t];
+  while (at < to - 1e-9) {
+    const h = Math.min(coastStep(ctx, x, at), to - at);
+    x = ctx.fly(x, at, at + h);
+    at = Math.abs(at + h - to) < 1e-9 ? to : at + h;
+  }
+  return x;
+}
+
+/** The nearest point of the conic a state about a centre is on: its distance from the centre, m, and the instant, s (the next or the last). */
+function periapsisOf(s: State, t: number, gm: number): { r: number; at: number } {
+  const el = elementsOf(s.r, s.v, gm);
+  const nu = el.nu > Math.PI ? el.nu - 2 * Math.PI : el.nu;
+  const rate = Math.sqrt(gm / Math.abs(el.a) ** 3);
+  const mean =
+    el.e < 1
+      ? (() => {
+          const E = 2 * Math.atan2(Math.sqrt(1 - el.e) * Math.sin(nu / 2), Math.sqrt(1 + el.e) * Math.cos(nu / 2));
+          return E - el.e * Math.sin(E);
+        })()
+      : (() => {
+          const F = 2 * Math.atanh(Math.sqrt((el.e - 1) / (el.e + 1)) * Math.tan(nu / 2));
+          return el.e * Math.sinh(F) - F;
+        })();
+  return { r: el.a * (1 - el.e), at: t - mean / rate };
+}
+
+/** The impulse in the local vertical that takes a state to the orbit about its centre with these radii, m/s: by vis-viva, where the radius it is at lies between them. */
+function toOrbit(c: Centred, ra: number, rp: number): Vec3 {
+  const r = length(c.s.r);
+  const a = (ra + rp) / 2;
+  const speed = Math.sqrt(Math.max(0, c.gm * (2 / r - 1 / a)));
+  const h = Math.sqrt(c.gm * a * (1 - ((ra - rp) / (ra + rp)) ** 2));
+  const level = Math.min(speed, h / r);
+  const climb = Math.sqrt(Math.max(0, speed * speed - level * level)) * Math.sign(dot(c.s.r, c.s.v) || 1);
+  const [X, Y, Z] = localVertical(c.s);
+  const want = add(scale(X, level), scale(Z, -climb));
+  const dv = sub(want, c.s.v);
+  return [dot(dv, X), dot(dv, Y), dot(dv, Z)];
+}
+
+/** A target about the body a craft is about. */
+const centredTarget = (ctx: BurnContext, target: Target): Target => ({
+  from: target.from,
+  at: (t) => {
+    const it = target.at(t);
+    return it && ctx.about(it, t).s;
+  },
+});
+
+/**
+ * The burn that does what `toward` is for, solved on the state as it lights at `t` (the targeting the ground or the
+ * computer did), and steered from there as the computer steered it (sim/steering.ts). External ΔV for an orbit, a
+ * pericynthion, an entry, a phasing and a plane: its impulse in the local vertical corrected until the steered burn,
+ * flown ahead on the run's forces, does it. A Lambert aim point for an intercept from an elevation. Null where nothing does
+ * (the caller flies the record's burn), or for a kind this does not solve (a reach, the coelliptic burn, a station).
+ */
+export function solveBurn(toward: Pursuit, ctx: BurnContext, state: State, t: number): Solved | null {
+  const here = ctx.about(state, t);
+  const centred = (s: State, at: number): State => ctx.about(s, at).s;
+  const external = (lv: Vec3) => () =>
+    new Steering({ external: externalDv(here.s, lv, ctx.accel(t)) }, t, state, ctx.accel, ctx.exhaust, centred);
+  const fly = (make: () => Steering): Steered => flyBurn(ctx.fly, state, t, make(), (s, at) => ctx.gravity(s, at));
+  type Report = (s: State, at: number) => Record<string, number>;
+  const solve = (want: Condition, guess: Vec3, free: number[], report: Report): Solved | null => {
+    const found = solveImpulse((lv) => fly(external(lv)), want, guess, free);
+    return found && { steering: external(found.lv), burn: found.burn, reached: report(found.burn.state, found.burn.t) };
+  };
+  if ('orbit' in toward) {
+    const [ra, rp] = [here.radius + toward.orbit.apoapsis.value, here.radius + toward.orbit.periapsis.value];
+    // (the energy and the lowest point: both go smoothly through a parabola, where the highest point does not)
+    const energy = -here.gm / (ra + rp);
+    const report: Report = (s, at) => {
+      const c = ctx.about(s, at);
+      const el = elementsOf(c.s.r, c.s.v, c.gm);
+      return { apoapsis: el.a * (1 + el.e) - c.radius, periapsis: el.a * (1 - el.e) - c.radius };
+    };
+    return solve(
+      {
+        miss: (s, at) => {
+          const c = ctx.about(s, at);
+          return [dot(c.s.v, c.s.v) / 2 - c.gm / length(c.s.r) - energy, periapsisOf(c.s, at, c.gm).r - rp];
+        },
+        tolerance: [(here.gm / (ra + rp) ** 2) * 10, 10],
+      },
+      toOrbit(here, ra, rp),
+      [0, 2],
+      report,
+    );
+  }
+  if ('pericynthion' in toward) {
+    const moon = ctx.moon;
+    if (!moon) return null;
+    const { height, at: when } = toward.pericynthion;
+    const nearest = (s: State, at: number): { height: number; at: number } | null => {
+      const from = (x: State, w: number): State => {
+        const m = moon(w);
+        return { r: sub(x.r, m.r), v: sub(x.v, m.v) };
+      };
+      const radius = MOON.equatorialRadius.value;
+      const gm = MOON.gm.value;
+      // (flown to where it stops closing on the Moon, or to the Moon's surface, where the conic it is on there gives its nearest)
+      const end = coastTo(
+        ctx,
+        s,
+        at,
+        (x, w) => {
+          const p = from(x, w);
+          return length(p.r) < radius ? 1 : dot(p.r, p.v);
+        },
+        20 * 86_400,
+      );
+      if (!end) return null;
+      const p = from(end.s, end.t);
+      if (length(p.r) >= radius) return { height: length(p.r) - radius, at: end.t };
+      const q = periapsisOf(p, end.t, gm);
+      return { height: q.r - radius, at: q.at };
+    };
+    const report: Report = (s, at) => {
+      const n = nearest(s, at);
+      const out: Record<string, number> = {};
+      if (n) Object.assign(out, { pericynthion: n.height, pericynthionAt: n.at });
+      return out;
+    };
+    return solve(
+      {
+        miss: (s, at) => {
+          const n = nearest(s, at);
+          return n && [n.height - height.value, n.at - when.value];
+        },
+        tolerance: [10, 1],
+      },
+      [0, 0, 0],
+      [0, 1, 2],
+      report,
+    );
+  }
+  if ('entry' in toward) {
+    const { flightPathAngle, height, at: when } = toward.entry;
+    const want = Math.cos(flightPathAngle.value * DEG);
+    /**
+     * Where it comes through the interface: there, or (where it does not come down so far) at its nearest to the Earth,
+     * with the cosine of the angle it would come through at on the conic it is on there, so the miss runs smoothly
+     * from passing over to coming through.
+     */
+    const through = (s: State, at: number): { cos: number; at: number; angle: number } | null => {
+      const end = coastTo(
+        ctx,
+        s,
+        at,
+        (x, w) => {
+          const c = ctx.about(x, w);
+          if (c.body !== 'earth') return -1;
+          return Math.max(height.value - ctx.height(x, w), length(x.r) < 1e8 ? dot(x.r, x.v) : -1);
+        },
+        20 * 86_400,
+      );
+      if (!end) return null;
+      const r = length(end.s.r);
+      const edge = r - (ctx.height(end.s, end.t) - height.value);
+      const gm = EARTH.gm.value;
+      const speed = Math.sqrt(Math.max(0, dot(end.s.v, end.s.v) + 2 * gm * (1 / edge - 1 / r)));
+      const angle = Math.asin(Math.max(-1, Math.min(1, dot(end.s.r, end.s.v) / (r * length(end.s.v))))) / DEG;
+      return { cos: length(cross(end.s.r, end.s.v)) / (edge * speed), at: end.t, angle };
+    };
+    const report: Report = (s, at) => {
+      const x = through(s, at);
+      const out: Record<string, number> = {};
+      if (x) Object.assign(out, { interfaceAngle: x.angle, interfaceAt: x.at });
+      return out;
+    };
+    // (from about the Moon the first guess is along the motion, enough to leave it at the speed that falls from the Moon's
+    // distance to the interface: the Moon's speed about the Earth less that of the ellipse between the two at its top)
+    const guess: [number, number, number] = [0, 0, 0];
+    if (here.body === 'moon' && ctx.moon) {
+      const m = ctx.moon(t);
+      const [top, low] = [length(m.r), EARTH.equatorialRadius.value + height.value];
+      const gmE = EARTH.gm.value;
+      const away = length(m.v) - Math.sqrt((2 * gmE * low) / (top * (top + low)));
+      guess[0] = Math.sqrt(away * away + (2 * here.gm) / length(here.s.r)) - length(here.s.v);
+      // (and more, by twentieths, until the flight ahead comes back to the Earth at all: a faster return than the slowest)
+      for (let k = 0; k < 20; k++) {
+        const b = fly(external(guess));
+        if (through(b.state, b.t)) break;
+        guess[0] *= 1.05;
+      }
+    }
+    return solve(
+      {
+        miss: (s, at) => {
+          const x = through(s, at);
+          return x && [x.cos - want, ...(when ? [x.at - when.value] : [])];
+        },
+        tolerance: [1e-6, 1],
+      },
+      guess,
+      [0, 1, 2],
+      report,
+    );
+  }
+  const target = ctx.target && centredTarget(ctx, ctx.target);
+  if (!target?.at(t)) return null;
+  if ('phase' in toward) {
+    const { elevation, at: when } = toward.phase;
+    const period = (c: Centred): number => 2 * Math.PI * Math.sqrt(Math.abs(elementsOf(c.s.r, c.s.v, c.gm).a) ** 3 / c.gm);
+    /** The target's elevation at the instant asked for, after the coelliptic burn at the next apsis (impulsive, as P32 predicts it). */
+    const seen = (s: State, at: number): number | null => {
+      const c = ctx.about(s, at);
+      const skip = period(c) / 8;
+      const start = { s: coastFor(ctx, s, at, at + skip), t: at + skip };
+      const sense = Math.sign(dot(ctx.about(start.s, start.t).s.r, ctx.about(start.s, start.t).s.v)) || 1;
+      const apsis = coastTo(ctx, start.s, start.t, (x, w) => -sense * dot(ctx.about(x, w).s.r, ctx.about(x, w).s.v), period(c));
+      if (!apsis || apsis.t > when.value) return null;
+      const there = ctx.about(apsis.s, apsis.t);
+      const dv = coelliptic(target, there.s, apsis.t, there.gm);
+      if (!dv) return null;
+      const after = { r: apsis.s.r, v: add(apsis.s.v, dv) };
+      const end = coastFor(ctx, after, apsis.t, when.value);
+      const it = target.at(when.value);
+      if (!it) return null;
+      return elevationOf(ctx.about(end, when.value).s, it.r);
+    };
+    return solve(
+      {
+        miss: (s, at) => {
+          const e = seen(s, at);
+          return e === null ? null : [e - elevation.value * DEG];
+        },
+        tolerance: [1e-5],
+      },
+      [0, 0, 0],
+      [0],
+      (s, at): Record<string, number> => {
+        const e = seen(s, at);
+        return e === null ? {} : { elevation: e / DEG };
+      },
+    );
+  }
+  if ('plane' in toward) {
+    const normalAt = (at: number): Vec3 => {
+      const it = target.at(at)!;
+      return unit(cross(it.r, it.v));
+    };
+    // (its motion in the target's plane, at the speed it had: where the two planes cross, that is the plane)
+    const speed = length(here.s.v);
+    const tilt = (s: State, at: number): number[] => {
+      const c = ctx.about(s, at).s;
+      return [dot(unit(c.v), normalAt(at)), length(c.v) - speed];
+    };
+    const wedge = (s: State, at: number): number => {
+      const c = ctx.about(s, at).s;
+      return Math.acos(Math.min(1, dot(unit(cross(c.r, c.v)), normalAt(at)))) / DEG;
+    };
+    // (the level motion turned into the target's plane, its speed and the climb kept)
+    const up = unit(here.s.r);
+    const level = sub(here.s.v, scale(up, dot(here.s.v, up)));
+    const turned = scale(unit(cross(normalAt(t), up)), length(level));
+    const dv = sub(turned, level);
+    const [X, Y, Z] = localVertical(here.s);
+    return solve({ miss: tilt, tolerance: [1e-7, 0.01] }, [dot(dv, X), dot(dv, Y), dot(dv, Z)], [0, 1], (s, at) => ({
+      wedge: wedge(s, at),
+    }));
+  }
+  if ('elevation' in toward) {
+    // The intercept from an elevation (P34): aimed at where the target is once it has gone `travel` round its orbit,
+    // the aim offset by what the coast ahead misses it by (twice), then steered on Lambert's solution every cycle.
+    const from = target.at(t)!;
+    const n = unit(cross(from.r, from.v));
+    const swept = (at: number): number => {
+      const to = target.at(at);
+      if (!to) return Number.NaN;
+      const a = Math.atan2(dot(cross(from.r, to.r), n), dot(from.r, to.r));
+      return a < 0 ? a + 2 * Math.PI : a;
+    };
+    const travel = toward.elevation.travel.value * DEG;
+    const a = elementsOf(from.r, from.v, here.gm).a;
+    if (!(a > 0) || !(travel > 0 && travel < 2 * Math.PI)) return null;
+    let [lo, hi] = [0, 0.999 * 2 * Math.PI * Math.sqrt(a ** 3 / here.gm)];
+    for (let k = 0; k < 60; k++) {
+      const mid = (lo + hi) / 2;
+      if (swept(t + mid) < travel) lo = mid;
+      else hi = mid;
+    }
+    const meet = t + (lo + hi) / 2;
+    const there = target.at(meet);
+    if (!there) return null;
+    let aim = there.r;
+    for (let k = 0; k < 2; k++) {
+      const v = lambert(here.s.r, aim, meet - t, here.gm, cross(here.s.r, here.s.v));
+      if (!v) return null;
+      const end = coastFor(ctx, { r: state.r, v: add(state.v, sub(v.v1, here.s.v)) }, t, meet);
+      aim = sub(aim, sub(ctx.about(end, meet).s.r, there.r));
+    }
+    const oblate = here.body === 'earth' ? ctx.oblate : undefined;
+    const make = () =>
+      new Steering({ lambert: { r: aim, at: meet, gm: here.gm, c: 1 } }, t, state, ctx.accel, ctx.exhaust, centred, oblate);
+    const burn = fly(make);
+    const end = coastFor(ctx, burn.state, burn.t, meet);
+    return { steering: make, burn, reached: { meetAt: meet, miss: length(sub(ctx.about(end, meet).s.r, there.r)) } };
+  }
+  return null;
+}
+
+/** The kinds solved at lighting and steered (`solveBurn`), by the name they are given in the plan; undefined for the others. */
+export function steeredKind(p: Pursuit): 'pericynthion' | 'orbit' | 'entry' | 'phase' | 'plane' | 'elevation' | undefined {
+  return (['pericynthion', 'orbit', 'entry', 'phase', 'plane', 'elevation'] as const).find((k) => k in p);
+}
+
+/** Whether a burn is made on another craft and needs it there to be solved. */
+export const needsTarget = (p: Pursuit): boolean => !('pericynthion' in p || 'orbit' in p || 'entry' in p);

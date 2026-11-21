@@ -13,7 +13,7 @@
  * stated steering law where the programme flown has not been found.
  */
 import type { Measure } from '../types.ts';
-import { G0, MOON } from '../world/bodies.ts';
+import { EARTH, G0, MOON } from '../world/bodies.ts';
 import { type EarthFrame, sinceLiftoff } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
@@ -28,11 +28,11 @@ import {
   type PublishedOrbit,
   periodsOf,
 } from '../world/meanelements.ts';
-import { elementsOf, planeThrough, type State, sunlit } from '../world/orbit.ts';
+import { elementsOf, gravity, planeThrough, type State, sunlit } from '../world/orbit.ts';
 import { ratioOf } from '../world/thermosphere.ts';
 import { julianDate } from '../world/time.ts';
 import { airAt, airDrag } from './air.ts';
-import { centreAt, EARTH_FIELD, type Field, fieldFor, stepAbout, stepIn, termsOf } from './core/gravity.ts';
+import { centreAt, EARTH_FIELD, type Field, fieldFor, recentred, stepAbout, stepIn, termsOf } from './core/gravity.ts';
 import { atmosphere, meanFreePath } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
 import { bankFlown, type EntryDef, type EntryFlown, type EntryHands, type EntryPilot, entryPilot } from './entry.ts';
@@ -53,7 +53,21 @@ import {
   type Pursuit,
   type TargetDef,
 } from './plan.ts';
-import { type Ahead, coelliptic, flownFrom, publishedState, reach, stationPush, type Target } from './pursuit.ts';
+import {
+  type Ahead,
+  type BurnContext,
+  coelliptic,
+  elevationOf,
+  flownFrom,
+  publishedState,
+  needsTarget,
+  reach,
+  solveBurn,
+  stationPush,
+  steeredKind,
+  type Target,
+} from './pursuit.ts';
+import type { Fly, Steering } from './steering.ts';
 import { crossing, passed, type Railed, stretches } from './rails.ts';
 import type { CoastRotation } from './rigid.ts';
 
@@ -605,6 +619,13 @@ export interface BurnFlown {
   solved: boolean;
   /** The propellant it drew, kg, where its engine has a tank: what its own impulse cost, not the record's. */
   fuel?: number;
+  /**
+   * For a burn solved on the state and steered (sim/pursuit.ts `solveBurn`): what it was for (the `Pursuit`'s kind), and
+   * what the burn flown ahead at its lighting was found to reach (heights and instants by name: an orbit's apsides, m; a
+   * pericynthion's height, m, and instant, s; the entry interface's angle, degrees, and instant).
+   */
+  aim?: string;
+  reached?: Record<string, number>;
 }
 
 export interface OrbitFlown {
@@ -1475,6 +1496,16 @@ export function flyOrbit(
   const moves = ship.moves.map((m) => ({ ...m }));
   /** The manoeuvres held on the target, by index: braking and station-keeping, their thrust commanded as they go. */
   const holding: boolean[] = moves.map(() => false);
+  /**
+   * The manoeuvres solved on the state and steered (sim/pursuit.ts `solveBurn`), by index, once lit: the steering, the
+   * thrust it gives over the step being flown (m/s^2, set at each step's start; null while it does not burn), and the
+   * account of it in `burns`.
+   */
+  const steering: (Steering | undefined)[] = moves.map(() => undefined);
+  const thrusts: (Vec3 | null)[] = moves.map(() => null);
+  const steeredBurn: (BurnFlown | undefined)[] = moves.map(() => undefined);
+  /** Which manoeuvres lit on an elevation have been lit (`Pursuit.elevation`). */
+  const lit: boolean[] = moves.map(() => false);
   const burns: BurnFlown[] = [];
   const radius = heightsBall(plan, site);
   const interfaceHeight = plan.record?.entryInterface?.value ?? INTERFACE;
@@ -1524,12 +1555,18 @@ export function flyOrbit(
     });
     return out;
   };
+  /** What the steered manoeuvres push over the step being flown, m/s^2; null with none burning. */
+  const steered = (): Vec3 | null => {
+    let out: Vec3 | null = null;
+    for (const x of thrusts) if (x) out = add(out ?? [0, 0, 0], x);
+    return out;
+  };
   const pushAs = (s: State, at: number, as: number): Vec3 => {
     const air = airOf(s, at);
     const more =
       moves.length || lifts
         ? {
-            push: either(movingAt(moves, lines, as), held(s, at, as)),
+            push: either(either(movingAt(moves, lines, as), held(s, at, as)), steered()),
             up: () => frame.upOver(frame.place(s.r, at), at),
             ...(pilot ? { bank: pilot.bank } : {}),
           }
@@ -1579,6 +1616,51 @@ export function flyOrbit(
       at += h;
     }
     return x;
+  };
+  /** One step of the run's own forces, with a thrust of fixed acceleration where given: what a steered burn is solved on (sim/steering.ts `Fly`). */
+  const flyStep: Fly = (s, from, to, thrust) =>
+    advance(
+      s,
+      from,
+      to - from,
+      (q, when) => {
+        const air = airOf(q, when);
+        return shipPush(
+          plan,
+          from,
+          air.wind,
+          air.altitude,
+          null,
+          solarAt(frame, q.r, when, air.altitude),
+          thrust ? { push: thrust } : undefined,
+        );
+      },
+      centreAt(earthSide, s.r, from),
+    );
+  /** A state about the body it is flown about at an instant, with that body's GM and the radius heights about it are above. */
+  const aboutOf = (s: State, at: number) =>
+    field.about && centreAt(earthSide, s.r, at) === 'moon'
+      ? { body: 'moon' as const, s: recentred(earthSide, s, at, 'moon'), gm: MOON.gm.value, radius: MOON.equatorialRadius.value }
+      : { body: 'earth' as const, s, gm: EARTH.gm.value, radius };
+  /** What a burn lit now is solved on (sim/pursuit.ts `BurnContext`): its engine's thrust on the ship as its propellant goes. */
+  /** Gravity on a state, about the body it is flown about. */
+  const contextGravity = (s: State, at: number): Vec3 => {
+    const c = aboutOf(s, at);
+    return (field.about ? field.about(c.body) : field).at(c.s.r, at);
+  };
+  const contextOf = (m: Move): BurnContext => {
+    const [from, most, exhaust] = [t, m.most ?? Math.abs(m.accel), m.exhaust];
+    return {
+      fly: flyStep,
+      gravity: contextGravity,
+      about: aboutOf,
+      height: (s, at) => frame.place(s.r, at).height - seaLevel,
+      ...(field.moon ? { moon: field.moon } : {}),
+      oblate: (r) => sub(gravity(r), scale(r, -EARTH.gm.value / length(r) ** 3)),
+      accel: (at) => (exhaust ? most / (1 - (most * (at - from)) / exhaust) : most),
+      ...(exhaust ? { exhaust } : {}),
+      ...(pursued ? { target: pursued } : {}),
+    };
   };
   const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>
     at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= ENTRY_G ? 'entry' : 'descent';
@@ -1703,7 +1785,29 @@ export function flyOrbit(
       solved: false,
     };
     lines[i] = planned;
-    const toward = pursued?.at(t) ? m.toward : undefined;
+    const kind = m.toward && steeredKind(m.toward);
+    if (m.toward && kind && (!needsTarget(m.toward) || pursued?.at(t))) {
+      // (solved on the state now and steered from here, sim/pursuit.ts `solveBurn`: cut when its steering says)
+      const solved = solveBurn(m.toward, contextOf(m), state, t);
+      if (solved) {
+        lines[i] = undefined;
+        steering[i] = solved.steering();
+        m.off = Number.MAX_SAFE_INTEGER;
+        const flown: BurnFlown = {
+          ...record,
+          off: m.off,
+          velocity: 0,
+          line: solved.burn.line,
+          solved: true,
+          aim: kind,
+          reached: solved.reached,
+        };
+        steeredBurn[i] = flown;
+        burns.push(flown);
+        return;
+      }
+    }
+    const toward = kind ? undefined : pursued?.at(t) ? m.toward : undefined;
     if (toward && 'station' in toward) {
       lines[i] = undefined;
       holding[i] = true;
@@ -1750,7 +1854,8 @@ export function flyOrbit(
   /** What happens at the instant now reached. */
   const arrive = (): void => {
     moves.forEach((m, i) => {
-      if (t === m.on) light(m, i);
+      // (a burn lit on an elevation is lit where the target rises to it: `rises`)
+      if (t === m.on && !(m.toward && 'elevation' in m.toward)) light(m, i);
     });
     for (const c of ranges) {
       const it = (c.when as { at: number }).at === t ? pursued?.at(t) : undefined;
@@ -1847,6 +1952,24 @@ export function flyOrbit(
     impulses.push({ at, dv });
   };
   while (t < LIMIT) {
+    // (the steered manoeuvres' thrust over this step, from their steering at its start; a cut it sets ends a step)
+    steering.forEach((guide, i) => {
+      if (!guide) return;
+      const m = moves[i]!;
+      const flown = steeredBurn[i]!;
+      thrusts[i] = t < m.off ? guide.thrustAt(state, t, (s, at) => contextGravity(s, at)) : null;
+      if (guide.cutAt !== undefined && m.off !== guide.cutAt) {
+        endAt(m, Math.max(t, guide.cutAt));
+        flown.off = m.off;
+      }
+      if (thrusts[i] && t >= m.off - 1e-9) thrusts[i] = null;
+      if (!thrusts[i] && t >= m.off) {
+        // (cut: what it drew is what its own impulse cost)
+        const drawn = fuelFor(m, flown.velocity);
+        if (drawn !== undefined) flown.fuel = drawn;
+        steering[i] = undefined;
+      }
+    });
     const mark = marks.find((m) => m > t + 1e-9);
     const burning = (t >= on && t < off) || moves.some((m) => t >= m.on && t < m.off);
     const most = before.altitude > THIN ? (burning ? 1 : LONG) : before.altitude > THICK ? 1 : 0.05;
@@ -1929,6 +2052,34 @@ export function flyOrbit(
         }
       }
     }
+    // A burn lit on an elevation (`Pursuit.elevation`): lit at the instant within the step the target rose through it, the
+    // step ending there; or at its window's end, where it has not.
+    moves.forEach((m, i) => {
+      if (!m.toward || !('elevation' in m.toward) || lit[i] || !pursued) return;
+      const { angle, window } = m.toward.elevation;
+      if (t < m.on - window.value) return;
+      const above = (s: State, at: number): number => {
+        const it = pursued.at(at);
+        return it ? elevationOf(aboutOf(s, at).s, aboutOf(it, at).s.r) - angle.value * DEG : Number.NaN;
+      };
+      const part = (to: number): State => (to === t ? state : to === as ? last : advance(last, as, to - as, (s, at) => pushAs(s, at, as)));
+      const rose = as >= m.on - window.value && above(last, as) < 0 && above(state, t) >= 0;
+      if (!rose && t < m.on + window.value) return;
+      if (rose) {
+        t = crossing((to) => above(part(to), to), as, t);
+        state = part(t);
+      }
+      lit[i] = true;
+      m.on = t;
+      marks = [...marks, t].sort((p, q) => p - q);
+      light(m, i);
+    });
+    // (what the steered manoeuvres gave over the step, as their accelerometers sensed it)
+    thrusts.forEach((x, i) => {
+      if (!x) return;
+      steering[i]?.felt(x, t - as);
+      steeredBurn[i]!.velocity += length(x) * (t - as);
+    });
     const free = state;
     if (contacts) state = contacts.advance(last, as, free, t, rememberImpulse);
     const touched = state !== free;
