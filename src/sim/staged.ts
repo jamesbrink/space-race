@@ -87,7 +87,6 @@ import {
   TURNING,
   targetFrom,
 } from './orbital.ts';
-import type { Target } from './pursuit.ts';
 import {
   type Action,
   type BodyDef,
@@ -100,6 +99,7 @@ import {
   type TargetDef,
 } from './plan.ts';
 import { type CraftStart, type CraftTrack, craftAt, flyProximity, laidOf, type ProximityFlown, splitRigid } from './proximity.ts';
+import type { Target } from './pursuit.ts';
 import type { Railed, Stretched } from './rails.ts';
 import { aboutAxis, attitudeBetween, fromAxes, multiply, normalize as normalizeQ, type Quat, rotateFor, turn as turnQ } from './rigid.ts';
 import { enrolled } from './roster.ts';
@@ -1095,6 +1095,21 @@ function solve(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: nu
   const want = [radius + g.target.altitude.value, g.target.climb.value * DEG, g.target.inclination.value * DEG];
   const aimed = Boolean(g.azimuth);
   const vec = (x: Solved) => (aimed ? [x.kick, x.rate, x.yaw ?? 0] : [x.plane, x.kick, x.rate]);
+  // (into the plane of the flight's target, where the record's guidance steered there: the node of the orbit at the cutoff
+  // is solved for that of the target's own as it then stands, in place of the inclination, `Guidance.target.plane`)
+  const def = plan.target;
+  const into = g.target.plane === 'target' && def && !('joint' in def) ? metOf(def, frame, seaLevel) : undefined;
+  if (g.target.plane === 'target' && !into)
+    throw new Error('the ascent is aimed into its target’s plane, and it has no target of its own to aim at');
+  const nodeOf = (s: { r: Vec3; v: Vec3 }): number => {
+    const h = cross(s.r, s.v);
+    return Math.atan2(h[0]!, -h[1]!);
+  };
+  /** The node of the orbit at the cutoff less the target's then, rad, within a half turn. */
+  const offNode = (s: AscentSample): number => {
+    const d = nodeOf(s) - nodeOf(into!.at(s.t)!);
+    return d - 2 * Math.PI * Math.round(d / (2 * Math.PI));
+  };
   const of = (v: number[]): Solved =>
     aimed ? { plane: Number.NaN, kick: v[0]!, rate: v[1]!, yaw: v[2]! } : { plane: v[0]!, kick: v[1]!, rate: v[2]! };
   const miss = (x: Solved): number[] => {
@@ -1102,7 +1117,7 @@ function solve(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: nu
     const s = a.summary;
     // (a sample's altitude is over the sea, which stands `seaLevel` over the ellipsoid)
     const high = g.target.over ? a.samples.at(-1)!.altitude + seaLevel - g.target.altitude.value : s.cutoffAltitude + radius - want[0]!;
-    return [high / 10_000, s.cutoffClimb * DEG - want[1]!, s.inclination * DEG - want[2]!];
+    return [high / 10_000, s.cutoffClimb * DEG - want[1]!, into ? offNode(a.samples.at(-1)!) : s.inclination * DEG - want[2]!];
   };
   const start: Solved = aimed
     ? { plane: Number.NaN, kick: g.programme ? 0 : 8 * DEG, rate: 1e-3, yaw: 0 }

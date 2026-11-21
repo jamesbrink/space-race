@@ -139,6 +139,14 @@ export interface Guidance {
     over?: 'ellipsoid';
     climb: Measure;
     inclination: Measure;
+    /**
+     * Into the plane of the flight's target (`FlightPlan.target`: another flight's vehicle or a published orbit) as it stands
+     * at the last cutoff, as a radio guidance's yaw steering put a spacecraft into its target's plane: the third unknown (the
+     * yaw with an `azimuth`, else the launch plane) is solved for the node of that plane in place of `inclination`, which is
+     * then a result and a check. Without it a cutoff near the top of the orbit's latitude, where the yaw turns the node and
+     * hardly the inclination, can come out in a plane far from the target's.
+     */
+    plane?: 'target';
   };
 }
 

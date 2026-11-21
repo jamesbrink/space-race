@@ -39,7 +39,7 @@ import { stagedVehicle } from '../src/sim/stagedlive.ts';
 import { P0 } from '../src/world/bodies.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { useEphemeris } from '../src/world/ephemeris.ts';
-import { DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
+import { cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { holdChecks, missesOf } from './misses.mjs';
 import { part } from './part.mjs';
 import { recordFrom } from './records.mjs';
@@ -1238,6 +1238,34 @@ const UNDOCUMENTED = {
     'titan.second.mass',
     'titan.second.propellant',
   ],
+  // Gemini-Titan 9A's: as Gemini-Titan 12's, the separation's push Gemini XII's
+  'usa/gemini/gt-9a': [
+    'ascent.drag.0.area',
+    'ascent.drag.0.curve',
+    'ascent.drag.0.until',
+    'ascent.drag.1.area',
+    'ascent.drag.1.curve',
+    'ascent.drag.1.until',
+    'ascent.guidance.kick',
+    'ascent.guidance.turn',
+    'ascent.steering.authority',
+    'separation.mass',
+    'separation.push',
+    'titan.first.dry',
+    'titan.first.engine.isp.seaLevel',
+    'titan.first.engine.isp.vacuum',
+    'titan.first.engine.thrust.seaLevel',
+    'titan.first.engine.thrust.vacuum',
+    'titan.first.mass',
+    'titan.first.propellant',
+    'titan.hot.endures',
+    'titan.hot.open',
+    'titan.hot.turn',
+    'titan.second.dry',
+    'titan.second.ignition',
+    'titan.second.mass',
+    'titan.second.propellant',
+  ],
   // Gemini-Titan 12's: as Gemini-Titan 8's, its inclination the report's own
   'usa/gemini/gt-12': [
     'ascent.drag.0.area',
@@ -1932,7 +1960,16 @@ for (const f of part(flown)) {
       const high = g.over ? whole.ascent.samples.find((p) => p.t === s.cutoffAt).altitude + sea : s.cutoffAltitude;
       assert.ok(Math.abs(high - g.altitude.value) < 1, `at the target height: ${high} for ${g.altitude.value}`);
       assert.ok(Math.abs(s.cutoffClimb - g.climb.value) < 1e-3, 'at the target climb');
-      assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
+      if (g.plane === 'target') {
+        // (steered into the target's plane: the orbit's node at the cutoff is the target's then, the inclination a result)
+        const cut = whole.ascent.samples.find((p) => p.t === s.cutoffAt);
+        const node = (q) => {
+          const h = cross(q.r, q.v);
+          return Math.atan2(h[0], -h[1]);
+        };
+        const off = node(cut) - node(whole.target.at(cut.t));
+        assert.ok(Math.abs(off - 2 * Math.PI * Math.round(off / (2 * Math.PI))) < 1e-6, `in the target's plane: its node ${off} rad off`);
+      } else assert.ok(Math.abs(s.inclination - g.inclination.value) < 1e-3, 'in the target plane');
     }
     const clock = (t) => new Date(Date.parse(f.launch) + t * 1000).toISOString().slice(11, 19);
     console.log(`  #   ${f.designation}: the ascent flown (times UTC)`);
