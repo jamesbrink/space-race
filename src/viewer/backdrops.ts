@@ -472,6 +472,8 @@ const colour = (target: THREE.Color, rgb: RGB): THREE.Color => target.setRGB(rgb
 
 /** How strongly a ground setting's sky is reflected by day. */
 const ENVIRONMENT = 0.55;
+/** The brightest the reflections' bake may hold (the Sun's patch), in its half floats: well inside their 65,504 through the blur that makes it (`day`, below). */
+const BAKE_MOST = 4000;
 /** How far the sky's colours (at a day's brightness) may drift before the reflections are baked again: the largest change in one, of 1. */
 const LOOK_STEP = 0.04;
 const apart = (a: number[], b: number[]): number =>
@@ -912,8 +914,15 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
 
     // The reflections: everything they see is baked at a day's brightness (divided by the sky's
     // level) and brought back down by environmentIntensity, every frame (see Reflections).
-    const day = 1 / light.ambient;
-    setting.environmentIntensity = ENVIRONMENT * light.ambient;
+    // (the Sun as the eye sees it: above the air, from where the eye is, and gone in the Earth's shadow)
+    const seenSun = [0, 1, 2].map((c) => light.sun[c]! + (sunAt[c]! - light.sun[c]!) * (1 - air));
+    // (but never so far up that the Sun's patch goes past what the bake's half floats hold through its blur: far from the
+    // Earth the sky round the eye is nothing (`ambient` at its floor) and a day's brightness put the patch at 24,000, whose
+    // blur overflowed to a reflection that was not a number, and the glow spread it over the whole frame: every frame from
+    // 76,000 km out was black. The gain is the bake's own, undone by `environmentIntensity`, so nothing seen changes)
+    const most = BAKE_MOST / (30 * Math.max(seenSun[0]!, seenSun[1]!, seenSun[2]!, 1e-9));
+    const day = Math.min(1 / light.ambient, most);
+    setting.environmentIntensity = day === most ? ENVIRONMENT / day : ENVIRONMENT * light.ambient;
     envGain.value = day;
     // the ground the reflections see is lit by that Sun and that sky
     // (under a veil: the Sun's through it, and what the veil gives back of what it took, as the sky's: VEIL_DOWN)
@@ -923,8 +932,6 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
     below.color.setRGB((0.42 * lit + 0.0005) * day, (0.39 * lit + 0.0008) * day, (0.33 * lit + 0.0018) * day);
     // (the Sun's patch through the veil, as the eye sees its disc through it: along the slant, clouds.ts)
     const through = veil ? Math.exp(-veil.depth * veil.cover * Math.min(1 / Math.max(h.sunDir.y, 0.05), 6)) : 1;
-    // (the Sun as the eye sees it: above the air, from where the eye is, and gone in the Earth's shadow)
-    const seenSun = [0, 1, 2].map((c) => light.sun[c]! + (sunAt[c]! - light.sun[c]!) * (1 - air));
     colour(patch.material.color, [30 * seenSun[0]! * day * through, 27 * seenSun[1]! * day * through, 22 * seenSun[2]! * day * through]);
     if (overcast) patch.material.color.multiplyScalar(1 - cover);
     patch.position.copy(h.sunDir).multiplyScalar(46);
