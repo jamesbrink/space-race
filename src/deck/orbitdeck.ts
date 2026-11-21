@@ -17,7 +17,10 @@ import { handRange } from '../sim/lever.ts';
 import { targetAt } from '../sim/orbital-target.ts';
 import { type AbortMode, abortAt, clockAt, eventOf, type FlightPlan, flownByHand } from '../sim/plan.ts';
 import { type Predictor, propagate, reaches } from '../sim/predict.ts';
-import { due, onRails } from '../sim/rails.ts';
+import { bodiesAt, due, offRails, onRails, passed, RAILS_FLOOR, railsRate } from '../sim/rails.ts';
+import type { Railed } from '../sim/rails.ts';
+import { moonIn } from '../sim/core/gravity.ts';
+import { type Marked, type Track, trackOf, type WarpTarget, warpTargets } from '../sim/warp.ts';
 import { aboutAxis, conjugate, multiply, type Quat, turn } from '../sim/rigid.ts';
 import {
   attend,
@@ -54,6 +57,7 @@ import {
   stagesOf,
 } from '../sim/staged.ts';
 import {
+  type RailedCoast,
   type StagedPilot,
   type StagedPilotOptions,
   type StagedState,
@@ -67,8 +71,8 @@ import { landsOf } from '../sim/verdict.ts';
 import type { SitedFlight } from '../types.ts';
 import { is } from '../util/keys.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
-import { G0 } from '../world/bodies.ts';
-import { type Clock, COAST_RATES, RATES } from '../world/clock.ts';
+import { EARTH, G0, MOON } from '../world/bodies.ts';
+import { type Clock, RATES } from '../world/clock.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { angleBetween, DEG, dot, length, scale, siteFrame, sub, unit, type Vec3 } from '../world/frames.ts';
 import { elementsOf, period } from '../world/orbit.ts';
@@ -160,6 +164,10 @@ const ENTER = 'Fly this flight: as flown, or take it over (L)';
  * What the deck shows and does in each part of the flight is its phase's (phases/phase.ts `phaseOf`, chosen from the run's
  * state): the ascent, the coast, a burn, entry and down, each a module of functions of this deck's state (phases/*.ts).
  */
+/** How far on a warp looks for an apsis or the air, s: three days, a translunar coast. Chosen: what lies further is looked for once nearer. */
+const WARP_LOOK = 3 * 86_400;
+/** The Earth's GM, m^3/s^2 (world/bodies.ts). */
+const EARTH_GM = EARTH.gm.value;
 export class OrbitDeck extends Deck {
   // (the deck's state and its own workings, which its phases (phases/*.ts) read and change as functions of it: no other module touches them)
   /**
@@ -218,6 +226,19 @@ export class OrbitDeck extends Deck {
   pilot: StagedPilot | null = null;
   options: StagedPilotOptions = { guidance: true, sequence: true };
   asked: Step[] = [];
+  /**
+   * The live vehicle's coast on rails (sim/stagedlive.ts `rails`): from the first tick at which it coasts with nothing to
+   * do and no hand on its controls, until something is to be done; and the last state it gave, which the deck's state is
+   * while it rides it. Null while it is ticked.
+   */
+  private railed: RailedCoast | null = null;
+  private railedAt: StagedState | null = null;
+  /** The railway's samples' own reading between them (sim/rails.ts `Railed`), for the railway they are of. */
+  private railedOf: { of: RailedCoast; railed: Railed<LiveSample> } | null = null;
+  /** The Moon's place in the flight's frame, where its gravity names the Moon (`bodiesAt`): made once. */
+  private moonAt: ((t: number) => { r: Vec3; v: Vec3 }) | null | undefined;
+  /** What a warp could go to, as last found (`warpTargets`), and what it was found on and from when. */
+  private warpFound: { on: unknown; times: unknown; from: number; until: number; list: WarpTarget[] } | null = null;
   /** The stages the lever has cut (taken under their least): raised again, each is asked to start once more. */
   cutByLever = new Set<number>();
   tally: StagedTally | null = null;
@@ -306,6 +327,7 @@ export class OrbitDeck extends Deck {
       guidance: `Guidance: the automatic flight, the ascent on its steering law, and the flight controls lean it. Off, the hands fly alone: nobody aboard on the day had such a control, so switching it takes the flight over`,
       sequence: `Sequencer: the record’s events at their times. Off, each is set off by hand with the action button: nobody aboard on the day could, so switching it takes the flight over`,
       choose: false,
+      warp: true,
       flightKeys: code
         ? `<span class="deck-lock" title="Enter the code to free the hand controls once the spacecraft is alone">${[...code]
             .map((d) => `<button data-press="${d}" title="A digit of the lock’s code (${d})">${d}</button>`)
@@ -693,6 +715,8 @@ export class OrbitDeck extends Deck {
     this.options = { guidance: this.guidance, sequence: this.sequence };
     this.told = Number.NEGATIVE_INFINITY;
     this.asked = [];
+    this.railed = null;
+    this.railedAt = null;
     this.cutByLever = new Set();
     this.holdAt = null;
     this.tally = null;
@@ -1252,6 +1276,7 @@ export class OrbitDeck extends Deck {
     if (t < 0) this.clock.seek(0);
     if (this.state && this.pilot && !this.ascended) {
       this.fly(t);
+      this.rails(this.clock.t);
       return void this.show();
     }
     while (this.encounters && this.nextImpact < this.encounters.hits.length && this.encounters.hits[this.nextImpact]!.t <= t)
@@ -1279,17 +1304,246 @@ export class OrbitDeck extends Deck {
   }
 
   /**
-   * A coast on rails (sim/rails.ts): with nothing burning above the air and nothing asked of the hands, the clock may run
-   * past an hour a second (world/clock.ts `COAST_RATES`), and it is held at the next of the run's events and the record's
-   * instants as this flight has them, which are lived at real time. Otherwise it is held to an hour a second.
+   * A coast on rails (sim/rails.ts): with nothing burning above the air and nothing asked of the hands (the live vehicle:
+   * while it rides its railway), the clock may run past an hour a second, as fast as the coast lets it (`railsRate`: by
+   * how slowly the vehicle goes round the body it is nearest, to ten million times far out, coming down toward the next
+   * instant due or a warp's end); and it is held at the next of the run's events and the record's instants as this flight
+   * has them, which are lived at real time (`dues`). Otherwise it is held to an hour a second, and a warp ends.
    */
   private rails(t: number): void {
     const run = this.run!;
-    const on = run.samples.length > 0 && onRails(run.at(t) as LiveSample, this.asked.length > 0);
-    this.clock.allow(on ? COAST_RATES[COAST_RATES.length - 1]! : RATES[RATES.length - 1]!);
-    // (and at each crossing of the sphere its centre changes at, where its gravity has one: sim/core/gravity.ts)
-    const crossings = (run.crossings ?? []).map((c) => c.t);
-    this.clock.hold(on ? due([...run.events.map((e) => e.t), ...Object.values(this.times), ...crossings, run.duration], t) : Number.NaN);
+    const on = this.liveNow ? this.railed !== null : run.samples.length > 0 && onRails(run.at(t) as LiveSample, this.asked.length > 0);
+    if (!on) {
+      this.clock.endWarp();
+      this.clock.allow(RATES[RATES.length - 1]!);
+      this.clock.hold(Number.NaN);
+      return;
+    }
+    const bodies = bodiesAt(run.at(t).r, t, this.moon());
+    const fastest = (): { next: number; rate: number } => {
+      const next = due(
+        this.dues().map((d) => d.t),
+        t,
+      );
+      const stop = Math.min(Number.isNaN(next) ? Number.POSITIVE_INFINITY : next, this.clock.warp?.t ?? Number.POSITIVE_INFINITY);
+      return { next, rate: railsRate(bodies, stop - t) };
+    };
+    let go = fastest();
+    // (the live vehicle's railway flown on as far as the longest frame at that rate could take the clock, so that where it
+    // ends, at something to be done or the ground, is known before a frame could pass it)
+    const way = this.liveNow ? this.railed?.way : undefined;
+    if (way) {
+      const end = way.end;
+      way.reach(t + 0.1 * go.rate);
+      if (way.end !== end) go = fastest();
+    }
+    this.clock.allow(go.rate);
+    this.clock.hold(go.next);
+  }
+
+  /** The live vehicle is flown tick by tick (or on its railway) by the deck: its launch vehicle not yet left. */
+  private get liveNow(): boolean {
+    return this.state !== null && this.pilot !== null && !this.ascended;
+  }
+
+  /**
+   * The instants the clock is held at on rails, with their words: the run's events, the record's instants as this flight
+   * has them, the crossings of the sphere its centre changes at (where its gravity has one: sim/core/gravity.ts), the run's
+   * end, and the live vehicle's railway's end (the next thing it must be ticked through, or the air).
+   */
+  private dues(): Marked[] {
+    const run = this.run!;
+    const plan = this.recordPlan;
+    const byEvent = new Map(plan.events.map((e) => [e.id, e.label] as const));
+    const byRecord = new Map<string, string>([
+      ...plan.events.flatMap((e) => (e.record ? [[e.record.id, e.label] as const] : [])),
+      ...(plan.record?.marks ?? []).map((m) => [m.id, m.label] as const),
+    ]);
+    const out: Marked[] = [
+      ...run.events.map((e) => ({ t: e.t, what: (e.event && byEvent.get(e.event)) || (e.record && byRecord.get(e.record)) || 'An event' })),
+      ...Object.entries(this.times).map(([id, at]) => ({ t: at, what: byRecord.get(id) ?? 'An event' })),
+      ...(run.crossings ?? []).map((c) => ({ t: c.t, what: c.to === 'moon' ? 'Into the Moon’s sphere' : 'Out of the Moon’s sphere' })),
+      { t: run.duration, what: 'The end of the run' },
+    ];
+    const rail = this.liveNow ? this.railed : null;
+    if (rail) {
+      const end = rail.way.end;
+      const step = this.vehicleOf().sequence.find((k) => k.at === end)?.label;
+      const timed = plan.events.find((e) => e.when.some((w) => 'time' in w && w.time === end))?.label;
+      const air = end < Number.POSITIVE_INFINITY ? this.vehicleOf().sample(rail.state(end), this.centre).altitude : 0;
+      out.push({ t: end, what: step ?? timed ?? (air > RAILS_FLOOR + 1000 ? 'The Moon’s ground' : 'Into the air') });
+    }
+    return out;
+  }
+
+  /** The Moon's place and velocity in the flight's frame, where its gravity names the Moon: the run's field's, or DE440's. */
+  private moon(): ((t: number) => { r: Vec3; v: Vec3 }) | null {
+    if (this.moonAt === undefined) {
+      const field = this.run?.field?.moon;
+      this.moonAt = field ? (t) => field(t) : this.recordPlan.gravity?.terms.includes('moon') ? moonIn(this.frame) : null;
+    }
+    return this.moonAt;
+  }
+
+  /** The burns ahead, by the instant each is lit (the run's, or the record's as this flight has it) and its words. */
+  private burnsAhead(): Marked[] {
+    const plan = this.recordPlan;
+    const lit = new Map(plan.events.filter((e) => e.do.some((a) => 'ignite' in a)).map((e) => [e.id, e] as const));
+    const out: Marked[] = [];
+    for (const e of this.run?.events ?? []) if (e.event && lit.has(e.event)) out.push({ t: e.t, what: lit.get(e.event)!.label });
+    for (const e of lit.values()) {
+      const at = e.record ? this.times[e.record.id] : undefined;
+      if (at !== undefined) out.push({ t: at, what: e.label });
+    }
+    const whole = this.flown ?? (this.mine === null ? orbitalFlown(this.flight) : null);
+    for (const b of whole?.coast.burns ?? []) out.push({ t: b.on, what: lit.get(b.lit)?.label ?? 'The burn' });
+    return out;
+  }
+
+  /**
+   * The live vehicle's railway as a track for a warp's targets (sim/warp.ts): about the Moon within its sphere (the field's,
+   * or else Laplace's, derived: the Moon's distance then times the ratio of its GM to the Earth's to the two-fifths, some
+   * 66,000 km), and about the Earth outside it.
+   */
+  private railTrack(rail: RailedCoast): Track {
+    const v = this.vehicleOf();
+    const centre = this.centre;
+    const moon = this.moon();
+    const sphere = this.run?.field?.sphere;
+    const ratio = (MOON.gm.value / EARTH_GM) ** 0.4;
+    return {
+      get end() {
+        return rail.way.end;
+      },
+      instants: (from, to) => rail.way.steps(from, to),
+      centred: (t) => {
+        const s = rail.way.at(t);
+        if (moon) {
+          const m = moon(t);
+          const p = sub(s.r, m.r);
+          if (length(p) < (sphere ?? length(m.r) * ratio)) return { central: 'moon', r: p, v: sub(s.v, m.v) };
+        }
+        return { central: 'earth', r: s.r, v: s.v };
+      },
+      height: (t) => v.sample(rail.state(t), centre).altitude,
+    };
+  }
+
+  protected override warpable(): string | null {
+    const run = this.run;
+    if (!this.on || !run?.samples.length) return 'Nothing is flying yet';
+    if (this.liveNow) {
+      if (this.railed) return null;
+      if (!this.handsOff()) return 'Not with a hand on the controls';
+      const s = this.state!;
+      if (this.vehicleOf().coasts(s)) return null;
+      return (
+        offRails(this.vehicleOf().sample(s, this.centre), false) ??
+        'Not until it is still: nothing burning or to be set off, its turning damped'
+      );
+    }
+    return offRails(run.at(this.clock.t) as LiveSample, this.asked.length > 0);
+  }
+
+  protected override warpTargets(): readonly WarpTarget[] {
+    const run = this.run;
+    if (!run?.samples.length || this.warpable() !== null) return [];
+    const t = this.clock.t;
+    const on: unknown = this.liveNow ? this.railed : run;
+    const f = this.warpFound;
+    if (!f || f.on !== on || f.times !== this.times || t < f.from || t >= f.until) {
+      // (the live vehicle not yet on its railway, the clock stopped: its coast from here)
+      const rail = this.liveNow ? (this.railed ?? this.vehicleOf().rails(this.state!, this.mustTick(this.state!.t))) : null;
+      const track = rail ? this.railTrack(rail) : trackOf(run);
+      const list = warpTargets(track, t, {
+        burns: this.burnsAhead(),
+        dues: this.dues(),
+        ...(run.crossings ? { crossings: run.crossings } : {}),
+        ...(this.recordPlan.record?.entryInterface ? { entry: this.recordPlan.record.entryInterface.value } : {}),
+        look: WARP_LOOK,
+      });
+      this.warpFound = { on, times: this.times, from: t, until: list[0]?.t ?? Number.POSITIVE_INFINITY, list };
+    }
+    return this.warpFound!.list.filter((x) => x.t > t + 1e-6);
+  }
+
+  /** No hand on the live vehicle's controls, nothing asked of it still to come, nobody ejected from it: it may go on rails. */
+  private handsOff(): boolean {
+    const f = this.finger;
+    return (
+      this.held.size === 0 && f.pitch === 0 && f.yaw === 0 && f.roll === 0 && this.asked.length === 0 && !this.ejected && !this.aborted
+    );
+  }
+
+  /**
+   * The next instant after `t` at which the live vehicle must be ticked, not coasted on rails: whatever its plan or its
+   * sequence sets off at a time (the sequencer's, as the record has them; a staging owed). Infinity for none.
+   */
+  private mustTick(t: number): number {
+    const v = this.vehicleOf();
+    const times = [
+      ...v.sequence.map((k) => k.at),
+      ...(this.state?.chain ?? []).map((x) => x.at),
+      ...this.recordPlan.events.flatMap((e) => e.when.flatMap((w) => ('time' in w ? [w.time] : []))),
+    ];
+    const next = due(times, t);
+    return Number.isNaN(next) ? Number.POSITIVE_INFINITY : next;
+  }
+
+  /**
+   * The live vehicle on rails from `s` to the clock's `t` (at the last tick at or before it), or to its railway's end
+   * (the next instant it must be ticked, or the rails' floor), the railway begun here if it is not yet: the samples kept
+   * as a run on rails keeps them (sim/rails.ts `passed`), each reading the railway between it and the next.
+   */
+  private railTo(s: StagedState, t: number, run: Run & { samples: LiveSample[] }, centre: number): StagedState {
+    const v = this.vehicleOf();
+    this.railed ??= v.rails(s, this.mustTick(s.t));
+    const rail = this.railed;
+    const way = rail.way;
+    way.reach(t);
+    const ticks = Math.max(s.ticks, Math.floor(Math.min(t, way.end) / TICK + 1e-9));
+    const ended = (ticks + 1) * TICK > way.end + 1e-9;
+    if (ticks <= s.ticks) {
+      if (ended) this.railed = null;
+      else this.railedAt = s;
+      return s;
+    }
+    const to = rail.at(ticks);
+    if (this.railedOf?.of !== rail)
+      this.railedOf = {
+        of: rail,
+        railed: {
+          of: (x) => x.r,
+          state: (_a, _b, at) => way.at(at),
+          sample: (_a, _b, at) => v.sample(rail.state(at), centre),
+        },
+      };
+    const railed = this.railedOf.railed as unknown as LiveSample['rails'];
+    const make = (x: StagedState): LiveSample => ({ ...v.sample(x, centre), rails: railed });
+    run.samples.length = this.kept;
+    // (where it went on rails, kept: the stretch from it is the railway's)
+    if (run.samples[this.kept - 1]?.rails !== railed) {
+      if (run.samples[this.kept - 1]?.t === s.t) run.samples.length = --this.kept;
+      run.samples.push(make(s));
+      this.kept = run.samples.length;
+    }
+    let last = run.samples[this.kept - 1]!;
+    for (const at of way.steps(s.t, to.t)) {
+      if (at <= last.t || at >= to.t || !passed(last.v, rail.state(at).v)) continue;
+      run.samples.push(make(rail.state(at)));
+      this.kept = run.samples.length;
+      last = run.samples[this.kept - 1]!;
+    }
+    if (ended) {
+      // (off rails here: kept, and ticked on from it)
+      run.samples.push(v.sample(to, centre));
+      this.kept = run.samples.length;
+      this.railed = null;
+    } else {
+      run.samples.push(make(to));
+      this.railedAt = to;
+    }
+    return to;
   }
 
   /** The user's launch vehicle stepped up to the clock (as the ballistic deck steps its own: every tick noted, kept every tenth of a second). */
@@ -1318,7 +1572,18 @@ export class OrbitDeck extends Deck {
     const upTo = s.t + Math.min(ahead, MOST);
     // (an abort whose seat waits for the falling stack to come down through a height: Molodtsov's from 40 s)
     const falling = this.ejected ? undefined : this.aborted?.mode.escape?.eject?.falling?.value;
+    // (off its rails once its state is no longer the one they gave, or a hand is on the controls)
+    if (this.railed && (s !== this.railedAt || !this.handsOff())) this.railed = null;
+    let railedNow = false;
     while (s.t < upTo - TICK / 2 && !s.landed && !s.parted && !s.broke) {
+      // On rails, a coast with nothing to do: flown at once as far as the clock, however far that is (sim/rails.ts), from
+      // the first tick at which it coasts so, whatever the frames, so that a tape flown again flies the same railway.
+      if (this.railed || (this.handsOff() && v.coasts(s))) {
+        s = this.railTo(s, t, run, centre);
+        railedNow = true;
+        if (this.railed || s.t >= upTo - TICK / 2) break;
+        // (its railway ended short of the clock, at something to be done: ticked on from there)
+      }
       const was = s;
       s = v.tick(s, this.pilot!);
       if (falling !== undefined && !this.ejected) {
@@ -1386,7 +1651,7 @@ export class OrbitDeck extends Deck {
     // what the hardware made of what was asked, each said once
     for (const n of s.said.slice(this.heard)) this.host.say?.(n.title, n.text);
     this.heard = s.said.length;
-    if (ahead > MOST) this.clock.seek(s.t);
+    if (ahead > MOST && (!railedNow || t - s.t > TICK)) this.clock.seek(s.t);
     dropsFrom(this, s);
     run.fires = this.fires();
     Object.assign(run, grown(this.recordPlan, s.craft));

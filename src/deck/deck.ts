@@ -16,8 +16,10 @@ import type { Command, Flight, SitedFlight } from '../types.ts';
 import { capOf, capsOf, is, isTyping, KEYS, type KeyName, kbd, keyOf, keysOf, modified, which } from '../util/keys.ts';
 import { G0 } from '../world/bodies.ts';
 import { Scope } from '../util/scope.ts';
+import { esc } from '../util/dom.ts';
 import type { DeckNews } from '../viewer/cabin.ts';
-import { type Clock, missionTime, Clock as Own } from '../world/clock.ts';
+import { type Clock, missionTime, Clock as Own, parseMissionTime, rateText } from '../world/clock.ts';
+import { nextWarp, type WarpTarget, warpStop } from '../sim/warp.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { DEG, siteFrame, type Vec3 } from '../world/frames.ts';
 import { ask } from './ask.ts';
@@ -133,6 +135,8 @@ export interface DeckSpec {
   choose: boolean;
   /** Buttons for the list's Flight group beyond restarting and leaving (a mechanism, a lock's digits). */
   flightKeys: string;
+  /** The warp (K, a time typed, the next of each thing ahead): a kind that flies a coast on rails (`warpTargets`). */
+  warp?: boolean;
   /** The way in's tooltip. */
   enter: string;
 }
@@ -177,6 +181,9 @@ export const TRIM = 3 * DEG;
 export const TRIM_MOST = 30 * DEG;
 
 /** The deck's keys that are commands, and the command each gives (`command`). */
+/** The commands that only show something (the path, the navball, the panels): a warp goes on through them, as it does not through a hand on the controls. */
+const SHOWS: ReadonlySet<string> = new Set(['path', 'navball', 'keys', 'details', 'leave', 'warp', 'warp-time']);
+
 const COMMANDS: [KeyName, string][] = [
   ['deck.next', 'next'],
   ['deck.guidance', 'guidance'],
@@ -439,6 +446,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
           <span class="deck-steer for-keys" title="W S pitch, A D yaw, Q E roll. On a launch vehicle flown by hand a key is a tenth of full throw (fine control); with guidance on it leans the programme">${hold(pitchDown, 'Pitch the nose downrange')}${hold(pitchUp, 'Pitch the nose back')}<em>pitch</em>${hold(yawLeft, 'Yaw left')}${hold(yawRight, 'Yaw right')}<em>yaw</em>${hold(rollLeft, 'Roll left')}${hold(rollRight, 'Roll right')}<em>roll</em></span>
           <span class="for-touch">Stick steers · ⟲ ⟳ roll</span>
           <span class="deck-turn deck-warp for-keys" title="How fast time runs: slower, faster (${capsOf('clock.rate').join(' ')})">${warp(0, 'Time runs slower')}${warp(1, 'Time runs faster')}<em data-cell="warp">1×</em></span>
+          ${spec.warp ? `<button data-do="warp" class="deck-warp-next" aria-pressed="false" title="Warp to the next: on a coast, as fast as the coast lets time run (to ten million times, far from every body), to the next burn's lead-in, the Moon's sphere, the entry interface or whatever is due, landing on it at life's pace; it stops for anything due and for a hand on the controls. Again, to stop (${capsOf('deck.warp').join(' ')})">${kbd('deck.warp')}<span data-warp-label>Warp</span></button>` : ''}
           <button data-do="keys" aria-expanded="false" title="Every key and control of the flight deck"><span class="for-keys">Keys</span><span class="for-touch">More</span><i class="chevron"></i></button>
         </p>
         <div class="cockpit-keys" hidden>
@@ -466,8 +474,19 @@ export abstract class Deck<F extends Flight = SitedFlight> {
           <div><h4>Clock</h4><p>
             <button data-press="${KEYS['clock.run'].slots[0]}" title="Run or stop the clock, and the flight with it (${capsOf('clock.run').join(' ')})">${kbd('clock.run')}Run · stop</button>
             ${rate(0, 'Time runs slower', 'Slower')}
-            ${rate(1, 'Time runs faster', 'Faster')}
-            <button data-press="${KEYS['sound.toggle'].slots[0]}" title="Sound on or off (${capsOf('sound.toggle').join(' ')})">${kbd('sound.toggle')}Sound</button>
+            ${rate(1, 'Time runs faster', 'Faster')}${
+              spec.warp
+                ? `
+            <button data-do="warp" aria-pressed="false" title="Warp to the next: as fast as the coast lets time run, landing on the next thing ahead at life's pace; again, to stop (${capsOf('deck.warp').join(' ')})">${kbd('deck.warp')}<span data-warp-label>Warp</span></button>`
+                : ''
+            }
+            <button data-press="${KEYS['sound.toggle'].slots[0]}" title="Sound on or off (${capsOf('sound.toggle').join(' ')})">${kbd('sound.toggle')}Sound</button>${
+              spec.warp
+                ? `
+            <span class="deck-warps" data-warps></span>
+            <span class="deck-warp-time" data-warp-time><label>Warp to T+<input inputmode="numeric" autocomplete="off" placeholder="61:30:00" aria-label="A mission time to warp to: hours, minutes and seconds, or days in front (2d 13:30)" title="A mission time: hours:minutes:seconds, or days in front (2d 13:30). The warp stops on the way for anything due or a burn's lead-in (${capsOf('warp.go').join(' ')})" /></label><button data-do="warp-time" title="Warp to the time typed (${capsOf('warp.go').join(' ')})">${kbd('warp.go')}Go</button></span>`
+                : ''
+            }
           </p></div>
         </div>
       </section>
@@ -541,6 +560,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     const lever = root.querySelector<HTMLInputElement>('[data-lever]')!;
     lever.addEventListener('input', () => {
       const to = Number(lever.value);
+      this.handsOn();
       this.journal('l', [to], () => this.setLever(to));
     });
     this.throttleRow = root.querySelector<HTMLElement>('.deck-throttle')!;
@@ -559,7 +579,8 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         press(b.dataset.press, true);
         press(b.dataset.press, false);
       }
-      (document.activeElement as HTMLElement | null)?.blur?.(); // or Space would press the button again
+      // (or Space would press the button again; but a field being typed in keeps the focus: the warp's time)
+      if (!(e.target as HTMLElement).closest('input:not([type=range])')) (document.activeElement as HTMLElement | null)?.blur?.();
       this.sync();
     });
     for (const b of root.querySelectorAll<HTMLButtonElement>('[data-hold], [data-held]')) {
@@ -587,8 +608,35 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     }
     this.showKeys(false);
     this.showDetails(prefs.get('deckDetails'), false);
-    // (the clock's pace beside the keys that set it)
-    clock.listen(() => this.put('warp', `${clock.rate}×`));
+    this.warps = spec.warp === true;
+    // the warp's own: the next of each thing ahead, each a button, and a time typed
+    root.querySelector<HTMLElement>('[data-warps]')?.addEventListener('click', (e) => {
+      const b = (e.target as HTMLElement).closest<HTMLElement>('[data-warp-at]');
+      if (b) this.warpAt({ kind: b.dataset.warpKind as WarpTarget['kind'], t: Number(b.dataset.warpAt), what: b.dataset.warpWhat ?? '' });
+    });
+    const typed = root.querySelector<HTMLInputElement>('[data-warp-time] input');
+    const go = (): void => {
+      if (!typed) return;
+      const input = typed;
+      const at = parseMissionTime(input.value);
+      if (Number.isNaN(at))
+        return void this.host.say?.('Warp', 'A mission time: hours, minutes and seconds (61:30:00), or days in front (2d 13:30)');
+      if (!(at > this.clock.t))
+        return void this.host.say?.('Warp', `${missionTime(at)} has gone: the clock is at ${missionTime(this.clock.t)}`);
+      input.blur();
+      this.warpAt({ kind: 'time', t: at, what: missionTime(at) });
+    };
+    this.warpTyped = go;
+    typed?.addEventListener('keydown', (e) => {
+      if (!is(e, 'warp.go')) return;
+      e.preventDefault();
+      go();
+    });
+    // (the clock's pace beside the keys that set it, and where a warp is going)
+    clock.listen(() => {
+      this.put('warp', rateText(clock.rate));
+      if (this.warps) this.drawWarp();
+    });
 
     // the way in: beside the clock, which is always on show
     this.button = document.createElement('button');
@@ -605,6 +653,8 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     this.scope.on(window, 'pagehide', () => this.save());
     clock.listen(() => {
       if (this.replaying) return; // (a kept run is being flown again, on its own clock: the page's is held meanwhile)
+      // (the pace changed as the deck followed the clock, which has not moved: a coast's limit, every frame of a warp)
+      if (this.depth > 0 && clock.t === this.followingAt) return;
       // (kept and not yet resumed: the clock stays where it was left, whoever touches it)
       const p = this.pending;
       if (p && this.on) {
@@ -644,6 +694,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     const framed = writing && this.framed;
     const t = this.clock.t;
     const ticks = this.ticks;
+    this.followingAt = t;
     this.depth++;
     try {
       this.follow();
@@ -661,6 +712,8 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     }
   }
 
+  /** The instant the deck is following the clock to, while it does (`followed`). */
+  private followingAt = Number.NaN;
   /** The deck is writing down what is done to the run: one on the pad or in flight, not one being flown again, nor one kept and not yet resumed. */
   private get writing(): boolean {
     return this.tape !== null && !this.replaying && this.on && !this.pending;
@@ -711,6 +764,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
 
   /** A hand has gone to the controls: written down, then told to the kind. */
   private steer(): void {
+    this.handsOn();
     this.journal('s', [], () => this.steered());
   }
 
@@ -851,6 +905,74 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   }
   /** A hand has gone to the controls (a key, its button, the stick): for a kind that must say what the hands may do. */
   protected steered(): void {}
+
+  /** Whether this deck warps (`DeckSpec.warp`). */
+  private warps = false;
+  /** The warp to the time typed in the list (its Go, or Enter in the field). */
+  private warpTyped: () => void = () => {};
+  /** The warp's list as last drawn, and when (page ms): drawn again a few times a second at most. */
+  private warpKey = '';
+  private warpDrawn = -Infinity;
+  /**
+   * Everything a warp could go to from the clock's instant, in order of time (sim/warp.ts `warpTargets`): the kind's,
+   * from its run and the instants it holds. None for a kind that flies no coast on rails.
+   */
+  protected warpTargets(): readonly WarpTarget[] {
+    return [];
+  }
+  /** Why a warp cannot go now, in words (an engine burning, the air), or null when it can. */
+  protected warpable(): string | null {
+    return 'Nothing here is flown on rails';
+  }
+
+  /** K: the warp to the next of what is ahead (`nextWarp`), or, warping, the warp stopped. */
+  private warpNext(): void {
+    if (this.clock.warp) return void this.clock.endWarp();
+    const next = this.warpable() === null ? nextWarp(this.warpTargets()) : null;
+    if (next) this.warpAt(next);
+    else this.host.say?.('Warp', this.warpable() ?? 'Nothing ahead to warp to');
+  }
+
+  /** A warp to `to`, stopping sooner for anything due or a burn's lead-in on the way (`warpStop`). */
+  private warpAt(to: WarpTarget): void {
+    const why = this.warpable();
+    if (why) return void this.host.say?.('Warp', why);
+    const stop = warpStop(this.warpTargets(), to);
+    if (stop !== to) this.host.say?.('Warp', `Stops first at ${stop.what}, ${missionTime(stop.t)}`);
+    this.clock.warpTo(stop.t, stop.what);
+    this.drawWarp(true);
+  }
+
+  /** A hand on the controls: a warp under way stops (it never flies through what a hand does). */
+  private handsOn(): void {
+    this.clock.endWarp();
+  }
+
+  /** The warp's button (where it is going, while it goes) and the list of what is ahead, each a button. */
+  private drawWarp(now = false): void {
+    const w = this.clock.warp;
+    const label = w ? `${w.what} · ${missionTime(w.t)}` : 'Warp';
+    for (const el of this.root.querySelectorAll<HTMLElement>('[data-warp-label]')) if (el.textContent !== label) el.textContent = label;
+    for (const b of this.root.querySelectorAll('[data-do=warp]')) b.setAttribute('aria-pressed', String(w !== null));
+    const list = this.root.querySelector<HTMLElement>('[data-warps]');
+    if (!list || (!now && performance.now() - this.warpDrawn < 250)) return;
+    this.warpDrawn = performance.now();
+    const why = this.on ? this.warpable() : 'Not flying';
+    const targets = why === null ? this.warpTargets() : [];
+    const shown = targets.filter((x, i) => targets.findIndex((y) => y.kind === x.kind) === i);
+    const key = why ?? shown.map((x) => `${x.kind}|${x.t}|${x.what}`).join(',');
+    if (key === this.warpKey) return;
+    this.warpKey = key;
+    list.innerHTML =
+      why !== null
+        ? `<em>Warp: ${esc(why)}</em>`
+        : shown
+            .map(
+              (x) =>
+                `<button data-warp-at="${x.t}" data-warp-kind="${x.kind}" data-warp-what="${esc(x.what)}" title="Warp to it: as fast as the coast lets time run, stopping sooner for anything due">${esc(x.what)} · ${missionTime(x.t)}</button>`,
+            )
+            .join('');
+  }
   /**
    * The lever moved (its slider, an arrow, Z, Cut, or a kept run played again): put where it was asked, and told to the
    * kind (`levered`), which gives it to what burns.
@@ -1292,6 +1414,10 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         () => {},
         'again',
       );
+    // (the clock's pace, not the run's: nothing written down)
+    if (what === 'warp') return void this.warpNext();
+    if (what === 'warp-time') return void this.warpTyped();
+    if (!SHOWS.has(what)) this.handsOn();
     if (what === 'cut') {
       this.journal('l', [0], () => this.setLever(0));
       return void this.sync();
@@ -1421,10 +1547,16 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       const least = this.throttled()?.range?.least ?? 0;
       const at = this.lever.at;
       const to = notch < 0 ? 1 : notch === 0 ? (at < least - 1e-9 ? least : at + NOTCH) : at - NOTCH < least - 1e-9 ? 0 : at - NOTCH;
+      this.handsOn();
       this.journal('l', [to], () => this.setLever(to));
       return;
     }
     if (!down || e.repeat) return;
+    if (this.warps && is(key, 'deck.warp')) {
+      e.preventDefault();
+      e.stopPropagation();
+      return void this.act('warp');
+    }
     if (this.journal('x', [key], () => this.extraKey(key, e), Boolean)) return;
     const what = COMMANDS.find(([name]) => is(key, name))?.[1];
     if (!what) return;

@@ -3,7 +3,7 @@
 // every key shown a button that does what the key does, nothing in the control block hidden, overlapping or (on touch)
 // under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, Vostok 1 taken over in
 // the ascent with real keys: turned by W and staged by Space, and the throttle on a ballistic flight and one into orbit.
-//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=staging|leaving|touch|apollo-escape|apollo-escape-replay|throttle|by-hand for one section; SR_FLIGHTS=gatv-5003,atda for some flights)
+//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=staging|leaving|touch|apollo-escape|apollo-escape-replay|throttle|by-hand|warp for one section; SR_FLIGHTS=gatv-5003,atda for some flights)
 import { launch, open, url as urlOf } from './browser.mjs';
 
 const url = urlOf(process.argv.slice(2));
@@ -1544,6 +1544,219 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'by-hand') {
     if (!/Next: .* at T\+/.test(up.prompt)) fail(where, `no next step with the record's time: "${up.prompt}"`);
     if (!up.stakes) fail(where, 'flown by hand, the flight is not at stake');
     console.log(`  ${where}: G and B off on the pad ("${pad.prompt}"), going up "${up.prompt}"`);
+    if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+    await ctx.close();
+  }
+}
+
+// The warp on a coast (deck.ts `warpNext`, world/clock.ts `warpTo`, sim/warp.ts): Apollo 8 as flown, past its injection on the
+// way to the Moon, K at a desk and its button on a phone: the clock goes as fast as the coast lets it and lands exactly on
+// the next thing, at life's pace; the time bar and the button say where it is going while it goes; the list has what is
+// ahead; a time typed is gone to; a hand on the controls stops it; and the frames under it come as evenly as before it.
+if (!process.env.SR_ONLY || process.env.SR_ONLY === 'warp') {
+  for (const [w, h, touch] of [
+    [1280, 800, false],
+    [390, 844, true],
+  ]) {
+    const id = 'usa/apollo/apollo-8';
+    const where = `${id} warp at ${w}`;
+    const { page, errors, context: ctx } = await fly(id, w, h, touch);
+    const to = 40_000;
+    const at = await page.evaluate(async (to) => {
+      const sr = window.sr;
+      const c = sr.cockpit;
+      c.eventAt = -1e9;
+      c.command('next');
+      sr.clock.pause();
+      for (let i = 0; i < 40_000 && sr.clock.t < to - 1e-9; i++) {
+        const was = sr.clock.t;
+        sr.clock.seek(Math.min(to, was + 5));
+        if (i % 100 === 0) await new Promise((r) => requestAnimationFrame(r));
+        if (!(sr.clock.t > was)) break;
+      }
+      return { t: sr.clock.t, why: c.warpable() };
+    }, to);
+    if (Math.abs(at.t - to) > 0.02) fail(where, `flown to T+${at.t}, not T+${to}`);
+    if (at.why !== null) fail(where, `no warp on the coast to the Moon: "${at.why}"`);
+    // frames at life's pace, then under a warp: how evenly they come (rAF intervals, ms)
+    const frames = (ms) =>
+      page.evaluate(
+        (ms) =>
+          new Promise((done) => {
+            const gaps = [];
+            let last = performance.now();
+            const end = last + ms;
+            const tick = (now) => {
+              gaps.push(now - last);
+              last = now;
+              if (now < end) requestAnimationFrame(tick);
+              else done(gaps.sort((a, b) => a - b));
+            };
+            requestAnimationFrame(tick);
+          }),
+        ms,
+      );
+    await page.evaluate(() => {
+      // (where each warp landed, read as the clock lands it: the clock runs on from there at life's pace)
+      const clock = window.sr.clock;
+      const advance = clock.advance.bind(clock);
+      clock.advance = (dt) => {
+        const was = clock.warp;
+        const moved = advance(dt);
+        if (was && !clock.warp) window.__landed ??= clock.t;
+        return moved;
+      };
+      clock.play(true);
+    });
+    const calm = await frames(1500);
+    // the list: what is ahead, each a button with its time; a time typed is gone to, exactly
+    await page.click('#ui > .cockpit [data-do=keys]');
+    await page.waitForTimeout(400);
+    const list = await page.evaluate(() => [...document.querySelectorAll('#ui > .cockpit [data-warps] button')].map((b) => b.textContent));
+    if (!list.length || !list.every((x) => /T\+/.test(x))) fail(where, `the warp's list: ${JSON.stringify(list)}`);
+    const typedTo = await page.evaluate(() => Math.round(window.sr.clock.t + 7200));
+    const hms = `${Math.floor(typedTo / 3600)}:${String(Math.floor((typedTo % 3600) / 60)).padStart(2, '0')}:${String(typedTo % 60).padStart(2, '0')}`;
+    await page.evaluate(() => {
+      window.__landed = undefined;
+    });
+    await page.fill('#ui > .cockpit [data-warp-time] input', hms);
+    await page.click('#ui > .cockpit [data-do=warp-time]');
+    const typed = await page.evaluate(() => window.sr.clock.warp);
+    if (!typed) fail(where, `no warp to the time typed, ${hms}`);
+    else {
+      await page.waitForFunction(() => !window.sr.clock.warp, null, { timeout: 20_000 }).catch(() => {});
+      const t = await page.evaluate(() => window.__landed);
+      if (t !== typed.t) fail(where, `to ${hms} it landed at T+${t}, not T+${typed.t}`);
+      if (typed.t > typedTo + 1e-6) fail(where, `the time typed, ${hms}, went to T+${typed.t}: past it`);
+      console.log(`  ${where}: typed ${hms}: went to ${typed.what} at T+${typed.t}, landed at T+${t}`);
+    }
+    // a hand on the controls stops it at once (the Hold switch, thrown and thrown back: the attitude left as it was)
+    // (in one turn of the page's, so that the warp has not gone anywhere first)
+    const { before, after } = await page.evaluate(() => {
+      const c = window.sr.cockpit;
+      c.act('warp');
+      const before = window.sr.clock.warp;
+      document.querySelector('#ui > .cockpit [data-do=hold]').click();
+      const after = { warp: window.sr.clock.warp, rate: window.sr.clock.rate };
+      document.querySelector('#ui > .cockpit [data-do=hold]').click();
+      return { before, after };
+    });
+    await page.waitForTimeout(300);
+    if (!before) fail(where, 'no warp to stop');
+    else if (after.warp || after.rate !== 1) fail(where, `a hand on the controls did not stop the warp: ${JSON.stringify(after)}`);
+    const from = await page.evaluate(() => {
+      window.__landed = undefined;
+      return window.sr.clock.t;
+    });
+    // K at a desk (the list shut again, for the view); on a phone its button in the list, the line holding only More
+    if (touch) await page.click('#ui > .cockpit .cockpit-keys [data-do=warp]');
+    else {
+      await page.click('#ui > .cockpit [data-do=keys]');
+      await page.keyboard.press('KeyK');
+    }
+    const going = await page.evaluate(() => ({
+      warp: window.sr.clock.warp,
+      rate: window.sr.clock.rate,
+      button: document.querySelector('#ui > .cockpit [data-do=warp]').getAttribute('aria-pressed'),
+      label: document.querySelector('#ui > .cockpit [data-warp-label]').textContent,
+      bar: document.querySelector('.time-warp')?.hidden === false ? document.querySelector('.time-warp').textContent : null,
+    }));
+    if (!going.warp) fail(where, 'K did not start a warp');
+    else {
+      if (going.button !== 'true') fail(where, 'the warp button is not lit while it warps');
+      if (!going.label.includes(going.warp.what)) fail(where, `the button says "${going.label}", not where it goes (${going.warp.what})`);
+      if (!going.bar?.includes(going.warp.what)) fail(where, `the time bar says "${going.bar}", not where it goes`);
+      const warped = await frames(1200);
+      const end = await page.evaluate(
+        () =>
+          new Promise((done) => {
+            const sr = window.sr;
+            let fastest = sr.clock.rate;
+            const t0 = performance.now();
+            const look = () => {
+              fastest = Math.max(fastest, sr.clock.rate);
+              if (!sr.clock.warp || performance.now() - t0 > 20_000)
+                done({ t: window.__landed ?? sr.clock.t, rate: sr.clock.rate, left: sr.clock.warp, fastest, took: performance.now() - t0 });
+              else requestAnimationFrame(look);
+            };
+            look();
+          }),
+      );
+      if (end.left) fail(where, `still warping after 20 s, at T+${end.t.toFixed(0)}`);
+      if (end.t !== going.warp.t) fail(where, `it landed at T+${end.t}, not on T+${going.warp.t} (${going.warp.what})`);
+      if (end.rate !== 1) fail(where, `it landed at ${end.rate} times, not life's pace`);
+      const p95 = (g) => g[Math.floor(g.length * 0.95)] ?? 0;
+      if (p95(warped) > 3 * p95(calm) + 20)
+        fail(
+          where,
+          `the frames stutter under the warp: 95 % within ${p95(warped).toFixed(0)} ms against ${p95(calm).toFixed(0)} ms at life's pace`,
+        );
+      console.log(
+        `  ${where}: K from T+${from.toFixed(0)} to ${going.warp.what} at T+${going.warp.t.toFixed(1)}, landed on it in ${(end.took / 1000 + 1.2).toFixed(1)} s at up to ${Math.round(going.rate > end.fastest ? going.rate : end.fastest).toLocaleString('en-GB')} times; frames 95 % within ${p95(warped).toFixed(0)} ms (${p95(calm).toFixed(0)} ms at life's pace)`,
+      );
+    }
+    if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+    await ctx.close();
+  }
+  // lit by hand and then given to guidance and the sequencer (G, B): the stack is the deck's live vehicle all the way, ticked,
+  // until on its coast it is still; then it rides its railway (sim/stagedlive.ts `rails`) and K warps it, landing exactly
+  {
+    const id = 'usa/apollo/apollo-8';
+    const where = `${id} warp by hand`;
+    const { page, errors, context: ctx } = await fly(id, 1280, 800, false, [], true);
+    await page.evaluate(async () => {
+      const sr = window.sr;
+      const c = sr.cockpit;
+      c.eventAt = -1e9;
+      c.command('next');
+      sr.clock.pause();
+      sr.clock.seek(2);
+      for (const which of ['guidance', 'sequence']) {
+        c.eventAt = -1e9;
+        if (!c.steering[which]) c.command(which);
+      }
+      for (let i = 0; i < 40_000 && sr.clock.t < 40_000 - 1e-9; i++) {
+        const was = sr.clock.t;
+        sr.clock.seek(Math.min(40_000, was + 5));
+        if (i % 100 === 0) await new Promise((r) => requestAnimationFrame(r));
+        if (!(sr.clock.t > was)) break;
+      }
+    });
+    await page.evaluate(() => window.sr.clock.play(true));
+    await page.waitForFunction(() => window.sr.cockpit.warpable() === null, null, { timeout: 60_000 }).catch(() => {});
+    const before = await page.evaluate(() => ({ live: window.sr.cockpit.liveNow, why: window.sr.cockpit.warpable(), t: window.sr.clock.t }));
+    if (!before.live) fail(where, 'flown by hand, the stack is not the live vehicle');
+    if (before.why !== null) fail(where, `flown by hand, no warp on the coast: "${before.why}"`);
+    else {
+      await page.keyboard.press('KeyK');
+      const going = await page.evaluate(() => ({ warp: window.sr.clock.warp, railed: window.sr.cockpit.railed !== null }));
+      const mid = await page.evaluate(
+        () =>
+          new Promise((done) => {
+            const sr = window.sr;
+            let rate = 0;
+            let railed = true;
+            const t0 = performance.now();
+            const look = () => {
+              if (sr.clock.warp) {
+                rate = Math.max(rate, sr.clock.rate);
+                railed &&= sr.cockpit.railed !== null;
+              }
+              if (!sr.clock.warp || performance.now() - t0 > 30_000) done({ rate, railed });
+              else requestAnimationFrame(look);
+            };
+            look();
+          }),
+      );
+      const end = await page.evaluate(() => ({ t: window.sr.clock.t, rate: window.sr.clock.rate, warp: window.sr.clock.warp }));
+      if (!going.warp) fail(where, 'K did not start a warp');
+      else {
+        if (!mid.railed) fail(where, 'warping, the stack was not on its railway throughout');
+        if (!(mid.rate > 100_000)) fail(where, `warping at ${mid.rate} times`);
+        if (end.warp || Math.abs(end.t - going.warp.t) > 0.2) fail(where, `it landed at T+${end.t}, not T+${going.warp.t}`);
+        console.log(`  ${where}: from T+${before.t.toFixed(0)} to ${going.warp.what} at T+${going.warp.t.toFixed(1)} on its railway throughout, at up to ${Math.round(mid.rate).toLocaleString('en-GB')} times; at T+${end.t.toFixed(2)} a moment after`);
+      }
+    }
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     await ctx.close();
   }

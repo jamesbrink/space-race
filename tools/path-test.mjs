@@ -51,7 +51,7 @@
 // frames as a fast one. The views are measured on --jobs pages at once (default 4), each flight
 // and size, and each pair of hands, a page of its own, its lines printed together when it is done.
 //   pnpm dev, then: node tools/path-test.mjs [url] [--shots <dir>] [--only f7|lb7|v1|v2|v3|v4|v5|v6|vk1|vk2] [--quick] [--at 60,700] [--seed n]
-//                   [--hands: the hands alone] [--jobs n]
+//                   [--hands: the hands alone] [--deep: the coasts to the Moon alone, at a million times] [--jobs n]
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { flag, launch, open as openPage, opt, url as urlOf } from './browser.mjs';
@@ -64,6 +64,7 @@ const seed = Number(opt(args, '--seed', 1961));
 const jobs = Math.max(1, Number(opt(args, '--jobs', 4)));
 const handsOnly = flag(args, '--hands');
 const quick = flag(args, '--quick');
+const deep = flag(args, '--deep');
 const url = urlOf(args);
 if (shots) mkdirSync(shots, { recursive: true });
 
@@ -183,12 +184,15 @@ const FLIGHTS = {
     instants: [5, 60, 126, 155, 200, 400, 525, 600, 700, 3000, 10_100, 10_250, 10_400, 10_560, 12_500, 40_000, 120_000],
     orbit: [3000],
     coast: 3000,
+    // (the coast to the Moon, on rails at a million times and more: world.md, "Faster than an hour a second")
+    deep: 40_000,
   },
   a10: {
     id: 'usa/apollo/apollo-10',
     instants: [5, 60, 135, 162, 200, 460, 554, 600, 717, 3000, 9_100, 9_250, 9_400, 9_555, 11_000, 40_000, 120_000],
     orbit: [3000],
     coast: 3000,
+    deep: 40_000,
   },
   a11: {
     id: 'usa/apollo/apollo-11',
@@ -1210,6 +1214,7 @@ class Run {
         const last = T.map(() => null);
         const moves = T.map(() => []);
         const sides = [];
+        let fastest = 0;
         const ship = new cam.position.constructor();
         // (where the line drawn starts, in the draw itself: the anchor it was laid from, against the vehicle as the draw has it)
         if (!p.__drawnAt) {
@@ -1229,6 +1234,7 @@ class Run {
             const vessel = sr.stage.show.vessel(ship);
             if (vessel && line.length > 1 && p.shown)
               sides.push({ t: sr.clock.t, ...window.__side(ship, cam), chords: line.length - 1, drawnOff: p.__drawnOff });
+            fastest = Math.max(fastest, sr.clock.rate);
             // (after the frame is measured: asked between the draw and the measure, the frame measured was not the one drawn)
             if (sr.clock.rate !== rate) sr.clock.setRate(rate);
             if (rate !== 1) continue;
@@ -1264,7 +1270,7 @@ class Run {
             if (m[i] > 3 * usual) worst = Math.max(worst, m[i]);
           }
         }
-        return { worst, usual: all.length ? [...all].sort((a, b) => a - b)[Math.floor(all.length / 2)] : 0, sides };
+        return { worst, usual: all.length ? [...all].sort((a, b) => a - b)[Math.floor(all.length / 2)] : 0, sides, fastest };
       },
       [rate, frames],
     );
@@ -1325,12 +1331,12 @@ class Run {
    * from the chase camera a kilometre and a half off and from far out: the line starts at the vehicle and runs ahead of
    * it every frame, though a frame is half an hour of the flight and a prediction a few frames' work.
    */
-  async coasting(where) {
+  async coasting(where, rates = [10_000, 100_000], views = ['chase', 'far']) {
     for (const [v, distance] of [
       ['chase', 1500],
       ['far', 0],
-    ])
-      for (const rate of [10_000, 100_000]) {
+    ].filter(([v]) => views.includes(v)))
+      for (const rate of rates) {
         await this.view(v);
         if (distance)
           await this.page.evaluate((d) => {
@@ -1343,8 +1349,11 @@ class Run {
         const n = this.frames(`${where} ${v} at ${rate}x`, v, j?.sides ?? []);
         this.cases++;
         this.log(
-          `  ${where} ${v} at ${rate}x: ${n} frames with a line, T+${(j?.sides?.[0]?.t ?? 0).toFixed(0)} to T+${(j?.sides?.at(-1)?.t ?? 0).toFixed(0)}`,
+          `  ${where} ${v} at ${rate}x: ${n} frames with a line, T+${(j?.sides?.[0]?.t ?? 0).toFixed(0)} to T+${(j?.sides?.at(-1)?.t ?? 0).toFixed(0)}, at up to ${Math.round(j?.fastest ?? 0)}x`,
         );
+        // (asked past an hour a second on a coast to the Moon, it goes: the coast lets it, sim/rails.ts `railsRate`)
+        if (rate > 100_000 && !((j?.fastest ?? 0) > 100_000))
+          this.fail(`${where} ${v} at ${rate}x`, `the clock went no faster than ${Math.round(j?.fastest ?? 0)}x`);
       }
   }
 
@@ -2074,6 +2083,19 @@ for (const [W, H] of handsOnly || at ? [] : quick ? [SIZES[0]] : SIZES) {
           await r.coasting(`${key} ${W} orbit from T+${f.coast}`);
         },
       });
+    // (and the coast to the Moon, far out, at a million times and a hundred thousand: a page for each view, the clock only
+    // going forward and a million times reaching the Moon in a second or two)
+    for (const view of wide && f.deep ? ['chase', 'far'] : [])
+      tasks.push({
+        name: `${key} ${W} ${view} deep`,
+        weight: 12,
+        run: async (r) => {
+          await r.open(W, H, f);
+          await r.page.evaluate(() => window.sr.navball.setFrame('orbit', false));
+          await r.seek(f.deep);
+          await r.coasting(`${key} ${W} deep from T+${f.deep}`, [1_000_000, 100_000], [view]);
+        },
+      });
   }
 }
 
@@ -2264,7 +2286,8 @@ if (!quick && !at) {
 // --jobs pages at once, the heaviest first; each page's lines printed together when it is done.
 const began = Date.now();
 const runs = [];
-const queue = [...tasks].sort((a, b) => b.weight - a.weight);
+// (--deep: the coasts to the Moon alone)
+const queue = [...tasks].filter((t) => !deep || t.name.endsWith(' deep')).sort((a, b) => b.weight - a.weight);
 await Promise.all(
   Array.from({ length: Math.min(jobs, queue.length) }, async () => {
     for (let task = queue.shift(); task; task = queue.shift()) {

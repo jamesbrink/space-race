@@ -164,6 +164,14 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
 .sys-detail .readings { padding-top: 4px; }
 /* the clock's pace beside the keys that set it */
 .deck-warp em[data-cell='warp'] { min-width: 3ch; margin-right: 0; color: var(--dim); font-variant-numeric: tabular-nums; }
+.deck-foot > .deck-warp-next { gap: 6px; border-color: var(--line); max-width: 30ch; overflow: hidden; text-overflow: ellipsis; }
+.deck-foot > .deck-warp-next[aria-pressed='true'] { color: #0b0a07; background: var(--amber); border-color: var(--amber); }
+.deck-foot > .deck-warp-next span { overflow: hidden; text-overflow: ellipsis; }
+.cockpit-keys p > .deck-warps { display: contents; }
+.deck-warps em { font-style: normal; color: var(--faint); }
+.cockpit-keys p > .deck-warp-time { display: inline-flex; align-items: center; gap: 6px; margin: 0; }
+.deck-warp-time label { display: inline-flex; align-items: center; gap: 4px; color: var(--faint); text-transform: uppercase; letter-spacing: 0.1em; }
+.deck-warp-time input { width: 11ch; padding: 4px 6px; border: 1px solid var(--line); border-radius: 2px; background: transparent; color: var(--ink); font: 11px/1.4 var(--mono); font-variant-numeric: tabular-nums; }
 .readings { display: grid; grid-template-columns: 1fr 1fr; column-gap: 18px; padding: 0 14px; }
 .reading { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; min-height: 20px; }
 .reading b i { margin-left: 3px; font: 10px/1.4 var(--mono); font-style: normal; color: var(--faint); }

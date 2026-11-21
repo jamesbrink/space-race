@@ -32,6 +32,23 @@ export const RATES: readonly number[] = doubling(1, 3600);
  */
 export const COAST_RATES: readonly number[] = doubling(7200, 100_000);
 
+/**
+ * And on past a day a second, in ones, twos and fives to ten million times (a day in under a hundredth of a second), for
+ * a coast far from every body: reached only as far as the coast's own rate lets the clock go (sim/rails.ts `railsRate`:
+ * from how slowly the vehicle goes round the body it is nearest, and how near the next instant due is), so it is a
+ * translunar coast's, not a low orbit's. Chosen: the 1-2-5 steps read as round numbers on the time bar.
+ */
+export const DEEP_RATES: readonly number[] = [200_000, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000];
+
+/** The fastest the clock ever runs: the last of `DEEP_RATES`. */
+export const DEEPEST: number = DEEP_RATES[DEEP_RATES.length - 1]!;
+
+/** Where a warp is going (`Clock.warpTo`): the instant, seconds from the epoch, and what is there, in words. */
+export interface Warp {
+  t: number;
+  what: string;
+}
+
 export class Clock {
   /** The Julian date (UT) of t = 0. */
   readonly epoch: number;
@@ -40,6 +57,7 @@ export class Clock {
   private going = false;
   private most = RATES[RATES.length - 1]!;
   private due = Number.NaN;
+  private aim: Warp | null = null;
   private readonly listeners = new Set<() => void>();
 
   /** `epoch`: an ISO 8601 instant, as flight.ts records a launch. */
@@ -77,7 +95,36 @@ export class Clock {
    */
   allow(fastest: number): void {
     this.most = Math.max(1, fastest);
-    if (Math.abs(this.speed) > this.most) this.setRate(Math.sign(this.speed) * this.most);
+    // (a warp rides the limit, up as well as down: it goes as fast as it is let)
+    if (this.aim) this.pace(this.most);
+    else if (Math.abs(this.speed) > this.most) this.pace(Math.sign(this.speed) * this.most);
+  }
+
+  /** Where a warp is going, or null when none is. */
+  get warp(): Warp | null {
+    return this.aim;
+  }
+
+  /**
+   * Go to `t` (seconds from the epoch, ahead of the present) as fast as the clock is let (`fastest`, which a warp keeps up
+   * with as it changes), and stop on it at real time, still running, as on an instant held (`hold`). It stops sooner, on an
+   * instant held before it, and it ends on anything that sets the rate (`step`, `setRate`, `endWarp`) or goes back to
+   * the start (`reset`).
+   */
+  warpTo(t: number, what: string): void {
+    if (!(t > this.seconds) || !Number.isFinite(t)) return;
+    this.aim = { t, what };
+    this.speed = this.most;
+    this.going = true;
+    this.tell();
+  }
+
+  /** The warp given up where it stands: real time, still running. Nothing happens if there is none. */
+  endWarp(): void {
+    if (!this.aim) return;
+    this.aim = null;
+    this.speed = 1;
+    this.tell();
   }
 
   /** The next instant that must be lived through and not skipped (an engine to light, an arrival), or NaN for none. */
@@ -98,10 +145,15 @@ export class Clock {
   advance(dt: number): boolean {
     if (!this.going || this.speed === 0 || dt === 0) return false;
     const to = this.seconds + dt * this.speed;
-    const d = this.due;
-    if (Math.abs(this.speed) > 1 && !Number.isNaN(d) && (to - d) * (this.seconds - d) <= 0 && this.seconds !== d) {
-      this.seconds = d;
-      this.due = Number.NaN;
+    // (the nearer of the instant held and a warp's end, whichever the frame would cross first)
+    const crosses = (d: number) => !Number.isNaN(d) && (to - d) * (this.seconds - d) <= 0 && this.seconds !== d;
+    const d = crosses(this.due) ? this.due : Number.NaN;
+    const w = this.aim && crosses(this.aim.t) ? this.aim.t : Number.NaN;
+    const stop = Number.isNaN(d) ? w : Number.isNaN(w) ? d : Math.abs(d - this.seconds) <= Math.abs(w - this.seconds) ? d : w;
+    if (!Number.isNaN(stop) && (Math.abs(this.speed) > 1 || !Number.isNaN(w))) {
+      this.seconds = stop;
+      if (stop === this.due) this.due = Number.NaN;
+      this.aim = null;
       this.speed = Math.sign(this.speed);
     } else this.seconds = to;
     this.tell();
@@ -112,6 +164,7 @@ export class Clock {
   seek(t: number): void {
     if (t === this.seconds) return;
     this.seconds = t;
+    if (this.aim && t >= this.aim.t) this.endWarp();
     this.tell();
   }
 
@@ -127,21 +180,30 @@ export class Clock {
 
   /** Seconds of the world a second, held to `fastest`. */
   setRate(rate: number): void {
+    this.aim = null;
+    this.pace(rate);
+  }
+
+  /** The rate set, held to `fastest`, whatever a warp is doing. */
+  private pace(rate: number): void {
     const held = Math.max(-this.most, Math.min(this.most, rate));
     if (held === this.speed) return;
     this.speed = held;
     this.tell();
   }
 
-  /** The next step up or down the rates it may run at (RATES, and COAST_RATES as far as allowed) from the nearest to the present one. */
+  /** The next step up or down the rates it may run at (RATES, and COAST_RATES and DEEP_RATES as far as allowed) from the nearest to the present one. A warp ends there. */
   step(direction: 1 | -1): void {
-    const rates = [...RATES, ...COAST_RATES.filter((r) => r <= this.most)];
+    const aimed = this.aim !== null;
+    this.aim = null;
+    const rates = [...RATES, ...[...COAST_RATES, ...DEEP_RATES].filter((r) => r <= this.most)];
     const size = Math.abs(this.speed);
     let nearest = 0;
     rates.forEach((r, i) => {
       if (Math.abs(r - size) < Math.abs(rates[nearest]! - size)) nearest = i;
     });
     this.setRate(rates[Math.max(0, Math.min(rates.length - 1, nearest + direction))]! * (this.speed < 0 ? -1 : 1));
+    if (aimed) this.tell(); // (the warp gone, whether the rate moved or not)
   }
 
   /** Back to the epoch, stopped, at real time, an hour a second at most and nothing held: as it started. */
@@ -151,6 +213,7 @@ export class Clock {
     this.seconds = 0;
     this.most = RATES[RATES.length - 1]!;
     this.due = Number.NaN;
+    this.aim = null;
     this.tell();
   }
 
@@ -166,6 +229,28 @@ export class Clock {
 }
 
 const two = (n: number): string => String(n).padStart(2, '0');
+
+/**
+ * A rate as the time bar writes it: whole, in thousands with commas past 9,999 and to three figures there (a warp's rate
+ * follows the coast's limit, which is any number): '1×', '3600×', '100,000×', '2,370,000×'. Negative runs back.
+ */
+export function rateText(rate: number): string {
+  const size = Math.abs(rate);
+  const figures = size < 10_000 ? Math.round(size) : Number(size.toPrecision(3));
+  return `${rate < 0 ? '−' : ''}${figures < 10_000 ? String(figures) : String(figures).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}×`;
+}
+
+/**
+ * A mission time as typed: hours, minutes and seconds ('61:30', '61:30:00', '+61:30'), with days in front as the clock
+ * writes them ('2d 13:30', 'T+2d 13:30:15'), or hours alone ('61'). Seconds from launch, or NaN for what is not one.
+ */
+export function parseMissionTime(text: string): number {
+  const m = /^\s*(?:t\s*)?\+?\s*(?:(\d+)\s*d\s*)?(\d+)(?::(\d{1,2}))?(?::(\d{1,2}(?:\.\d+)?))?\s*$/i.exec(text);
+  if (!m) return Number.NaN;
+  const [days, hours, minutes, seconds] = [m[1], m[2], m[3], m[4]].map((x) => Number(x ?? 0)) as [number, number, number, number];
+  if (minutes >= 60 || seconds >= 60) return Number.NaN;
+  return days * 86_400 + hours * 3600 + minutes * 60 + seconds;
+}
 
 /** Seconds from launch as a countdown reads it: 'T-00:08:45', 'T+00:02:22', with days in front past 24 hours. */
 export function missionTime(t: number): string {

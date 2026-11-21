@@ -134,3 +134,70 @@ test('faster than an hour a second only when let, for a coast flown on rails, an
   clock.reset();
   assert.equal(clock.fastest, 3600, 'and a reset forgets what was let');
 });
+
+test('past a day a second, in ones, twos and fives to ten million, only as far as it is let; and a warp rides what it is let', async () => {
+  const { COAST_RATES, DEEP_RATES, DEEPEST } = await import('../src/world/clock.ts');
+  assert.deepEqual(DEEP_RATES, [200_000, 500_000, 1_000_000, 2_000_000, 5_000_000, 10_000_000]);
+  assert.equal(DEEPEST, 10_000_000);
+  const clock = new Clock('1968-12-21T12:51:00Z');
+  clock.allow(COAST_RATES.at(-1));
+  clock.setRate(100_000);
+  clock.step(1);
+  assert.equal(clock.rate, 100_000, 'a coast let go to a day a second goes no further');
+  clock.allow(DEEPEST);
+  for (const r of DEEP_RATES) {
+    clock.step(1);
+    assert.equal(clock.rate, r);
+  }
+  clock.step(1);
+  assert.equal(clock.rate, DEEPEST, 'and no further than ten million');
+  clock.allow(2_400_000);
+  assert.equal(clock.rate, 2_400_000, 'brought down to what is let, whatever it is');
+  clock.step(-1);
+  assert.equal(clock.rate, 1_000_000, 'a step down from there is a step down the list');
+  // a warp: as fast as it is let, up and down, to its instant
+  clock.seek(10_000);
+  clock.warpTo(20_000, 'there');
+  assert.equal(clock.rate, 2_400_000, 'the warp goes at what is let');
+  assert.ok(clock.running);
+  clock.allow(5_000_000);
+  assert.equal(clock.rate, 5_000_000, 'and rises with it');
+  clock.allow(4000);
+  assert.equal(clock.rate, 4000, 'and comes down with it');
+  assert.deepEqual(clock.warp, { t: 20_000, what: 'there' });
+  clock.warpTo(5000, 'gone');
+  assert.deepEqual(clock.warp, { t: 20_000, what: 'there' }, 'a warp to what has gone is not one');
+  while (clock.warp) clock.advance(1 / 60);
+  assert.equal(clock.t, 20_000, 'it lands on its instant');
+  assert.equal(clock.rate, 1, 'at real time, still running');
+  assert.ok(clock.running);
+  // a step of the rate ends one, as does setting it, going back past it or a reset
+  clock.allow(DEEPEST);
+  clock.warpTo(90_000, 'on');
+  clock.step(-1);
+  assert.equal(clock.warp, null, 'a step ends it');
+  clock.warpTo(90_000, 'on');
+  clock.setRate(1);
+  assert.equal(clock.warp, null, 'so does setting the rate');
+  clock.warpTo(90_000, 'on');
+  clock.seek(95_000);
+  assert.equal(clock.warp, null, 'or going past it');
+  clock.warpTo(190_000, 'on');
+  clock.reset();
+  assert.equal(clock.warp, null, 'or a reset');
+});
+
+test('a rate as the time bar writes it, and a mission time as typed', async () => {
+  const { rateText, parseMissionTime } = await import('../src/world/clock.ts');
+  assert.equal(rateText(1), '1×');
+  assert.equal(rateText(3600), '3600×');
+  assert.equal(rateText(100_000), '100,000×');
+  assert.equal(rateText(2_371_234.5), '2,370,000×');
+  assert.equal(rateText(-7200), '−7200×');
+  assert.equal(parseMissionTime('61:30'), 61 * 3600 + 30 * 60);
+  assert.equal(parseMissionTime('61:30:15'), 61 * 3600 + 30 * 60 + 15);
+  assert.equal(parseMissionTime('T+2d 13:30'), 2 * 86_400 + 13 * 3600 + 30 * 60);
+  assert.equal(parseMissionTime('+2d 13:30:01.5'), 2 * 86_400 + 13 * 3600 + 30 * 60 + 1.5);
+  assert.equal(parseMissionTime('61'), 61 * 3600);
+  for (const bad of ['', 'soon', '12:61', '1:2:3:4']) assert.ok(Number.isNaN(parseMissionTime(bad)), bad);
+});

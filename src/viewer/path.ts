@@ -93,7 +93,8 @@ import { disposeTree } from './dispose.ts';
  *   as the stage draws it, whatever the age of the prediction under it, and is taken onto the vehicle there (the vehicle
  *   drawn and the flight differ by the stage's interpolation): the offset is let go over the next ten reaches of the
  *   line, or a hundred times the offset (under a degree of bend), whichever is longer. A path further than two reaches
- *   (`reachOf`) and `PIN_FAR` from the vehicle is another path and is drawn where it is. An orbit the clock has outrun (hours a
+ *   (`reachOf`) and `PIN_FAR` from the vehicle (far out, a thousandth of its distance from the Earth's centre:
+ *   `PIN_SHARE`, `pinFar`) is another path and is drawn where it is. An orbit the clock has outrun (hours a
  *   second, on rails) before a prediction from where the vehicle is can be made is drawn from the same curve whole
  *   turns on (pathline.ts `turnsPast`), and taken onto the vehicle however far off its slow turn has left it. A path
  *   once round comes back to where it began, which is behind the vehicle: its line stops short of that by the angle
@@ -146,7 +147,7 @@ import { disposeTree } from './dispose.ts';
  *   it goes for every second on, which is where a coast from the flight lies to the first order), its markers and ring
  *   with it. So the line goes on with the vehicle and does not stand and lunge with each prediction, which from the
  *   chase view was the line shaking along itself. A path flown under guidance is held to its programme and not carried.
- *   That holds to the first order only: a flight that has left a coast on show by more than `PIN_FAR` (a burn the clock
+ *   That holds to the first order only: a flight that has left a coast on show by more than `pinFar` (a burn the clock
  *   ran through within a frame at hours a second, the injection to the Moon) is on another path, and the curve carried
  *   with it would bend as the old orbit does, not as its own: that curve goes, and nothing is drawn ahead until the next
  *   prediction has been made (`leftBy`).
@@ -266,6 +267,13 @@ const LIMIT_FADE_MOST = 900;
  */
 const PIN_WITHIN = 2;
 const PIN_FAR = 20_000;
+/**
+ * And far out, a thousandth of the vehicle's distance from the Earth's centre, where that is more: a coast flown on rails at a
+ * million times is hours of flight on from the prediction on show, which the two physics (the run's and the predictor's)
+ * part by tens of kilometres over, on a path the size of the Moon's orbit; the same path, which another 20 km off would not
+ * be at the Moon's distance as it is in a low orbit. Under 20,000 km out this is `PIN_FAR`. Chosen.
+ */
+const PIN_SHARE = 1e-3;
 const PIN_OVER = 10;
 /** And over at least this many times the offset itself: so taking it onto the vehicle bends the line by under a degree. */
 const PIN_SLOPE = 100;
@@ -1505,8 +1513,7 @@ export class FlightPath {
     if (this.shown && (this.shown.plan !== want.plan || this.shown.result.from > s.t)) this.unpredict();
     // (and so does a coast the flight has left by more than another path lies off (`PIN_FAR`): carried with it to the first
     // order, it would bend as the orbit it was made on does, not as the flight's own)
-    if (this.shown && this.shown.result.kind !== 'guided' && this.leftBy(this.shown, s) > PIN_FAR) this.unpredict();
-    // (the flight still on the curve on show, with the same plan: that curve is still its future, and nothing is predicted again)
+    if (this.shown && this.shown.result.kind !== 'guided' && this.leftBy(this.shown, s) > this.pinFar(s)) this.unpredict();    // (the flight still on the curve on show, with the same plan: that curve is still its future, and nothing is predicted again)
     if (this.shown && this.shown.key !== want.key && this.shown.plan === want.plan && this.holds(this.shown, s)) this.shown.key = want.key;
     if (this.shown?.key !== want.key && this.wantedAt === null) this.wantedAt = performance.now();
     if (this.job && (this.job.plan !== want.plan || this.job.from > s.t || this.shown?.key === want.key)) this.job = null;
@@ -1637,6 +1644,12 @@ export class FlightPath {
     return true;
   }
   private readonly holdAt = new Float64Array(3);
+
+  /** How far off the curve on show the flight at `s` may be and still be on it, m (`PIN_FAR`, `PIN_SHARE`). */
+  private pinFar(s: PathSample): number {
+    const r = fliesOf(s);
+    return Math.max(PIN_FAR, PIN_SHARE * Math.hypot(r[0], r[1], r[2]));
+  }
 
   /** How far the flight at sample `s` is from the curve on show at its instant, m (pathline.ts `departure`; 0 outside the curve's span). */
   private leftBy(shown: Shown, s: PathSample): number {
@@ -2107,7 +2120,7 @@ export class FlightPath {
       pin[1] = this.vessel.y - p[1]!;
       pin[2] = this.vessel.z - p[2]!;
       offset = Math.hypot(pin[0]!, pin[1]!, pin[2]!);
-      if (offset > Math.max(PIN_WITHIN * reach, PIN_FAR) && this.shift === 0) pin.fill(0);
+      if (offset > Math.max(PIN_WITHIN * reach, this.pinFar(s)) && this.shift === 0) pin.fill(0);
     }
     const pinned = pin[0] !== 0 || pin[1] !== 0 || pin[2] !== 0;
     // (the offset let go over the next ten gaps of the line, or a hundred times the offset if that is longer, so the line bends by

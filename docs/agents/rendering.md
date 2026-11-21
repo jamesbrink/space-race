@@ -222,7 +222,11 @@ rules are the screen's, the same for every path, never tuned to a flight:
   coast on show by more than `PIN_FAR` (20 km) is on another path (a burn the clock ran through within a frame at hours a
   second: Apollo 10's injection to the Moon, passed in one frame at 100,000 times, left the parking orbit's curve 16,000 km
   and 3 km/s behind, and carried, the line bent as that orbit does and 295 px of it lay behind the vehicle), so that curve
-  goes and nothing is drawn ahead until the next prediction is made (path.ts `leftBy`).
+  goes and nothing is drawn ahead until the next prediction is made (path.ts `leftBy`). Far out that is a thousandth of
+  the vehicle's distance from the Earth's centre where it is more (`PIN_SHARE`, `pinFar`: 150 km at 150,000 km): on rails at
+  a million times a prediction is hours of flight old before the next, and the run's physics and the predictor's part by
+  tens of kilometres over that on a coast to the Moon, the same path; at 20 km the line was let go of the vehicle and drawn
+  35 km off it, behind it from the chase view (`test:path --deep`, Apollo 8 and 10 at a million times).
 - **The frame is the path's own** (pathline.ts `drawnIn`, path.ts `frameFor`), never a flight's or a phase's. A path
   that comes down before the Earth has turned an eighth of a turn under it (`WOUND`, three hours, estimated: a lob, an
   ascent cut short and a return from a low orbit are well within it) is drawn over the ground, where it comes down, with

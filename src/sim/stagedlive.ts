@@ -37,12 +37,12 @@
  */
 
 import { clamp } from '../util/math.ts';
-import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
+import { EARTH_ROTATION_RATE, G0, MOON } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { add, angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
 import type { State } from '../world/orbit.ts';
 import { airDrag, skyOf } from './air.ts';
-import { fieldFor, stepIn } from './core/gravity.ts';
+import { fieldFor, moonIn, stepIn } from './core/gravity.ts';
 import { sensed, trapezoid } from './apparent.ts';
 import { act, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
 import { along as alongCurve, MEAN_RADIUS, RIDING } from './fly.ts';
@@ -77,6 +77,8 @@ import type { Curve, Measure } from '../types.ts';
 import { handRange } from './lever.ts';
 import { nozzleThrust } from './thrust.ts';
 import { type LiveSample, TICK } from './vehicle.ts';
+import { RAILS_FLOOR, Railway } from './rails.ts';
+import { acceleration } from './core/rk4.ts';
 
 /** Something set off by a hand or the sequencer: a stage lit, cut off or let go, a drop (`ascent.drops`) let go. The last stage's 'separate' parts the spacecraft. */
 export type Step = { kind: 'ignite' | 'cut' | 'separate'; stage: number } | { kind: 'drop'; id: string };
@@ -154,6 +156,22 @@ export interface StagedState {
   hand?: readonly (readonly (readonly [t: number, k: number])[])[];
 }
 
+/**
+ * The body rates under which a stack is still, rad/s about each axis: a coast goes on rails only from there, and is held
+ * so (its jets hold it; a turn the hands set going is ticked). Chosen: a hundredth of a degree a second is no turn a
+ * frame shows, and the autopilot damps to it within seconds.
+ */
+export const RAILS_STILL = 1e-4;
+
+/** A live vehicle's coast on rails (`StagedVehicle.rails`): the railway it rides, and its state on it. */
+export interface RailedCoast {
+  readonly way: Railway;
+  /** The state at tick `ticks` (its instant `ticks` times `TICK`), within the railway: what the ticks go on from. */
+  at(ticks: number): StagedState;
+  /** The state at any instant within it: what the scene is shown between ticks. */
+  state(t: number): StagedState;
+}
+
 /** The launch vehicle broke up: at `t`, by its bending load, its load along the axis, or a jet fired into the stage below (through a hot-staged joint, or into a closed one). */
 export interface Broke {
   t: number;
@@ -194,6 +212,17 @@ export interface StagedVehicle {
   start(): StagedState;
   tick(state: StagedState, controls: StagedControls | StagedPilot): StagedState;
   step(state: StagedState, controls: StagedControls | StagedPilot, dt: number): StagedState;
+  /**
+   * Whether it may be coasted on rails from `state` (sim/rails.ts): flying, nothing burning nor dying away, no staging
+   * owed and nothing set off at this tick, its body still (each rate under `RAILS_STILL`), above the rails' floor.
+   */
+  coasts(state: StagedState): boolean;
+  /**
+   * Its coast on rails from `state` (which `coasts`), to `until` at most (s), under the forces its ticks have: its
+   * gravity and the rest (the air, a stopped stage's vent), the attitude held as it is, as its jets hold it. It ends
+   * sooner where it comes down to the rails' floor, or to the Moon's ground where its gravity names the Moon (`way.end`). `at` is the state at a tick of it, `state` at any instant.
+   */
+  rails(state: StagedState, until: number): RailedCoast;
   /** Mass now, kg; propellant left in each stage (all its units), kg; whether a stage is burning now; total thrust now, N. */
   mass(state: StagedState, at?: number): number;
   left(state: StagedState): number[];
@@ -1068,6 +1097,34 @@ export function stagedVehicle(
     };
   };
 
+  /** On rails from here (`StagedVehicle.coasts`). */
+  const coasts = (s: StagedState): boolean =>
+    !s.held &&
+    !s.landed &&
+    !s.parted &&
+    !s.broke &&
+    !s.chain?.length &&
+    !s.controls.steps?.length &&
+    !s.controls.events?.length &&
+    s.w.every((x) => Math.abs(x) < RAILS_STILL) &&
+    stages.every((_, i) => !burning(s, i) && decayPush(s, i, s.t, 0) === 0) &&
+    air(s, s.t).altitude > RAILS_FLOOR;
+  // (the Moon, where the plan's gravity names it: a railway ends on its ground, which nothing else here meets)
+  const moonAt = plan.gravity?.terms.includes('moon') ? (field.moon ?? moonIn(frame)) : null;
+  /** The coast on rails from `s` (`StagedVehicle.rails`): every force a tick has but the steering's, the axis held where it is. */
+  const rails = (s: StagedState, until: number): RailedCoast => {
+    const axis = turn(s.q, X);
+    const gone = shape(s);
+    const above = (t: number, r: Vec3, v: Vec3): number => {
+      const air0 = air({ r, v }, t).altitude - RAILS_FLOOR;
+      return moonAt ? Math.min(air0, length(sub(r, moonAt(t).r)) - MOON.equatorialRadius.value) : air0;
+    };
+    const way = new Railway(s, until, (t, r, v) => acceleration(field.at(r, t), accel({ r, v }, t, s, axis, gone, s.t).accel), above);
+    const still: Vec3 = [0, 0, 0];
+    const state = (t: number): StagedState => ({ ...s, ...way.at(t), t, w: still, carry: 0 });
+    return { way, state, at: (ticks) => ({ ...state(ticks * TICK), ticks }) };
+  };
+
   return {
     plan,
     frame,
@@ -1081,6 +1138,8 @@ export function stagedVehicle(
     authority,
     start,
     tick,
+    coasts,
+    rails,
     step(state, controls, dt) {
       let s = state;
       const owed = s.carry + Math.max(0, dt);

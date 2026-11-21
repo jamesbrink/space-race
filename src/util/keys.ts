@@ -140,6 +140,12 @@ export const KEYS = {
     when: 'the flight deck: every liquid engine (sim/lever.ts); held, it goes on; the camera tilts by dragging there',
   },
   'deck.full': { slots: ['z'], does: 'throttle full', when: 'the flight deck: every liquid engine' },
+  'deck.warp': {
+    slots: ['k'],
+    does: 'warp to the next · stop',
+    when: 'the orbital deck on a coast on rails: as fast as the coast lets the clock run, to the next burn’s lead-in or whatever is due (K on the ballistic deck is path.choose)',
+  },
+  'warp.go': { slots: ['enter'], does: 'warp to the time typed', when: 'the warp’s time being typed, on the orbital deck' },
   'deck.code': { slots: ['0', ...DIGITS], does: 'a digit of the lock’s code', when: 'the orbital deck, the spacecraft alone and locked' },
   // ---- the gallery (ui/gallery.ts)
   'rover.drive': {

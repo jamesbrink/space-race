@@ -350,6 +350,19 @@ export function fieldFor(def: GravityNamed | undefined, frame: EarthFrame): Fiel
 }
 
 /**
+ * The Moon's place and velocity from the Earth's centre in the flight's axes, at `t` seconds from liftoff, as a field with
+ * a sphere has it (`fieldFor`: DE440's where it is loaded, Meeus's otherwise): for what asks where the Moon is of a flight
+ * whose field has no sphere (sim/rails.ts `bodiesAt`, how fast a coast near it may be let go).
+ */
+export function moonIn(frame: EarthFrame): (t: number) => { r: Vec3; v: Vec3 } {
+  const [tt0, lead0] = [frame.jdTT(0), ttLessUT(frame.jdUT(0))];
+  return (t) => {
+    const s = stateOf('moon', tt0, 'earth', t + ttLessUT(frame.jdUT(t)) - lead0);
+    return { r: frame.fromIcrf(s.r), v: frame.fromIcrf(s.v) };
+  };
+}
+
+/**
  * A state about one centre as the same state about the other, at `t`: the Moon's place and velocity from the Earth's
  * taken off (`to` the Moon) or put on (`to` the Earth). The axes are the flight's on both sides.
  */

@@ -1,7 +1,7 @@
 import './time.css';
 import { prefs } from '../app/prefs.ts';
 import type { Flight, SitedFlight } from '../types.ts';
-import { type Clock, localTime, missionTime } from '../world/clock.ts';
+import { type Clock, localTime, missionTime, rateText } from '../world/clock.ts';
 import { capsOf, is, isTyping, modified, which } from '../util/keys.ts';
 import { Scope } from '../util/scope.ts';
 
@@ -22,6 +22,8 @@ export class TimeBar {
   private readonly launchAt: number;
   private readonly local: HTMLElement;
   private readonly count: HTMLElement;
+  /** Where a warp is going (world/clock.ts `warpTo`), while one is. */
+  private readonly warp: HTMLElement;
   private readonly play: HTMLButtonElement;
   private readonly scrub: HTMLInputElement;
   /** A finer scrub over the flight itself, where the flight has a trajectory to fly. */
@@ -45,7 +47,7 @@ export class TimeBar {
     root.innerHTML = `
       <div class="time-row">
         <button class="time-play" aria-pressed="false" title="Run or stop the clock (P)"></button>
-        <p class="time-read" aria-live="off"><time class="time-local"></time><time class="time-count"></time></p>
+        <p class="time-read" aria-live="off"><time class="time-local"></time><time class="time-count"></time><time class="time-warp" hidden></time></p>
         <button class="time-toggle chevron" aria-expanded="true" aria-label="Show or hide the time controls" title="Tuck away"></button>
       </div>
       <div class="time-body">
@@ -62,6 +64,7 @@ export class TimeBar {
     const q = <T extends HTMLElement>(selector: string) => root.querySelector<T>(selector)!;
     this.local = q('.time-local');
     this.count = q('.time-count');
+    this.warp = q('.time-warp');
     this.play = q('.time-play');
     this.scrub = q('.time-scrub input');
     this.flightScrub = root.querySelector<HTMLInputElement>('.time-flight input');
@@ -115,10 +118,17 @@ export class TimeBar {
     set(this.local, `${at.text} ${this.zone.name}`);
     set(this.count, missionTime(clock.t));
     // the rate is on the button, so it is seen with the bar folded
-    set(this.play, `${clock.running ? 'Stop' : 'Run'}${Math.abs(clock.rate) === 1 ? '' : ` · ${clock.rate}×`}`);
+    set(this.play, `${clock.running ? 'Stop' : 'Run'}${Math.abs(clock.rate) === 1 ? '' : ` · ${rateText(clock.rate)}`}`);
+    // (a warp: where it is going, and when that is)
+    const w = clock.warp;
+    this.warp.hidden = !w;
+    set(this.warp, w ? `to ${w.what} ${missionTime(w.t)}` : '');
+    this.warp.title = w
+      ? `Warping as fast as the coast lets time run, to ${w.what} at ${missionTime(w.t)}: it lands there at life's pace`
+      : '';
     this.play.setAttribute('aria-pressed', String(clock.running));
     const size = Math.abs(clock.rate);
-    set(this.rate, `${clock.rate}×`);
+    set(this.rate, rateText(clock.rate));
     this.rate.title = size === 1 ? 'Real time' : `${rateTitle(size)}: press for real time`;
     this.rate.setAttribute('aria-pressed', String(size !== 1));
     for (const b of this.steps) b.disabled = b.dataset.step === '1' ? size >= clock.fastest : size <= 1;
@@ -156,5 +166,6 @@ function rateTitle(rate: number): string {
   const say = (n: number, unit: string) => `${Number(n.toFixed(1))} ${unit}${Number(n.toFixed(1)) === 1 ? '' : 's'} a second`;
   if (rate < 60) return say(rate, 'second');
   if (rate < 3600) return say(rate / 60, 'minute');
-  return say(rate / 3600, 'hour');
+  if (rate < 86_400) return say(rate / 3600, 'hour');
+  return say(rate / 86_400, 'day');
 }
