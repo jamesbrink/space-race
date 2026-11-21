@@ -6,7 +6,7 @@ import { skyFrom } from '../world/ephemeris.ts';
 import { EARTH_SPHERE } from '../world/bodies.ts';
 import { DEG, siteFrame } from '../world/frames.ts';
 import { julianDate } from '../world/time.ts';
-import { densityFor, type PlaceAir, setDeckShade, setHazeAbove, setVeilLight } from './air.ts';
+import { densityFor, type PlaceAir, setDeckShade, setHazeAbove, setVeilLight, uCloudsLeft } from './air.ts';
 import { atmosphereUniforms, extinctionAt, hazeFor, makeAtmosphere, RAYLEIGH_SCALE, transmittanceAt } from './atmosphere.ts';
 import { type Blowing, dayOf, DECK_DEPTH, VEIL_DOWN, veilShade, windsOf } from './day.ts';
 import { DAY_EXPOSURE, type DayLight, dayLight, NIGHT_ADAPTATION, type RGB, starLimit } from './daysky.ts';
@@ -646,7 +646,9 @@ function ground(renderer: THREE.WebGLRenderer, when: Occasion | undefined): Sett
         const dn = eye.x * Math.cos(b) - eye.z * Math.sin(b) - recovery.north;
         nearRecovery = 1 - THREE.MathUtils.smoothstep(Math.hypot(de, dn), recovery.weather.radius.value, 2 * recovery.weather.radius.value);
       }
-      const moved = globe.attend(eye, frozen) || leans;
+      // (the clouds' frame goes with the eye once it is far from the site, before anything of this frame is drawn: cloudframe.ts)
+      const rolled = here.air.follow(eye, uCloudsLeft.value <= 0);
+      const moved = globe.attend(eye, frozen) || leans || rolled;
       return here.attend(eye) || moved;
     },
     arrived: here.arrived,
@@ -1057,6 +1059,7 @@ export class Settings {
     const keep = new Set<THREE.Texture>();
     if (setting.weather) {
       keep.add(setting.weather.uniforms.tWeather.value);
+      keep.add(setting.weather.uniforms.tWeatherFar.value);
       keep.add(setting.weather.uniforms.tRecovery.value);
     }
     for (const shared of [atmosphereUniforms, uLast])

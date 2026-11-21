@@ -48,6 +48,55 @@ export function fbm2(x: number, y: number, seed: number, octaves = 4): number {
   return sum;
 }
 
+/** A hash of a lattice point in space and a seed, 0 to 1 (JavaScript only: nothing on the GPU reads it). */
+export function hash3(ix: number, iy: number, iz: number, seed: number): number {
+  let h =
+    (Math.imul(ix + SHIFT, 374761393) +
+      Math.imul(iy + SHIFT, 668265263) +
+      Math.imul(iz + SHIFT, 2147483629) +
+      Math.imul(seed, 1274126177)) >>>
+    0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+  h = (h ^ (h >>> 16)) >>> 0;
+  return h / 4294967296;
+}
+
+/** Smooth value noise in space, 0 to 1, varying over about one unit: for a field on a sphere, which no plane maps. */
+export function noise3(x: number, y: number, z: number, seed: number): number {
+  const ix = Math.floor(x),
+    iy = Math.floor(y),
+    iz = Math.floor(z);
+  let fx = x - ix,
+    fy = y - iy,
+    fz = z - iz;
+  fx = fx * fx * (3 - 2 * fx);
+  fy = fy * fy * (3 - 2 * fy);
+  fz = fz * fz * (3 - 2 * fz);
+  const at = (k: number): number => {
+    const a = hash3(ix, iy, iz + k, seed),
+      b = hash3(ix + 1, iy, iz + k, seed),
+      c = hash3(ix, iy + 1, iz + k, seed),
+      d = hash3(ix + 1, iy + 1, iz + k, seed);
+    return a + (b - a) * fx + (c - a) * fy + (a - b - c + d) * fx * fy;
+  };
+  const lo = at(0);
+  return lo + (at(1) - lo) * fz;
+}
+
+/** Octaves of `noise3`, each twice as fine and half as strong: 0 to about 1. */
+export function fbm3(x: number, y: number, z: number, seed: number, octaves = 3): number {
+  let sum = 0,
+    amp = 0.5;
+  for (let i = 0; i < octaves; i++) {
+    sum += amp * noise3(x, y, z, seed + i);
+    x = x * 2.03 + 17.1;
+    y = y * 2.03 + 3.7;
+    z = z * 2.03 + 9.3;
+    amp *= 0.5;
+  }
+  return sum;
+}
+
 /** The same three, in GLSL ES 3.00. */
 export const FIELD = /* glsl */ `
   float hash2(ivec2 i, int seed) {

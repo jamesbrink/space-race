@@ -233,6 +233,8 @@ src/
   viewer/day.ts                       a day's weather as it is drawn: a flight's record (DayWeather) turned into the air, the clouds, the map and the light
   viewer/clouds.ts                    the cumulus as a volume: heaped on air.ts's field, their skin worn by finer lumps, lit as cloud is (the Sun's light
                                       marched through them and scattered, the sky above, the ground below), ray-marched at a quarter of the pixels, laid over the frame
+  viewer/cloudframe.ts                the frame the clouds are worked out in: the scene's own near the site, rolled after the eye over the Earth once it is
+                                      far from it (no plane maps a sphere), with its GLSL; pure arithmetic, held by tests/cloudframe.test.mjs
   viewer/cloudnoise.ts                the clouds' two tiles of noise as bytes (pinned by digest in tests/)
   viewer/cloudnoise.worker.ts         makes those tiles off the page's thread
   viewer/around.ts                    what stands round a place beyond its own model (`SiteAround`: Site 2's assembly building; the Cape's neighbouring complexes), fetched as scenery at its levels of detail and set on the land
@@ -299,7 +301,8 @@ src/
   viewer/atmosphere.ts                the air as it scatters light, ground to orbit: Rayleigh, haze, ozone, light scattered many times; two tables
                                       made once on the GPU, and the GLSL that walks a ray through it
   viewer/weather.ts  weathermap.ts    the weather round a site on a day as a map (the record where it speaks, estimated elsewhere): cumulus cover,
-                                      middle deck, high cloud; the sheets' textures (cloudlets, fibres, a veil); the day and its map as shared uniforms
+                                      middle deck, high cloud; the sheets' textures (cloudlets, fibres, a veil); the day and its map as shared uniforms;
+                                      and the weather past the map, anywhere on the Earth (`farWeatherAt`: estimated, a cube made in the page)
   viewer/pack.ts  units.ts            one-channel maps packed into one cube and one array texture on the GPU; the texture-unit budget and its check
   viewer/later.ts                     what the first view does not need, fetched once the scene is up
   viewer/heavens.ts  daysky.ts        the Moon, stars and planets drawn; light and sky colours by the Sun's height
@@ -420,7 +423,7 @@ tools/
   deck-test.mjs                       browser check of the flight deck's promises for every flight that can be flown, at a desk, a tablet and a phone
   fires-test.mjs                      browser check that every engine burning on the record's flight has its fire, hung where it should be
   chute-test.mjs                      browser check that a parachute's lines are drawn over the land, the sea, the air and the cloud behind them, from the chase view, at 1280 and 390, in both looks
-  clouds-test.mjs                     browser check that the clouds stand in the air and not round the eye: a camera flown up through each flight's cumulus, deck and high cloud at a vehicle's speed, in both looks
+  clouds-test.mjs                     browser check that the clouds stand in the air and not round the eye: a camera flown up through each flight's cumulus, deck and high cloud at a vehicle's speed, in both looks; and that from orbit round the Earth, far from the site, they are still clouds and not streaks
   glow-test.mjs                       browser check that the glow of entry is a glow from the chase view at 5, 9 and 20 m and from inside its box: no straight-edged step in what it adds, at 1280 and 390, in both looks
   night-test.mjs                      browser check of the sites by night: stills, the light through dusk and dawn without a jump, and the eye walking off a floodlit apron and back
   winds-test.mjs                      browser check that the wind drawn (the plants, the low cloud's drift, the sea's waves) follows a flight's hours with the clock, and is the record's at liftoff

@@ -53,7 +53,7 @@ pnpm test:places      # needs `pnpm dev` running: going between a flight's place
 pnpm test:separation  # needs `pnpm dev` running: released spacecraft hardware moves apart in the rendered flight
 pnpm test:fires       # needs `pnpm dev` running: every engine burning on the record's flight has its fire, hung where it should be
 pnpm test:chute       # needs `pnpm dev` running: a parachute's lines drawn over the land, the sea and the cloud behind them, both looks, 1280 and 390
-pnpm test:clouds      # needs `pnpm dev` running: the clouds stand in the air, not round the eye: a camera flown up through each flight's layers at a vehicle's speed, both looks
+pnpm test:clouds      # needs `pnpm dev` running: the clouds stand in the air, not round the eye: a camera flown up through each flight's layers at a vehicle's speed, both looks; and far from the site, from orbit round the Earth, they are clouds and not streaks
 pnpm test:glow        # needs `pnpm dev` running: the glow of entry from the chase view at 5, 9 and 20 m and inside its box, no box edge, both looks, 1280 and 390
 pnpm test:winds       # needs `pnpm dev` running: the wind drawn follows each flight's hours with the clock, the record's at liftoff
 pnpm test:history     # needs `pnpm dev` running: Back and Forward between the front page, flights and places, with real clicks

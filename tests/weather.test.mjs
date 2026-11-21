@@ -10,6 +10,9 @@ import {
   deckCutAt,
   deckPatchGlsl,
   deckTex,
+  FAR_SIDE,
+  farWeatherAt,
+  farWeatherFaces,
   heldDistance,
   highOf,
   landShare,
@@ -22,6 +25,7 @@ import {
   weatherGlsl,
 } from '../src/viewer/weather.ts';
 import { aloftAt } from '../src/world/aloft.ts';
+import { EARTH_SPHERE } from '../src/world/bodies.ts';
 import { ecefToSite, geodeticToEcef, siteFrame } from '../src/world/frames.ts';
 
 const sea = { shore: -40, height: -3000 };
@@ -334,10 +338,84 @@ test('a day is written into the shaders: Freedom 7’s are the text they were be
   // a shader the day does not have it in.)
   const day = dayOf(mr3);
   assert.equal(highOf(day), null);
-  assert.equal(compiled(weatherGlsl(day)), 'b96b0f54d3e47520b08f59640c3714ab963df64188690e5a9b859a501e7f2b1a');
-  assert.equal(compiled(sheetsGlsl('over_', day)), '55dd7fc13487037523d5ebe55b72b57225ce2595bf4331fa8bb2f7e679cbc69c');
+  // (Pinned again when the clouds' plane went with the eye, cloudframe.ts: the map's reader finds the place's own x and
+  // z from the site (`siteAt`) and reads the far weather past the map, and the sheets take their distances from the
+  // site through it (`fromSite`). While the eye is near the site each gives what the old text gave: the turn is
+  // nothing and the roll nought. The deck's shadow is the text it was.)
+  assert.equal(compiled(weatherGlsl(day)), 'c40a114d95ea703e712deb5579d2fa1288b04b2e33ffc42b554b5c470ba1cd1a');
+  assert.equal(compiled(sheetsGlsl('over_', day)), '40f36eda866a8db4c3706e97c6807c693fa8b42cbbf0f19831ff6ae194552f48');
   assert.equal(compiled(deckPatchGlsl('air_', day.deck.height)), 'f7d193bec08bb41d2786139ec6daeb3b627c1589dbb85f6ccfdc3eba03805902');
   for (const text of [weatherGlsl(day), sheetsGlsl('over_', day)]) assert.doesNotMatch(text, /veil|highCoverAt|highAt/);
+});
+
+test('past the site’s map the weather is the far weather’s: cloud cover anywhere on the Earth, a day’s own, with no edge', () => {
+  let cumulus = 0,
+    cirrus = 0,
+    deck = 0,
+    n = 0,
+    differ = 0,
+    rough = 0;
+  const day = mapDayOf(dayOf(mr4));
+  for (let i = 0; i < 4000; i++) {
+    // (places all over the sphere: a golden spiral)
+    const y = 1 - (2 * (i + 0.5)) / 4000,
+      r = Math.sqrt(1 - y * y),
+      a = i * 2.399963;
+    const w = farWeatherAt(r * Math.cos(a), y, r * Math.sin(a));
+    for (const v of [w.cumulus, w.cirrus, w.deck]) assert.ok(v >= 0 && v <= 1 && Number.isFinite(v));
+    assert.ok(w.cumulus <= MOST);
+    // (the same along the way there, however long: it is read by direction)
+    const further = farWeatherAt(7 * r * Math.cos(a), 7 * y, 7 * r * Math.sin(a));
+    assert.ok(
+      Math.abs(further.cumulus - w.cumulus) < 1e-9 && Math.abs(further.cirrus - w.cirrus) < 1e-9 && Math.abs(further.deck - w.deck) < 1e-9,
+    );
+    // (and smooth: 19 km on, nearly the same weather, on the whole)
+    const on = farWeatherAt(r * Math.cos(a) + 0.003, y, r * Math.sin(a));
+    rough += Math.abs(on.cumulus - w.cumulus) + Math.abs(on.cirrus - w.cirrus) + Math.abs(on.deck - w.deck);
+    if (Math.abs(farWeatherAt(r * Math.cos(a), y, r * Math.sin(a), day).cumulus - w.cumulus) > 0.02) differ++;
+    cumulus += w.cumulus;
+    cirrus += w.cirrus;
+    deck += w.deck;
+    n++;
+  }
+  // (some of each over the Earth, and mostly clear: estimated, and held so that a change to it is seen)
+  assert.ok(cumulus / n > 0.03 && cumulus / n < 0.4, `cumulus ${cumulus / n}`);
+  assert.ok(cirrus / n > 0.02 && cirrus / n < 0.4, `cirrus ${cirrus / n}`);
+  assert.ok(deck / n > 0.01 && deck / n < 0.3, `deck ${deck / n}`);
+  assert.ok(differ > 1000, `another day's is another weather: ${differ} of 4000 places`);
+  // (no rougher than the site's own map it continues: the same three covers 19 km apart over the open sea, at places
+  // spread over the map's 2,000 km. Not a bound at every place: a front's flank changes by a third in that step, as
+  // the map's own do by more)
+  let mapRough = 0;
+  for (let i = 0; i < 4000; i++) {
+    const a = i * 2.399963,
+      d = 2_000_000 * Math.sqrt((i + 0.5) / 4000);
+    const here = weatherAt(d * Math.cos(a), d * Math.sin(a), sea),
+      on = weatherAt(d * Math.cos(a) + 0.003 * EARTH_SPHERE, d * Math.sin(a), sea);
+    mapRough += Math.abs(on.cumulus - here.cumulus) + Math.abs(on.cirrus - here.cirrus) + Math.abs(on.deck - here.deck);
+  }
+  assert.ok(
+    rough / n < mapRough / 4000,
+    `19 km on, the three covers change by ${rough / n} together on the mean; the map's by ${mapRough / 4000}`,
+  );
+  // its cube: six faces, each texel the weather along the way to it, the same along an edge two faces share
+  const making = farWeatherFaces(undefined, 8);
+  let made = making.next();
+  while (!made.done) made = making.next();
+  const faces = made.value;
+  assert.equal(faces.length, 6);
+  for (const face of faces) assert.equal(face.length, 8 * 8 * 4);
+  const first = farWeatherAt(1, 1 - 1 / 8, 1 - 1 / 8); // (+X's first texel: toward -z along its columns, -y down its rows)
+  assert.deepEqual(
+    [...faces[0].slice(0, 3)],
+    [first.cumulus, first.cirrus, first.deck].map((v) => Math.round(255 * v)),
+  );
+  assert.equal(FAR_SIDE, 128);
+  // and the shaders read the map at the place's own x and z from the site, wherever the clouds' plane has been rolled to
+  const text = weatherGlsl(dayOf(mr3));
+  assert.match(text, /vec3 s = siteAt\(xz\);/);
+  assert.match(text, /textureLod\(tWeatherFar, s, 0\.0\)/);
+  assert.match(text, /s\.y < 0\.0 \? 0\.0 :/);
 });
 
 test('and a day with high cloud in its record has it in them: Liberty Bell 7’s veil, Vostok 1’s cirrus', () => {
@@ -350,7 +428,7 @@ test('and a day with high cloud in its record has it in them: Liberty Bell 7’s
   // the Sun, the deck at its own height and cover that day
   assert.match(
     sheets,
-    /float highCoverAt\(vec3 w, vec2 xz\) \{ return mix\(1\.000, w\.g, smoothstep\(59548\.5, 89322\.7, length\(xz\)\)\); \}/,
+    /float highCoverAt\(vec3 w, vec2 xz\) \{ return mix\(1\.000, w\.g, smoothstep\(59548\.5, 89322\.7, fromSite\(xz\)\)\); \}/,
   );
   assert.match(sheets, /float veilShade\(float cover, float mu\) \{ return exp\(-0\.2000 \* cover \/ max\(mu, 0\.08\)\); \}/);
   assert.match(sheets, /float veilAt\(/);
