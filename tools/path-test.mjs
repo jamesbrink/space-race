@@ -1816,6 +1816,26 @@ class Run {
           otherMarks: [...p.others.values()].filter((o) => !o.mark.el.classList.contains('gone')).length,
           limb: p.limbMesh.visible,
           flown: p.drawn.flownOpacity,
+          // (how far the Earth turns before it comes down, radians, or null; how far from the Earth's centre it reaches, m;
+          // the bodies it passes; and each other body the map marks: whether it is shown, how far its marker is from its
+          // place, and whether its way to the passing and its outline there are drawn)
+          turned: shown?.result.impact ? 7.292115e-5 * (shown.result.impact.t - shown.result.from) : null,
+          top: shown ? Math.max(...shown.result.points.map((q) => Math.hypot(q.r[0], q.r[1], q.r[2]))) : 0,
+          passes: shown?.result.passes.map((x) => ({ body: x.body, t: x.t, height: x.height, strikes: x.strikes })) ?? [],
+          passMarks: p.marks.filter((x) => x.kind === 'pass').length,
+          refFrame: p.refMesh.visible ? p.drawnRef.frame : null,
+          bodies: p.heavens.map((h) => {
+            const [x, y] = px(h.mark.at.x, h.mark.at.y, h.mark.at.z);
+            return {
+              name: h.body.name,
+              shown: !h.mark.off,
+              gone: h.mark.el.classList.contains('gone'),
+              off: Math.hypot(h.mark.ex - rect.left - x, h.mark.ey - rect.top - y),
+              disc: h.discMesh.visible ? h.disc.n : 0,
+              meet: h.meetMesh.visible ? h.meet.n : 0,
+              way: h.wayMesh.visible ? h.way.n : 0,
+            };
+          }),
         };
         // and out again: the chase view, and the path as its switch has it
         st.frozen = false;
@@ -1858,6 +1878,29 @@ class Run {
         this.fail(
           where,
           `the orbit is not drawn whole: ${m.round.toFixed(3)} of a revolution, its end ${(m.closes / 1000).toFixed(0)} km from the vehicle`,
+        );
+    }
+    // (the frame is the path's own: only one that comes down before the Earth has turned an eighth of a turn under it is
+    // drawn over the ground on the map; a path that goes to the Moon drawn so is wound round the Earth once a day)
+    if (m.frame !== 'orbit' && !(m.turned !== null && m.turned <= Math.PI / 4))
+      this.fail(
+        where,
+        `a path that ${m.turned === null ? 'does not come down' : `comes down ${(m.turned / 7.292115e-5 / 3600).toFixed(1)} h from now`}, reaching ${(m.top / 1000).toFixed(0)} km from the Earth's centre, is drawn on the map over the turning Earth`,
+      );
+    if (m.refFrame && m.refFrame !== m.frame) this.fail(where, `the record's line is drawn in ${m.refFrame}, the path in ${m.frame}`);
+    for (const pass of m.passes) {
+      const body = m.bodies.find((b) => b.name === pass.body);
+      this.log(`  ${where}: passes the ${pass.body} at T+${pass.t.toFixed(0)}, ${(pass.height / 1000).toFixed(0)} km over it`);
+      if (!m.passMarks) this.fail(where, `the path passes the ${pass.body} and its line has no mark of it`);
+      if (!body?.shown || body.gone || !(body.off <= OFF))
+        this.fail(
+          where,
+          `the path passes the ${pass.body}, which is ${body ? (body.shown ? `marked ${body.off.toFixed(1)} px off its place` : 'not marked') : 'not on the map'}`,
+        );
+      else if (!(body.disc > 2 && body.meet > 2 && body.way > 1))
+        this.fail(
+          where,
+          `the ${pass.body} on the map lacks its outline (${body.disc}), its outline where the path passes it (${body.meet}) or its way there (${body.way})`,
         );
     }
     if (m.otherLines !== m.others || m.otherMarks < m.others)

@@ -30,7 +30,7 @@ import { skyOf } from '../sim/air.ts';
 import { handRange } from '../sim/lever.ts';
 import { targetAt } from '../sim/orbital-target.ts';
 import { type AbortMode, abortAt, clockAt, eventOf, type FlightPlan, flownByHand, type TowerEscape } from '../sim/plan.ts';
-import { type Predictor, propagate } from '../sim/predict.ts';
+import { type Predictor, propagate, reaches } from '../sim/predict.ts';
 import { due, onRails } from '../sim/rails.ts';
 import { aboutAxis, conjugate, multiply, normalize, type Quat, turn } from '../sim/rigid.ts';
 import {
@@ -116,7 +116,7 @@ import {
 } from './deck.ts';
 import type { NavSample } from './navball.ts';
 import { pack } from './tape.ts';
-import { termsOf } from '../sim/core/gravity.ts';
+import { type Passed, termsOf } from '../sim/core/gravity.ts';
 
 /**
  * The flight deck's kind for a flight into orbit (an orbital plan whose ascent is flown on a steering law): the deck
@@ -480,6 +480,13 @@ export class OrbitDeck extends Deck {
       options,
     );
   }
+  /** The other bodies the plan's gravity names that a path can pass (sim/core/gravity.ts `Passed`: the Moon), made once. */
+  private pulling(): readonly Passed[] {
+    this.pulls ??= termsOf(this.flight.plan?.gravity, this.frame).flatMap((term) => (term.body ? [term.body] : []));
+    return this.pulls;
+  }
+  private pulls: readonly Passed[] | null = null;
+
   /**
    * How the spacecraft of `plan` goes on down from the height the pilot leaves at (sim/fliers.ts `descending`): the descent
    * module the run on show follows, with what the hands gave; `begun`, from the run's own state of it (a prediction made
@@ -2678,9 +2685,12 @@ export class OrbitDeck extends Deck {
     set('climb', (t > 0 && !down ? s.groundSpeed * Math.sin(s.groundClimb * DEG) : 0).toFixed(0));
     set('g', t > 0 && !down ? s.g.toFixed(2) : '1.00'); // (on the pad it stands on the launch system, and on the ground: one g)
     set('mach', down ? '0.00' : s.mach.toFixed(2));
-    set('apogee', orbit ? ((el.a * (1 + el.e) - ball) / KM).toFixed(0) : '—');
+    // (an ellipse that reaches the Moon's sphere, or past what the Earth holds, is not what it will do: its far end names
+    // what it meets instead of a height it never comes to, and it has no period; the path, J and M, flies what happens)
+    const meets = orbit ? reaches(s.r, s.v, t, this.pulling()) : null;
+    set('apogee', !orbit || meets === 'escape' ? '—' : (meets ?? ((el.a * (1 + el.e) - ball) / KM).toFixed(0)));
     set('perigee', orbit ? ((el.a * (1 - el.e) - ball) / KM).toFixed(0) : '—');
-    set('period', orbit && el.a > ball ? (period(el.a) / 60).toFixed(1) : '—');
+    set('period', orbit && !meets && el.a > ball ? (period(el.a) / 60).toFixed(1) : '—');
     if (this.flight.flies?.target) {
       const target = targetAt(this.flight, this.run, t);
       const delta = target && sub(target.r, s.r);

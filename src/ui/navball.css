@@ -98,6 +98,12 @@
 .path-other > i { left: -4px; top: -4px; width: 8px; height: 8px; rotate: none; border-radius: 50%; background: rgba(10, 11, 14, 0.7); border: 1.5px solid #9cc9e6; }
 .path-other b { color: #9cc9e6; font-weight: 400; }
 .path-chip.path-craft, .path-chip.path-other { display: none; }
+/* another body on the map (the Moon) and where the path passes it: the pale grey of its line (path.ts moonGrey) */
+.path-body > i { left: -5px; top: -5px; width: 10px; height: 10px; rotate: none; border-radius: 50%; background: rgba(10, 11, 14, 0.7); border: 1.5px solid #d9d6cc; }
+.path-body b { color: #d9d6cc; font-weight: 400; }
+.path-chip.path-body { display: none; }
+.path-pass > i { background: #d9d6cc; }
+.path-pass b, .path-chip.path-pass b { color: #d9d6cc; }
 /* the record's own events, on its line: a small open diamond and thin words in that line's magenta (path.ts `plan`), quieter than anything of the prediction's; never a chip */
 .path-ref > i { left: -3.5px; top: -3.5px; width: 7px; height: 7px; background: rgba(10, 11, 14, 0.7); border: 1.5px solid #f08bd2; }
 .path-ref b { color: #f08bd2; font-weight: 400; }
