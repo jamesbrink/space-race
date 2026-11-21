@@ -188,7 +188,8 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   the head stops at whatever is over it (`jump`, `bump`). The legs' push is the same anywhere, so where less pulls it goes
   higher: what falls falls by the body underfoot (`Walker.gravity`, `Ragdoll.gravity`, `Carry.gravity`, `Hose.gravity`,
   set from `OnFootHost.gravity`: world/bodies.ts `gravityOn(bodyOf(site.body))`; G0 where the host does not say), and
-  on the Moon the hop is 2.4 m. The gait, the stride and the stairs are not told it: walking is not retuned.
+  on the Moon the hop is 2.4 m (the flight stood at its landing site: app/surface.ts; `pnpm test:lunar` holds the hop to
+  2.42 m within 0.2). The gait, the stride and the stairs are not told it: walking is not retuned.
 - **Plants are walked round.** They are instances the `Solids` never see, so the body asks the setting
   (`WalkHost.plantsOut`, `Setting.plantsOut`, `Flora.out`): after each stride it is moved out of any
   leaf mass taller than 0.9 m (a column as wide as the plant's leaves reach, plus `LEAF_CLEAR`), and a

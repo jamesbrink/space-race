@@ -468,6 +468,6 @@ export const flight: Flight = {
       terminalConfidence: 'documented',
       terminalSource: 'AS-506 Flight Evaluation Report §3.6.2(a) and table 4-1. Apollo 11 Press Kit, Mobile Launcher.',
     }),
-    ...lc39Crew(['Armstrong', 'Collins', 'Aldrin'], true),
+    ...lc39Crew(['Armstrong', 'Collins', 'Aldrin'], true, [], true),
   ],
 };

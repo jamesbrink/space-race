@@ -16,6 +16,8 @@ export interface Landing {
   stereo: string[];
   centre: Measure;
   approach: Measure;
+  /** When its LM touched down, UTC (ISO 8601), and from what. */
+  landed: { at: string; source: string };
 }
 
 /**
@@ -58,6 +60,7 @@ export function landingSite(l: Landing): LunarSiteDef {
     stereo: l.stereo,
     centre: l.centre,
     approach: l.approach,
+    landed: l.landed,
   };
 }
 

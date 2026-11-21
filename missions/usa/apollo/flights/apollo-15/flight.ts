@@ -152,25 +152,30 @@ export const flight: Flight = {
       terminalSource:
         'Saturn V Flight Manual SA-510, figure 8-20 (nominal terminal sequence). AS-510 Flight Evaluation Report, tables 2-1 and 2-2 and §3.6.1 (first motion and mast strokes).',
     }),
-    ...lc39Crew(['Scott', 'Worden', 'Irwin'], true, [
-      {
-        url: 'models/usa/apollo/apollo-15/crew.glb',
-        scale: 'Scott · 6 ft · A7LB EV',
-        torso: 'The commander’s garment has six chest connectors, a side-entry closure and a flexible waist for sitting on the rover.',
-      },
-      {
-        url: 'models/usa/apollo/apollo-15/pilot.glb',
-        scale: 'Worden · 5 ft 10½ in · A7LB CMP',
-        torso:
-          'Worden’s rear-entry garment has three chest connectors. He wore it outside Endeavour to retrieve film on the return flight.',
-      },
-      {
-        url: 'models/usa/apollo/apollo-15/lmp.glb',
-        scale: 'Irwin · 5 ft 8 in · A7LB EV',
-        torso:
-          'The lunar module pilot’s garment has six chest connectors, a side-entry closure and a flexible waist for sitting on the rover.',
-      },
-    ]),
+    ...lc39Crew(
+      ['Scott', 'Worden', 'Irwin'],
+      true,
+      [
+        {
+          url: 'models/usa/apollo/apollo-15/crew.glb',
+          scale: 'Scott · 6 ft · A7LB EV',
+          torso: 'The commander’s garment has six chest connectors, a side-entry closure and a flexible waist for sitting on the rover.',
+        },
+        {
+          url: 'models/usa/apollo/apollo-15/pilot.glb',
+          scale: 'Worden · 5 ft 10½ in · A7LB CMP',
+          torso:
+            'Worden’s rear-entry garment has three chest connectors. He wore it outside Endeavour to retrieve film on the return flight.',
+        },
+        {
+          url: 'models/usa/apollo/apollo-15/lmp.glb',
+          scale: 'Irwin · 5 ft 8 in · A7LB EV',
+          torso:
+            'The lunar module pilot’s garment has six chest connectors, a side-entry closure and a flexible waist for sitting on the rover.',
+        },
+      ],
+      true,
+    ),
     roverModel(15),
   ],
 };

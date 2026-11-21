@@ -64,6 +64,11 @@ export interface LunarSiteDef {
   centre: Measure;
   /** The descent's ground track at the LM: the heading it was flown on there, degrees clockwise from north. The descent strip lies along it. */
   approach: Measure;
+  /**
+   * When its LM touched down, UTC (ISO 8601), and from what: the hour the Earth's cloud in its sky is baked for
+   * (tools/front-earth.mjs `--lunar`: public/lunar/<id>.earth.day.jpg).
+   */
+  landed: { at: string; source: string };
 }
 
 /**

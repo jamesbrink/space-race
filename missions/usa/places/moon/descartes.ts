@@ -28,4 +28,9 @@ export const DESCARTES = landingSite({
       'the great circle from powered descent initiation, 8 deg 40 min S 32 deg 44 min E (Apollo 16 Mission Report, MSC-07230, table 3-III (trajectory parameters); 516 km uprange), to the LM, ' +
       'its heading at the LM',
   },
+  landed: {
+    at: '1972-04-21T02:23:35Z',
+    source:
+      'Apollo 16 Mission Report, MSC-07230, table 3-I (sequence of events): landing at 104:29:35 GET from liftoff at 17:54:00 GMT, 16 April 1972 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+  },
 });

@@ -1273,8 +1273,47 @@ ground under a spacecraft 15 km over a landing site. What keeps it right:
 What is simplified: only the six landing sites have maps finer than the whole Moon's 5.3 km a texel, so most of the Moon,
 the far side among it, is soft from low orbit and has no made craters; away from a site's apron the near plane and the eye
 are kept over the Moon's highest ground, not the ground under them; it casts no shadow on the vehicle (its eclipse dims the
-Sun's light at the eye instead); the page loads no DE440 today, so it and the flight's gravity are both Meeus's (world.md).
+Sun's light at the eye instead). The page loads DE440 before a flight whose gravity names the Moon (app/main.ts:
+`wantsEphemeris`), so it and the flight's gravity are both DE440's (world.md, "Who asks").
 To look at it: `sr.stage.moonPose(latitude, longitude, height, azimuth, elevation)` after setting the clock.
+
+## The Moon as a place
+
+Once a run is on the Moon's surface the stage stands at the landing site, in the lunar setting
+(`viewer/lunar/setting.ts`, BackdropKind `moon`): the flight is loaded again there as another flight would be
+(app/surface.ts `lunarStay`: the LM where a model of it landed has been built, the crew who went out; `Stage.load`), and
+the pad's place again at lift-off. The surface is a phase of Fly, not a fourth place. Until the LM lands in a run it is
+asked for by hand: `sr.onMoon(site, seconds)`, `sr.offMoon()`. What keeps it right:
+
+- **Three grounds, each where it is the best there is.** Near at hand the nested grids of LROC's stereo
+  (`viewer/lunar/ground.ts` `LunarNear`: 2 m a square round the LM, out to 32.8 km), as meshes that take the Sun's
+  shadows and are walked and driven on (`Setting.groundAt`); past them, for the horizon, the whole Moon (`MoonBody` in its
+  flight mode with the site's finest map, held as `Setting.selfDrawn`: it draws itself in both looks), undrawn over the
+  grids' square (`MoonBody.hole`) with the seam under a skirt hung 400 m from the grids' edge. From a mare the horizon is
+  two or three kilometres off and all of it is the grids'; the massifs round Hadley and Taurus-Littrow beyond 33 km are the
+  whole Moon's.
+- **The sky is the front page's.** The Sun, the Earth and the stars are where world/moonsky.ts `skyAt` has them from the
+  site at the clock's instant: the Sun's disc at its size (`OrbitBackdrop`), the Earth the front page's ball
+  (`viewer/farearth.ts`) turned to the hour with its phase, its cloud ERA5's at the hour the LM landed
+  (public/lunar/<site>.earth.day.jpg, `pnpm lunar:earth`), the stars those an eye adapted to the sunlit ground sees
+  (`limitUnder`, the front page's rule).
+- **Light never steps.** Everything is a smooth function of the instant, worked out whenever the clock moves: the Sun's
+  light by the share of its disc over the level horizon (`light.ts` `disc`), the light the sunlit ground throws into a
+  shadow as `environmentIntensity` over one bake of a black sky above ground of one radiance (made once: it does not
+  change with the Sun's place), the exposure by the square root of how much darker the sunlit regolith is than the Earth's
+  land by day (`exposureFor`, estimated, up to the night's eight times). `pnpm test:lunar` puts the clock through a
+  site's sunrise and the day after its landing and holds every step of the picture's brightness under 3 levels or 8 per cent.
+- **Its depth.** The near plane is the eye's height over the grids as on the Earth's ground; the far plane takes in 300 km
+  (`horizon`), so a peak beyond the grids is seen over the horizon. The grids' levels lie in holes of each other and the
+  whole Moon in a hole of them: no two surfaces share a place.
+- **The rover's gallery scene is the same setting with a state of its own** (`viewer/lunar-driving-ground.ts`, ui/rover.ts:
+  its own scene and passes, the instant the rover-site table gives), so the two share code and nothing else (gallery.md).
+
+What is simplified: the near ground is lit as a matte surface of one colour (the far body has the Moon's own photometry:
+moonground.ts `LIGHT_GLSL`), its albedo set a little above the Moon's normal one for that (ground.ts `SOIL`, estimated); the
+light thrown into a shadow is level ground's, not the slopes' round it; the Earth's cloud is one hour's for the whole stay;
+before sunrise the earthlit ground is near black (the eye opens no further than the night's eight times); the LM stands on
+the plane its pads were measured on, not on the grids under each pad.
 
 ## The front page's picture
 

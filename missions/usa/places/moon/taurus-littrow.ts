@@ -27,4 +27,9 @@ export const TAURUS_LITTROW = landingSite({
     source:
       'the great circle from powered descent initiation, 19.13 N 48.75 E (Apollo 17 Mission Report, JSC-07904, table 3-III (trajectory parameters); 514 km uprange), to the LM, its heading at the LM',
   },
+  landed: {
+    at: '1972-12-11T19:54:58Z',
+    source:
+      'Apollo 17 Mission Report, JSC-07904, table 3-I (sequence of events): landing at 110:21:58 GET from liftoff at 05:33:00 GMT, 7 December 1972 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+  },
 });

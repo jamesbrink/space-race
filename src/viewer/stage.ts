@@ -6,6 +6,8 @@ import { targetNodes } from '../app/address.ts';
 import { readingFor } from '../sim/mechanism.ts';
 import type { Flight as FlightData, ModelDef } from '../types.ts';
 import { bodyOf, EARTH_SPHERE, gravityOn } from '../world/bodies.ts';
+import { loadEphemeris } from '../world/ephemeris.ts';
+import { lunarGround, lunarSiteOf } from './lunar/ground.ts';
 import type { Clock } from '../world/clock.ts';
 import { siteFrame, type Vec3 } from '../world/frames.ts';
 import { sliderAt, timeAt } from '../world/sequence.ts';
@@ -788,6 +790,8 @@ export class Stage {
     const parts: LoadPart[] = flight.models.map((m) => ({ label: m.name, fraction: 0, loaded: 0, total: 0 }));
     // (only where there is a site for them to fly at: the gallery has none)
     const recovery = flight.site ? (flight.recovery ?? []) : [];
+    // (on the Moon: the site's ground before its setting is built, and DE440 for the Sun and the Earth over it: lunar/setting.ts)
+    const lunar = lunarSiteOf(flight.site);
     const [craftScenes, scenes] = await Promise.all([
       Promise.all(recovery.map((r) => this.fetch(r.url))),
       Promise.all(
@@ -805,6 +809,7 @@ export class Stage {
           ),
         ),
       ),
+      lunar ? Promise.all([lunarGround(lunar), loadEphemeris()]) : null,
     ]);
     if (token !== this.loads) return;
     if (this.root) this.scene.remove(this.root);
@@ -812,6 +817,7 @@ export class Stage {
     for (const o of this.setting.scenery) this.scene.remove(o);
     if (this.setting.globe) this.scene.remove(this.setting.globe.group);
     if (this.setting.moon) this.scene.remove(this.setting.moon.group);
+    for (const o of this.setting.selfDrawn ?? []) this.scene.remove(o);
     // (another flight than the one on show: what is the last one's alone is let go, and every piece forgets it)
     if (this.root) this.forget();
     this.releaseModels(flight);
@@ -1260,6 +1266,7 @@ export class Stage {
     }
     // (the Moon draws itself in both looks: the setting tells it which, Setting.simplify)
     if (s.moon) this.scene.add(s.moon.group);
+    for (const o of s.selfDrawn ?? []) this.scene.add(o);
     this.scene.fog = s.fog;
     this.pipe.clouds.setAir(s.air?.air ?? null, s.weather ?? null, s.globe && ((eye) => s.globe!.altitude(eye)));
     this.renderer.shadowMap.needsUpdate = true;

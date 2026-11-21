@@ -1,13 +1,14 @@
-import { DEEP, GLINT_GLSL, ICE, LAND, seaSlopes, WATER_GLSL } from '../../viewer/earth-surface.ts';
+import { DEEP, GLINT_GLSL, ICE, LAND, seaSlopes, WATER_GLSL } from './earth-surface.ts';
 import * as THREE from 'three';
-import { ATMOSPHERE_GLSL, TOP, type atmosphereUniforms } from '../../viewer/atmosphere.ts';
-import { vec3 } from '../../viewer/glsl.ts';
-import { EARTH } from '../../world/bodies.ts';
-import type { Mat3, Vec3 } from '../../world/frames.ts';
-import { RELIEF_GLSL } from '../../world/relief.ts';
+import { ATMOSPHERE_GLSL, TOP, type atmosphereUniforms } from './atmosphere.ts';
+import { vec3 } from './glsl.ts';
+import { EARTH } from '../world/bodies.ts';
+import type { Mat3, Vec3 } from '../world/frames.ts';
+import { RELIEF_GLSL } from '../world/relief.ts';
 
 /**
- * The Earth from the Moon: the whole of it, 1.9 degrees across, as one ball.
+ * The Earth from the Moon: the whole of it, 1.9 degrees across, as one ball: the front page's (app/front/scene.ts)
+ * and the one in the sky of the lunar setting (viewer/lunar/setting.ts).
  *
  * It is the same Earth the globe draws under a flight (viewer/globe.ts), at the size 370,000 km
  * needs: the globe's own maps baked small (tools/front-earth.mjs: the land's and the ice's shores,
@@ -38,6 +39,12 @@ import { RELIEF_GLSL } from '../../world/relief.ts';
  * wind and this Earth, which has no station's day, from a fair 7 m/s.
  */
 const SEA_SLOPES = seaSlopes(7);
+/**
+ * The haze over the whole Earth, for its own tables of the air (atmosphere.ts `makeAtmosphere`): what it takes from a beam
+ * at the sea, per metre, and the height it thins by e over. An optical depth of 0.12 straight up, about the world's mean at
+ * 550 nm: estimated (for 1961, more so).
+ */
+export const FAR_HAZE = { extinction: 8e-5, scale: 1500 };
 /** The Earth's figure, metres: the one body (world/bodies.ts `EARTH`) the globe under a flight is drawn on too (viewer/globemesh.ts). */
 const A = EARTH.equatorialRadius.value;
 const B = EARTH.polarRadius.value;
@@ -177,9 +184,11 @@ export class FarEarth {
 
   /**
    * `air`: this scene's own tables of the air (atmosphere.ts: ownAtmosphere, made by makeAtmosphere). `base`: where
-   * the page's files are. `lighter`: the colours at half size each way (tier.ts).
+   * the page's files are. `lighter`: the colours at half size each way (tier.ts). `day`: the day's cloud, sea ice and
+   * snow (tools/front-earth.mjs), the front page's own unless another is given; null where none has been baked for the
+   * instant shown, and then the Earth has no cloud on it.
    */
-  constructor(air: typeof atmosphereUniforms, base: string, lighter: boolean) {
+  constructor(air: typeof atmosphereUniforms, base: string, lighter: boolean, day: string | null = `${base}front/earth.day.jpg`) {
     this.uniforms = {
       uEye: { value: new THREE.Vector3() },
       uSun: { value: new THREE.Vector3(1, 0, 0) },
@@ -216,7 +225,7 @@ export class FarEarth {
     this.mesh.frustumCulled = false;
     this.mesh.scale.set(A + TOP, A + TOP, (A + TOP) * (B / A));
     this.mesh.renderOrder = 1;
-    void this.load(base, lighter);
+    void this.load(base, lighter, day);
   }
 
   private keep<T extends THREE.Texture>(texture: T): T {
@@ -225,7 +234,7 @@ export class FarEarth {
   }
 
   /** The maps, the surface first: each is shown when it is in, and comes up over a second. */
-  private async load(base: string, lighter: boolean): Promise<void> {
+  private async load(base: string, lighter: boolean, day: string | null): Promise<void> {
     const put = (name: string, texture: THREE.CubeTexture): void => {
       if (this.gone) return void texture.dispose();
       (this.uniforms[name]!.value as THREE.Texture).dispose();
@@ -238,7 +247,11 @@ export class FarEarth {
     put('tSurface', surface);
     put('tColour', colour);
     this.surfacedAt = performance.now();
-    put('tDay', await cube(`${base}front/earth.day.jpg`, null, false));
+    if (!day) return;
+    // (where none has been baked the Earth has no cloud on it, as with none asked for)
+    const got = await cube(day, null, false).catch(() => null);
+    if (!got) return;
+    put('tDay', got);
     this.dayAt = performance.now();
   }
 

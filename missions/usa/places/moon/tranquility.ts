@@ -28,4 +28,9 @@ export const TRANQUILITY = landingSite({
       'the great circle from powered descent initiation, 1.02 N 39.39 E (Apollo 11 Mission Report, MSC-00171, table 7-II (trajectory parameters); 483 km uprange), to the LM, its heading at the LM. ' +
       'The report’s positions are in the selenographic frame of 1969, some 1.2 km from the mean Earth frame at the site: 0.15 degrees here',
   },
+  landed: {
+    at: '1969-07-20T20:17:40Z',
+    source:
+      'Apollo 11 Mission Report, MSC-00171, table 3-I (sequence of events): landing at 102:45:39.9 GET from liftoff at 13:32:00 GMT, 16 July 1969 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+  },
 });

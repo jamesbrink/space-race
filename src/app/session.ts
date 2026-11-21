@@ -43,6 +43,8 @@ import { SiteWorld, solidModels, solidUrl } from '../sim/siteworld.ts';
 import { decodeSolids, type SolidModel } from '../sim/solids.ts';
 import { ecefToSite, siteFrame, siteToEcefDirection } from '../world/frames.ts';
 import { prefs } from './prefs.ts';
+import { lunarStay } from './surface.ts';
+import type { LunarSite } from '../world/lunar-terrain.ts';
 
 /** A flight's page, as `open` gives it: what it shows, how to follow the address within it, and how to let it go. */
 export interface Session {
@@ -408,6 +410,57 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     go('gallery');
     return true;
   };
+
+  /**
+   * The run on the Moon's surface (Architecture 9: the surface is a phase of Fly, not a fourth place): the stage leaves
+   * the flight's pad for a landing site, as it would for another flight (Stage.load: app/surface.ts `lunarStay`, in the
+   * lunar setting, the Sun where the mission's clock has it), and comes back to the pad's place at lift-off
+   * (`surface(null)`). Until the LM lands in a run (the descent, A5 and A6), it is asked for by hand: `sr.onMoon(site, at)`,
+   * at seconds of the mission's clock. On foot there the crew walk by the Moon's gravity (Stage.load: `gravityOn`).
+   */
+  let onMoon: LunarSite | null = null;
+  /** Whether the path was drawn when the stage went to the Moon: it is again when it comes back. */
+  let pathWas = false;
+  async function surface(site: LunarSite | null, at?: number): Promise<boolean> {
+    if (!ready || site === onMoon) return false;
+    if (stage.walk.active) stage.onFoot.exitWalk();
+    if (demo.active) demo.stop(true);
+    if (at !== undefined) clock.seek(at);
+    const shown = site ? await lunarStay(flight, site) : flight;
+    if (gone) return false;
+    ready = false;
+    ui.loading(site ? shown.site.name : flight.callsign);
+    stage.veiled = true;
+    const said = follow(
+      ui.curtain,
+      shown.models.map((m) => m.name),
+      {
+        place: { label: site ? 'The landing site’s ground' : 'The place round the pad', share: 0.15 },
+        clouds: { label: 'Clouds', share: 0.2 },
+        shaders: { label: 'Compiling shaders', share: 0.25 },
+        settle: { label: 'Warming up', share: 0.05 },
+      },
+    );
+    try {
+      await stage.load(shown, (f, parts) => said.arrive(f, parts));
+      if (gone) return false;
+      said.arrive(1);
+      const onMoonWas = onMoon;
+      onMoon = site;
+      // (the flight's path is drawn about the Earth: not over the Moon's ground)
+      if (site && !onMoonWas) pathWas = path.showing;
+      path.show(site ? false : pathWas, false);
+      stage.section(site ? shown.models[0]!.id : current.id, true);
+      await stage.warm(undefined, (step, f) => said.step(step, f));
+      if (gone) return false;
+      said.end();
+      ui.loaded();
+      return true;
+    } finally {
+      ready = true;
+      stage.veiled = false;
+    }
+  }
 
   /** Fetch the flight's models and open on a section. */
   async function start(id: string, fly = false): Promise<void> {
@@ -1116,6 +1169,11 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     effects,
     get gallery() {
       return gallery;
+    },
+    onMoon: (site, at) => surface(site, at),
+    offMoon: () => surface(null),
+    get moon() {
+      return onMoon;
     },
   });
 

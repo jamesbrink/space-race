@@ -132,6 +132,15 @@ export function thirdOf(
   return terms.length ? fieldOf(terms) : null;
 }
 
+/**
+ * Whether a plan's gravity wants DE440 (world/ephemeris.ts `loadEphemeris`, resolved before its terms are made): it names
+ * the Moon or the Sun, or a sphere to change its centre at, which is what a flight that leaves low Earth orbit names
+ * (world.md, "Who asks"). A flight about the Earth alone flies by nothing of it.
+ */
+export function wantsEphemeris(def: { terms: readonly ('j2' | 'moon' | 'sun')[]; sphere?: unknown } | undefined): boolean {
+  return Boolean(def && (def.sphere || def.terms.some((t) => t !== 'j2')));
+}
+
 /** The terms a plan's gravity names, the Earth with J2 first, for the predicted path (sim/predict.ts `Ground.gravity`). */
 export function termsOf(
   def: { central: 'earth' | 'moon'; terms: readonly ('j2' | 'moon' | 'sun')[] } | undefined,

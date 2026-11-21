@@ -35,6 +35,7 @@ pnpm model <id>       # rebuild one flight's or site's GLBs from its Blender scr
 pnpm models           # rebuild every flight's and site's GLBs
 pnpm collision        # bake what is solid to the simulator for each sited flight (public/models/<flight>/*.solid.bin), in node from the GLBs, no Blender: after any model is rebuilt or a pad's moves change
 pnpm globe            # bake public/globe/ again; pnpm globe:region every site's region; pnpm globe:weather every flight's day's weather map
+pnpm lunar:earth      # bake the Earth's cloud over each Apollo landing site at the hour its LM landed (public/lunar/<site>.earth.*, ERA5)
 pnpm ephemeris        # bake public/ephemeris/de440.bin from JPL's DE440 (fetches de440s.bsp, 31 MB, once into ~/.cache)
 pnpm ut1              # bake src/world/ut1.ts, UT1 - TAI, from the IERS's EOP C01 (fetched once into ~/.cache)
 pnpm era5:aloft       # bake each flight's aloft.ts: ERA5's air over its pad at liftoff and the surface's hours round it
@@ -65,6 +66,7 @@ pnpm test:impact      # needs pnpm dev: a glancing strike spins a capsule, a har
 pnpm test:separation  # needs `pnpm dev` running: released hardware moves clear in the rendered flight
 pnpm test:deck        # needs `pnpm dev` running: both flights' decks at 1280, 820 and 390 wide, their promises checked, Vostok 1 taken over by key
 pnpm test:sheet       # needs `pnpm dev` running: a phone's sheet under a finger on the gallery, the site and the Lineup at 390 and 820: every button in its View pane reached by swiping its line, the sheet and the page left still
+pnpm test:lunar       # needs `pnpm dev` running: a flight stood on the Moon at its landing site (sr.onMoon): the light through sunrise and the day with no step, frozen frames, the 2.4 m hop, back to the pad with nothing of the setting held
 pnpm test:soyuz-boarding # needs the dev server: walk every Soyuz crew member from their starting place to their assigned couch via the pad lift
 pnpm test:crew-start   # needs the dev server: each crew member at every built site has clear ground, a view of the vehicle and a walkable approach
 pnpm test:walk        # needs `pnpm dev` running: Site 1 walked on foot with the real W key, every way a person could have gone, and the first Escape freeing the mouse without ending the walk (walking.md)

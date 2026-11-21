@@ -9,7 +9,7 @@ import { EARTH } from '../../world/bodies.ts';
 import { length, sub, unit } from '../../world/frames.ts';
 import { yearsFrom2000 } from '../../world/stars.ts';
 import { terrestrialTime } from '../../world/time.ts';
-import { FarEarth } from './earth.ts';
+import { FAR_HAZE, FarEarth } from '../../viewer/farearth.ts';
 import { cameraAt, FIELD, type FrontCamera, type FrontSky, instantAt, PATH, pathAt, skyAt } from './view.ts';
 
 /**
@@ -45,11 +45,6 @@ import { cameraAt, FIELD, type FrontCamera, type FrontSky, instantAt, PATH, path
 const EXPOSURE = 0.72;
 /** The Sun's light above the air, in the scene's units: the globe's own figure (atmosphere.ts: atmosphereUniforms). */
 const SUNLIGHT = [4.5, 4.3, 4.0] as const;
-/**
- * The haze over the whole Earth: what it takes from a beam at the sea, per metre, and the height it thins by e
- * over. An optical depth of 0.12 straight up, about the world's mean at 550 nm: estimated (for 1961, more so).
- */
-const HAZE = { extinction: 8e-5, scale: 1500 };
 /**
  * The faintest star drawn, and how bright. The eye here is adapted to the sunlit ground in front of it, the Moon's
  * (its albedo, 0.12: NASA Goddard, "Moon fact sheet", geometric), which fills the view's lower half: so the stars are
@@ -133,7 +128,7 @@ export class FrontScene {
       canvas.classList.remove('on');
     });
 
-    makeAtmosphere(renderer, HAZE, this.air);
+    makeAtmosphere(renderer, FAR_HAZE, this.air);
     this.air.uAtmSunLight.value.setRGB(SUNLIGHT[0], SUNLIGHT[1], SUNLIGHT[2]);
     const base = import.meta.env.BASE_URL;
     const lighter = tier().lighter;

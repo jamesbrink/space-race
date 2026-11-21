@@ -390,10 +390,11 @@ export interface Command {
 }
 
 /**
- * What is drawn behind a model: Earth from orbit, a dark studio, or the ground of the flight's place round its pad
- * (`Flight.site`: its `place`, whose ground is viewer/scenery/ground.ts's from the place's own module).
+ * What is drawn behind a model: Earth from orbit, a dark studio, the ground of the flight's place round its pad
+ * (`Flight.site`: its `place`, whose ground is viewer/scenery/ground.ts's from the place's own module), or the Moon at a
+ * landing site (`SiteDef.body` 'moon': viewer/lunar/setting.ts).
  */
-export type BackdropKind = 'orbit' | 'studio' | 'ground';
+export type BackdropKind = 'orbit' | 'studio' | 'ground' | 'moon';
 
 /**
  * A camera framing: look at height `centreY` from far enough back to fit `span` metres.
@@ -645,6 +646,11 @@ export interface ModelDef {
   cutaway?: boolean;
   /** Signs of the model X/Z quadrant to expose when its shells open. */
   cutawayQuadrant?: [1 | -1, 1 | -1];
+  /**
+   * A person who went out onto the Moon (with `walker`): while the flight is on the surface the stage stands them at the
+   * landing site, beside the LM (app/surface.ts).
+   */
+  surface?: boolean;
   /**
    * This model is a person the site can be walked as (viewer/onfoot/walk.ts): the walk starts where the
    * figure stands, at its eye height, looking the way it faces. A flight may have several.
