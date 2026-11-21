@@ -1206,7 +1206,9 @@ export function flyWhole(plan: FlightPlan, site: Geodetic, frame: EarthFrame, se
   // (the plan as the coast flew it: its braking burn where guidance timed it for the landing place, orbital.ts `LandingAim`)
   const flown = coast.plan ?? plan;
   const down = downOf(flown) && end.phase === 'down' ? flyDown(flown, frame, seaLevel, end) : null;
-  return { ascent, coast, down, ...(target ? { target } : {}), ...(coast.plan ? { plan: coast.plan } : {}) };
+  // (the target as the coast left it, begun again at each release, FlightPlan.parted)
+  const flownTarget = coast.target ?? target;
+  return { ascent, coast, down, ...(flownTarget ? { target: flownTarget } : {}), ...(coast.plan ? { plan: coast.plan } : {}) };
 }
 
 const wholes = new WeakMap<object, FlownWhole>();
@@ -1371,7 +1373,8 @@ export function flyOn(
     ascent,
     coast,
     down: downOf(flown) && end.phase === 'down' ? flyDown(flown, frame, seaLevel, end, hands) : null,
-    ...(target ? { target } : {}),
+    // (the target as the coast left it, begun again at a release it flew on through, FlightPlan.parted)
+    ...((coast.target ?? target) ? { target: coast.target ?? target } : {}),
     ...(coast.plan ? { plan: coast.plan } : {}),
   };
 }
