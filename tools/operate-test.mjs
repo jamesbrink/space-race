@@ -108,7 +108,8 @@ const framing = () => {
   const stage = sr.stage;
   const work = stage.onFoot.working;
   if (!work) return null;
-  const at = sr.flight.models.findIndex((m) => m.id === work.model);
+  // (the models on the stage: on the Moon, what stands at the landing site)
+  const at = stage.defs.findIndex((m) => m.id === work.model);
   const staged = stage.staged[at];
   const fn = stage.hands.functions(work.model, work.node).find((f) => f.fn.id === work.fn).fn;
   const Box3 = staged.box.constructor;
