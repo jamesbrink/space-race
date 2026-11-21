@@ -270,7 +270,7 @@ export const cloudNoiseGlsl = (c: Clouds, prefix: string): string => /* glsl */ 
   }`;
 export const cloudMiddle = (c: Clouds): number => 0.5 * (edges(c)[0] + edges(c)[1]);
 
-const cloudField = (c: Clouds | undefined, deckHeight: number) =>
+const cloudField = (c: Clouds | undefined, deckHeight: number, base: number) =>
   c
     ? /* glsl */ `
   ${fieldAs('air_')}
@@ -279,19 +279,29 @@ const cloudField = (c: Clouds | undefined, deckHeight: number) =>
   float cloudAt(vec2 xz) {
     return smoothstep(${edges(c)[0].toFixed(3)}, ${edges(c)[1].toFixed(3)}, cloudNoise(xz - uCloudDrift.xz));
   }
+  // How high a point of the scene is above the sea, along the Earth's curve: the scene's frame is flat at the site, so
+  // far off its height is not its own (2,000 km downrange the sea is 300 km under the frame's plane).
+  float airHeight(vec3 world) { return length(vec3(world.x, world.y - ${base.toFixed(2)} + ${EARTH_SPHERE.toFixed(1)}, world.z)) - ${EARTH_SPHERE.toFixed(1)}; }
+  // What of a layer's shadow a point at height \`h\` above the sea is under: all of it below where the shadow is read
+  // (\`lo\`), none above the layer (\`hi\`). The ray toward the Sun from a point above a layer crosses its height behind
+  // the point, not before it, and there read a cloud that is not between it and the Sun: a vehicle in space, sweeping
+  // over that point at kilometres a second, dimmed and brightened frame to frame.
+  float underLayer(float h, float lo, float hi) { return 1.0 - smoothstep(lo, hi, h); }
   // How much of the direct light toward \`toLight\` (the scene's frame) reaches a point of the scene: read where the ray
   // toward it crosses the layer's middle, which far off is lower in the scene's frame as the sea falls away round the
   // Earth's curve. Where a cloud's shadow is under a pixel (\`fp\`, metres), the record's cover dims it evenly instead,
   // so a far coast does not crawl as the shadows drift.
   float cloudShade(vec3 world, vec3 toLight, float fp) {
     if (toLight.y <= 0.02) return 1.0;
+    float below = underLayer(airHeight(world), 0.5 * (uCloudDrift.y + uCloudDrift.w) - ${base.toFixed(2)}, uCloudDrift.w - ${base.toFixed(2)});
+    if (below <= 0.0) return 1.0;
     float layer = 0.5 * (uCloudDrift.y + uCloudDrift.w) - dot(world.xz, world.xz) / ${(2 * EARTH_SPHERE).toFixed(1)};
     vec2 under = world.xz + toLight.xz / toLight.y * (layer - world.y);
     float w = 0.25 * fp / ${c.size.toFixed(1)};
     // (a cloud stands where the noise is over its cut (clouds.ts), and the Sun's disc blurs the shadow of one 720 m up
     // by ten metres: so the shadow is the cloud's own size and darkens over 180 m in from its edge, as the cloud thickens)
     float dark = 0.8 * smoothstep(${(cloudMiddle(c) - 0.02).toFixed(3)} - w, ${(cloudMiddle(c) + 0.03).toFixed(3)} + w, cloudNoise(under - uCloudDrift.xz));
-    return 1.0 - mix(dark, ${(0.8 * c.cover).toFixed(3)}, smoothstep(${(0.08 * c.size).toFixed(1)}, ${(0.5 * c.size).toFixed(1)}, fp));
+    return 1.0 - below * mix(dark, ${(0.8 * c.cover).toFixed(3)}, smoothstep(${(0.08 * c.size).toFixed(1)}, ${(0.5 * c.size).toFixed(1)}, fp));
   }`
     : '';
 
@@ -346,8 +356,8 @@ function installAir(air: Air): void {
       float ceilingBeam(vec3 world) { return 1.0 - 0.95 * cloudCeiling(world); }`
           : ''
       }
-      ${cloudField(c, deck.height)}
-      ${c ? `float deckShadeHere(vec3 world, vec3 toLight) { return deckShadeAt(world, toLight, ${air.base.toFixed(2)}, ${deck.cover.toFixed(2)}); }` : ''}
+      ${cloudField(c, deck.height, air.base)}
+      ${c ? `float deckShadeHere(vec3 world, vec3 toLight) { return mix(1.0, deckShadeAt(world, toLight, ${air.base.toFixed(2)}, ${deck.cover.toFixed(2)}), underLayer(airHeight(world), ${deck.height.toFixed(1)}, ${(deck.height + DECK_DEPTH).toFixed(1)})); }` : ''}
       // how much of the haze lies between the eye and a point, as a fraction of the light lost: 1 - exp(-tau)
       float airFog(vec3 at) {
         vec3 eye = cameraPosition + uOrigin;

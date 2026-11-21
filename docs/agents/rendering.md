@@ -1047,6 +1047,13 @@ air and flight effects real, the ground near the eye designed). What keeps it so
   Sun's disc blurs by 33 m): a soft grey dapple 3 km from each patch away from the Sun at liftoff (Sun at 50 degrees).
   The globe has it in `globeShade`, and every material that takes the haze in the shared chunk (air.ts), by
   `deckShadeUniform`: none while the eye is under 1 km, all of it from 3 km up, so it costs nothing on foot.
+- **Nothing above a layer is in its shadow.** The cumulus's shadow (air.ts `cloudShade`) and the deck's (`deckShadeHere`)
+  are each read where the ray toward the Sun crosses the layer's height, which for a point above the layer is behind it:
+  a vehicle in space read the clouds it had left below, sweeping over them at kilometres a second, and dimmed by up to
+  12 levels for a frame or three, again and again (Apollo 11 from the chase view, T+160 to T+760: 446 reversals in
+  4,187 frames). Each fades out over the upper part of its layer (`underLayer`), by the point's height above the sea
+  along the Earth's curve (`airHeight`: the scene's frame is flat, and 2,000 km downrange the sea is 300 km under it).
+  `pnpm test:spacelight` flies the record's flight past the cloud and counts the vehicle's flickers at 8x and 1x.
 - **The field is organised by where it is.** The weather map's alpha is land (`pnpm globe:weather` bakes it):
   over land the streets are straight and strong; over the sea they are weak and bend, and clusters and arcs
   (`cumulusArcs`) are most of the pattern. All of it is in `cumulusBias`, which the bake, the far cover and the
