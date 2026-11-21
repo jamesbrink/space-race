@@ -36,7 +36,7 @@ test('with nothing loaded the answer is Meeus’s, and says so; loading needs a 
 
 test('the baked file: what it covers, how near DE440 each series was measured, and how big it is', () => {
   useEphemeris(bytes);
-  assert.ok(bytes.byteLength < 1.0e6, `${bytes.byteLength} bytes`);
+  assert.ok(bytes.byteLength < 1.3e6, `${bytes.byteLength} bytes`);
   // DE440's Earth-Moon mass ratio, as the kernel has it, against the GMs bodies.ts carries (IERS's Earth, DE440's Moon)
   const s = stateOf('moon', tt('1969-07-16T13:32:00Z'));
   assert.equal(s.source, 'DE440');

@@ -2327,7 +2327,9 @@ export class OrbitDeck extends Deck {
     const run = this.run!;
     const on = run.samples.length > 0 && onRails(run.at(t) as LiveSample, this.asked.length > 0);
     this.clock.allow(on ? COAST_RATES[COAST_RATES.length - 1]! : RATES[RATES.length - 1]!);
-    this.clock.hold(on ? due([...run.events.map((e) => e.t), ...Object.values(this.times), run.duration], t) : Number.NaN);
+    // (and at each crossing of the sphere its centre changes at, where its gravity has one: sim/core/gravity.ts)
+    const crossings = (run.crossings ?? []).map((c) => c.t);
+    this.clock.hold(on ? due([...run.events.map((e) => e.t), ...Object.values(this.times), ...crossings, run.duration], t) : Number.NaN);
   }
 
   /** The user's launch vehicle stepped up to the clock (as the ballistic deck steps its own: every tick noted, kept every tenth of a second). */

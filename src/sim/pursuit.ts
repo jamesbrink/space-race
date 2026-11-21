@@ -10,7 +10,8 @@
  */
 import { EARTH } from '../world/bodies.ts';
 import { add, cross, dot, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { gravity, hermite, type State, step } from '../world/orbit.ts';
+import { hermite, type State } from '../world/orbit.ts';
+import { EARTH_FIELD, type Field, stepIn } from './core/gravity.ts';
 
 /** A craft flown on its own forces from `from`, s from liftoff: its state at an instant, or nothing before it began or after it came down. */
 export interface Target {
@@ -22,7 +23,7 @@ export interface Target {
 const EVERY = 10;
 
 /**
- * A craft flown on from `start` by gravity and `push` (everything else on it, m/s^2: the air), in steps of ten seconds,
+ * A craft flown on from `start` by gravity (`field`: the Earth with J2 unless given) and `push` (everything else on it, m/s^2: the air), in steps of ten seconds,
  * as far as it is asked for and no further, until `ended` says it is down. What it has flown is kept, so an instant
  * asked for twice is the same state.
  */
@@ -30,6 +31,7 @@ export function flownFrom(
   start: { t: number; r: Vec3; v: Vec3 },
   push: (s: State, at: number) => Vec3,
   ended: (s: State, at: number) => boolean,
+  field: Field = EARTH_FIELD,
 ): Target {
   const samples: (State & { t: number })[] = [{ t: start.t, r: start.r, v: start.v }];
   let over = false;
@@ -39,7 +41,7 @@ export function flownFrom(
       if (!(t >= start.t)) return undefined;
       while (!over && samples[samples.length - 1]!.t < t) {
         const last = samples[samples.length - 1]!;
-        const next = { ...step(last, last.t, EVERY, push), t: start.t + samples.length * EVERY };
+        const next = { ...stepIn(field, last, last.t, EVERY, push), t: start.t + samples.length * EVERY };
         if (ended(next, next.t)) over = true;
         else samples.push(next);
       }
@@ -177,7 +179,15 @@ const HOLD = 60;
  * gravity between the two places allowed for, never more than `cap`. The place is laid off in the target's own frame
  * (along its motion, up its line from the centre) and turns with it.
  */
-export function stationPush(target: Target, s: State, at: number, want: { ahead: number; above: number }, by: number, cap: number): Vec3 {
+export function stationPush(
+  target: Target,
+  s: State,
+  at: number,
+  want: { ahead: number; above: number },
+  by: number,
+  cap: number,
+  field: Field = EARTH_FIELD,
+): Vec3 {
   const it = target.at(at);
   if (!it) return [0, 0, 0];
   const up = unit(it.r);
@@ -187,7 +197,10 @@ export function stationPush(target: Target, s: State, at: number, want: { ahead:
   const place = add(it.r, offset);
   const speed = add(it.v, cross(spin, offset));
   const left = Math.max(HOLD, by - at);
-  const wish = add(add(scale(sub(place, s.r), 6 / (left * left)), scale(sub(speed, s.v), 4 / left)), sub(gravity(place), gravity(s.r)));
+  const wish = add(
+    add(scale(sub(place, s.r), 6 / (left * left)), scale(sub(speed, s.v), 4 / left)),
+    sub(field.at(place, at), field.at(s.r, at)),
+  );
   const size = length(wish);
   return size > cap ? scale(wish, cap / size) : wish;
 }

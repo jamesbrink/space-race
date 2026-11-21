@@ -1,7 +1,7 @@
 /**
  * What a vehicle lets go, flown: the tower, the spent booster, the retropack, whatever a flight's
  * plan lists (`Craft.sheds`). Each is a rigid body of its own from the instant it leaves, in
- * the same frame that does not turn, under the same gravity (world/orbit.ts, with J2), the same air
+ * the same frame that does not turn, under the same gravity (the field it is given, sim/core/gravity.ts: the Earth with J2 unless told), the same air
  * (atmosphere.ts) and the same force model as the vehicle (forces.ts): axial drag by which end
  * leads, the push on its fins, the cross-flow on its side, so it flies end on, weathercocks or
  * tumbles as its shape and its centre of mass say, and a tumble is damped by the air it stirs.
@@ -44,7 +44,7 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { gravity } from '../world/orbit.ts';
+import { EARTH_FIELD, type Field } from './core/gravity.ts';
 import { airAt, skyOf } from './air.ts';
 import { isBreakupImpact } from './breakup.ts';
 import { type ContactRotation, contact, type Impact } from './contact.ts';
@@ -119,6 +119,8 @@ export interface ShedOptions {
   site?: () => SiteSurfaces | null;
   /** What the site's pieces are called, for the deck (`model/part` to the part's name). */
   names?: ReadonlyMap<string, string>;
+  /** What pulls on it (sim/core/gravity.ts): the Earth with J2 unless given. */
+  field?: Field;
 }
 
 interface Dyn {
@@ -151,6 +153,7 @@ export function shedder(
   // (the day's wind, as the vehicle that let it go flies through)
   const sky = skyOf(source);
   const frame = options.frame ?? LIFTOFF;
+  const field = options.field ?? EARTH_FIELD;
   const windAt = (r: Vec3, v: Vec3, at: number, sea: number) => airAt(frame, r, v, at, sea, sky);
   const floor = options.floor ?? floorAt(site, seaLevel);
   const { mass, roll, across, centre } = release;
@@ -217,7 +220,7 @@ export function shedder(
   };
   const rate = (d: Dyn, at: number, still: boolean, push: Vec3, turn0: Vec3 = ZERO): Dyn => {
     const f = forces(d, at, still, push, turn0);
-    return { r: d.v, v: add(gravity(d.r), scale(f.force, 1 / mass)), q: spin(d.q, d.w), w: euler(d.w, f.torque, roll, across) };
+    return { r: d.v, v: add(field.at(d.r, at), scale(f.force, 1 / mass)), q: spin(d.q, d.w), w: euler(d.w, f.torque, roll, across) };
   };
   /** A step from `at` (core/rk4.ts), its rockets' push held at what it is at the step's middle. */
   const rk4 = (d: Dyn, at: number, h: number, still: boolean): Dyn => {

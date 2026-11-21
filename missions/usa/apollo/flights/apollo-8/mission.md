@@ -171,3 +171,10 @@ and Table 4-7's at the injection ten seconds later (−1,478,917 m²/s²). The r
 - The S-II's first two seconds at the 5.0 mixture ratio, the engines' starts (ullage, chilldown, the S-IVB's restart
   preparations), the S-II centre engine's oscillation and its 27,050 N loss, and the S-IVB's cutoff transients are not flown (the F-1s' and the S-II's are, as their cutoff impulse).
 - The aborts are said and not flown: the escape tower, Mode II, Mode III and Mode IV (press kit, pp. 12 and 27).
+- Nothing after the injection is flown by the flight's own plan. The coast on to the Moon is flown in
+  tests/lunargravity.test.mjs, on a copy of the plan whose gravity has the Moon's field, the Sun and the guidance
+  computer's sphere, and held to the Mission Report's pericynthion solution for the injection (Table 5-III: 130.2 n. mi.
+  under the surface at 69:13:58; `TLI_PERICYNTHION` in orbital.ts). The run passes 1,572 n. mi. over the Moon at 71.6
+  h: a recorded miss (src/sim/misses.ts, `lunar`), because the injection the run reaches is not the record's (at the
+  separation fix 0.9 degrees of longitude behind and 5.5 m/s slow). The separation manoeuvres and the midcourse
+  corrections are not flown.

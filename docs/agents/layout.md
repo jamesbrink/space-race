@@ -279,11 +279,13 @@ src/
   world/time.ts  frames.ts            Julian dates, sidereal time; geodetic, Earth-fixed, inertial and site frames
   world/earthframe.ts                 the frame a flight is flown in (of date, or fixed at liftoff), made once from its liftoff: the Earth's angle in it and every turn between it and the Earth
   world/ephemeris.ts  stars.ts        where the Sun, Moon and planets are (`stateOf`, the sky from a site): DE440 when loaded, Meeus else; the 518 brightest stars
-  world/jpl.ts                        the baked DE440 read: each series's Chebyshev segments, positions and velocities in the ICRF
+  world/jpl.ts                        the baked DE440 read: each series's Chebyshev segments, positions and velocities in the ICRF, and the Moon's orientation (`moonpa`: three Euler angles)
+  world/lunargravity.ts               a body's gravity as spherical harmonics (Cunningham's sum), and the Moon's: GRGM900C cut to `LUNAR_DEGREE`, in its principal axes
+  world/grgm900c.ts                   the Moon's field's coefficients, written by tools/lunar-gravity-bake.mjs: not edited by hand
   world/aloft.ts                      a day's column of air (DayWeather.aloft) read at any height, and its hours at any instant
   world/thermosphere.ts               the upper air by the Sun's activity: Jacchia 1971's exosphere from the days flown's 10.7 cm flux and Kp (`DAYS`), as a factor on the 1976 standard (`ratioOf`)
   world/ut1.ts                        UT1 - TAI from the IERS (tools/ut1-bake.mjs): what the Earth's turn is behind atomic time, every 0.05 year since 1956
-  world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun
+  world/moon.ts                       the Moon's own frame: its axes at an instant, the librations, the points under the Earth and the Sun; its principal axes from the ICRF (`principalAxes`: DE440's, or Meeus's)
   world/orbit.ts                      orbits: elements to and from state, J2 gravity and its steady rates, a coast, the place below, site to inertial, the Earth's shadow
   world/meanelements.ts               mean elements under J2 (Kozai 1959): published heights and period to the osculating state and back, the nodal, anomalistic and Kepler periods
   world/surface.ts                    the sea as a shape: the ellipsoid (any body's figure) at a site's sea level, radii of curvature, the horizon
@@ -339,7 +341,7 @@ src/
   sim/vehicle.ts  sim/rigid.ts        the live simulator: the same flight stepped a frame at a time and steered, as a rigid body; quaternions and mass properties
   sim/air.ts                          the air at a point for every simulator: where it is over, its height, the plan's air (`skyOf`: the day's column over the pad, the standard outside it, `DAY_AIR`), the motion through it with the day's wind (`airAt`, `blowOf`)
   sim/core/dp45.ts                    the error-controlled integrator's step: Dormand and Prince's 5(4) pair for a point, for the predictor and a coast on rails
-  sim/core/gravity.ts                 gravity as terms: the Earth with J2 (the default), a third body as a point mass, the central body switched
+  sim/core/gravity.ts                 gravity as terms: the Earth with J2 (the default), a third body as a point mass, the central body switched; and as a `Field` every integrator takes (`fieldFor`, `stepIn`): the Moon's whole field and the centre changed at `RSPHERE` for a plan that gives a sphere (`stepAbout`, `recentred`, `centreAt`)
   sim/core/rk4.ts                     the one fixed-step integrator: fourth-order Runge-Kutta for a point and for a rigid body; gravity and push summed
   sim/apparent.ts                     a stage's apparent-velocity integrator: what it senses, its trapezoid, where its sum reaches its setting
   sim/thrust.ts                       one law of thrust for every engine: throttle times vacuum thrust, less exit area times the air's pressure
@@ -434,7 +436,8 @@ tools/
   globe-region.mjs                    bakes a place's region (PlaceDef.region) round a pad from OpenStreetMap's coast and lakes, as it stood on its date
   globe-surface.mjs                   bakes the globe's relief (ETOPO 2022) and its land's colours (Blue Marble, May), and each place's region's (`region.surface`), finer; needs GDAL
   globe-weather.mjs                   bakes a flight's day's weather map (<region>.<date>.weather.png) from its record, weather.ts, the land map and the relief
-  ephemeris-bake.mjs                  bakes public/ephemeris/de440.bin from JPL's DE440 kernel (de440s.bsp): each body refitted and measured against it
+  ephemeris-bake.mjs                  bakes public/ephemeris/de440.bin from JPL's DE440 kernel (de440s.bsp): each body refitted and measured against it; and the Moon's orientation from the binary PCK (moon_pa_de440_200625.bpc)
+  lunar-gravity-bake.mjs              bakes src/world/grgm900c.ts from GRGM900C at NASA's PDS, cut to a degree, and says what the cut leaves out
   era5.mjs                            ERA5 as the tools read it: the ARCO-ERA5 store, Blosc and LZ4, whole fields and the blocks round a place by range
   era5-aloft.mjs                      bakes each flight's aloft.ts: ERA5's column over its pad at the hour nearest liftoff, and the surface's hours round it
   ut1-bake.mjs                        bakes src/world/ut1.ts from the IERS's EOP C01 series: UT1 - TAI since 1956
@@ -490,5 +493,6 @@ where it was left.
 
 - `tests/onestate.test.mjs` holds every flight into orbit to one state from the pad to the ground (simulator.md, "One state, changed only by what pushes it"): between any two samples of the record's run the velocity changes by gravity and by what the run says was pushing, the only step at one instant is the parting joint's push, the coast begins from the state the ascent left, a last stage cut by its guidance on the orbit leaves the record's period (on changed copies of three flights too), and every flight leaves its pad along its azimuth in the batch run, the samples drawn and the live vehicle.
 - `tests/longrun.test.mjs` holds a flight of days to what a phone can hold (issue #173): Gemini VII's record run, fourteen days, by how many samples it keeps and how much heap it holds; `tests/rails.test.mjs` holds a coast kept by how fast its motion changes to the one that kept every step, between its samples.
+- `tests/lunargravity.test.mjs` holds the Moon's field to the published table and to its potential's gradient, the Moon's axes to the IAU's pole, the two sides of the sphere to the same gravity, and a coast through the sphere (Apollo 8's injection as the run reaches it) to one state across the crossing, to the same coast on rails, and to the Mission Report's pericynthion (a recorded miss).
 - `tests/pathref.test.mjs` checks the record's line as numbers: the curve against made paths and three flights' records, the events' rule, the window drawn.
 - `tests/path-display.test.mjs` checks late display jobs with synthetic results and distinguishes wall-time delay from simulation time.

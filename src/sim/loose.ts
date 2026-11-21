@@ -1,15 +1,15 @@
 /**
  * A part let go as a body of its own that its plan does not fly (types.ts `LooseDef`: a hatch blown off), flown to the sea
- * as a point: thrown off along its outward normal by its impulse over its mass, then under gravity (world/orbit.ts, with
- * J2) and the day's air (air.ts `airAt`, `airDrag`, on its drag area as it tumbles), by the fixed step (core/rk4.ts `rk4`)
+ * as a point: thrown off along its outward normal by its impulse over its mass, then under gravity (the field it is
+ * given, sim/core/gravity.ts: the Earth with J2 unless told) and the day's air (air.ts `airAt`, `airDrag`, on its drag area as it tumbles), by the fixed step (core/rk4.ts `rk4`)
  * in the run's frame, which does not turn, until it is down on the sea. There it lies where it fell. Nothing here knows
  * any part: what it is and where it leaves from are the caller's.
  */
 import type { LooseDef } from '../types.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { add, scale, type Vec3 } from '../world/frames.ts';
-import { gravity } from '../world/orbit.ts';
 import { airAt, airDrag, type Sky } from './air.ts';
+import { EARTH_FIELD, type Field } from './core/gravity.ts';
 import { acceleration, rk4 } from './core/rk4.ts';
 
 /** Seconds a step, near the sea and in the air; above the air, `COARSE` of them. */
@@ -34,7 +34,17 @@ export interface LooseFlown {
  * height of the sea over the ellipsoid there, m, and `above` how high over it the part starts (the sea it comes down on
  * is the still sea's level: the waves are left out of where it lands).
  */
-export function flyLoose(def: LooseDef, frame: EarthFrame, sky: Sky, seaLevel: number, t: number, r: Vec3, v: Vec3, out: Vec3): LooseFlown {
+export function flyLoose(
+  def: LooseDef,
+  frame: EarthFrame,
+  sky: Sky,
+  seaLevel: number,
+  t: number,
+  r: Vec3,
+  v: Vec3,
+  out: Vec3,
+  field: Field = EARTH_FIELD,
+): LooseFlown {
   const mass = def.mass.value;
   const push = def.impulse.value / mass;
   let state = { r, v: add(v, scale(out, push)) };
@@ -44,7 +54,10 @@ export function flyLoose(def: LooseDef, frame: EarthFrame, sky: Sky, seaLevel: n
   const accel = (s: { r: Vec3; v: Vec3 }, when: number): Vec3 => {
     const here = airAt(frame, s.r, s.v, when, seaLevel, sky);
     const density = here.air.density;
-    return acceleration(gravity(s.r), density < THIN ? null : scale(airDrag(here.wind, here.airspeed, density, def.drag.value), 1 / mass));
+    return acceleration(
+      field.at(s.r, when),
+      density < THIN ? null : scale(airDrag(here.wind, here.airspeed, density, def.drag.value), 1 / mass),
+    );
   };
   const height = (s: { r: Vec3 }, when: number) => frame.place(s.r, when).height - seaLevel;
   while (at - t < LIMIT) {

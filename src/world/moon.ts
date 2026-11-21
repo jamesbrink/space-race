@@ -17,8 +17,9 @@
  * 0.03 degrees, which is 900 m on the ground; do not quote better.
  */
 import { MOON } from './bodies.ts';
-import { lunarArguments, moonPosition, sunPosition } from './ephemeris.ts';
-import { cross, DEG, type Mat3, rotate, scale, sub, unit, type Vec3 } from './frames.ts';
+import type { Confidence } from '../measure.ts';
+import { lunarArguments, lunarLibration, moonPosition, sunPosition } from './ephemeris.ts';
+import { cross, DEG, inertialToJ2000, type Mat3, rotate, scale, sub, unit, type Vec3 } from './frames.ts';
 import { centuries, nutation } from './time.ts';
 
 /** The inclination of the Moon's mean equator to the ecliptic, degrees (IAU; Meeus chapter 53). */
@@ -113,6 +114,38 @@ export function moonAxes(jdTT: number): Mat3 {
   const x = equatorial(prime);
   const z = equatorial(pole);
   return [x, cross(z, x), z];
+}
+
+/**
+ * The Moon's principal axes at an instant (a Julian date in TT), as the rows of a rotation from the ICRF: the frame its
+ * gravity field is given in (world/lunargravity.ts). DE440's own integration of the Moon's turning where it is loaded
+ * (world/ephemeris.ts `lunarLibration`: the Euler angles phi, theta, psi of a 3-1-3 rotation, so the rows are those
+ * of R3(psi) R1(theta) R3(phi)), derived. Otherwise Meeus's mean-Earth axes (`moonAxes`), taken for the principal ones
+ * and estimated: they are within 0.03 degrees of the mean-Earth frame, which lies a further 0.03 degrees from the
+ * principal axes (a fixed turn of 67.9, 78.7 and 0.3 arcseconds about +Z, +Y and +X: Park et al. 2021, section 5.3),
+ * so a field turned by them is a kilometre or two out of place on the ground.
+ */
+export function principalAxes(jdTT: number): { axes: Mat3; source: 'DE440' | 'Meeus'; confidence: Confidence } {
+  const turned = lunarLibration(jdTT);
+  if (!turned) {
+    const [x, y, z] = moonAxes(jdTT);
+    return {
+      axes: [inertialToJ2000(x, jdTT), inertialToJ2000(y, jdTT), inertialToJ2000(z, jdTT)],
+      source: 'Meeus',
+      confidence: 'estimated',
+    };
+  }
+  const [phi, theta, psi] = turned.angles;
+  const [cf, sf, ct, st, cp, sp] = [Math.cos(phi), Math.sin(phi), Math.cos(theta), Math.sin(theta), Math.cos(psi), Math.sin(psi)];
+  return {
+    axes: [
+      [cp * cf - sp * ct * sf, cp * sf + sp * ct * cf, sp * st],
+      [-sp * cf - cp * ct * sf, -sp * sf + cp * ct * cf, cp * st],
+      [st * sf, -st * cf, ct],
+    ],
+    source: 'DE440',
+    confidence: 'derived',
+  };
 }
 
 /** A direction in the Moon's own frame as a place on it: degrees east of the prime meridian (-180 to 180) and north of the equator. */

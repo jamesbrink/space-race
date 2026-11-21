@@ -13,7 +13,7 @@
  * stated steering law where the programme flown has not been found.
  */
 import type { Measure } from '../types.ts';
-import { G0 } from '../world/bodies.ts';
+import { G0, MOON } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { sunPosition } from '../world/ephemeris.ts';
 import { add, cross, DEG, dot, enuAxes, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
@@ -28,10 +28,10 @@ import {
   type PublishedOrbit,
   periodsOf,
 } from '../world/meanelements.ts';
-import { elementsOf, planeThrough, type State, step, sunlit } from '../world/orbit.ts';
+import { elementsOf, planeThrough, type State, sunlit } from '../world/orbit.ts';
 import { ratioOf } from '../world/thermosphere.ts';
 import { airAt, airDrag } from './air.ts';
-import { termsOf, thirdOf } from './core/gravity.ts';
+import { centreAt, fieldFor, stepAbout, stepIn, termsOf } from './core/gravity.ts';
 import { atmosphere, meanFreePath } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
 import { along } from './fly.ts';
@@ -51,7 +51,7 @@ import {
   type Pursuit,
 } from './plan.ts';
 import { type Ahead, coelliptic, flownFrom, reach, stationPush, type Target } from './pursuit.ts';
-import { passed, type Railed, stretches } from './rails.ts';
+import { crossing, passed, type Railed, stretches } from './rails.ts';
 import type { CoastRotation } from './rigid.ts';
 
 /**
@@ -251,6 +251,7 @@ export function flyDown(
   const d = downOf(plan);
   if (!d) throw new Error('this orbital plan has no descent');
   const spin = frame.spin;
+  const field = fieldFor(plan.gravity, frame);
   const ground = d.ground;
   /** The ground under a body at a state, m above the sea: the descent's, or the place's where it comes down by its launch vehicle. */
   const floor = out
@@ -346,7 +347,7 @@ export function flyDown(
       const sinking = -dot(airOf(s), unit(s.r));
       if (h > motor && sinking > 0 && (h - motor) / sinking < dt) dt = (h - motor) / sinking + 1e-6;
       desc.as = t;
-      s = step(s, t, dt, push);
+      s = stepIn(field, s, t, dt, push);
       t = cut !== undefined && Math.abs(t + dt - cut) < 1e-9 ? cut : t + dt;
       desc.as = t;
       h = heightOf(s, t);
@@ -460,8 +461,9 @@ export function decay(plan: FlightPlan, frame: EarthFrame, seaLevel: number, fro
   let s: State = { r: from.r, v: from.v };
   let t = from.t;
   const end = from.t + days * 86_400;
+  const field = fieldFor(plan.gravity, frame);
   while (t < end) {
-    s = step(s, t, 30, push);
+    s = stepIn(field, s, t, 30, push);
     t += 30;
     if (heightOf(s, t) < 120_000) return t - from.t;
   }
@@ -523,6 +525,15 @@ export interface OrbitResults {
   [burn: `${string}.velocity`]: number;
   /** How far the target was at an instant a check states (`CheckWhen` `reading: 'range'`), m, by the check's id: on a run flown with its target. */
   [sighting: `${string}.range`]: number;
+  /**
+   * Its nearest to the Moon, on a coast flown about it (a plan whose gravity has a sphere): the height above the Moon's
+   * mean sphere, m, and when, s from liftoff. Where the coast would strike the Moon first (`moonImpactAt`), the nearest
+   * point of the orbit about the Moon it was on as it struck, under the surface. Left out of a coast that never came
+   * within the sphere.
+   */
+  pericynthion?: number;
+  pericynthionAt?: number;
+  moonImpactAt?: number;
 }
 /** What a check of the orbit at an instant reads. */
 export type OrbitReading = 'perigee' | 'apogee' | 'period';
@@ -540,6 +551,8 @@ export type OrbitPhase = 'orbit' | 'braking' | 'descent' | 'entry' | 'down';
 
 /** The coast at one instant. */
 export interface OrbitSample {
+  /** The body it is being flown about, where that is not the Earth (a plan whose gravity has a sphere: sim/core/gravity.ts). Its place and velocity are from the Earth's centre all the same. */
+  central?: 'moon';
   /** From here to the next sample is a quiet stretch whose samples were let go (`flyOrbit`): what flies it again (sim/rails.ts). */
   rails?: Railed<OrbitSample>;
   rotation?: CoastRotation;
@@ -584,6 +597,8 @@ export interface BurnFlown {
 export interface OrbitFlown {
   samples: OrbitSample[];
   results: OrbitResults;
+  /** Each instant the coast crossed the sphere its centre changes at (`GravityDef.sphere`), and the centre from then: left out with none. */
+  crossings?: { t: number; to: 'earth' | 'moon' }[];
   /** The coast's manoeuvres as this run flew them, in the order lit; left out with none. */
   burns?: BurnFlown[];
   /**
@@ -1257,6 +1272,7 @@ export function targetFrom(
       return airDrag(air.wind, air.airspeed, air.air.density * solarAt(frame, s.r, at, air.altitude) * k, 1);
     },
     (s, at) => frame.place(s.r, at).height - seaLevel < THICK,
+    fieldFor(plan.gravity, frame),
   );
 }
 
@@ -1305,11 +1321,13 @@ export function flyOrbit(
   const { on, off, parted, floor } = ship;
   // (the Moon and the Sun where the plan names them, `FlightPlan.gravity`: a coast that leaves for the Moon. Gravity, so not
   // in what a sample's accelerometer reads)
-  const pull = thirdOf(plan.gravity, frame);
-  const pulled =
-    (f: (s: State, at: number) => Vec3) =>
-    (s: State, at: number): Vec3 =>
-      pull ? add(f(s, at), pull(s.r, at)) : f(s, at);
+  const field = fieldFor(plan.gravity, frame);
+  // (a field with a sphere is flown about the Moon within it and about the Earth outside: the state here is about the
+  // Earth throughout, and a step is taken about whichever centre it began under, `centre`)
+  const earthSide = field.about ? field.about('earth') : field;
+  let centre: 'earth' | 'moon' = field.central;
+  const advance = (s: State, at: number, h: number, f: (s: State, at: number) => Vec3, about = centre): State =>
+    field.about ? stepAbout(field, about, s, at, h, f) : stepIn(field, s, at, h, f);
   // (this run's own: a burn guidance solves ends when it has given what was solved, not at the record's instant)
   const moves = ship.moves.map((m) => ({ ...m }));
   /** The manoeuvres held on the target, by index: braking and station-keeping, their thrust commanded as they go. */
@@ -1324,6 +1342,7 @@ export function flyOrbit(
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
   let t = from ? from.t : ship.orbit.injection.at.value;
   let state: State = from ? { r: from.r, v: from.v } : injectionState(plan, site, frame);
+  if (field.about) centre = centreAt(earthSide, state.r, t);
   // (the record's tracking fixes are instants a sample is kept at, so the run can be held against each: they move nothing)
   const fixes = (plan.record?.coastFixes ?? []).filter((fix) => fix.at.value > t);
   let aim: Vec3 = [0, 0, 0];
@@ -1354,7 +1373,7 @@ export function flyOrbit(
     moves.forEach((m, i) => {
       if (!holding[i] || as < m.on || as >= m.off || !m.toward || !('station' in m.toward)) return;
       const want = { ahead: m.toward.station.ahead.value, above: m.toward.station.above.value };
-      out = add(out ?? [0, 0, 0], stationPush(pursued!, s, at, want, ship.moves[i]!.off, m.most!));
+      out = add(out ?? [0, 0, 0], stationPush(pursued!, s, at, want, ship.moves[i]!.off, m.most!, earthSide));
     });
     return out;
   };
@@ -1396,14 +1415,15 @@ export function flyOrbit(
       const h = Math.min(firing ? 1 : 10, (firing ? burn.until : to) - at);
       const as = at;
       const thrust = firing ? { push: scale(burn.line, burn.accel) } : undefined;
-      x = step(
+      x = advance(
         x,
         at,
         h,
-        pulled((q, when) => {
+        (q, when) => {
           const air = airOf(q, when);
           return shipPush(plan, as, air.wind, air.altitude, null, solarAt(frame, q.r, when, air.altitude), thrust);
-        }),
+        },
+        centreAt(earthSide, x.r, at),
       );
       at += h;
     }
@@ -1432,16 +1452,27 @@ export function flyOrbit(
       sunlit: sunlit(s.r, sunAt(at)),
       r: s.r,
       v: s.v,
+      ...(centre === 'moon' && { central: 'moon' as const }),
     };
   };
 
   // What flies a quiet stretch again between the two samples kept of it (sim/rails.ts `stretches`): this coast's own
   // gravity and its own push, the ship as it was from the stretch's start (nothing changes on it within one).
-  const again = stretches(termsOf(plan.gravity, frame), (as) => (at, r, v) => pushAs({ r, v }, at, as));
+  // (a field with a sphere as one term about the Earth: the same bodies are summed on both sides of it, so a stretch
+  // is flown again about the Earth whichever side it lies on)
+  const again = stretches(
+    field.about
+      ? [{ name: 'the flight’s gravity, about the Earth', confidence: field.confidence, at: (r, at) => earthSide.at(r, at) }]
+      : termsOf(plan.gravity, frame),
+    (as) => (at, r, v) => pushAs({ r, v }, at, as),
+  );
   const railed: Railed<OrbitSample> = {
     of: (s) => s.r,
     state: again,
-    sample: (a, b, at) => ({ ...sample(again(a, b, at), at), phase: a.phase, rails: railed }),
+    sample: (a, b, at) => {
+      const { central: _, ...made } = sample(again(a, b, at), at);
+      return { ...made, phase: a.phase, ...(a.central && { central: a.central }), rails: railed };
+    },
   };
 
   /** The nodal period of the orbit a state is on (in the frame of date, whose +Z is the pole), by its mean elements. */
@@ -1647,6 +1678,7 @@ export function flyOrbit(
   const target =
     ship.landing && geodeticToEcef({ latitude: ship.landing.latitude.value, longitude: ship.landing.longitude.value, height: 0 });
 
+  const crossings: { t: number; to: 'earth' | 'moon' }[] = [];
   const impulses: { at: number; dv: Vec3 }[] = [];
   const rememberImpulse = (at: number, dv: Vec3): void => {
     impulses.push({ at, dv });
@@ -1669,13 +1701,71 @@ export function flyOrbit(
       const burn = burns.find((b) => b.lit === moves[i]!.lit && b.solved);
       if (burn) burn.velocity += length(held(state, as, as) ?? [0, 0, 0]) * h;
     });
-    state = step(
-      state,
-      t,
-      h,
-      pulled((s, at) => pushAs(s, at, as)),
-    );
+    state = advance(state, t, h, (s, at) => pushAs(s, at, as));
     t = mark !== undefined && Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
+    let struck = false;
+    if (field.sphere !== undefined && field.moon) {
+      const moonAt = field.moon;
+      const sphere = field.sphere;
+      const end = t;
+      const whole = state;
+      const side = centre;
+      /** The step taken only as far as `to`, and the state there from the Moon's centre. */
+      const flown = (to: number): State =>
+        to === end ? whole : to === as ? last : advance(last, as, to - as, (s, at) => pushAs(s, at, as), side);
+      const fromMoon = (s: State, at: number): State => {
+        const m = moonAt(at);
+        return { r: sub(s.r, m.r), v: sub(s.v, m.v) };
+      };
+      const outside = (to: number): number => length(fromMoon(flown(to), to).r) - sphere;
+      // The sphere crossed within the step: the step ends on the crossing (sim/rails.ts `crossing`), a sample is kept
+      // there, and from there it is flown about the other centre.
+      if (outside(t) < 0 !== (centre === 'moon')) {
+        t = crossing(outside, as, end);
+        state = flown(t);
+        centre = centre === 'moon' ? 'earth' : 'moon';
+        crossings.push({ t, to: centre });
+        marks = [...marks, t].sort((p, q) => p - q);
+      }
+      if (centre === 'moon' && results.pericynthion === undefined) {
+        const radius = MOON.equatorialRadius.value;
+        const closing = (to: number): number => {
+          const p = fromMoon(flown(to), to);
+          return dot(p.r, p.v);
+        };
+        const above = (to: number): number => length(fromMoon(flown(to), to).r) - radius;
+        const until = t;
+        if (above(until) < 0) {
+          // It would strike the Moon: the coast ends where it reaches the surface, and its nearest point is that of the
+          // orbit about the Moon it was on there (the Moon a point, as the report's solutions have it), under the ground.
+          t = crossing(above, as, until);
+          state = flown(t);
+          const p = fromMoon(state, t);
+          const gm = MOON.gm.value;
+          const el = elementsOf(p.r, p.v, gm);
+          const nu = el.nu > Math.PI ? el.nu - 2 * Math.PI : el.nu;
+          const rate = Math.sqrt(gm / Math.abs(el.a) ** 3);
+          const mean =
+            el.e < 1
+              ? (() => {
+                  const E = 2 * Math.atan2(Math.sqrt(1 - el.e) * Math.sin(nu / 2), Math.sqrt(1 + el.e) * Math.cos(nu / 2));
+                  return E - el.e * Math.sin(E);
+                })()
+              : (() => {
+                  const F = 2 * Math.atanh(Math.sqrt((el.e - 1) / (el.e + 1)) * Math.tan(nu / 2));
+                  return el.e * Math.sinh(F) - F;
+                })();
+          results.pericynthion = el.a * (1 - el.e) - radius;
+          results.pericynthionAt = t - mean / rate;
+          results.moonImpactAt = t;
+          struck = true;
+        } else if (closing(as) < 0 && closing(until) >= 0) {
+          const at = crossing(closing, as, until, 1e-3);
+          results.pericynthion = length(fromMoon(flown(at), at).r) - radius;
+          results.pericynthionAt = at;
+        }
+      }
+    }
     const free = state;
     if (contacts) state = contacts.advance(last, as, free, t, rememberImpulse);
     const touched = state !== free;
@@ -1689,17 +1779,7 @@ export function flyOrbit(
       let previous = as;
       for (const hit of impulses) {
         const at = Math.min(t, Math.max(as, hit.at));
-        const incoming =
-          at === as
-            ? last
-            : at === t
-              ? free
-              : step(
-                  last,
-                  as,
-                  at - as,
-                  pulled((s, when) => pushAs(s, when, as)),
-                );
+        const incoming = at === as ? last : at === t ? free : advance(last, as, at - as, (s, when) => pushAs(s, when, as));
         dr = add(dr, scale(dv, at - previous));
         const r = add(incoming.r, dr);
         if (samples.at(-1)!.t < at) samples.push(sample({ r, v: add(incoming.v, dv) }, at, true));
@@ -1711,17 +1791,7 @@ export function flyOrbit(
     }
     while (readings.length && readings[0]!.at <= t) {
       const x = readings.shift()!;
-      read(
-        x.at === t
-          ? state
-          : step(
-              last,
-              as,
-              x.at - as,
-              pulled((s, at) => pushAs(s, at, as)),
-            ),
-        x.ids,
-      );
+      read(x.at === t ? state : advance(last, as, x.at - as, (s, at) => pushAs(s, at, as)), x.ids);
     }
     arrive();
     const aimedShip = ship.landing;
@@ -1848,6 +1918,11 @@ export function flyOrbit(
       }
       results.entryQ = Math.max(results.entryQ, now.q);
     }
+    // (a coast that struck the Moon ends there)
+    if (struck) {
+      keep(now);
+      break;
+    }
     // (down through the ejection height, burn or no burn: a coast begun short of an orbit comes down without one)
     if (t === handover) {
       phase = 'down';
@@ -1889,5 +1964,5 @@ export function flyOrbit(
   // (a coast that ends up there, in a stretch let go: it ends at its last step, a sample)
   if (letGo > 0) keep(before);
   for (const b of burns) results[`${b.lit}.velocity`] = b.velocity;
-  return { samples, results, ...(burns.length ? { burns } : {}) };
+  return { samples, results, ...(burns.length ? { burns } : {}), ...(crossings.length ? { crossings } : {}) };
 }

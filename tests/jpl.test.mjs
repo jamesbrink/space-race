@@ -14,8 +14,20 @@ const e = readEphemeris(new Uint8Array(file).slice().buffer);
 const length = (v) => Math.hypot(...v);
 const minus = (a, b) => a.map((x, i) => x - b[i]);
 
-test('the file: DE440 from 1957 to 2035, under a megabyte, each series as near the kernel as its header says', () => {
-  assert.ok(file.length < 1_000_000, `${file.length} bytes`);
+test('the file: DE440 from 1957 to 2035, a megabyte and a quarter, each series as near the kernel as its header says', () => {
+  // (0.92 MB of places, and the Moon's orientation, 0.31 MB: its librations are not a few terms)
+  assert.ok(file.length < 1_300_000, `${file.length} bytes`);
+  // the Moon's principal axes within a tenth of a microradian (17 cm on its ground), and it turns: 13.2 degrees a day
+  const turning = e.accuracy('moonpa');
+  assert.ok(
+    turning.position < 1e-7 && turning.velocity < 1e-11,
+    `the Moon's orientation: ${turning.position} rad, ${turning.velocity} rad/s`,
+  );
+  const [a, b] = [e.state('moonpa', julianDate('1969-07-20')), e.state('moonpa', julianDate('1969-07-21'))];
+  assert.ok(Math.abs(((b.r[2] - a.r[2]) * 180) / Math.PI - 13.18) < 0.3, `${((b.r[2] - a.r[2]) * 180) / Math.PI} degrees in a day`);
+  // (an instant in two parts is the same instant)
+  const [whole, parts] = [e.state('moon', julianDate('1969-07-20') + 0.25), e.state('moon', julianDate('1969-07-20'), 0.25)];
+  assert.ok(Math.hypot(...whole.r.map((x, i) => x - parts.r[i])) < 0.1, 'an instant in two parts');
   assert.ok(e.from <= julianDate('1957-01-01') && e.to >= julianDate('2035-01-01'), 'the span');
   assert.match(e.source, /DE440/);
   // the targets: the Moon within 100 m and 1 mm/s of DE440, the Sun and the planets within 10 km

@@ -15,6 +15,12 @@
 //   emb        the Earth-Moon barycentre from the solar system's (3); the Earth is it less the Moon / (1 + EMRAT)
 //   sun        the Sun from the solar system's barycentre (10)
 //   mercury .. pluto   each planet's system barycentre from the solar system's (1, 2, 4 to 9): placeholders' places
+//   moonpa     the Moon's orientation: the three Euler angles (3-1-3: the node of its equator on the ICRF's, its tilt
+//              to it, and its turn from that node) that take the ICRF to the Moon's principal axes as DE440 integrated
+//              them, with its physical librations. Radians, not metres. From the binary PCK moon_pa_de440_200625.bpc
+//              (NAIF generic kernels, 12 MB, fetched once beside the SPK): a DAF/PCK file of type 2 segments for the
+//              frame MOON_PA_DE440 (class id 31008) against the ICRF (NAIF's "PCK Required Reading"). What a field of
+//              the Moon's gravity is turned by (src/world/moon.ts `principalAxes`).
 // Each is checked against the kernel at points that were not fitted, and the worst error in position and velocity over
 // the whole span is printed and kept in the file's header (jpl.ts `accuracy`). `--check` only fits and reports.
 //
@@ -34,20 +40,78 @@ const opt = (name, fallback) => (args.includes(`--${name}`) ? args[args.indexOf(
 const cache = opt('cache', join(homedir(), '.cache/space-race/ephemeris'));
 const checkOnly = args.includes('--check');
 const KERNEL = 'https://ssd.jpl.nasa.gov/ftp/eph/planets/bsp/de440s.bsp';
+const LIBRATIONS = 'https://naif.jpl.nasa.gov/pub/naif/generic_kernels/pck/moon_pa_de440_200625.bpc';
 
-async function kernelPath() {
-  const given = opt('bsp', null);
+/** A kernel's path: the one given (`--<flag> <file>`), or the cache's copy, fetched once from `url`. */
+async function kernelPath(flag = 'bsp', url = KERNEL) {
+  const given = opt(flag, null);
   if (given) return given;
   mkdirSync(cache, { recursive: true });
-  const path = join(cache, 'de440s.bsp');
+  const path = join(cache, url.slice(url.lastIndexOf('/') + 1));
   if (!existsSync(path)) {
     // (a generic client name: nothing about whoever runs this is sent)
-    const res = await fetch(KERNEL, { headers: { 'User-Agent': 'ephemeris-bake' } });
-    if (!res.ok) throw new Error(`${KERNEL}: ${res.status}`);
+    const res = await fetch(url, { headers: { 'User-Agent': 'ephemeris-bake' } });
+    if (!res.ok) throw new Error(`${url}: ${res.status}`);
     writeFileSync(path, Buffer.from(await res.arrayBuffer()));
-    console.log('fetched', KERNEL);
+    console.log('fetched', url);
   }
   return path;
+}
+
+/**
+ * The Moon's orientation from a binary PCK (NAIF's DAF layout, as the SPK's; its summaries are two doubles, the span,
+ * and five integers: the frame's class id, the frame it is given against, the type, and where its data begin and end):
+ * the three Euler angles of frame 31008 against the ICRF (1) and their rates at `et` TDB seconds from J2000, radians and
+ * radians a second, as `{ r, v }` so that it is fitted as a place is.
+ */
+function readPck(bytes) {
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const id = new TextDecoder().decode(bytes.subarray(0, 8));
+  if (id !== 'DAF/PCK ') throw new Error(`not a binary PCK file: ${id}`);
+  const format = new TextDecoder().decode(bytes.subarray(88, 96));
+  if (format !== 'LTL-IEEE') throw new Error(`not little-endian IEEE: ${format}`);
+  const nd = view.getInt32(8, true);
+  const ni = view.getInt32(12, true);
+  const words = nd + Math.ceil(ni / 2);
+  const doubleAt = (address) => view.getFloat64((address - 1) * 8, true);
+  const segments = [];
+  for (let record = view.getInt32(76, true); record > 0; ) {
+    const at = (record - 1) * 1024;
+    const next = view.getFloat64(at, true);
+    const count = view.getFloat64(at + 16, true);
+    for (let i = 0; i < count; i++) {
+      const s = at + 24 + i * words * 8;
+      const ints = [];
+      for (let k = 0; k < ni; k++) ints.push(view.getInt32(s + nd * 8 + k * 4, true));
+      const [frame, against, type, begin, end] = ints;
+      if (frame !== 31008 || against !== 1 || type !== 2)
+        throw new Error(`a segment of frame ${frame} against ${against}, type ${type}: only 31008 against the ICRF, type 2, is read`);
+      const [init, intlen, rsize, n] = [doubleAt(end - 3), doubleAt(end - 2), doubleAt(end - 1), doubleAt(end)];
+      segments.push({ begin, init, intlen, rsize, n, start: view.getFloat64(s, true), stop: view.getFloat64(s + 8, true) });
+    }
+    record = next;
+  }
+  return (et) => {
+    const seg = segments.find((g) => et >= g.start && et <= g.stop);
+    if (!seg) throw new Error(`no orientation at ${et}`);
+    const i = Math.min(seg.n - 1, Math.floor((et - seg.init) / seg.intlen));
+    const base = seg.begin + i * seg.rsize;
+    const mid = doubleAt(base);
+    const radius = doubleAt(base + 1);
+    const degree = (seg.rsize - 2) / 3 - 1;
+    const x = (et - mid) / radius;
+    const { T, D } = chebyshev(x, degree);
+    const r = [0, 0, 0];
+    const v = [0, 0, 0];
+    for (let c = 0; c < 3; c++) {
+      const from = base + 2 + c * (degree + 1);
+      for (let k = 0; k <= degree; k++) {
+        r[c] += doubleAt(from + k) * T[k];
+        v[c] += (doubleAt(from + k) * D[k]) / radius;
+      }
+    }
+    return { r, v };
+  };
 }
 
 /** The kernel's type 2 segments by target and centre: NAIF's DAF layout. */
@@ -166,9 +230,10 @@ const TO = 2_464_328.5; // 2035 January 1
 /**
  * One series fitted: `of(et)` its state (km, km/s) from the kernel; `days` its segments' length and `degree` their
  * order. Positions and velocities at `2 (degree + 1)` points in each segment (Chebyshev's, ends included), velocities
- * weighted so a millimetre a second counts as `weight` metres; the ends weighted hard, so neighbours meet.
+ * weighted so a millimetre a second counts as `weight` metres; the ends weighted hard, so neighbours meet. `unit`: what
+ * the kernel's figures are multiplied by to be kept (1000: kilometres as metres; 1: radians as they are).
  */
-function fit(of, days, degree, weight, doubled) {
+function fit(of, days, degree, weight, doubled, unit) {
   const count = Math.ceil((TO - FROM) / days);
   const coefficients = new Float64Array(count * 3 * (degree + 1));
   const span = days * DAY;
@@ -193,8 +258,8 @@ function fit(of, days, degree, weight, doubled) {
         b.push(states[j].r[c] * e, states[j].v[c] * w * e);
       }
       const x = leastSquares(rows, b);
-      // (metres; the first `doubled` as doubles, the rest as singles, as the file keeps them)
-      for (let k = 0; k <= degree; k++) coefficients[(s * 3 + c) * (degree + 1) + k] = k < doubled ? x[k] * 1e3 : Math.fround(x[k] * 1e3);
+      // (metres, or radians; the first `doubled` as doubles, the rest as singles, as the file keeps them)
+      for (let k = 0; k <= degree; k++) coefficients[(s * 3 + c) * (degree + 1) + k] = k < doubled ? x[k] * unit : Math.fround(x[k] * unit);
     }
   }
   return { count, coefficients };
@@ -229,8 +294,8 @@ function measure(of, series, per = 7) {
       if (et / DAY + J2000 > TO) continue;
       const want = of(et);
       const got = evaluate(series, et);
-      dr = Math.max(dr, Math.hypot(...got.r.map((x, i) => x - want.r[i] * 1e3)));
-      dv = Math.max(dv, Math.hypot(...got.v.map((x, i) => x - want.v[i] * 1e3)));
+      dr = Math.max(dr, Math.hypot(...got.r.map((x, i) => x - want.r[i] * series.unit)));
+      dv = Math.max(dv, Math.hypot(...got.v.map((x, i) => x - want.v[i] * series.unit)));
     }
   }
   return { position: dr, velocity: dv };
@@ -247,7 +312,9 @@ const moon = minus(at(301, 3), at(399, 3));
 const probe = 1e8;
 const emrat = Math.hypot(...moon(probe).r) / Math.hypot(...at(399, 3)(probe).r) - 1;
 
-/** What is baked: [id, what it is, the state, segment length (days), degree, velocity weight, how many coefficients are kept as doubles]. */
+const librations = readPck(readFileSync(await kernelPath('pck', LIBRATIONS)));
+
+/** What is baked: [id, what it is, the state, segment length (days), degree, velocity weight, how many coefficients are kept as doubles, and (angles) the unit]. */
 const PLAN = [
   ['moon', 'the Moon from the Earth’s centre (DE440 301 - 399)', moon, 16, 18, 1e2, 3],
   ['emb', 'the Earth-Moon barycentre from the solar system’s (DE440 3)', at(3, 0), 64, 12, 1e3, 4],
@@ -260,6 +327,16 @@ const PLAN = [
   ['uranus', 'the Uranus system’s barycentre (DE440 7)', at(7, 0), 2048, 8, 1e4, 4],
   ['neptune', 'the Neptune system’s barycentre (DE440 8)', at(8, 0), 2048, 8, 1e4, 4],
   ['pluto', 'the Pluto system’s barycentre (DE440 9)', at(9, 0), 2048, 8, 1e4, 4],
+  [
+    'moonpa',
+    'the Moon’s principal axes from the ICRF, as Euler angles 3-1-3, radians (DE440: moon_pa_de440_200625.bpc, frame 31008)',
+    librations,
+    16,
+    12,
+    1e2,
+    2,
+    1,
+  ],
 ];
 
 // (`--try id:days:degree,...` fits other lengths and degrees, to see what they would cost)
@@ -271,14 +348,14 @@ for (const t of (opt('try', '') || '').split(',').filter(Boolean)) {
 }
 
 const series = [];
-for (const [id, what, of, days, degree, weight, doubled] of PLAN) {
-  const fitted = fit(of, days, degree, weight, doubled);
-  const s = { id, what, days, degree, doubled, ...fitted };
+for (const [id, what, of, days, degree, weight, doubled, unit = 1e3] of PLAN) {
+  const fitted = fit(of, days, degree, weight, doubled, unit);
+  const s = { id, what, days, degree, doubled, unit, ...fitted };
   s.accuracy = measure(of, s);
   console.log(
     `${id.padEnd(8)} ${String(days).padStart(4)} d, degree ${String(degree).padStart(2)}: ${s.count} segments, ` +
-      `${((s.coefficients.length * 4 + s.count * 3 * doubled * 4) / 1024).toFixed(0)} kB; within ${s.accuracy.position.toPrecision(3)} m and ` +
-      `${(s.accuracy.velocity * 1e3).toPrecision(3)} mm/s of DE440`,
+      `${((s.coefficients.length * 4 + s.count * 3 * doubled * 4) / 1024).toFixed(0)} kB; within ${s.accuracy.position.toPrecision(3)} ${unit === 1 ? 'rad' : 'm'} and ` +
+      `${(s.accuracy.velocity * 1e3).toPrecision(3)} ${unit === 1 ? 'mrad/s' : 'mm/s'} of DE440`,
   );
   series.push(s);
 }
@@ -289,7 +366,7 @@ if (!checkOnly) {
   let [wide, narrow] = [0, 0];
   const header = {
     source: 'JPL DE440 (Park et al. 2021, AJ 161:105), from de440s.bsp; refitted by tools/ephemeris-bake.mjs',
-    frame: 'ICRF; metres and metres a second; argued in TDB Julian dates',
+    frame: 'ICRF; metres and metres a second (moonpa: radians and radians a second); argued in TDB Julian dates',
     emrat,
     from: FROM,
     to: TO,

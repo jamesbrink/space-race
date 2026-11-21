@@ -54,8 +54,16 @@ Moon by its phase, the natural night sky's 0.8 millilux), and only how bright th
 
 Two ephemerides answer, and each answer says which (`ephemerisOf`, `stateOf(...).source`). JPL's DE440 is baked
 for 1957 to 2035 (`pnpm ephemeris`: tools/ephemeris-bake.mjs reads JPL's de440s.bsp and refits each body as Chebyshev
-segments, measured against the kernel at points it did not fit; public/ephemeris/de440.bin, 0.9 MB; `world/jpl.ts`
-reads it). It is fetched only when something asks, and a test hands it in (`useEphemeris`). Who asks: whatever makes a
+segments, measured against the kernel at points it did not fit; public/ephemeris/de440.bin, 1.2 MB; `world/jpl.ts`
+reads it). With the places it carries the Moon's orientation (`moonpa`: the three Euler angles from the ICRF to its
+principal axes, DE440's own integration of its turning and librations, from NAIF's binary PCK moon_pa_de440_200625.bpc,
+refitted within 0.02 microradians, 4 cm on its ground): `world/moon.ts principalAxes` is those axes, or Meeus's
+mean-Earth ones where DE440 is not loaded (estimated: 0.03 degrees, and the two frames 0.03 apart). The Moon's gravity
+is given in them (`world/lunargravity.ts`: GRGM900C from GRAIL's tracking, cut to degree 30 by
+tools/lunar-gravity-bake.mjs, which prints what the cut leaves out: 4.8 mGal of the field's 50 at 110 km, 56 of 98 at
+15 km; summed by Cunningham's recurrence; tests/lunargravity.test.mjs). An instant may be asked in two parts
+(`stateOf(body, jdTT, centre, plus)`, seconds on from the date): a Julian date in one double steps by 40 microseconds,
+4 cm of the Moon, and a state taken from the Moon's centre and put back steps with it. It is fetched only when something asks, and a test hands it in (`useEphemeris`). Who asks: whatever makes a
 flight's gravity terms with the Moon or the Sun in them, and any flight that leaves low Earth orbit, awaits
 `loadEphemeris()` before it makes them (the terms take DE440 only if it is loaded then, and say `estimated` otherwise:
 core/gravity.ts); nothing on the ground needs it. Once it is here the sky answers from it too, since the step is under a
@@ -306,9 +314,13 @@ Baking again. Each bake fetches its source once into a cache under ~/.cache/spac
 it), with a generic client name, and is deterministic, so a bake of the same source changes nothing:
 
 - `pnpm ephemeris` (tools/ephemeris-bake.mjs): JPL's de440s.bsp, 31 MB, from ssd.jpl.nasa.gov, into `ephemeris/`;
-  writes public/ephemeris/de440.bin (896 kB) and prints each series's fit, which the file's header keeps
+  (and NAIF's moon_pa_de440_200625.bpc, 12 MB, the Moon's orientation, beside it);
+  writes public/ephemeris/de440.bin (1.2 MB) and prints each series's fit, which the file's header keeps
   (tests/jpl.test.mjs holds them to the targets). `--check` fits and reports without writing; `--try id:days:degree`
   tries another segment length and degree. A longer span or another body is a change to its PLAN.
+- `node tools/lunar-gravity-bake.mjs`: the first 6 MB of GRGM900C's table at NASA's PDS (a ranged request), into
+  `lunar-gravity/`; writes src/world/grgm900c.ts, cut to `--degree` (30), and prints what the cut leaves out at 15, 60,
+  110 and 300 km.
 - `pnpm ut1` (tools/ut1-bake.mjs): the IERS's EOP C01 series, 330 kB, from hpiers.obspm.fr, into `eop/`; writes
   src/world/ut1.ts (8.7 kB). Run it now and then to carry UT1 past the table's last value (2026.80 when last baked).
   Should the IERS have revised a value under a flown date, it turns the Earth's angle at that liftoff, and `pnpm
