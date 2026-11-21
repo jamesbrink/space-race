@@ -1,6 +1,6 @@
 import type { Flight, Part } from '../../../../../src/types.ts';
 import { LC39A, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
-import { lc39Crew } from '../../crew/lc39.ts';
+import { lc39Crew, moonSuits } from '../../crew/lc39.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
 import { blockIICabin } from '../../vehicles/cabin.ts';
 import { APOLLO12_THRUST } from '../../vehicles/propulsion.ts';
@@ -506,6 +506,6 @@ export const flight: Flight = {
       terminalSource:
         'Saturn V Flight Manual SA-507, fig. 8-20 (nominal preflight arm sequence); AS-507 Flight Evaluation Report, table 2-2 and §3.6.1 (first motion).',
     }),
-    ...lc39Crew(['Conrad', 'Gordon', 'Bean'], true, [], true),
+    ...lc39Crew(['Conrad', 'Gordon', 'Bean'], true, [], moonSuits('apollo-12', ['Conrad', 'Bean'], 'A7L', 6)),
   ],
 };

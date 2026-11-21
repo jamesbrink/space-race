@@ -265,6 +265,7 @@ export const {
   stageParts,
   facts,
   false,
+  'descartes',
 );
 
 orionModel.scale = '31 ft over deployed pads · model antenna crest 23 ft 1 in · press kit overall height 22 ft 11 in';

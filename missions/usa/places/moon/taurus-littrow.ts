@@ -28,8 +28,28 @@ export const TAURUS_LITTROW = landingSite({
       'the great circle from powered descent initiation, 19.13 N 48.75 E (Apollo 17 Mission Report, JSC-07904, table 3-III (trajectory parameters); 514 km uprange), to the LM, its heading at the LM',
   },
   landed: {
-    at: '1972-12-11T19:54:58Z',
+    value: Date.parse('1972-12-11T19:54:57Z') / 1000,
+    confidence: 'derived',
     source:
-      'Apollo 17 Mission Report, JSC-07904, table 3-I (sequence of events): landing at 110:21:58 GET from liftoff at 05:33:00 GMT, 7 December 1972 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+      'the range zero and the elapsed time of the landing, both read on the page, added: Apollo 17 Mission Report, JSC-07904 (March 1973), table 3-I (sequence of events), p. 3-2: "Lift-off (Range zero = 342:05:33:00 G.m.t.)" (the 342nd day of 1972, 7 December) and "Lunar landing 110:21:57", times from range zero without the update of the mission clock the table lists (section 2, the report’s note on times). UTC, seconds from 1970',
+  },
+  rest: {
+    heading: {
+      value: 270.51,
+      confidence: 'estimated',
+      source:
+        'the report gives no yaw at rest (JSC-07904 section 8.1 has the pitch and the roll alone). Taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead)',
+    },
+    pitch: {
+      value: 5.3,
+      confidence: 'documented',
+      source:
+        'Apollo 17 Mission Report, JSC-07904, section 8.1, p. 8-1: "The vehicle attitude on the lunar surface was approximately 5.3 degrees pitch up with a left roll of about 2.6 degrees"',
+    },
+    roll: {
+      value: -2.6,
+      confidence: 'documented',
+      source: 'Apollo 17 Mission Report, JSC-07904, section 8.1, p. 8-1: "a left roll of about 2.6 degrees" (left negative)',
+    },
   },
 });

@@ -1,46 +1,70 @@
 import { LUNAR_SITES as LUNAR_SITE_DEFS } from '../../missions/usa/places/moon/sites.ts';
 import type { ModelDef, SitedFlight } from '../types.ts';
+import { landerAt, landerPose, lunarGround } from '../viewer/lunar/ground.ts';
 import type { LunarSite } from '../world/lunar-terrain.ts';
-import { landerAt, lunarGround } from '../viewer/lunar/ground.ts';
+
+/** How far in front of the forward pad the crew stand to start, metres, and how far apart: clear of the pad and the ladder's foot, estimated. */
+const BEFORE_PAD = 2.2;
+const APART = 2;
+/** A crewman's half-width in the suit and its pack, metres (walker.radius): estimated from the pack's 20.5 in. */
+const SUITED = 0.3;
 
 /**
  * A flight on the Moon's surface, as the stage is to show it (Architecture 9: the surface is a phase of Fly, not a fourth
  * place): the flight itself, standing at a landing site (missions/usa/places/moon/: its `SiteDef`, `body: 'moon'`) in the
- * lunar setting (viewer/lunar/setting.ts), with what stands there: the LM where a model of it landed has been built
- * (viewer/lunar/ground.ts `landerAt`), and the crew who went out (each model with a `walker` and `surface`), standing on
- * the ground beside it. Its clock is the flight's (`launch` is the flight's own), so the Sun is where the mission's clock
- * has it. Nothing of the flight's pad, its plan or its recovery is there: the stage loads it as it loads another flight
- * (Stage.load), and loads the flight again at lift-off.
+ * lunar setting (viewer/lunar/setting.ts), with what stands there: its LM (the model with `lander`), stood as its site
+ * says it came to rest (`LunarSiteDef.rest`: its heading, pitch and roll; `landerPose`), its pads on the ground; and the
+ * crew who went out (each model with a `walker` and `surface`), in what they wore out there, standing before its ladder.
+ * Its clock is the flight's (`launch` is the flight's own), so the Sun is where the mission's clock has it. Nothing of the
+ * flight's pad, its plan or its recovery is there: the stage loads it as it loads another flight (Stage.load), and loads the
+ * flight again at lift-off. Until a run's landing (the descent) gives where and how the LM came down, it stands as the site
+ * has it. `whole` is the flight with its gallery's exhibits, the LM among them (address.ts `atSite` leaves them out of the pad).
  *
- * What is simplified: the LM stands on the plane its pads were measured on (the frame's own origin: SiteDef), not on the
- * grids' heights under each pad; at a site with no model of its LM built (11, 12 and 14 so far) there is none; the crew
- * stand where they are put to start, not where the record has them come down the ladder (C3).
+ * What is simplified: the LM's pads are set on the ground as a whole (its height is the mean of what each pad would need, on
+ * the grids' heights under them), not each on its own; the crew stand where they are put to start, and go out by the deck's
+ * Go out (deck/phases/surface.ts), which puts the commander on the porch.
  */
-export async function lunarStay(flight: SitedFlight, id: LunarSite): Promise<SitedFlight> {
+export async function lunarStay(flight: SitedFlight, id: LunarSite, whole: SitedFlight = flight): Promise<SitedFlight> {
   const def = LUNAR_SITE_DEFS.find((s) => s.id === id);
   if (!def) throw new Error(`no landing site ${id}`);
   const ground = (await lunarGround(id)).ground;
-  const lander = landerAt(id);
+  const at = (x: number, z: number) => ground.at(x, z) ?? 0;
   const models: ModelDef[] = [];
-  if (lander)
+  // (the LM is an exhibit of its own in the gallery, not at the pad: it is found in the whole flight, and stands here as itself)
+  const found = whole.models.find((m) => m.lander);
+  const lm = found && (({ galleryCraft: _craft, galleryAlias: _alias, galleryFrom: _from, ...rest }) => rest)(found);
+  const rest = { heading: def.rest.heading.value, pitch: def.rest.pitch.value, roll: def.rest.roll.value };
+  const pose = landerPose(rest, lm?.lander?.pads ?? [], at);
+  if (lm)
     models.push({
-      id: 'lm',
-      name: 'Lunar module',
-      url: lander.url,
+      ...lm,
       backdrop: 'moon',
-      scale: 'The LM as it stood on its pads',
-      parts: [],
-      views: [],
-      absent: lander.unloaded,
-      rotationY: ((90 - lander.bearing) * Math.PI) / 180,
-      position: [0, 0, 0],
+      position: [0, pose.y, 0],
+      rotationY: pose.rotationY,
+      attitude: pose.attitude,
+      // (what the rover's sites' gallery shows as taken off it: lunar-rover-sites.json)
+      absent: [...(lm.absent ?? []), ...(landerAt(id)?.unloaded ?? [])],
+      sequence: undefined,
+      with: undefined,
     });
-  // the crew who went out, a step apart on the ground east of the LM (clear of its pads: 4.7 m from its middle)
+  // the crew who went out, a step apart on the ground before the forward pad, facing the LM
   const out = flight.models.filter((m) => m.walker && m.surface);
+  const ahead = { x: Math.cos(pose.rotationY), z: -Math.sin(pose.rotationY) };
+  const reach = Math.max(0, ...(lm?.lander?.pads ?? []).map(([x, z]) => Math.hypot(x, z))) + BEFORE_PAD;
   out.forEach((m, i) => {
-    const x = lander ? 7 : 2;
-    const z = (i - (out.length - 1) / 2) * 2;
-    models.push({ ...m, backdrop: 'moon', position: [x, ground.at(x, z) ?? 0, z], rotationY: Math.PI / 2, sequence: undefined });
+    const across = (i - (out.length - 1) / 2) * APART;
+    const x = ahead.x * reach + ahead.z * across;
+    const z = ahead.z * reach - ahead.x * across;
+    models.push({
+      ...m,
+      url: m.surface!.url,
+      scale: m.surface!.scale,
+      backdrop: 'moon',
+      position: [x, at(x, z), z],
+      rotationY: pose.rotationY - Math.PI / 2,
+      walker: { ...m.walker!, radius: SUITED },
+      sequence: undefined,
+    });
   });
   if (!models.length) throw new Error(`nothing of ${flight.callsign} stands on the Moon`);
   return {

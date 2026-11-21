@@ -18,7 +18,7 @@ import { roadOn, Vehicle } from './drive.ts';
 import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait.ts';
 import { boxAt, leadOf, movesOf, sweptBox, wayOf } from './operate.ts';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll.ts';
-import { EYE_FRACTION, type Hit, type Walker } from './walk.ts';
+import { centreOf, EYE_FRACTION, type Hit, type Walker } from './walk.ts';
 import { Works } from './works.ts';
 
 /** How far beyond a figure's bounds the camera must be, coming out of its eyes after a walk, before it is drawn again, metres. */
@@ -926,7 +926,7 @@ export class OnFoot {
     const on = walk.body.on!;
     const k = walk.gait.climbing;
     group.updateMatrixWorld(true);
-    const at = rungs(walk.body.position.y - on.bottom);
+    const at = rungs(walk.body.position.y - on.bottom, undefined, on.rungs?.pitch, on.rungs?.first);
     // (he faces the rungs: his left is across them)
     const left = new THREE.Vector3(-on.nz, 0, on.nx);
     const ankle = this.jointOf(root, 'Foot.L');
@@ -939,13 +939,18 @@ export class OnFoot {
       // the ball of the foot on the rung: the ankle a little out from it and over it; a hand round the rung
       const foot = this.jointOf(root, `Foot.${side}`);
       if (foot) {
-        to.set(on.x + on.nx * 0.06, on.bottom + at[`Foot.${side}`] + sole, on.z + on.nz * 0.06).addScaledVector(left, s * 0.1);
+        // (on a ladder that leans, the rung at that height is where the lean has it)
+        const y = on.bottom + at[`Foot.${side}`];
+        const c = centreOf(on, y);
+        to.set(c.x + on.nx * 0.06, y + sole, c.z + on.nz * 0.06).addScaledVector(left, s * 0.1);
         step(root, side, foot.getWorldPosition(now).lerp(to, k));
       }
       // (a hand that carries something stays on what it carries: he climbs with the other)
       const hand = walk.gait.load[side] > 0.5 ? null : (this.jointOf(root, `Grip.${side}`) ?? this.jointOf(root, `Hand.${side}`));
       if (hand) {
-        to.set(on.x + on.nx * 0.02, on.bottom + at[`Hand.${side}`], on.z + on.nz * 0.02).addScaledVector(left, s * 0.15);
+        const y = on.bottom + at[`Hand.${side}`];
+        const c = centreOf(on, y);
+        to.set(c.x + on.nx * 0.02, y, c.z + on.nz * 0.02).addScaledVector(left, s * 0.15);
         reach(root, side, hand.getWorldPosition(now).lerp(to, k));
       }
     }

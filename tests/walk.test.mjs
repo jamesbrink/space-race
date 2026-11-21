@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import {
   Body,
   bump,
   CLIMB_SPEED,
+  centreOf,
   climb,
   hang,
   GRAVITY,
@@ -402,6 +404,84 @@ test('a ladder is only taken hold of by walking at it; from the deck above, by w
   body.place(0, 3, 0);
   body.mount(tower().body.solids.ladders()[0] ?? { bottom: 0, top: 3, x: 2.13, z: 0, hx: 0.03, hz: 0.25 });
   assert.ok(body.on && body.on.nx === 1 && body.position.y > 2.9);
+});
+
+/**
+ * The same deck with a ladder that leans against its east face as the LM's lies along its strut: its foot a metre out on
+ * the slab, its top at the deck's edge, two rails and a rung every 0.3 m up, one mesh.
+ */
+function leaning() {
+  const root = new THREE.Group();
+  const add = (mesh, x, y, z) => {
+    mesh.position.set(x, y, z);
+    root.add(mesh);
+    return mesh;
+  };
+  add(new THREE.Mesh(new THREE.BoxGeometry(40, 1, 40)), 0, -0.5, 0); // the slab
+  add(new THREE.Mesh(new THREE.BoxGeometry(4, 3, 4)), 0, 1.5, 0); // the tower: its deck at 3.0, its east face at x = 2
+  const [foot, top] = [new THREE.Vector3(3.1, 0, 0), new THREE.Vector3(2.1, 3, 0)];
+  const run = top.clone().sub(foot);
+  const pieces = [];
+  for (const z of [-0.2, 0.2]) {
+    const rail = new THREE.BoxGeometry(0.04, run.length(), 0.04);
+    rail.applyMatrix4(new THREE.Matrix4().makeRotationZ(Math.atan2(-run.x, run.y)));
+    rail.translate((foot.x + top.x) / 2, 1.5, z);
+    pieces.push(rail);
+  }
+  for (let y = 0.3; y < 3; y += 0.3) {
+    const rung = new THREE.BoxGeometry(0.03, 0.03, 0.4);
+    rung.translate(foot.x + (run.x * y) / 3, y, 0);
+    pieces.push(rung);
+  }
+  const ladder = add(new THREE.Mesh(mergeGeometries(pieces)), 0, 0, 0);
+  ladder.userData.climb = true;
+  root.updateMatrixWorld(true);
+  const solids = new Solids();
+  solids.set([root]);
+  const body = new Body(solids);
+  body.ground = -0.45;
+  return { body, solids };
+}
+
+test('a ladder that leans is found to lean, is climbed on its upper face going in as it rises, and is left at the deck at its top', () => {
+  const { body, solids } = leaning();
+  solids.gather(new THREE.Vector3(2.6, 1.5, 0), 3, 3, 3);
+  const [ladder] = solids.ladders();
+  assert.ok(ladder.lean, 'it leans');
+  assert.ok(
+    Math.abs(ladder.lean.x + 1 / 3) < 0.02 && Math.abs(ladder.lean.z) < 1e-6,
+    `a third of a metre in for each up: ${ladder.lean.x}`,
+  );
+  assert.ok(Math.abs(centreOf(ladder, 0).x - 3.1) < 0.03 && Math.abs(centreOf(ladder, 3).x - 2.1) < 0.03);
+  // whichever side it is come to from, it is held on its outer, upper face
+  assert.equal(hang(ladder, 0, 0, 0.26).nx, 1);
+  assert.equal(hang(ladder, 9, 0, 0.26, -1).nx, 1);
+  body.place(5, 0, 0);
+  go(body, -1, 0, 3);
+  assert.ok(body.on, 'walking into its foot takes hold of it');
+  const low = body.position.clone();
+  go(body, -1, 0, 2);
+  assert.ok(body.on && body.position.y > low.y + 1, 'climbing');
+  assert.ok(body.position.x < low.x - 0.3, `and in toward the deck as it rises: ${low.x} to ${body.position.x}`);
+  const lean = (body.position.x - low.x) / (body.position.y - low.y);
+  assert.ok(Math.abs(lean + 1 / 3) < 0.02, `along the ladder: ${lean}`);
+  // (up the rest of it, a step at a time until it is off at the top)
+  for (let i = 0; i < 300 && body.on; i++) go(body, -1, 0, 1 / 60);
+  go(body, 0, 0, 0.2, 0);
+  assert.equal(body.on, null);
+  assert.ok(body.grounded && Math.abs(body.position.y - 3) < 1e-6 && body.position.x < 2, `on the deck: ${body.position.toArray()}`);
+  // and down again from the deck, looking down over its top
+  body.lookingDown = true;
+  go(body, 1, 0, 1.6);
+  assert.ok(body.on && body.on.nx === 1, 'on it from the deck');
+  body.lookingDown = false;
+  go(body, 0, 0, 0.1, 0);
+  go(body, 0, 0, 8, -1);
+  go(body, 0, 0, 0.5, 0);
+  assert.ok(
+    !body.on && body.grounded && Math.abs(body.position.y) < 1e-6 && body.position.x > 3,
+    `down at its foot: ${body.position.toArray()}`,
+  );
 });
 
 /** An open steel stair: thin treads with daylight between them and no risers, up to a deck, with a rail down each side. */

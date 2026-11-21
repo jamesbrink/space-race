@@ -198,7 +198,7 @@ if (args.includes('--lunar')) {
   const { LUNAR_SITES } = await import('../missions/usa/places/moon/sites.ts');
   const lunar = join(root, 'public/lunar');
   for (const s of LUNAR_SITES) {
-    const when = await day(s.landed.at, join(lunar, `${s.id}.earth.day.jpg`));
+    const when = await day(new Date(s.landed.value * 1000).toISOString(), join(lunar, `${s.id}.earth.day.jpg`));
     writeFileSync(
       join(lunar, `${s.id}.earth.json`),
       `${JSON.stringify({ day: { file: `${s.id}.earth.day.jpg`, face: DAY, channels: ['cloud', 'sea ice', 'snow'], at: when, for: s.landed }, data: `${DATA}. Fetched ${new Date().toISOString().slice(0, 10)}` }, null, 2)}\n`,

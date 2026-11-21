@@ -31,6 +31,20 @@ RCS_ARM = 66.1  # the up and down thrusters' axis, out from the centreline both 
 RCS_UP, RCS_DOWN = RCS_PLANE + 4.8, RCS_PLANE - 5.3  # their reference points, X 258.8 and 248.7 in
 RCS_INBOARD = 61.5  # each horizontal thruster's axis, across its line of fire
 RCS_REACH = 66.35  # and its reference point, along it
+# The forward hatch, the porch and the ladder of a LM that landed (`landed`; lunar-module.md, "On the Moon"). The hatch:
+# "approximately 32 inches square; it is hinged to swing inboard" (LMA790-3-LM, LM 10 and subsequent, vol. I, 1.2.2.1.2),
+# hinged on the pilot's side, the right (the ALSJ, Apollo 11 at 109:03:02: it "will swing inward and toward him"), -Y here.
+HATCH = 32
+HATCH_X, HATCH_Z = 76.65, 157  # the middle of its outer face, as the front face has it
+HATCH_OPEN = 80  # degrees it swings in: not found in what was read; estimated, short of the pilot's station
+# The ladder: "nine rungs between two railings. The rungs are spaced nine inches apart; the railings have approximately 20
+# inches between centers ... the ladder extends down to within 30 inches of the footpad" (Grumman, Apollo News Reference,
+# Lunar Module, p. LV-12). Laid along the forward primary strut, standing off it far enough to clear the flag kit
+# under its left rail (estimated), its rails up to the porch (AOH 1.3.2.2.7: "from the forward end of the platform").
+RUNGS, RUNG_PITCH, RAIL_SPAN = 9, 9, 20
+LADDER_OFF = 9  # its rails' line out from the strut's axis, estimated
+FIRST_STEP = 30  # from the footpad's pivot to the lowest rung, along the strut: the News Reference's "within 30 inches"
+PORCH_Z = 133
 
 
 def at(point):
@@ -259,6 +273,40 @@ def staging_fittings(lower, upper, alloy, dark):
     braces.build("LM3_InterstageBrackets", alloy, upper)
 
 
+def check_hatch_swing(parts):
+    """The forward hatch of a LM that landed, swung in by HATCH_OPEN about its hinge, must clear what is in the cabin."""
+    import bpy
+    from mathutils.bvhtree import BVHTree
+
+    bpy.context.view_layer.update()
+    door = bpy.data.objects["LM_ForwardHatch"]
+    hinge = door.matrix_world.translation.copy()
+    cabin = []
+    for root in ("LMStations", "LMControlPanels", "LMAscentLifeSupport", "LMAscentPower", "LMAscentEngine"):
+        for obj in parts[root].children_recursive if root in parts else []:
+            if obj.type == "MESH":
+                cabin.append(
+                    (obj.name, BVHTree.FromPolygons([obj.matrix_world @ v.co for v in obj.data.vertices], [p.vertices[:] for p in obj.data.polygons]))
+                )
+
+    def strikes(degrees):
+        turn = Matrix.Translation(hinge) @ Matrix.Rotation(math.radians(degrees), 4, "Z") @ Matrix.Translation(-hinge)
+        for obj in door.children_recursive:
+            if obj.type != "MESH":
+                continue
+            leaf = BVHTree.FromPolygons([turn @ obj.matrix_world @ v.co for v in obj.data.vertices], [p.vertices[:] for p in obj.data.polygons])
+            for name, inside in cabin:
+                if leaf.overlap(inside):
+                    return name
+        return None
+
+    # (every angle on the way in, not only the last: a leaf that passes through something and out again strikes it)
+    for degrees in range(5, HATCH_OPEN + 1, 5):
+        struck = strikes(degrees)
+        if struck:
+            raise ValueError(f"The forward hatch swung {degrees} degrees in (of {HATCH_OPEN}) strikes {struck}")
+
+
 def check_stowed_gear():
     """The folded struts and their deployment shields must clear the adapter panels."""
     import bpy
@@ -313,7 +361,34 @@ def check_engine_interfaces(parts):
                 raise ValueError(f"{obj.name} intersects cabin floor or engine cover")
 
 
-def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
+def forward_ladder(hinge, metal, foot):
+    """The ladder of a LM that landed, along the forward strut from its pad to the porch: its own mesh, to be climbed."""
+    length = math.hypot(foot[0], foot[2])
+    u = (foot[0] / length, foot[2] / length)  # down the strut
+    w = (-u[1], u[0])  # out from it, and up
+
+    def on(s, y):
+        return (u[0] * s + w[0] * LADDER_OFF, y, u[1] * s + w[1] * LADDER_OFF)
+
+    # from the porch's level to the lowest rung, FIRST_STEP up the strut from the pad's pivot
+    top = (PORCH_Z - 1 - KNEE_Z - w[1] * LADDER_OFF) / u[1]  # (up the strut is negative: past the knee, to the porch)
+    low = length - FIRST_STEP
+    ladder = MeshBuilder()
+    for y in (-RAIL_SPAN / 2, RAIL_SPAN / 2):
+        tube(ladder, on(top, y), on(low, y), 0.8)
+    for rung in range(RUNGS):
+        s = low - rung * RUNG_PITCH
+        tube(ladder, on(s, -RAIL_SPAN / 2), on(s, RAIL_SPAN / 2), 0.75)
+    obj = ladder.build("LM_ForwardLadder", metal, hinge)
+    # The viewer climbs anything marked `climb` (walk.ts); a ladder that leans is found to lean from its own rails. Its rungs,
+    # for the climber's hands and feet: the height between them and the lowest one's height over the run's foot, metres.
+    obj["climb"] = 1
+    obj["climb_pitch"] = RUNG_PITCH * -u[1] * IN
+    obj["climb_first"] = 0.75 * IN
+    return obj
+
+
+def landing_gear(parent, gold, metal, dark, deployed, spacecraft, landed=False):
     # Each local assembly is built deployed then folded inward under its outrigger.
     # The viewer rotates it back about that same knee after the adapter opens.
     for i in range(4):
@@ -349,13 +424,16 @@ def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
             sensor.tube(at((3, 0, -14)), at((3, 0, -67)), 0.55 * IN, caps=False)
             sensor.build(f"LM3_SurfaceProbe_{i}", metal, probe)
         strut.build(f"LM3_GoldStrut_{i}", gold, hinge)
-        if i == 0:
+        if i == 0 and landed:
+            forward_ladder(hinge, metal, foot)
+        elif i == 0:
             ladder = piston if spacecraft >= 4 else MeshBuilder()
             for y in (-7, 7):
                 tube(ladder, (10, y, -5), (50, y, -89), 0.8)
             for rung in range(9):
                 t = (rung + 0.5) / 9
                 tube(ladder, (10 + 40 * t, -7, -5 - 84 * t), (10 + 40 * t, 7, -5 - 84 * t), 0.75)
+        if i == 0:
             if spacecraft >= 5:
                 lm5_equipment.ladder(hinge, metal, dark, f"LM{spacecraft}", flag_on_ladder=spacecraft < 8)
             if spacecraft == 3:
@@ -363,7 +441,7 @@ def landing_gear(parent, gold, metal, dark, deployed, spacecraft):
         piston.build(f"LM3_Piston_{i}", metal, hinge)
 
 
-def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deployed, spacecraft):
+def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deployed, spacecraft, landed=False):
     # Front face, irregular tank fairings, midsection and equipment rack follow MSFC fig. 51.
     nose = MeshBuilder()
 
@@ -437,12 +515,31 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
         triangle = [(76.5, sign * 8, 211), (77, sign * 40, 204), (76, sign * 22, 183)]
         for j in range(3):
             tube(framebars, triangle[j], triangle[(j + 1) % 3], 0.8)
-    box(hatch, (76.65, 0, 157), (1, 32, 32))
+    # (a LM that landed has its hatch on a hinge of its own, to be opened: `door`, its origin on the hinge line)
+    hinge = (HATCH_X, -HATCH / 2, HATCH_Z)
+    door = group("LM_ForwardHatch", parent) if landed else None
+    if door:
+        door.location = at(hinge)
+
+    def leaf(point):
+        return tuple(a - b for a, b in zip(point, hinge, strict=True)) if door else point
+
+    handles = MeshBuilder() if door else framebars
+    box(hatch, leaf((HATCH_X, 0, HATCH_Z)), (1, HATCH, HATCH))
     for y in (-16.7, 16.7):
         tube(framebars, (77.4, y, 140), (77.4, y, 174), 0.9)
     for z in (140, 174):
         tube(framebars, (77.4, -16.7, z), (77.4, 16.7, z), 0.9)
-    tube(framebars, (78, -5, 163), (78, 4, 163), 1.1)
+    tube(handles, leaf((78, -5, 163)), leaf((78, 4, 163)), 1.1)
+    if door:
+        # "A handle is provided on both sides of the hatch, for latch operation" (AOH 1.2.2.1.2): the one inside, estimated
+        tube(handles, leaf((75.2, -5, 163)), leaf((75.2, 4, 163)), 1.1)
+        handles.build("LM_ForwardHatchHandles", dark, door)
+        # The porch's upper surface "is corrugated to facilitate hand and foot holds" (Apollo News Reference, LV-12): a
+        # plate under the bars, which a walker's feet find between them
+        deck = MeshBuilder()
+        box(deck, (94.5, 0, PORCH_Z - 0.55), (31, 29, 0.5))
+        deck.build("LM_EVAPorchDeck", dark, platform)
     for y in range(-13, 14, 3):
         tube(porch, (79, y, 133), (110, y, 133), 0.8)
     for y in (-14, 14):
@@ -451,7 +548,7 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
         for dy in (-2.2, 2.2):
             tube(shoes, (97, y + dy, 134), (101, y + dy, 137), 0.7)
         tube(shoes, (101, y - 2.2, 137), (101, y + 2.2, 137), 0.7)
-    mark_shells([hatch.build("LM3_ForwardHatch", foil, parent).name])
+    mark_shells([hatch.build("LM3_ForwardHatch", foil, door or parent).name])
     framebars.build("LM3_FramesAndHatchHandle", dark, parent)
     porch.build("LM3_EVAPorch", dark, platform)
     if spacecraft == 3:
@@ -460,9 +557,9 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
         # Plate 43a: handholds rise on either side of the porch grating.
         # AS10-34-5112: fittings and bright-edged thermal cover on the forward hatch.
         hatch_cover, hatch_fittings, grab = MeshBuilder(), MeshBuilder(), MeshBuilder()
-        box(hatch_cover, (77.32, 0, 156.5), (0.24, 28, 27))
+        box(hatch_cover, leaf((77.32, 0, 156.5)), (0.24, 28, 27))
         for y, z, r in ((-9, 160, 3.8), (8.8, 153, 4.2)):
-            pose = frame(at((77.6, y, z)), (1, 0, 0))
+            pose = frame(at(leaf((77.6, y, z))), (1, 0, 0))
             hatch_fittings.lathe(prof([(r, -0.1), (r, 0.6), (r * 0.76, 1.1), (r * 0.4, 0.55), (0, 0.7)]), 20, matrix=pose)
         for y in (-17.6, 17.6):
             shell(
@@ -472,7 +569,12 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
                     for x, z in ((78.6, 141.5), (80.5, 150), (80.5, 165), (78.6, 173))
                 ],
             )
-        mark_shells([hatch_cover.build("LM4_ForwardHatchCover", dark, parent).name, hatch_fittings.build("LM4_HatchFittings", gold, parent).name])
+        mark_shells(
+            [
+                hatch_cover.build("LM4_ForwardHatchCover", dark, door or parent).name,
+                hatch_fittings.build("LM4_HatchFittings", gold, door or parent).name,
+            ]
+        )
         grab.build("LM4_HatchHandholds", alloy, parent)
     # Both flight articles: a handrail up either side of the porch (AS09-21-3212 of LM-3; the press kit's plate 43a
     # of LM-4). Their run is estimated.
@@ -532,9 +634,13 @@ def cabin(parent, gear, platform, foil, white, dark, glass, alloy, gold, deploye
     masts.build("LM3_AntennaMasts", alloy, gear)
 
 
-def build(iu_top=0, *, deployed=False, spacecraft=3):
+def build(iu_top=0, *, deployed=False, spacecraft=3, landed=False):
+    """`landed`: one of the six that landed, as it stood on the Moon: its hatch on a hinge, its porch's deck and its ladder
+    a climb of their own (lunar-module.md, "On the Moon")."""
     if spacecraft not in (3, 4, 5, 6, 7, 8, 10, 11, 12):
         raise ValueError(f"Unsupported lunar module LM-{spacecraft}")
+    if landed and (not deployed or spacecraft < 5):
+        raise ValueError(f"LM-{spacecraft} did not land")
     foil = material("lm3-blanket-gold", (0.64, 0.29, 0.042), metallic=0.68, roughness=0.43)
     amber = material("lm3-copper-blanket", (0.41, 0.132, 0.029), metallic=0.50, roughness=0.52)
     white = material("lm3-ascent-shield", (0.53, 0.56, 0.55), metallic=0.48, roughness=0.50, double_sided=True)
@@ -606,8 +712,8 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
             root["lineup_enclosed"] = True
         root.location.z = (0 if deployed else iu_top - 36) * IN
     descent(parts["LMDescent"], foil, amber, dark, silver, spacecraft)
-    landing_gear(parts["LMLandingGear"], foil, silver, dark, deployed, spacecraft)
-    cabin(parts["LMAscent"], parts["LMEquipment"], parts["LMPorch"], white, white, dark, glass, silver, foil, deployed, spacecraft)
+    landing_gear(parts["LMLandingGear"], foil, silver, dark, deployed, spacecraft, landed)
+    cabin(parts["LMAscent"], parts["LMEquipment"], parts["LMPorch"], white, white, dark, glass, silver, foil, deployed, spacecraft, landed)
     apollo_docking.lunar(parts["LMDockingPort"], silver, dark, drogue_installed=not (spacecraft == 7 and deployed))
     lm_propulsion.engine(parts["LMDescentEngine"], False, silver, dark, white, amber, j_mission=spacecraft >= 10)
     lm_propulsion.engine(parts["LMAscentEngine"], True, silver, dark, white, amber)
@@ -617,5 +723,9 @@ def build(iu_top=0, *, deployed=False, spacecraft=3):
     staging_fittings(parts["LMDescent"], parts["LMAscent"], silver, dark)
     if deployed and spacecraft == 5:
         lm5_equipment.pilot_camera(parts["LMControlPanels"], silver, dark, ivory)
-    lm_cabin.build(parts["LMStations"], parts["LMControlPanels"], silver, interior_paint, dark, ivory, glass)
+    lm_cabin.build(
+        parts["LMStations"], parts["LMControlPanels"], silver, interior_paint, dark, ivory, glass, hatch_top=HATCH_Z + HATCH / 2 if landed else None
+    )
     check_engine_interfaces(parts)
+    if landed:
+        check_hatch_swing(parts)

@@ -29,8 +29,29 @@ export const OCEAN_OF_STORMS = landingSite({
       'was: the great circle through it and the LM, its heading at the LM. A descent of 450 to 495 km moves it 0.3 to 1 degree',
   },
   landed: {
-    at: '1969-11-19T06:54:36Z',
+    value: Date.parse('1969-11-19T06:54:36Z') / 1000,
+    confidence: 'derived',
     source:
-      'Apollo 12 Mission Report, MSC-01855, table 3-I (sequence of events): landing at 110:32:36.2 GET from liftoff at 16:22:00 GMT, 14 November 1969 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+      'the range zero and the elapsed time of the landing, both read on the page, added: Apollo 12 Mission Report, MSC-01855 (March 1970), table 5-I (sequence of events), pp. 5-1 and 5-2: "Range zero - 16:22:00 G.m.t., Nov. 14, 1969" and "Lunar landing 110:32:36". UTC, seconds from 1970',
+  },
+  rest: {
+    heading: {
+      value: 284.2,
+      confidence: 'estimated',
+      source:
+        'the report gives no yaw at rest (MSC-01855 section 4.2.3, p. 4-23, has the pitch and the roll alone). Taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead)',
+    },
+    pitch: {
+      value: 3,
+      confidence: 'documented',
+      source:
+        'Apollo 12 Mission Report, MSC-01855, section 4.2.3 (landing dynamics), p. 4-23: "The final resting attitude, as viewed by the crew, was 3 degrees up in pitch and a 3.8-degree roll left"',
+    },
+    roll: {
+      value: -3.8,
+      confidence: 'documented',
+      source:
+        'Apollo 12 Mission Report, MSC-01855, section 4.2.3, p. 4-23: "a 3.8-degree roll left, which indicates a surface slope of about 4 or 5 degrees downward to the left and rear of the crew" (left negative)',
+    },
   },
 });

@@ -1,4 +1,5 @@
 import type { DockingPort, ModelDef, Move, Part, ViewDef } from '../../../../src/types.ts';
+import type { LunarSite } from '../../../../src/world/lunar-terrain.ts';
 
 export const lmPort: DockingPort = {
   system: 'apollo-probe-and-drogue',
@@ -6,6 +7,15 @@ export const lmPort: DockingPort = {
   part: 'LMDockingPort',
   frame: 'SpiderDockingFrame',
 };
+/**
+ * How far each pad's middle is from the LM's axis, inches (lunar_module.py TREAD: "The center of each LM footpad is 167.57
+ * inches from the vehicle X-axis", NASA TN D-6850 p. 6), and the forward hatch's swing in, degrees (lunar_module.py
+ * HATCH_OPEN: estimated, the handbook gives none).
+ */
+export const TREAD_IN = 167.57;
+export const HATCH_OPEN_DEG = 80;
+/** The forward hatch of a LM that landed, on its own hinge (lunar_module.py `landed`: `LM_ForwardHatch`, its origin on the hinge line). */
+export const FORWARD_HATCH = 'LM_ForwardHatch';
 export const lower = 'Descent stage';
 export const upper = 'Ascent stage';
 const radial: [number, number][] = [
@@ -56,6 +66,8 @@ export function lunarGallery(
   stageParts: [string, string, string, string, string][],
   facts: Record<string, Part['facts']>,
   forwardProbe = true,
+  /** The landing site it came down at (missions/usa/places/moon/, by id): one of the six that landed, as it stood there. */
+  landed?: LunarSite,
 ) {
   const deployedParts: Part[] = [...stageParts]
     .sort((a, b) => Number(a[2] === upper) - Number(b[2] === upper))
@@ -69,10 +81,44 @@ export function lunarGallery(
       explode: [0, group === upper ? 4 : 0, 0],
       inside: internal.has(node),
       facts: facts[node],
+      // (a LM that landed has its forward hatch on a hinge, opened and shut by hand on the porch: lunar_module.py `landed`)
+      ...(landed && node === 'LMAscent'
+        ? {
+            actions: [
+              {
+                id: 'forward-hatch',
+                label: 'Open the hatch',
+                on: FORWARD_HATCH,
+                do: {
+                  kind: 'toggle' as const,
+                  // hinged on the pilot's side, the model's +z, and swung in toward him (LMA790-3-LM vol. I, 1.2.2.1.2; the ALSJ, Apollo 11 at 109:03:02)
+                  moves: [
+                    {
+                      kind: 'swing' as const,
+                      node: FORWARD_HATCH,
+                      axis: [0, 1, 0] as [number, number, number],
+                      angle: (HATCH_OPEN_DEG * Math.PI) / 180,
+                      from: 0,
+                      to: 1,
+                      machine: {
+                        kind: 'door' as const,
+                        confidence: 'derived' as const,
+                        source: 'a hinged hatch worked by hand: what the model is',
+                      },
+                    },
+                  ],
+                  seconds: 3,
+                  back: 'Close the hatch',
+                },
+              },
+            ],
+          }
+        : {}),
     }));
   const travel: Move = { kind: 'slide', by: [0, 28, 0], from: 0.25, to: 0.75 };
   const stage: Move = { kind: 'slide', by: [0, 4, 0], from: 0.89, to: 1 };
-  const stackParts: Part[] = deployedParts.map((p) => ({
+  // (in the launch stack the LM is folded in its adapter: nothing of it is worked by hand there, its hatch included)
+  const stackParts: Part[] = deployedParts.map(({ actions: _actions, ...p }) => ({
     ...p,
     group: `${callsign} in adapter`,
     order: 6,
@@ -157,7 +203,26 @@ export function lunarGallery(
     motorNames: ['Descent engine', 'Ascent engine', 'LM attitude thruster'],
     parts: deployedParts,
     views,
-    seats,
+    // (on the Moon each station is boarded and left by the forward hatch, from the porch: the commander's and the pilot's
+    // figures outside are the crew's, lc39.ts `crew` and `lmp`)
+    seats: landed ? seats?.map((s, i) => ({ ...s, from: FORWARD_HATCH, egress: ['surface' as const], figure: i ? 'lmp' : 'crew' })) : seats,
+    ...(landed
+      ? {
+          lander: {
+            site: landed,
+            pads: (
+              [
+                [1, 0],
+                [0, -1],
+                [-1, 0],
+                [0, 1],
+              ] as const
+            ).map(([x, z]) => [x * TREAD_IN * 0.0254, z * TREAD_IN * 0.0254] as [number, number]),
+            // (out of the hatch on to the porch, a step from it: lunar_module.py HATCH_X, the porch's 79 to 110 in at PORCH_Z)
+            out: [88 * 0.0254, 134 * 0.0254, 0],
+          },
+        }
+      : {}),
     lights: [
       { position: point(58, 24, 213), colour: 0xfff5e8, intensity: 0.7, reach: 2.3 },
       { position: point(58, -24, 213), colour: 0xfff5e8, intensity: 0.7, reach: 2.3 },

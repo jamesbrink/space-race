@@ -129,9 +129,12 @@ export const CLIMB_SPEED = 0.6;
 const CLIMB_GAP = 0.04;
 
 /**
- * A ladder: one near-vertical run, as a model declares it (a mesh with `userData.climb`). It is
- * known by its bounds: the heights of its foot and its top, where its middle is over the ground,
- * and its half-widths along x and z. The thinner way is the way it is climbed from.
+ * A ladder: one run, as a model declares it (a mesh with `userData.climb`). It is known by its
+ * bounds: the heights of its foot and its top, where its middle is over the ground, and its
+ * half-widths along x and z. The thinner way is the way it is climbed from. A ladder that leans
+ * (one laid along a strut: the LM's) also has its `lean`, found from its own rails (`Solids.ladderOf`):
+ * how far its middle goes over the ground for each metre it rises, and its half-depth and
+ * half-width across that; it is climbed from the side it leans away from, its upper face.
  */
 export interface Ladder {
   /** The mesh it is, where it is one: a ladder on something that moves takes its climber with it. */
@@ -142,6 +145,27 @@ export interface Ladder {
   z: number;
   hx: number;
   hz: number;
+  /** A leaning ladder's slope (its middle's way over the ground per metre up, x and z), its half-depth and its half-width, metres. */
+  lean?: { x: number; z: number; depth: number; width: number };
+  /**
+   * Where its rungs are, where the model says (extras `climb_pitch`, `climb_first`): the height between them and the lowest's
+   * over its foot, metres. Left out, they are srlib.ladder's (gait.ts RUNG: a foot apart, the first a foot up).
+   */
+  rungs?: { pitch: number; first: number };
+}
+
+/** Where a ladder's middle is over the ground at height `y`: its box's middle, or for one that leans, where the lean has it. */
+export function centreOf(ladder: Ladder, y: number): { x: number; z: number } {
+  const l = ladder.lean;
+  if (!l) return { x: ladder.x, z: ladder.z };
+  const dy = y - (ladder.bottom + ladder.top) / 2;
+  return { x: ladder.x + l.x * dy, z: ladder.z + l.z * dy };
+}
+
+/** How deep a ladder is along the way it is climbed from (`nx`, `nz`), and how wide across it, as halves, metres. */
+export function extentOf(ladder: Ladder, nx: number): { depth: number; width: number } {
+  if (ladder.lean) return { depth: ladder.lean.depth, width: ladder.lean.width };
+  return nx ? { depth: ladder.hx, width: ladder.hz } : { depth: ladder.hz, width: ladder.hx };
 }
 
 /** A ladder with a climber on it: which side of it they are on (a unit way out from its face, over the ground). */
@@ -161,7 +185,18 @@ export function hang(
   pz: number,
   radius: number,
   side?: 1 | -1,
+  y?: number,
 ): { x: number; z: number; nx: number; nz: number } {
+  const l = ladder.lean;
+  if (l) {
+    // (one that leans is climbed on its upper face, whichever side it was come to from: its foot stands out from what it leans on)
+    const flat = Math.hypot(l.x, l.z);
+    const nx = -l.x / flat;
+    const nz = -l.z / flat;
+    const c = centreOf(ladder, y ?? (ladder.bottom + ladder.top) / 2);
+    const out = l.depth + radius + CLIMB_GAP;
+    return { x: c.x + nx * out, z: c.z + nz * out, nx, nz };
+  }
   const alongX = ladder.hx <= ladder.hz; // climbed along x: the rungs run along z
   const s = side ?? (((alongX ? px - ladder.x : pz - ladder.z) >= 0 ? 1 : -1) as 1 | -1);
   const out = (alongX ? ladder.hx : ladder.hz) + radius + CLIMB_GAP;
@@ -288,6 +323,99 @@ const versionOf = (geometry: THREE.BufferGeometry): number =>
  * own coordinates through its world matrix as it is now, so a platform that has slid, or a
  * truck that has driven off, is solid where it stands this frame.
  */
+/**
+ * A ladder's run in its own mesh, found once a geometry (`axisOf`): the middles of its lowest and highest tenth, and its
+ * half-depth and half-width across the line between them; null for one that stands within 4.6 degrees of the upright,
+ * which is known by its box alone, as every ladder was before one leant.
+ */
+const AXES = new WeakMap<THREE.BufferGeometry, { foot: THREE.Vector3; head: THREE.Vector3; depth: number; width: number } | null>();
+function axisOf(geometry: THREE.BufferGeometry): { foot: THREE.Vector3; head: THREE.Vector3; depth: number; width: number } | null {
+  if (AXES.has(geometry)) return AXES.get(geometry)!;
+  const p = geometry.getAttribute('position');
+  let low = Number.POSITIVE_INFINITY;
+  let high = Number.NEGATIVE_INFINITY;
+  for (let i = 0; i < p.count; i++) {
+    low = Math.min(low, p.getY(i));
+    high = Math.max(high, p.getY(i));
+  }
+  const tenth = (high - low) / 10;
+  const foot = new THREE.Vector3();
+  const head = new THREE.Vector3();
+  let feet = 0;
+  let heads = 0;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i);
+    if (y <= low + tenth) {
+      foot.x += p.getX(i);
+      foot.y += y;
+      foot.z += p.getZ(i);
+      feet++;
+    } else if (y >= high - tenth) {
+      head.x += p.getX(i);
+      head.y += y;
+      head.z += p.getZ(i);
+      heads++;
+    }
+  }
+  foot.divideScalar(Math.max(1, feet));
+  head.divideScalar(Math.max(1, heads));
+  const rise = head.y - foot.y;
+  const lx = (head.x - foot.x) / rise;
+  const lz = (head.z - foot.z) / rise;
+  const flat = Math.hypot(lx, lz);
+  if (!(rise > 0) || flat < 0.08) {
+    AXES.set(geometry, null);
+    return null;
+  }
+  // (across the run: how far its rails and rungs reach from the line, out from its face and along its rungs)
+  const [nx, nz] = [-lx / flat, -lz / flat];
+  let depth = 0;
+  let width = 0;
+  for (let i = 0; i < p.count; i++) {
+    const dy = p.getY(i) - foot.y;
+    const ox = p.getX(i) - (foot.x + lx * dy);
+    const oz = p.getZ(i) - (foot.z + lz * dy);
+    depth = Math.max(depth, Math.abs(ox * nx + oz * nz));
+    width = Math.max(width, Math.abs(ox * -nz + oz * nx));
+  }
+  const axis = { foot, head, depth, width };
+  AXES.set(geometry, axis);
+  return axis;
+}
+
+const FOOT = new THREE.Vector3();
+const HEAD = new THREE.Vector3();
+/** A ladder as a mesh stands, from its box in the world (and, for one that leans, its run turned as the mesh is). */
+function ladderIn(mesh: THREE.Mesh, box: THREE.Box3): Ladder {
+  const ladder: Ladder = {
+    mesh,
+    bottom: box.min.y,
+    top: box.max.y,
+    x: (box.min.x + box.max.x) / 2,
+    z: (box.min.z + box.max.z) / 2,
+    hx: (box.max.x - box.min.x) / 2,
+    hz: (box.max.z - box.min.z) / 2,
+  };
+  const { climb_pitch: pitch, climb_first: first } = mesh.userData;
+  if (typeof pitch === 'number' && pitch > 0) ladder.rungs = { pitch, first: typeof first === 'number' ? first : pitch };
+  const axis = axisOf(mesh.geometry);
+  if (!axis) return ladder;
+  FOOT.copy(axis.foot).applyMatrix4(mesh.matrixWorld);
+  HEAD.copy(axis.head).applyMatrix4(mesh.matrixWorld);
+  const rise = HEAD.y - FOOT.y;
+  if (!(rise > 0)) return ladder;
+  const scale = mesh.matrixWorld.getMaxScaleOnAxis();
+  const lx = (HEAD.x - FOOT.x) / rise;
+  const lz = (HEAD.z - FOOT.z) / rise;
+  if (Math.hypot(lx, lz) < 0.08) return ladder;
+  // (its middle over the ground at the middle of its height, on the run)
+  const mid = (ladder.bottom + ladder.top) / 2 - FOOT.y;
+  ladder.x = FOOT.x + lx * mid;
+  ladder.z = FOOT.z + lz * mid;
+  ladder.lean = { x: lx, z: lz, depth: axis.depth * scale, width: axis.width * scale };
+  return ladder;
+}
+
 export class Solids {
   private roots: THREE.Object3D[] = [];
   /** The meshes under each root, found once, each with its record. */
@@ -574,28 +702,12 @@ export class Solids {
     const box = this.region
       .copy(mesh.geometry.boundingBox ?? mesh.geometry.boundingSphere!.getBoundingBox(new THREE.Box3()))
       .applyMatrix4(mesh.matrixWorld);
-    return {
-      mesh,
-      bottom: box.min.y,
-      top: box.max.y,
-      x: (box.min.x + box.max.x) / 2,
-      z: (box.min.z + box.max.z) / 2,
-      hx: (box.max.x - box.min.x) / 2,
-      hz: (box.max.z - box.min.z) / 2,
-    };
+    return ladderIn(mesh, box);
   }
 
   /** The ladders among what was gathered. */
   ladders(): Ladder[] {
-    return this.rungs.map((n) => ({
-      mesh: n.mesh,
-      bottom: n.box.min.y,
-      top: n.box.max.y,
-      x: (n.box.min.x + n.box.max.x) / 2,
-      z: (n.box.min.z + n.box.max.z) / 2,
-      hx: (n.box.max.x - n.box.min.x) / 2,
-      hz: (n.box.max.z - n.box.min.z) / 2,
-    }));
+    return this.rungs.map((n) => ladderIn(n.mesh, n.box));
   }
 
   /** A gather of one's own, for `within`: empty until something is gathered into it. */
@@ -859,17 +971,17 @@ export class Body {
    */
   mount(ladder: Ladder): void {
     const p = this.position;
-    let hold = hang(ladder, p.x, p.z, this.radius);
     let y = Math.max(ladder.bottom, Math.min(ladder.top, p.y));
+    let hold = hang(ladder, p.x, p.z, this.radius, undefined, y);
     if (this.grounded && p.y > ladder.bottom + 0.6) {
+      y = Math.min(ladder.top, p.y) - 0.05;
       // from a deck it serves (its stiles may stand a metre above that): the climbing side is the one with nothing to stand on at this height
       for (const side of [1, -1] as const) {
-        const there = hang(ladder, p.x, p.z, this.radius, side);
+        const there = hang(ladder, p.x, p.z, this.radius, side, y);
         this.solids.gather(this.before.set(there.x, p.y, there.z), this.radius + 0.5, STEP + 1, this.height);
         const floor = this.solids.below(there.x, p.y + STEP, there.z, this.level(there.x, there.z));
         if (floor === null || floor < p.y - STEP - 0.05) hold = there;
       }
-      y = Math.min(ladder.top, p.y) - 0.05;
     }
     this.on = { ...ladder, nx: hold.nx, nz: hold.nz };
     this.stepping = false;
@@ -887,11 +999,14 @@ export class Body {
   private climbStep(dt: number): void {
     const on = this.on!;
     const p = this.position;
-    const hold = hang(on, 0, 0, this.radius, on.nx + on.nz > 0 ? 1 : -1);
     this.solids.gather(p, this.radius + 1.5, STEP + 1, this.height + 1);
     if (this.climbing <= 0) this.stepping = false;
     const push = this.stepping ? -this.climbing : this.climbing;
     const step = climb(p.y, push, on, dt);
+    // (where it hangs at the height it has come to: on one that leans, further out the lower it is)
+    const hold = hang(on, 0, 0, this.radius, on.nx + on.nz > 0 ? 1 : -1, step.y);
+    const { depth, width } = extentOf(on, hold.nx);
+    const c = centreOf(on, step.y);
     p.set(hold.x, step.y, hold.z);
     if (step.off === 'bottom') {
       this.on = null; // and the floor, if there is one within a step, has the feet next tick
@@ -911,10 +1026,10 @@ export class Body {
     // either side of it. (A ladder's stiles stand above the deck it serves, and a run in a well
     // comes up through a hole with the floor beside it.) Not at its own foot.
     if (push > 0 && p.y > on.bottom + 0.5) {
-      const across = (hold.nx ? on.hx : on.hz) + this.radius + 0.12;
-      const along = (hold.nx ? on.hz : on.hx) + this.radius + 0.12;
+      const across = depth + this.radius + 0.12;
+      const along = width + this.radius + 0.12;
       for (const [x, z] of [
-        [on.x - hold.nx * across, on.z - hold.nz * across],
+        [c.x - hold.nx * across, c.z - hold.nz * across],
         [hold.x + hold.nz * along, hold.z + hold.nx * along],
         [hold.x - hold.nz * along, hold.z - hold.nx * along],
       ] as const) {
@@ -934,8 +1049,8 @@ export class Body {
     }
     if (step.off !== 'top') return;
     // over the top: onto whatever floor lies just beyond it, if there is one and room to stand
-    const beyond = (hold.nx ? on.hx : on.hz) + this.radius + 0.12;
-    p.set(on.x - hold.nx * beyond, on.top, on.z - hold.nz * beyond);
+    const beyond = depth + this.radius + 0.12;
+    p.set(c.x - hold.nx * beyond, on.top, c.z - hold.nz * beyond);
     this.solids.gather(p, this.radius + 1, STEP + 1, this.height + 1);
     const floor = this.floor(STEP);
     const blocked = this.solids.push(this.before.copy(p), STEP, this.height, this.radius, this.heading.set(-hold.nx, 0, -hold.nz)) > 0.02;
@@ -954,14 +1069,15 @@ export class Body {
   private reach(): void {
     const p = this.position;
     for (const ladder of this.solids.ladders()) {
-      const hold = hang(ladder, p.x, p.z, this.radius);
+      const hold = hang(ladder, p.x, p.z, this.radius, undefined, Math.max(ladder.bottom, Math.min(ladder.top, p.y)));
       const toward = -(this.heading.x * hold.nx + this.heading.z * hold.nz); // 1: straight at its face
       const off = (p.x - hold.x) * hold.nx + (p.z - hold.z) * hold.nz; // how far short of hanging on it
       const aside = Math.abs((p.x - hold.x) * hold.nz - (p.z - hold.z) * hold.nx);
-      const wide = (hold.nx ? ladder.hz : ladder.hx) + 0.15;
+      const wide = extentOf(ladder, hold.nx).width + 0.15;
       // from a deck it serves: up to the edge over it, looking down (first: on a deck, walking at it means going down it)
-      const over = Math.hypot(p.x - ladder.x, p.z - ladder.z);
-      const at = ((ladder.x - p.x) * this.heading.x + (ladder.z - p.z) * this.heading.z) / (over || 1);
+      const c = centreOf(ladder, Math.min(ladder.top, p.y));
+      const over = Math.hypot(p.x - c.x, p.z - c.z);
+      const at = ((c.x - p.x) * this.heading.x + (c.z - p.z) * this.heading.z) / (over || 1);
       if (this.grounded && this.lookingDown && p.y > ladder.bottom + 0.6 && p.y <= ladder.top + STEP && over < 0.9 && at > 0.5) {
         this.mount(ladder);
         this.stepping = true;

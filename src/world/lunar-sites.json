@@ -17,7 +17,12 @@
       "height": -1927.81,
       "approach": 268.64,
       "centre": 0,
-      "stereo": ["APOLLO11"]
+      "stereo": ["APOLLO11"],
+      "rest": {
+        "heading": 268.64,
+        "pitch": 4.5,
+        "roll": 0
+      }
     },
     "ocean-of-storms": {
       "name": "Ocean of Storms",
@@ -25,7 +30,12 @@
       "height": -1422.77,
       "approach": 284.2,
       "centre": 0,
-      "stereo": ["APOLLO12"]
+      "stereo": ["APOLLO12"],
+      "rest": {
+        "heading": 284.2,
+        "pitch": 3,
+        "roll": -3.8
+      }
     },
     "fra-mauro": {
       "name": "Fra Mauro",
@@ -33,7 +43,12 @@
       "height": -1062.89,
       "approach": 283.96,
       "centre": 0,
-      "stereo": ["APOLLO14"]
+      "stereo": ["APOLLO14"],
+      "rest": {
+        "heading": 283.96,
+        "pitch": 0,
+        "roll": 7
+      }
     },
     "hadley": {
       "name": "Hadley–Apennine",
@@ -41,7 +56,12 @@
       "height": -1924.23,
       "approach": 270,
       "centre": 12,
-      "stereo": ["APOLLO15"]
+      "stereo": ["APOLLO15"],
+      "rest": {
+        "heading": 270,
+        "pitch": 6.9,
+        "roll": -8.6
+      }
     },
     "descartes": {
       "name": "Descartes Highlands",
@@ -49,7 +69,12 @@
       "height": 8.38,
       "approach": 270.31,
       "centre": 12,
-      "stereo": ["APOLLO16"]
+      "stereo": ["APOLLO16"],
+      "rest": {
+        "heading": 270.31,
+        "pitch": 2.5,
+        "roll": 0
+      }
     },
     "taurus-littrow": {
       "name": "Taurus–Littrow",
@@ -57,7 +82,12 @@
       "height": -2626.69,
       "approach": 270.51,
       "centre": 12,
-      "stereo": ["APOLLO17", "APOLLO17_1"]
+      "stereo": ["APOLLO17", "APOLLO17_1"],
+      "rest": {
+        "heading": 270.51,
+        "pitch": 5.3,
+        "roll": -2.6
+      }
     }
   }
 }

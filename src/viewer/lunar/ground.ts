@@ -74,18 +74,41 @@ export const lunarGroundHeld = (id: LunarSite): LunarGroundData | null => held.g
 
 /**
  * The LM as it stood at a site, where a model of it landed has been built (world/lunar-rover-sites.json: the rover's sites,
- * whose gallery scenes stand it there): its model, the nodes that had been unloaded from it by then, and the bearing of its
- * forward hatch, degrees east of north (the model's +X; the site's +X is east). Null where there is none yet.
+ * whose gallery scenes stand it there): its model, the nodes that had been unloaded from it by then, and how it stood at rest
+ * (its site's `rest`: the bearing of its forward hatch, the model's +X, degrees east of north, and its pitch and roll). Null
+ * where there is none.
  */
-export function landerAt(id: LunarSite): { url: string; unloaded: string[]; bearing: number } | null {
+export function landerAt(id: LunarSite): { url: string; unloaded: string[]; rest: LunarRest } | null {
   if (!(id in ROVER_SITES)) return null;
   const def = ROVER_SITES[id as RoverSite];
   return {
     url: def.lander,
     // (the rover off its pallet, the experiments carried out to their places)
     unloaded: ['LMRover', 'LMRoverPallet', 'LMRetroreflector', 'LMFarUV', 'LMScienceBay', ...('unloaded' in def ? def.unloaded : [])],
-    bearing: 'landerBearing' in def ? def.landerBearing : 90,
+    rest: LUNAR_SITES[id].rest,
   };
+}
+
+/** How a site's LM stood at rest, degrees (LunarSiteDef `rest`, as lunar-sites.json carries it): its heading, pitch and roll. */
+export type LunarRest = { heading: number; pitch: number; roll: number };
+
+/**
+ * How a LM stands at its landing site: turned to its heading (its forward hatch, the model's +x, on the bearing the site
+ * gives), tipped by its pitch and roll at rest, and raised so that its pads (`lander.pads`, each in the model's frame) are
+ * on the ground, on the whole: the mean of what each pad needs, on the ground's heights under it (`at`).
+ */
+export function landerPose(
+  rest: LunarRest,
+  pads: readonly (readonly [number, number])[],
+  at: (x: number, z: number) => number,
+): { y: number; rotationY: number; attitude: { pitch: number; roll: number }; pads: THREE.Vector3[] } {
+  const rotationY = THREE.MathUtils.degToRad(90 - rest.heading);
+  const attitude = { pitch: THREE.MathUtils.degToRad(rest.pitch), roll: THREE.MathUtils.degToRad(rest.roll) };
+  const turn = new THREE.Euler(attitude.roll, rotationY, attitude.pitch, 'YZX');
+  const placed = pads.map(([x, z]) => new THREE.Vector3(x, 0, z).applyEuler(turn));
+  const y = placed.length ? placed.reduce((sum, p) => sum + at(p.x, p.z) - p.y, 0) / placed.length : at(0, 0);
+  for (const p of placed) p.y += y;
+  return { y, rotationY, attitude, pads: placed };
 }
 
 /** The landing site a SiteDef is (by its name and place), or null for one that is not on the Moon. */

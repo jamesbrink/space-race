@@ -268,6 +268,7 @@ export const {
   stageParts,
   facts,
   false,
+  'taurus-littrow',
 );
 
 challengerModel.scale = '31 ft across deployed pads · 23 ft 1 in from pad plane to antenna crest';

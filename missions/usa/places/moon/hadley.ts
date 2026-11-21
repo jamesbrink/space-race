@@ -30,8 +30,28 @@ export const HADLEY = landingSite({
       'table (MSC-05161, table 3-III) is an image not yet read',
   },
   landed: {
-    at: '1971-07-30T22:16:30Z',
+    value: Date.parse('1971-07-30T22:16:29Z') / 1000,
+    confidence: 'derived',
     source:
-      'Apollo 15 Mission Report, MSC-05161, table 3-I (sequence of events): landing at 104:42:29.3 GET from liftoff at 13:34:00.6 GMT, 26 July 1971 (the times as remembered, not read again: to the minute, what the Earth’s day over the site is baked for)',
+      'the range zero and the elapsed time of the landing, both read on the page, added: Apollo 15 Mission Report, MSC-05161 (December 1971), table 3-I (sequence of events), as the Apollo Lunar Surface Journal’s retyped edition has it (its p. 7): "Range zero - 13:34:00 G.m.t., July 26, 1971" and "Lunar landing 104:42:29". UTC, seconds from 1970',
+  },
+  rest: {
+    heading: {
+      value: 270,
+      confidence: 'estimated',
+      source:
+        'the report gives no yaw at rest (MSC-05161 section 7.1 has the pitch and the roll from the gimbal angles alone). Taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead)',
+    },
+    pitch: {
+      value: 6.9,
+      confidence: 'documented',
+      source:
+        'Apollo 15 Mission Report, MSC-05161, section 7.1 (structural and mechanical systems; the ALSJ edition’s p. 63): "The vehicle at-rest attitude, as determined from the gimbal angles, was 6.9 degrees pitch up and 8.6 degrees roll to the left, resulting in a vehicle tilt angle on the lunar surface of approximately 11 degrees from the horizontal"',
+    },
+    roll: {
+      value: -8.6,
+      confidence: 'documented',
+      source: 'Apollo 15 Mission Report, MSC-05161, section 7.1: "8.6 degrees roll to the left" (left negative)',
+    },
   },
 });

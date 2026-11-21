@@ -24,3 +24,31 @@ Cernan and Schmitt wore the side-entry A7LB-EV with its six chest connectors and
 The December 6 suit-up photograph shows Cernan’s red bands, black launch gloves, the mission emblem on his left breast and the NASA insignia on his right shoulder. The White Room photograph shows his US flag on the left sleeve. Both shoulder markings follow the upper-arm joints. The circular flight patch uses NASA’s image of the Apollo and eagle insignia. [NASA KSC-72PC-613, suit-up](https://www.nasa.gov/wp-content/uploads/2022/12/apollo_17_launch_5_as17-468-72pc-613-12.6.72.jpg) · [NASA KSC-72PC-627, White Room](https://www.nasa.gov/wp-content/uploads/2022/12/apollo_17_launch_7_as17-479b-72pc-627-12.6.72.jpg) · [NASA S72-49079, Apollo 17 insignia](https://images.nasa.gov/details/s72-49079)
 
 The chest emblem is 8.4 cm across in the model. The flag measures 10 × 6.1 cm and the NASA disc 7.6 cm. All three sizes and their positions are estimated from the photographs. The modeled CMP glove and its wrist disconnect are fitted together about the wrist. Hand size is estimated from stature, and individual cuff measurements are unavailable. The figures share facial geometry. Embroidery, individual suit folds, the walkout ventilators and their hoses are omitted.
+
+## On the Moon
+
+The twelve who walked on the Moon are built a second time as they went out of the LM (crew/eva.py; each landing flight's
+`model/eva-cdr.py` and `eva-lmp.py`), on the same walking skeleton, so the gait walks them and the ladder is climbed with
+their hands and feet on its rungs: the extravehicular garment (the A7L on Apollo 11, 12 and 14, the A7LB on 15 to 17), the
+portable life-support system on the back with the oxygen purge system on top of it, the visor assembly over the helmet, the
+outer gloves and the lunar overshoes. The stage stands them before the LM's ladder while the flight is on the surface, and the
+deck's Go out puts the commander on the porch (app/surface.ts; walking.md).
+
+| What | Figure | Basis |
+| --- | --- | --- |
+| Life-support pack, -6 (Apollo 11, 12, 14) | 26 high, 17.8 wide, 10.5 deep, in | Grumman, *Lunar Module News Reference*, Portable Life Support System, p. P-1 (the four-hour edition); TN D-8093 fig. 33: 26.44 by 17.84 by 10.5 at its base |
+| Life-support pack, -7 (Apollo 15 to 17) | 26 high, 20.5 wide, 10.5 deep, in | The same, p. P-1 of the edition for Apollo 15 to 17 |
+| Oxygen purge system | 18.4 long, 10 high, 8 deep, in | The same, p. P-4 of both editions |
+| Armstrong, Aldrin | 5 ft 11 in, 5 ft 10 in | Apollo 11 Press Kit, pp. 138 and 142 |
+| Conrad, Bean | 5 ft 6½ in, 5 ft 9½ in | Apollo 12 Press Kit, pp. 75 and 79 |
+| Mitchell | 5 ft 11 in | Apollo 14 Press Kit, p. 77 |
+| Commander's red bands | from Apollo 13 on | The ALSJ, "Commander's Stripes": none on Apollo 11 and 12, so Armstrong and Conrad have none |
+
+[Apollo 11 Press Kit](https://apollojournals.org/alsj/a11/A11_PressKit.pdf) · [Apollo 12 Press Kit](https://apollojournals.org/alsj/a12/A12_PressKit.pdf) · [Apollo 14 Press Kit](https://apollojournals.org/alsj/a14/A14_PressKit.pdf) · [LM News Reference, PLSS (-6)](https://apollojournals.org/alsj/WOTM/WOTM-ALMNR-PLSSOPS.pdf) · [LM News Reference, PLSS (-7)](https://apollojournals.org/alsj/LM15_Portable_Life_Support_System_ppP1-5.pdf) · [TN D-8093](https://apollojournals.org/alsj/tnD8093EMUDevelop.pdf) · [ALSJ, Commander's Stripes](https://apollojournals.org/alsj/alsj-CDRStripes.html)
+
+What is simplified: the pack rides a hand's breadth under the waist and its face stands a few millimetres clear of the suit's
+back where that is deepest (estimated, so that no two faces lie within a millimetre), and it is a box of its documented size, not
+its shape; the purge unit's straps and its controls, the pack's controls and its hoses' run are estimated, as the rover's riders'
+are (lunar_riders.py, whose visor assembly they share, its shape and sizes estimated, the sunshade added from Apollo 12 left out);
+the outer gloves and overshoes are coloured over the pressure garment's, not modelled over them; the lunar dust is not drawn; the
+clear pressure bubble is left out under the visor assembly, and the head and its eyes are kept for the walk's eye level.

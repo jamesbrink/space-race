@@ -829,6 +829,8 @@ export class Stage {
       const staged = new Staged(scenes[i]!, def.parts, this.surfaces);
       staged.group.position.set(...(def.position ?? [0, 0, 0]));
       staged.group.rotation.y = def.rotationY ?? 0;
+      // (tipped as it came to rest, about its own axes once turned: the heading, then the pitch, then the roll)
+      if (def.attitude) staged.group.rotation.set(def.attitude.roll, def.rotationY ?? 0, def.attitude.pitch, 'YZX');
       const lamps = (def.lights ?? []).map((l) => {
         const lamp = new THREE.PointLight(l.colour, l.intensity, l.reach, 2);
         lamp.position.set(...l.position);
@@ -2607,13 +2609,14 @@ export class Stage {
    * while you are it. Eye height and stature are the model's own: the middle of the node its
    * `walker.eyes` names above its soles, and the top of its bounds; they are as good as the model.
    */
-  enterWalk(model?: string, from?: THREE.Vector3): boolean {
+  enterWalk(model?: string, from?: THREE.Vector3, facing?: number): boolean {
     const at = this.defs.findIndex((m) => m.walker && (!model || m.id === model));
     if (at < 0 || !this.root || this.walk.active) return false;
     if (from) {
-      // put the figure there first: the walk starts wherever the figure stands
+      // put the figure there first: the walk starts wherever the figure stands (and facing the way asked, about the vertical)
       const figure = this.staged[at]!;
       figure.group.position.copy(from);
+      if (facing !== undefined) figure.group.rotation.y = facing;
       figure.group.updateMatrixWorld(true);
       figure.measure();
     }
@@ -2625,6 +2628,21 @@ export class Stage {
     this.highlight(null, null);
     this.onFoot.embody(at);
     return true;
+  }
+
+  /**
+   * Out of the lander's hatch (`ModelDef.lander.out`) as it stands on the stage: the point in the world whoever goes out stands
+   * at, and the way out over the ground it faces (the lander's +x, as `enterWalk`'s `facing`), or null with no lander.
+   */
+  landerOut(): { at: THREE.Vector3; facing: number } | null {
+    const i = this.defs.findIndex((m) => m.lander?.out);
+    const lander = this.staged[i];
+    if (!lander) return null;
+    lander.group.updateMatrixWorld(true);
+    return {
+      at: lander.group.localToWorld(new THREE.Vector3(...this.defs[i]!.lander!.out!)),
+      facing: lander.group.rotation.y + Math.PI / 2,
+    };
   }
 
   /** A right click's "Look at this" on a place: the view goes to the spot and turns about it. */

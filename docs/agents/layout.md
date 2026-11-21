@@ -87,7 +87,10 @@ missions/                             the record: one folder per nation, program
     crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts; g4c-suit.parts.ts, with a Gemini man standing at Complex 19; g5c-suit.parts.ts)
     crew/<suit>_wearers.py            every wearer a suit's module names, built at every level of detail under the clearance check in one
                                       Blender run, nothing exported (sk_1_wearers.py: run it after touching sk_1.py; its header has the command)
-  usa/places/moon/                    the Apollo landing sites, each a `LunarSiteDef` (<site>.ts: its `SiteDef` on the Moon, its terrain's products, its descent's heading) and its .md; place.ts the Moon as a place, sites.ts every site and how their ground is baked
+    usa/apollo/crew/eva.py            a crewman as he went out on the Moon (the A7L or A7LB, the life-support pack and purge unit, the visor
+                                      assembly, overshoes) on the walking skeleton; each landing flight's model/eva-cdr.py and eva-lmp.py
+                                      builds its two (eva-cdr.glb, eva-lmp.glb: `ModelDef.surface`, crew/lc39.ts `moonSuits`)
+  usa/places/moon/                    the Apollo landing sites, each a `LunarSiteDef` (<site>.ts: its `SiteDef` on the Moon, its terrain's products, its descent's heading, when its LM landed and how it stood at rest) and its .md; place.ts the Moon as a place, sites.ts every site and how their ground is baked
   <nation>/places/<place>/            a place on the Earth and every pad in it, shared by every flight from them (cape-canaveral, tyuratam)
     place.ts                          the place (`PlaceDef`): its region (the globe's finer maps), its usual sky, its quiet
     <site>.ts                         a pad on the Earth (`SiteDef`: lc-5.ts, lc-14.ts, lc-19.ts, site-1.ts), each figure with its confidence and source
@@ -163,7 +166,7 @@ src/
   app/session.ts                      the session of a flight with a site: the panels, the clock, the sound, the deck, the gallery, wired to the stage; `dispose`
   app/front.ts  app/home.ts           the front page: the list over its own picture, going into a flight under it, the words making way; and the way back out to it
   app/front/view.ts                   the front page's view as numbers: the instant, the lens, the place the camera starts from, its path (pure, tested); the sky from the Moon is world/moonsky.ts's
-  app/surface.ts                      a flight on the Moon's surface as the stage loads it (`lunarStay`): the landing site's SiteDef, the LM, the crew who went out
+  app/surface.ts                      a flight on the Moon's surface as the stage loads it (`lunarStay`): the landing site's SiteDef, the flight's LM stood as it came to rest (viewer/lunar/ground.ts `landerPose`), the crew who went out in what they wore there
   app/front/scene.ts                  its scene: a renderer of its own, drawn from the eye, only when the picture changes, let go whole when a flight arrives
   app/front/front.css                 the front page's looks
   app/lineup.ts                       the Lineup's page (`#lineup`): every vehicle side by side; what the address says, what is chosen, what stands in the row, its keys, its show
@@ -297,7 +300,7 @@ src/
   world/lunar-terrain.ts              samples the triangles of the LROC and LOLA terrain under a rover's wheels (`LunarTerrain`); the landing sites and the rovers' by id
   world/lunar-ground.ts               a landing site's ground over the Moon: the descent strip (`DescentStrip`, its file format), the grids and the strip as one (`LandingGround`), by latitude and longitude or in the site's frame
   world/moonsky.ts                    the sky from the Moon at an instant (`skyAt`): the Earth, the Sun, the Earth's and the stars' axes in the Moon's frame (pure, tested by front.test.mjs)
-  world/lunar-sites.json              every landing site's position, height, approach and terrain products, and the bake's grids: written by tools/lunar-sites.mjs from missions/usa/places/moon/, never by hand
+  world/lunar-sites.json              every landing site's position, height, approach, its LM's rest and terrain products, and the bake's grids: written by tools/lunar-sites.mjs from missions/usa/places/moon/, never by hand
   world/lunar-rover-sites.json        what each rover's gallery scene shows at its site: its lander, which way it faces, what was unloaded, the second excursion's lighting instant
    viewer/moonsite.ts                  the altimeter's ground round the site, read whole in doubles (`SiteGround`): heights, places, how near the ground comes to the path; and a landing site's (`LandingApron`, from world/lunar-ground.ts) for the flight scene's apron
   viewer/space.ts                     the sky from above the air (Sun, Moon, stars) and its reflections, the Earth in them at the flight's height; the wear texture
