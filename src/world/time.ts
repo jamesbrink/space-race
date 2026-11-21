@@ -165,10 +165,17 @@ const TT_TAI = 32.184;
  * Terrestrial Time as a Julian date, from a Julian date in UTC: UTC + (TAI - UTC) + 32.184 s from 1960 on, exact; and
  * UT + delta-T before, a fit good to a second.
  */
-export const terrestrialTime = (jdUT: number): number => {
+export const terrestrialTime = (jdUT: number): number => jdUT + ttLessUT(jdUT) / 86_400;
+
+/**
+ * TT less UTC at a Julian date in UTC, seconds: what `terrestrialTime` adds. Asked for by itself where an instant is
+ * kept in two parts (a Julian date and seconds on from it: world/ephemeris.ts `stateOf`), since a Julian date in one
+ * double steps by 40 microseconds.
+ */
+export function ttLessUT(jdUT: number): number {
   const leap = taiMinusUtc(jdUT);
-  return jdUT + (Number.isNaN(leap) ? deltaT(decimalYear(jdUT)) : leap + TT_TAI) / 86_400;
-};
+  return Number.isNaN(leap) ? deltaT(decimalYear(jdUT)) : leap + TT_TAI;
+}
 
 /**
  * Barycentric Dynamical Time as a Julian date, what JPL's ephemerides are argued in, from TT: the two largest periodic
@@ -176,10 +183,15 @@ export const terrestrialTime = (jdUT: number): number => {
  * Explanatory Supplement to the Astronomical Almanac, 3rd ed., 2013, eq. 3.17). Within 30 microseconds: 3 cm of the Moon.
  */
 export function barycentricTime(jdTT: number): number {
+  return jdTT + tdbLessTT(jdTT) / 86_400;
+}
+
+/** TDB less TT at a Julian date in TT, seconds: what `barycentricTime` adds (and why it is asked for by itself: `ttLessUT`). */
+export function tdbLessTT(jdTT: number): number {
   const d = jdTT - J2000;
   const g = (357.53 + 0.98560028 * d) * DEG;
   const lj = (246.11 + 0.90251792 * d) * DEG; // (the Earth's mean longitude less Jupiter's)
-  return jdTT + (0.001657 * Math.sin(g) + 0.000022 * Math.sin(lj)) / 86_400;
+  return 0.001657 * Math.sin(g) + 0.000022 * Math.sin(lj);
 }
 
 const ARCSEC = DEG / 3600;

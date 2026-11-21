@@ -40,9 +40,9 @@ import { clamp } from '../util/math.ts';
 import { EARTH_ROTATION_RATE, G0 } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { add, angleBetween, cross, DEG, dot, type Geodetic, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { type State, step } from '../world/orbit.ts';
+import type { State } from '../world/orbit.ts';
 import { airDrag, skyOf } from './air.ts';
-import { thirdOf } from './core/gravity.ts';
+import { fieldFor, stepIn } from './core/gravity.ts';
 import { sensed, trapezoid } from './apparent.ts';
 import { act, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
 import { along as alongCurve, MEAN_RADIUS, RIDING } from './fly.ts';
@@ -315,7 +315,7 @@ export function stagedVehicle(
   // (an upper stage's own jets, which turn the stack with nothing burning while that stage is on: ThrusterSet.coasting)
   const jets = def.thrusters.find((t) => t.authority && t.coasting);
   // (the Moon and the Sun where the plan names them, `FlightPlan.gravity`, as the batch run has them)
-  const pull = thirdOf(plan.gravity, frame);
+  const field = fieldFor(plan.gravity, frame);
   const jetAuthority = (jets?.authority?.value ?? 0) * DEG;
   const steeringOf = (s: StagedState, lit: boolean): number =>
     lit ? authority : jets && !(s.craft.bodies[jets.body]! <= s.t) ? jetAuthority : 0;
@@ -888,10 +888,7 @@ export function stagedVehicle(
       let at0 = s.t;
       for (const to of [...dries, t]) {
         const from = at0;
-        const next = step({ r, v }, from, to - from, (st, at) => {
-          const a = accel(st, at, s, along(st, at), gone, from).accel;
-          return pull ? add(a, pull(st.r, at)) : a;
-        });
+        const next = stepIn(field, { r, v }, from, to - from, (st, at) => accel(st, at, s, along(st, at), gone, from).accel);
         r = next.r;
         v = next.v;
         at0 = to;

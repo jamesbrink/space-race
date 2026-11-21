@@ -96,8 +96,8 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { gravity } from '../world/orbit.ts';
 import { airAt, airDrag, skyOf } from './air.ts';
+import { fieldFor } from './core/gravity.ts';
 import { rk4Body } from './core/rk4.ts';
 import { aboard, act, burnOut, type CraftState, chainedAt, fire, hasLeft, part as partJoint, startCraft } from './craft.ts';
 import { along, axisOf, ballisticOf, chuteArea, type Doing, MEAN_RADIUS, type Sample } from './fly.ts';
@@ -386,6 +386,8 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
   const vacuum = engine.thrust.vacuum.value;
   const exitArea = engine.exitArea?.value ?? 0;
   const frame = options.frame ?? LIFTOFF;
+  // (what pulls on it: the Earth with J2 unless the plan names more, sim/core/gravity.ts)
+  const field = fieldFor(plan.gravity, frame);
   const earth = frame.spin;
   const pad = geodeticToEcef(site);
   // the day's wind: everything the air does here is done by air that moves with it
@@ -683,7 +685,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     const f = forces(d, at, s, as);
     return {
       r: d.v,
-      v: add(gravity(d.r), scale(f.force, 1 / d.mass)),
+      v: add(field.at(d.r, at), scale(f.force, 1 / d.mass)),
       q: spin(d.q, d.w),
       w: euler(d.w, f.torque, f.props.roll, f.props.across),
       mass:
@@ -1070,7 +1072,7 @@ export function vehicle(plan: FlightPlan, site: Geodetic, seaLevel = 0, options:
     if (s.held) {
       // it leaves when what holds it up is more than what holds it down: the Earth's turning helps a little
       const here: Dyn = { r: s.r, v: s.v, q: s.q, w: s.w, mass: s.mass };
-      const lifts = add(add(gravity(s.r), scale(forces(here, s.t, s).force, 1 / s.mass)), scale(cross(earth, cross(earth, s.r)), -1));
+      const lifts = add(add(field.at(s.r, s.t), scale(forces(here, s.t, s).force, 1 / s.mass)), scale(cross(earth, cross(earth, s.r)), -1));
       if (dot(lifts, frame.up(s.r, s.t)) > 0) s.held = false;
       else return { ...s, ...standing(s, t, burning(s) ? s.mass - flow * throttleOf(s) * h : s.mass), t, ticks };
     }

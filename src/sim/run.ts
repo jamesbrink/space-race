@@ -14,6 +14,7 @@ import type { State } from '../world/orbit.ts';
 import { julianDate, terrestrialTime } from '../world/time.ts';
 import { type Afloat, afloatAt, floatOn } from './afloat.ts';
 import { skyOf } from './air.ts';
+import { centreAt, type Field, fieldFor, recentred } from './core/gravity.ts';
 import type { CraftState } from './craft.ts';
 import { downOf } from './descent.ts';
 import { ballisticOf, flownOnce, type Sample } from './fly.ts';
@@ -68,6 +69,16 @@ export interface Run {
   bodies: Readonly<Record<string, number>>;
   /** Each of the record's checks with what this run gave for it (the record's run's; a run flown by hand gives `held`). */
   results: readonly Held[];
+  /**
+   * Its state at `t` about the body it is then flown about: the Earth, or within the sphere its plan's gravity names
+   * (`GravityDef.sphere`) the Moon, the place and velocity then from the Moon's centre in the flight's axes. The samples
+   * themselves are from the Earth's centre throughout.
+   */
+  centred(t: number): { central: 'earth' | 'moon'; r: Vec3; v: Vec3 };
+  /** The gravity it was flown under, where that has a sphere the centre changes at (sim/core/gravity.ts): what `centred` asks. */
+  field?: Field;
+  /** Each instant it crossed that sphere, and the centre from then: the clock is held on them (sim/rails.ts `due`). Left out with none. */
+  crossings?: readonly { t: number; to: 'earth' | 'moon' }[];
   /** The line it has flown: its samples, in order of time (viewer/path.ts draws the line flown from them). */
   track(): readonly Sample[];
   /**
@@ -124,10 +135,16 @@ const asked = {
   track(this: Run): readonly Sample[] {
     return this.samples;
   },
+  centred(this: Run, t: number): { central: 'earth' | 'moon'; r: Vec3; v: Vec3 } {
+    const s = between(this.samples as readonly (Sample & { centre?: Vec3 })[], t, (x) => x.centre ?? x.r);
+    const earth = this.field?.about?.('earth');
+    const central = earth ? centreAt(earth, s.r, t) : 'earth';
+    return { central, ...(earth && central === 'moon' ? recentred(earth, s, t, 'moon') : s) };
+  },
 };
 
 /** What a run is made of before what it answers is put on it (`runOf`). */
-export type RunFields = Omit<Run, 'frame' | 'at' | 'track' | 'events' | 'bodies' | 'results'> &
+export type RunFields = Omit<Run, 'frame' | 'at' | 'track' | 'centred' | 'events' | 'bodies' | 'results'> &
   Partial<Pick<Run, 'events' | 'bodies' | 'results'>>;
 
 /**
@@ -681,6 +698,8 @@ export function orbitalRecord(flight: SitedFlight): Run {
     bodies: bodiesOf(flown, events),
     results: held(flown, whole),
     ...(whole.target ? { target: whole.target } : {}),
+    ...(flown.gravity?.sphere ? { field: fieldFor(flown.gravity, frameOf(flight)) } : {}),
+    ...(whole.coast.crossings ? { crossings: whole.coast.crossings } : {}),
   });
   if (whole.down) floatUprighting(flight, run);
   orbitalRuns.set(plan, run);

@@ -76,6 +76,24 @@ export function due(instants: Iterable<number>, t: number): number {
 }
 
 /**
+ * The instant between `t0` and `t1` at which `f` passes through nothing (it has one sign at `t0` and the other at `t1`),
+ * by bisection to within `within` seconds: where a coast crosses the sphere its centre changes at (`f` its distance
+ * from the Moon less the sphere's radius: orbital.ts `flyOrbit` ends a step there), or passes its nearest to a body. An
+ * instant `due` is given, so the clock is held on it.
+ */
+export function crossing(f: (t: number) => number, t0: number, t1: number, within = 1e-6): number {
+  let [a, b] = [t0, t1];
+  const rising = f(a) < 0;
+  while (Math.abs(b - a) > within) {
+    const mid = (a + b) / 2;
+    if (mid === a || mid === b) break;
+    if (f(mid) < 0 === rising) a = mid;
+    else b = mid;
+  }
+  return b;
+}
+
+/**
  * Whether a flight may be coasted on rails at a sample: off its launch vehicle's last stage's run, nothing burning, above
  * `RAILS_FLOOR`, and nothing the hands have asked still to come before the next event. While it is false the clock is held
  * to an hour a second (`clock.allow(3600)`).

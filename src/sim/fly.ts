@@ -53,9 +53,9 @@ import {
   unit,
   type Vec3,
 } from '../world/frames.ts';
-import { coast as orbitalCoast, gravity } from '../world/orbit.ts';
+import { coast as orbitalCoast } from '../world/orbit.ts';
 import { airAt, airDrag, skyOf } from './air.ts';
-import { acceleration, rk4 } from './core/rk4.ts';
+import { fieldFor, stepIn } from './core/gravity.ts';
 import { aboard, act, type CraftState, due, lit, part, type Sense, startCraft } from './craft.ts';
 import { keptShare } from './forces.ts';
 import { ENTRY_G } from './loads.ts';
@@ -219,6 +219,8 @@ export function fly(
   const last = c.bodies[c.bodies.length - 1]!;
   const lastAero = last.aero!;
   const spin = frame.spin;
+  // (what pulls on it: the Earth with J2 unless the plan names more, sim/core/gravity.ts)
+  const field = fieldFor(plan.gravity, frame);
   const pad = geodeticToEcef(site);
   const sky = skyOf(plan);
   const engines = c.engines.map((e) => ({
@@ -325,7 +327,7 @@ export function fly(
   const massAt = (at: number): number => base - burnedBy(at);
   /** A step from `at` (core/rk4.ts), with what burns as it is from the step's start. */
   const stepOf = (s: State, at: number, h: number): State =>
-    rk4(s, at, h, (q, tt) => acceleration(gravity(q.r), scale(forces(q, tt, at).force, 1 / massAt(tt))));
+    stepIn(field, s, at, h, (q, tt) => scale(forces(q, tt, at).force, 1 / massAt(tt)));
 
   const outNow = (id: string) => Number.isFinite(craft.chutes[id]!.out) && !Number.isFinite(craft.chutes[id]!.off);
   const doingNow = (): Doing => {

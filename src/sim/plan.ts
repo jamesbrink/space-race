@@ -509,6 +509,13 @@ export type Hold =
 export interface GravityDef {
   central: 'earth' | 'moon';
   terms: ('j2' | 'moon' | 'sun')[];
+  /**
+   * The radius about the Moon's centre, m, within which the flight is flown about the Moon and outside it about the
+   * Earth (sim/core/gravity.ts `RSPHERE`, the guidance computer's own). With it the Moon's pull is its whole field
+   * (world/lunargravity.ts), summed on both sides; `central` is the side it begins on. Left out, the centre never
+   * changes and the Moon is a point.
+   */
+  sphere?: Measure;
 }
 
 /**

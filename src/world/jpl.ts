@@ -8,8 +8,25 @@
  */
 import type { Vec3 } from './frames.ts';
 
-/** What the baked file holds, by id. The planets are their systems' barycentres: within the size of their moons' orbits of the planet. */
-export type Series = 'moon' | 'emb' | 'sun' | 'mercury' | 'venus' | 'mars' | 'jupiter' | 'saturn' | 'uranus' | 'neptune' | 'pluto';
+/**
+ * What the baked file holds, by id. The planets are their systems' barycentres: within the size of their moons' orbits of
+ * the planet. `moonpa` is not a place: its three figures are the Euler angles (3-1-3, radians, and radians a second)
+ * that take the ICRF to the Moon's principal axes, DE440's own integration of its turning with its physical librations
+ * (world/moon.ts `principalAxes`); a file baked before they were added has none.
+ */
+export type Series =
+  | 'moon'
+  | 'emb'
+  | 'sun'
+  | 'mercury'
+  | 'venus'
+  | 'mars'
+  | 'jupiter'
+  | 'saturn'
+  | 'uranus'
+  | 'neptune'
+  | 'pluto'
+  | 'moonpa';
 
 interface SeriesHeader {
   id: Series;
@@ -55,8 +72,11 @@ export interface Ephemeris {
   readonly to: number;
   /** Each series's measured accuracy against DE440. */
   accuracy(id: Series): { position: number; velocity: number };
-  /** A series's state at a TDB Julian date, ICRF: undefined outside the span. */
-  state(id: Series, jdTDB: number): State | undefined;
+  /**
+   * A series's state at a TDB Julian date, ICRF: undefined outside the span. `plus`: days on from that date, for an
+   * instant kept in two parts (a Julian date in one double steps by 40 microseconds, which is 4 cm of the Moon).
+   */
+  state(id: Series, jdTDB: number, plus?: number): State | undefined;
 }
 
 const DAY = 86_400;
@@ -76,11 +96,11 @@ export function readEphemeris(bytes: ArrayBuffer): Ephemeris {
   const T = new Float64Array(most + 1);
   const D = new Float64Array(most + 1);
 
-  const state = (id: Series, jd: number): State | undefined => {
+  const state = (id: Series, jd: number, plus = 0): State | undefined => {
     const s = byId.get(id);
-    if (!s || !(jd >= s.start) || !(jd <= header.to)) return undefined;
-    const i = Math.min(s.count - 1, Math.floor((jd - s.start) / s.days));
-    const x = (2 * (jd - (s.start + i * s.days))) / s.days - 1;
+    if (!s || !(jd + plus >= s.start) || !(jd + plus <= header.to)) return undefined;
+    const i = Math.min(s.count - 1, Math.floor((jd - s.start + plus) / s.days));
+    const x = (2 * (jd - (s.start + i * s.days) + plus)) / s.days - 1;
     const n = s.degree;
     T[0] = 1;
     T[1] = x;

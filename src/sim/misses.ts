@@ -15,6 +15,9 @@
  *                         bodies down from the ejection (tests/staged.test.mjs)
  *   live                  the live staged vehicle steered by its pilot against the batch ascent's last cutoff, at
  *                         tolerances set before it was flown (tests/stagedlive.test.mjs)
+ *   lunar                 a flight to the Moon's coast from its injection as the run reaches it, under the Moon's field and
+ *                         the Sun with the centre changed at the sphere (sim/core/gravity.ts), to its nearest to the
+ *                         Moon, against the mission report's solution (tests/lunargravity.test.mjs)
  *   aloft                 the live staged vehicle flown by its pilot (guidance and sequence on) from the pad through the
  *                         day's air: `breakup`, where it breaks up and the record's vehicle did not, `by` its instant in
  *                         seconds from liftoff (tests/onestate.test.mjs)
@@ -36,6 +39,8 @@ const inUnits = (runs: Record<string, Record<string, Omit<Miss, 'absolute'>>>): 
     ]),
   );
 
+const A8_INJECTION =
+  'The injection the run reaches is not the record’s, and the Moon is 380,000 km on. The run’s ascent puts the stack in its parking orbit 11 s late (the S-II’s shortfall, recorded under its ascent); the second burn is lit by the clock and cut on the record’s speed 1.5 s before the record’s cutoff; at the S-IVB/spacecraft separation fix (12,056.3 s) the run is 0.9° of longitude behind the record’s place and 5.5 m/s slower, on an orbit of eccentricity 0.9737 against 0.9743. Left alone from there it passes 1,572 n. mi. over the Moon 2.4 h after the Mission Report’s solution for the injection, which is 130 n. mi. under the surface (Table 5-III; its solutions move 131 n. mi. for the 1.1 ft/s of the first separation manoeuvre). Neither the separation manoeuvres nor the midcourse corrections are flown, by the run or by the report’s figure. The coast itself is the same flown about the Earth throughout on rails, within 2 m through the sphere and past the Moon (tests/lunargravity.test.mjs). Flown on a copy of the plan whose gravity has the Moon’s field, the Sun and the sphere (the flight’s own plan stops at the injection). Not adjusted';
 const SATURN_FLOWN =
   'The run flies the F-1s’ and the S-II J-2s’ cutoff impulse (their flight evaluations’ §5.4 and §6.4: plan.ts EngineDef.decay), the S-II’s ullage motors where it carried them (JointDef.ahead) and the J-2s’ flow after the mixture-ratio shift at the impulse the low ratio gave (Stage.drawn)';
 const SIC_A11 = `The S-IC flies flatter than the record on the record’s own attitude commands (its flight evaluation’s Fig. 10-4, traced along the middle of its stroke and flown open): at the centre engine’s cutoff it is lower and faster, at the separation 1.8° flatter. The figure’s time axis has no offset (its gridline at range zero labelled, its plateau and the guidance’s step where Table 2-2 has them); read along the stroke’s upper edge, as first read, it is 2.4° flatter still. Its thrust is Fig. 5-3’s within a per cent or two and its mass the mass tables’ to a ton at each cutoff; half again or twice the drag (estimated: the Saturn V’s curve not read), tried and not flown, slows it but leaves it flatter still. Left: the control system’s following of its command, not flown (the law puts the axis on the command at once), and the drag. ${SATURN_FLOWN}. See apollo-11/mission.md. Not adjusted`;
@@ -826,6 +831,10 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       'sii-separation.speed': { by: -64.19, slack: 7, why: SII_SHORT, short: 'the S-II falls short' },
       cutoffAt: { by: 11.33, slack: 1.2, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
       'insertion.speed': { by: -9.48, slack: 1.5, why: SIVB_SHORT, short: 'still burning at the record’s insertion' },
+    },
+    lunar: {
+      pericynthion: { by: 3_152_000, slack: 150_000, why: A8_INJECTION, short: 'the injection is not the record’s' },
+      pericynthionAt: { by: 8_564, slack: 600, why: A8_INJECTION, short: 'the injection is not the record’s' },
     },
   }),
   'usa/apollo/apollo-10': inUnits({

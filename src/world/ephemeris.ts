@@ -75,7 +75,7 @@ import {
   type Vec3,
 } from './frames.ts';
 import { type Ephemeris, readEphemeris, type State } from './jpl.ts';
-import { barycentricTime, centuries, greenwichSiderealTime, nutation, terrestrialTime } from './time.ts';
+import { barycentricTime, centuries, greenwichSiderealTime, nutation, tdbLessTT, terrestrialTime } from './time.ts';
 
 const sind = (degrees: number): number => Math.sin(degrees * DEG);
 const cosd = (degrees: number): number => Math.cos(degrees * DEG);
@@ -263,7 +263,7 @@ export function useEphemeris(bytes: ArrayBuffer | null): void {
 }
 
 /**
- * Fetch the baked DE440 (0.9 MB) if it is not here yet, once: true when it is in use. Called by whatever needs it (a
+ * Fetch the baked DE440 (1.2 MB) if it is not here yet, once: true when it is in use. Called by whatever needs it (a
  * flight that leaves the Earth); nothing fetches it otherwise. Where there is no page to fetch it for (a test) it is
  * false, and the test hands the file in with `useEphemeris`.
  */
@@ -318,10 +318,10 @@ export interface BodyState {
 }
 
 /** From the solar system's barycentre, DE440 at a TDB Julian date. */
-function barycentric(of: Exclude<Place, 'ssb'>, tdb: number, e: Ephemeris): State {
-  const moon = e.state('moon', tdb)!;
+function barycentric(of: Exclude<Place, 'ssb'>, tdb: number, e: Ephemeris, plus = 0): State {
+  const moon = e.state('moon', tdb, plus)!;
   const earth = (): State => {
-    const emb = e.state('emb', tdb)!;
+    const emb = e.state('emb', tdb, plus)!;
     const k = 1 / (1 + e.emrat);
     return { r: sub(emb.r, scale(moon.r, k)), v: sub(emb.v, scale(moon.v, k)) };
   };
@@ -330,7 +330,7 @@ function barycentric(of: Exclude<Place, 'ssb'>, tdb: number, e: Ephemeris): Stat
     const at = earth();
     return { r: add(at.r, moon.r), v: add(at.v, moon.v) };
   }
-  return e.state(of, tdb)!;
+  return e.state(of, tdb, plus)!;
 }
 
 /** Meeus's places from the Earth's centre, in the ICRF, geometric as far as his series are. */
@@ -351,14 +351,19 @@ function meeusFromEarth(of: Exclude<Place, 'ssb'>, jdTT: number): Vec3 {
  * Where a body is and how it moves at an instant (`jdTT`, a Julian date in TT), from another's centre (the Earth's unless
  * given): geometric, in the ICRF. DE440 when it is loaded and covers the date; otherwise Meeus's series, with a velocity
  * from his positions a minute either side, labelled estimated (and from the solar system's barycentre there is none).
+ * `plus`: seconds of TT on from `jdTT`, for an instant kept in two parts (a flight's liftoff and the seconds since):
+ * a Julian date in one double steps by 40 microseconds, in which the Moon goes 4 cm, and a state taken from the Moon's
+ * centre and put back would step with it.
  */
-export function stateOf(body: Place, jdTT: number, centre: Place = 'earth'): BodyState {
-  if (ephemerisOf(jdTT) === 'DE440' && baked) {
+export function stateOf(body: Place, jdTT: number, centre: Place = 'earth', plus = 0): BodyState {
+  if (ephemerisOf(jdTT + plus / DAY) === 'DE440' && baked) {
     const tdb = barycentricTime(jdTT);
-    const at = (p: Place): State => (p === 'ssb' ? { r: [0, 0, 0], v: [0, 0, 0] } : barycentric(p, tdb, baked!));
+    // (the seconds on, in TDB: the periodic terms have moved a little in them)
+    const on = plus === 0 ? 0 : (plus + tdbLessTT(jdTT + plus / DAY) - tdbLessTT(jdTT)) / DAY;
+    const at = (p: Place): State => (p === 'ssb' ? { r: [0, 0, 0], v: [0, 0, 0] } : barycentric(p, tdb, baked!, on));
     // (the Moon from the Earth is its own series, not the difference of two large numbers)
-    const direct = body === 'moon' && centre === 'earth' ? baked.state('moon', tdb)! : null;
-    const flip = body === 'earth' && centre === 'moon' ? baked.state('moon', tdb)! : null;
+    const direct = body === 'moon' && centre === 'earth' ? baked.state('moon', tdb, on)! : null;
+    const flip = body === 'earth' && centre === 'moon' ? baked.state('moon', tdb, on)! : null;
     const [a, b] = [at(body), at(centre)];
     const s = direct ?? (flip ? { r: scale(flip.r, -1), v: scale(flip.v, -1) } : { r: sub(a.r, b.r), v: sub(a.v, b.v) });
     return { r: s.r, v: s.v, frame: 'icrf', source: 'DE440', confidence: 'derived' };
@@ -366,13 +371,26 @@ export function stateOf(body: Place, jdTT: number, centre: Place = 'earth'): Bod
   if (body === 'ssb' || centre === 'ssb') throw new Error('Meeus has no barycentre of the solar system: load DE440 (loadEphemeris)');
   const where = (t: number): Vec3 => sub(meeusFromEarth(body, t), meeusFromEarth(centre, t));
   const h = 60 / DAY;
+  const now = jdTT + plus / DAY;
   return {
-    r: where(jdTT),
-    v: scale(sub(where(jdTT + h), where(jdTT - h)), 1 / 120),
+    r: where(now),
+    v: scale(sub(where(now + h), where(now - h)), 1 / 120),
     frame: 'icrf',
     source: 'Meeus',
     confidence: 'estimated',
   };
+}
+
+/**
+ * The Moon's orientation as DE440 integrated it, at an instant (TT): the three Euler angles (3-1-3: about +Z, then the
+ * new +X, then the new +Z) that take the ICRF to its principal axes, radians, and their rates, radians a second.
+ * Undefined where DE440 is not loaded, does not cover the date, or was baked before the librations were in it: then
+ * world/moon.ts falls back on Meeus's series.
+ */
+export function lunarLibration(jdTT: number): { angles: Vec3; rates: Vec3 } | undefined {
+  if (ephemerisOf(jdTT) !== 'DE440' || !baked) return undefined;
+  const s = baked.state('moonpa', barycentricTime(jdTT));
+  return s && { angles: s.r, rates: s.v };
 }
 
 /** A state in the ICRF as one in the inertial frame of date at its instant (the frame's own slow turn, a millimetre a second at the Moon, left out). */

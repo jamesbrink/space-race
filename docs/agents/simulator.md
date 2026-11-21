@@ -476,6 +476,32 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     can be switched; the Moon and Sun are DE440's (derived) when it is loaded before the terms are made
     (world/ephemeris.ts `loadEphemeris`), Meeus's (estimated) otherwise (no flight's plan names a third body yet, so
     nothing waits for DE440);
+  - gravity as an integrator takes it: core/gravity.ts `Field` (`fieldFor(plan.gravity, frame)`), the central body's own
+    gravity and the other bodies' pull kept apart, and `stepIn(field, state, t, h, push)`, which sums them as every
+    simulator always has (the central body's, plus the push with the others' pull in it): a plan that names nothing is
+    `EARTH_FIELD`, world/orbit.ts `gravity` to the bit, and the figures do not move. Every integrator takes it: fly.ts,
+    vehicle.ts, staged.ts, stagedlive.ts, orbital.ts (the coast, the descent, the orbit's decay, a target's flight),
+    pursuit.ts, and shed.ts and loose.ts by an option (what a vehicle sheds is still flown under the Earth alone, as it
+    was: giving it the plan's field moves figures, and is left for the change that gives a Saturn V's plan its sphere);
+  - the central body changed at the Moon: a plan whose gravity gives a sphere (`GravityDef.sphere`: `RSPHERE`,
+    64,373.76 km, the Apollo guidance computer's own constant, documented from the flown listing) is flown about the
+    Earth outside it and about the Moon inside. The same bodies are summed on both sides: the Earth with J2, the Moon's
+    whole field (world/lunargravity.ts, GRGM900C to degree 30, turned by its principal axes, world/moon.ts), the Sun
+    where it is named, each other body as its pull where the craft is less its pull on the centre; only the centre the
+    step is taken about changes (`stepAbout`: the state recentred by DE440's Moon, stepped, brought back). flyOrbit
+    ends a step on the instant the sphere is crossed (rails.ts `crossing`, bisection to a microsecond), keeps a sample
+    there, says so (`OrbitFlown.crossings`, `Run.crossings`: the deck's clock is held on each, `due`) and marks every
+    sample flown about the Moon (`OrbitSample.central`). **Samples stay from the Earth's centre in the flight's frame**;
+    `Run.centred(t)` is the state about whichever body it is then flown about. A coast about the Moon gives its nearest
+    approach (`results.pericynthion`, `pericynthionAt`: found within the step by the same bisection) and ends where it
+    would strike the Moon (`moonImpactAt`; its pericynthion then the orbit's it was on, under the ground). Held in
+    tests/lunargravity.test.mjs: the two sides differ by DE440's own acceleration of the Moon within 2e-8 m/s^2; a step
+    about either centre is the same step within a millimetre; Apollo 8's injection as the run reaches it, coasted 39
+    hours through the sphere and past the Moon, ends within 2 m of the same coast on rails about the Earth throughout;
+    and its pericynthion against the Mission Report's is a recorded miss (`lunar`: the injection is not the record's,
+    and nothing after it is flown). No flight's own plan gives a sphere yet. Not done: the Moon's shadow, the Earth's
+    higher harmonics, the planets, the pressure of sunlight; the predictor flies a sphere's field about the Earth
+    throughout (`termsOf`), which is the same gravity;
   - a coast faster than an hour a second: rails.ts. `coast(state, t0, t1, gravity, push)` flies it by an adaptive
     Dormand-Prince 5(4) pair ending exactly on `t1`, the same in one span or in a fast clock's frames; tests/rails.test.mjs
     holds Vostok 1's coast to flyOrbit's within 10 cm and 0.1 mm/s over 3,400 s, in under a hundred steps. `onRails` (nothing

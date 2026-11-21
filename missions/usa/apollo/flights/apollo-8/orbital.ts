@@ -467,3 +467,34 @@ export const orbital: SaturnVRecord = {
     },
   ],
 };
+
+/**
+ * Where the injection as flown would have taken the stack with nothing more done to it: the Mission Report's
+ * pericynthion solution for the translunar injection, from its best-estimate trajectory. Under the Moon's surface: left
+ * alone it struck the Moon, and the separation manoeuvres and the first midcourse correction (not flown here) took it
+ * to 66 n. mi. A check of the coast to the Moon (the Moon's field, the Sun, the centre changed at the guidance
+ * computer's sphere: sim/core/gravity.ts), flown in tests/lunargravity.test.mjs on this plan with that gravity, a run of
+ * its own (`lunar`, src/sim/misses.ts). The tolerances were set before it was flown: ten nautical miles and a minute,
+ * under a tenth of what the first separation manoeuvre, 1.1 ft/s, moved the solution by (131 n. mi. and 13 minutes,
+ * the same table).
+ */
+export const TLI_PERICYNTHION = [
+  {
+    id: 'pericynthion',
+    label: 'Pericynthion of the injection as flown, above the Moon',
+    value: -130.2 * 1852,
+    unit: 'm',
+    tolerance: 10 * 1852,
+    confidence: 'documented' as const,
+    source: 'Apollo 8 Mission Report (MSC-PA-R-69-1, February 1969), Table 5-III, p. 5-9: translunar injection, -130.2 n. mi.',
+  },
+  {
+    id: 'pericynthionAt',
+    label: 'Its time of nearest approach',
+    value: 69 * 3600 + 13 * 60 + 58,
+    unit: 's',
+    tolerance: 60,
+    confidence: 'documented' as const,
+    source: 'Apollo 8 Mission Report (MSC-PA-R-69-1, February 1969), Table 5-III, p. 5-9: translunar injection, 69:13:58',
+  },
+];

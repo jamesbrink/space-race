@@ -48,10 +48,10 @@ import {
   type Vec3,
 } from '../world/frames.ts';
 import { shortOfPublished } from '../world/meanelements.ts';
-import { elementsOf, period, planeThrough, type State, step } from '../world/orbit.ts';
+import { elementsOf, period, planeThrough, type State } from '../world/orbit.ts';
 import { type AirHere, airAt, airDrag, type Sky, STANDARD, skyOf } from './air.ts';
 import { integrate, sensed } from './apparent.ts';
-import { thirdOf } from './core/gravity.ts';
+import { fieldFor, stepIn } from './core/gravity.ts';
 import { downOf } from './descent.ts';
 import { ALONE, along, MEAN_RADIUS, RIDING } from './fly.ts';
 import { keptShare } from './forces.ts';
@@ -772,10 +772,9 @@ export function ascend(
   let thetaTurn = resume?.thetaTurn ?? 0; // the thrust's angle above the local level as the tangent law takes over
   const airHere = airOf(seaLevel, frame, skyOf(fp));
   // (the Moon and the Sun where the plan names them, `FlightPlan.gravity`: added to the step, not to what an accelerometer reads)
-  const pull = thirdOf(fp.gravity, frame);
+  const field = fieldFor(fp.gravity, frame);
   const axisAt = (s: State, t: number, m: Mode, wind: Vec3): Vec3 =>
     law.axisAt(s, t, m, wind, thetaTurn, injection ? plan[injection.stage]!.from : undefined);
-  const pulled = (a: Vec3, s: State, at: number): Vec3 => (pull ? add(a, pull(s.r, at)) : a);
   /**
    * Every force but gravity over the mass, m/s^2, at a state at `t`, with what burns, what has left and the shape that
    * flies all as they are from instant `as` (the step's start: a step ends on every instant they change at, so within it
@@ -913,7 +912,7 @@ export function ascend(
     const gone = droppedBy(t);
     const m = mode;
     const [before, t0] = [state, t];
-    state = step(state, t, h, (s, tt) => pulled(forces(s, tt, m, gone, t0).accel, s, tt));
+    state = stepIn(field, state, t, h, (s, tt) => forces(s, tt, m, gone, t0).accel);
     t = Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
     // (an impulse: the stack as it stood and as it went on, two samples at the one instant)
     for (const k of aheads)
@@ -930,14 +929,14 @@ export function ascend(
       const at = (k: number) =>
         past(
           crossing,
-          step(before, t0, h * k, (q, tt) => pulled(forces(q, tt, m, gone, t0).accel, q, tt)),
+          stepIn(field, before, t0, h * k, (q, tt) => forces(q, tt, m, gone, t0).accel),
         );
       let [k0, f0, k1, f1] = [0, past(crossing, before), 1, past(crossing, state)];
       for (let n = 0; n < 8 && Math.abs(f1) > 1e-9; n++) {
         const k2 = Math.min(1, Math.max(0, k1 - (f1 * (k1 - k0)) / (f1 - f0)));
         [k0, f0, k1, f1] = [k1, f1, k2, at(k2)];
       }
-      state = step(before, t0, h * k1, (q, tt) => pulled(forces(q, tt, m, gone, t0).accel, q, tt));
+      state = stepIn(field, before, t0, h * k1, (q, tt) => forces(q, tt, m, gone, t0).accel);
       t = t0 + h * k1;
       plan[crossing]!.to = t;
       // (a tank it shares runs dry later now it has stopped: the stages that draw on it with it burn on to their own cut)
