@@ -147,6 +147,16 @@ export const KEYS = {
   },
   'warp.go': { slots: ['enter'], does: 'warp to the time typed', when: 'the warp’s time being typed, on the orbital deck' },
   'deck.code': { slots: ['0', ...DIGITS], does: 'a digit of the lock’s code', when: 'the orbital deck, the spacecraft alone and locked' },
+  'deck.out': {
+    slots: ['v'],
+    does: 'go out',
+    when: 'the flight deck, landed on the Moon: on foot as the commander, out of the forward hatch onto the porch (V is walk.go elsewhere)',
+  },
+  'deck.liftoff': {
+    slots: [' '],
+    does: 'lift off',
+    when: 'the flight deck, landed on the Moon, where Space is otherwise the next event: not flown from the surface yet, and it says so',
+  },
   // ---- the gallery (ui/gallery.ts)
   'rover.drive': {
     slots: [

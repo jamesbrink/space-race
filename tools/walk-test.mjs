@@ -528,7 +528,59 @@ const atOf = (route) => {
   const sequence = flown.models.find((m) => m.id === (route.model ?? 'pad'))?.sequence;
   return sequence ? timeAt(sequence, route.slider) : 0;
 };
-const routes = (ROUTES[flown.site?.name] ?? []).filter((r) => !only || new RegExp(only).test(r.name));
+/**
+ * On the Moon, for a flight whose LM landed (`lander`): the stage stood at its landing site (`sr.onMoon`) at the middle of
+ * the time its commander's station could be boarded, and out of the hatch by the deck's Go out (`sr.goOut`). Its legs are
+ * in the LM's own frame, metres over the ground (`lm`: along its +x, the way the hatch faces, and its +z), put where the LM
+ * stands once it does; `climb` and `y` name a height of the LM's (`pad`, the top of the forward pad; `porch`) or the
+ * ground under the leg's end; `jump` presses Space on the way, that far short of the leg's end, metres, as the record has the
+ * crew jump to the ladder's bottom rung.
+ */
+const LM_PADS = 167.57 * 0.0254; // (lunar_module.py TREAD)
+const moonRoutes = (f) => {
+  const lm = f.models.find((m) => m.lander);
+  if (!lm) return [];
+  const seat = lm.seats[0];
+  return [
+    {
+      name: 'on the Moon: out of the hatch on to the porch, down the ladder and the last long step to the footpad, round the LM, a jump to the bottom rung and back up, and in at the hatch',
+      moon: { site: lm.lander.site, model: lm.id },
+      at: (seat.open[0] + seat.open[1]) / 2,
+      legs: [
+        // from the porch, out over its end looking down: on to the ladder and down it, and off its foot on to the pad
+        // (`onward`: once on the ladder, where the leg is going instead: out over the pad, so that off the ladder's foot he steps away from it)
+        {
+          lm: [2.75, 0],
+          onward: [LM_PADS + 0.45, 0],
+          down: true,
+          climb: 'pad',
+          within: 0.8,
+          falls: 0.8,
+          air: 1.4,
+          note: 'down the ladder to the footpad: the first step',
+        },
+        { lm: [LM_PADS + 1.6, 0], y: 'ground', tol: 0.25, note: 'off the pad on to the ground' },
+        { lm: [LM_PADS + 1.2, 3.2], y: 'ground', tol: 0.3, note: 'out past the pad' },
+        { lm: [0.6, LM_PADS + 1.8], y: 'ground', tol: 0.3, note: 'round to the side, clear of the next pad' },
+        { lm: [LM_PADS + 1.2, 3.2], y: 'ground', tol: 0.3, note: 'and back' },
+        { lm: [LM_PADS + 2.2, 0], y: 'ground', tol: 0.3, note: 'before the ladder' },
+        // (a standing hop on the Moon is 3.45 s from the pad and back: walk.ts JUMP_HEIGHT under 1.62 m/s^2; the rung is taken in it)
+        // (steered for a point beyond the ladder, at the strut, so that he goes on into its face; the jump 1.4 m short of it)
+        {
+          lm: [LM_PADS - 0.5, 0],
+          climb: 'porch',
+          jump: 1.4,
+          within: 2,
+          air: 3.6,
+          falls: 0.8,
+          note: 'a jump to the bottom rung, up the ladder and on to the porch',
+        },
+        { board: { lmHatch: [1.95, 3.99, 0], label: seat.label, seat: seat.node }, note: 'in at the hatch' },
+      ],
+    },
+  ];
+};
+const routes = [...(ROUTES[flown.site?.name] ?? []), ...moonRoutes(flown)].filter((r) => !only || new RegExp(only).test(r.name));
 /** The case of its own after the routes (escapeCase below): run unless --only names something else. */
 const ESCAPE = 'Escape frees the mouse first, and a second Escape leaves';
 const escaping = Boolean(ROUTES[flown.site?.name]?.length) && (!only || new RegExp(only).test(ESCAPE));
@@ -543,23 +595,65 @@ let failed = 0;
 let legsGone = 0;
 for (const [n, route] of routes.entries()) {
   // (the dev server's reloads are kept from the page under test)
-  const { page, errors, context } = await open(browser, `${url}#${flight}/site/${route.model ?? 'pad'}`, { console: [], timeout: 90000 });
+  const { page, errors, context } = await open(browser, `${url}#${flight}/site/${route.model ?? 'pad'}`, { console: [], timeout: 240000 });
   await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving ?? []));
   const hidePanels = await page.addStyleTag({ content: '#ui, #gallery, #title { display: none !important }' });
+  // on the Moon: the stage stood at the landing site, out of the hatch, and the legs put where the LM stands
+  if (route.moon) {
+    const placed = await page.evaluate(
+      async ({ at, site, model, legs, lmPads }) => {
+        const sr = window.sr;
+        sr.stage.setAutoRotate(false);
+        sr.clock.pause();
+        if (!(await sr.onMoon(site, at))) return { error: 'the stage did not stand at the landing site' };
+        await Promise.allSettled(sr.stage.arriving ?? []);
+        await new Promise((done) => setTimeout(done, 3000));
+        if (!sr.goOut()) return { error: 'nobody went out' };
+        await new Promise((done) => setTimeout(done, 1500));
+        const i = sr.stage.defs.findIndex((m) => m.id === model);
+        const group = sr.stage.staged[i].group;
+        group.updateMatrixWorld(true);
+        const V = sr.stage.walk.body.position.constructor;
+        const world = (x, y, z) => group.localToWorld(new V(x, y, z));
+        const heights = { pad: world(lmPads, 0.11, 0).y, porch: world(...sr.stage.defs[i].lander.out).y };
+        return {
+          legs: legs.map((leg) => {
+            if (leg.board) return { ...leg, board: { ...leg.board, hatch: world(...leg.board.lmHatch).toArray() } };
+            const p = world(leg.lm[0], 0, leg.lm[1]);
+            const onward = leg.onward && world(leg.onward[0], 0, leg.onward[1]);
+            const ground = sr.stage.groundAt(p.x, p.z);
+            const at = (h) => (h === 'ground' ? ground : typeof h === 'string' ? heights[h] : h);
+            return { ...leg, to: [p.x, p.z], onward: onward && [onward.x, onward.z], y: at(leg.y), climb: at(leg.climb) };
+          }),
+          from: sr.stage.walk.body.position.toArray(),
+        };
+      },
+      { at: atOf(route), site: route.moon.site, model: route.moon.model, legs: route.legs, lmPads: LM_PADS },
+    );
+    if (placed.error) {
+      console.log(`${route.name}\n  FAIL ${placed.error}`);
+      failed++;
+      await context.close();
+      continue;
+    }
+    route.legs = placed.legs;
+    route.from = placed.from;
+  }
   // the morning's hardware where the route wants it, then on foot there
-  await page.evaluate(
-    async ({ at, from, figure }) => {
-      const sr = window.sr;
-      sr.stage.setAutoRotate(false);
-      sr.clock.pause();
-      sr.clock.seek(at);
-      await new Promise((done) => setTimeout(done, 4000)); // (the hardware hurries to where the clock was put)
-      const walker = figure ?? sr.flight.models.find((m) => m.walker).id;
-      sr.stage.enterWalk(walker, { x: from[0], y: from[1], z: from[2] });
-      await new Promise((done) => setTimeout(done, 1500));
-    },
-    { at: atOf(route), from: route.from, figure: route.walker },
-  );
+  if (!route.moon)
+    await page.evaluate(
+      async ({ at, from, figure }) => {
+        const sr = window.sr;
+        sr.stage.setAutoRotate(false);
+        sr.clock.pause();
+        sr.clock.seek(at);
+        await new Promise((done) => setTimeout(done, 4000)); // (the hardware hurries to where the clock was put)
+        const walker = figure ?? sr.flight.models.find((m) => m.walker).id;
+        sr.stage.enterWalk(walker, { x: from[0], y: from[1], z: from[2] });
+        await new Promise((done) => setTimeout(done, 1500));
+      },
+      { at: atOf(route), from: route.from, figure: route.walker },
+    );
   console.log(`${route.name} (T${atOf(route) < 0 ? '' : '+'}${Math.round(atOf(route))} s)`);
   let ok = true;
   for (const [k, leg] of route.legs.entries()) {
@@ -620,8 +714,9 @@ for (const [n, route] of routes.entries()) {
       await page.keyboard.down('w');
       if (leg.run) await page.keyboard.down('Shift');
       const got = await page.evaluate(
-        async ({ to, within, climb, down, run }) => {
+        async ({ to, onward, within, climb, down, run, jump }) => {
           const walk = window.sr.stage.walk;
+          let jumped = false;
           const body = walk.body;
           const start = body.position.clone();
           const far = Math.hypot(to[0] - start.x, to[1] - start.z);
@@ -640,6 +735,11 @@ for (const [n, route] of routes.entries()) {
             await new Promise((done) => requestAnimationFrame(done));
             const now = performance.now();
             const p = body.position;
+            // (a leg that goes on from a ladder somewhere else: `onward`, once it has been on it)
+            if (onward && (onLadder || body.on) && to !== onward) {
+              to = onward;
+              best = Number.POSITIVE_INFINITY;
+            }
             const dx = to[0] - p.x;
             const dz = to[1] - p.z;
             const d = Math.hypot(dx, dz);
@@ -647,6 +747,12 @@ for (const [n, route] of routes.entries()) {
             // steer: forward is (-sin yaw, -cos yaw) over the ground; from a ladder's top, looking down it
             if (!body.on) walk.yaw = Math.atan2(-dx, -dz);
             walk.pitch = down && !body.on && d < 1.5 ? -0.9 : 0;
+            // (a jump on the way, pressed as the key is: to the ladder's bottom rung from its pad)
+            if (jump && !jumped && !body.on && body.grounded && d < jump) {
+              jumped = true;
+              window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+              setTimeout(() => window.dispatchEvent(new KeyboardEvent('keyup', { key: ' ' })), 60);
+            }
             if (!body.on && !body.grounded) air += (now - lastT) / 1000;
             if (!body.on) drop = Math.max(drop, lastY - p.y);
             lastY = p.y;
@@ -677,7 +783,15 @@ for (const [n, route] of routes.entries()) {
               };
           }
         },
-        { to: leg.to, within: leg.within ?? 0.6, climb: leg.climb, down: !!leg.down, run: !!leg.run },
+        {
+          to: leg.to,
+          onward: leg.onward,
+          within: leg.within ?? 0.6,
+          climb: leg.climb,
+          down: !!leg.down,
+          run: !!leg.run,
+          jump: leg.jump ?? 0,
+        },
       );
       await page.keyboard.up('w');
       if (leg.run) await page.keyboard.up('Shift');
@@ -688,14 +802,15 @@ for (const [n, route] of routes.entries()) {
         ? `${got.why} at ${got.x.toFixed(1)}, ${got.z.toFixed(1)} (feet ${got.y.toFixed(2)} m), ${got.d.toFixed(1)} m short`
         : got.drop > allowed
           ? `fell ${got.drop.toFixed(2)} m in one frame on the way`
-          : got.air > 0.7
+          : got.air > (leg.air ?? 0.7)
             ? `was ${got.air.toFixed(1)} s in the air on the way (down to ${got.low.toFixed(1)} m)`
             : leg.climb !== undefined && !got.onLadder
               ? 'never took hold of the ladder'
               : leg.y !== undefined && Math.abs(feet - leg.y) > (leg.tol ?? 0.35)
                 ? `the feet are at ${feet.toFixed(2)} m, not ${leg.y}`
                 : null;
-      const where = leg.climb !== undefined ? `the ladder to ${leg.climb} m` : `to ${leg.to[0]}, ${leg.to[1]}`;
+      const where =
+        leg.climb !== undefined ? `the ladder to ${Number(leg.climb).toFixed(2)} m` : `to ${leg.to[0].toFixed(1)}, ${leg.to[1].toFixed(1)}`;
       console.log(
         `  ${bad ? 'FAIL' : 'ok  '} ${String(k + 1).padStart(2)} ${where}${leg.note ? ` (${leg.note})` : ''}: ${bad ?? `${got.s.toFixed(0)} s, feet at ${feet.toFixed(2)} m (${got.low.toFixed(1)} to ${got.high.toFixed(1)} on the way)`}`,
       );
@@ -723,7 +838,7 @@ for (const [n, route] of routes.entries()) {
 async function escapeCase() {
   console.log(ESCAPE);
   const first = ROUTES[flown.site.name][0];
-  const { page, errors, context } = await open(browser, `${url}#${flight}/site/${first.model ?? 'pad'}`, { console: [], timeout: 90000 });
+  const { page, errors, context } = await open(browser, `${url}#${flight}/site/${first.model ?? 'pad'}`, { console: [], timeout: 240000 });
   await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving ?? []));
   let bad = 0;
   const check = (ok, what) => {

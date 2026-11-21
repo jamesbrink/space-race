@@ -59,6 +59,11 @@ export interface CockpitHost {
   solids?(): { world: SiteWorld; hull: SolidModel; ground?: Ground | null } | null;
   /** The flight deck has been taken, or left: the page makes way and gives the view to the vehicle. */
   piloting(on: boolean): void;
+  /**
+   * Landed on the Moon (phases/surface.ts, the deck on a body's surface): the first of the crew who went out goes out on
+   * foot, through the forward hatch onto the porch (the deck's Go out). False, with nothing done, where nobody can.
+   */
+  goOut?(): boolean;
   /** Something to say across the page: a title and a line (a mechanism worked by hand says where it is sent). */
   say?(title: string, line: string): void;
   /**
@@ -179,6 +184,9 @@ export const ABORT_ARMED = 2;
 /** How fast a held key leans what guidance flies (a tilt programme, a steering law), radians a second, and the most it may lean. */
 export const TRIM = 3 * DEG;
 export const TRIM_MOST = 30 * DEG;
+
+/** Why the deck on the Moon will not lift off: said on its button and when it is pressed (phases/surface.ts). */
+export const LIFTOFF_NOT_YET = 'Lift off: the ascent from the surface is not flown yet, so the ascent engine is not lit from here';
 
 /** The deck's keys that are commands, and the command each gives (`command`). */
 /** The commands that only show something (the path, the navball, the panels): a warp goes on through them, as it does not through a hand on the controls. */
@@ -439,6 +447,10 @@ export abstract class Deck<F extends Flight = SitedFlight> {
         </div>
         <div class="deck-act">
           <button data-do="next" class="cockpit-next" title="Set off the next event of the flight now (${capsOf('deck.next').join(' ')})">${kbd('deck.next')}<span data-cell="next"></span></button>
+          <span class="deck-surface" hidden>
+            <button data-do="out" title="Go out: through the forward hatch onto the porch, on foot as the commander, and down the ladder (${capsOf('deck.out').join(' ')})">${kbd('deck.out')}Go out</button>
+            <button data-do="off-surface" aria-disabled="true" title="${LIFTOFF_NOT_YET} (${capsOf('deck.liftoff').join(' ')})">${kbd('deck.liftoff')}Lift off</button>
+          </span>
           <p class="cockpit-prompt" data-cell="prompt" role="status" hidden></p>
           <button data-do="abort" class="cockpit-abort" title="Abort: the escape the spacecraft had at this instant, while it is on its launch vehicle: press twice (${capsOf('deck.abort').join(' ')}, ${capsOf('deck.abort').join(' ')})">${kbd('deck.abort')}${kbd('deck.abort')}<span data-cell="abort">Abort</span></button>
         </div>
@@ -1379,6 +1391,23 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     if (at.running) this.clock.play(true);
   }
 
+  /** The landing site the flight stands at on the Moon, by name, or null: the deck is then in its surface phase there. */
+  surfaced: string | null = null;
+
+  /**
+   * The stage has stood the flight at a landing site on the Moon (`site`, its name), or taken it back (null): the deck shows
+   * the surface's verbs (Go out, Lift off) in place of the next event, and its phase line says where it stands.
+   */
+  onSurface(site: string | null): void {
+    this.surfaced = site;
+    this.root.classList.toggle('on-surface', site !== null);
+    this.root.querySelector<HTMLElement>('.deck-surface')!.hidden = site === null;
+    this.root.querySelector<HTMLElement>('.cockpit-next')!.hidden = site !== null;
+    // (said at once, the clock stopped or not: a kind's own phase line says the same each time it is drawn, orbitdeck.ts)
+    if (site) this.put('phase', `On the Moon: ${site}`);
+    this.sync();
+  }
+
   private hideKept(): void {
     this.root.querySelector<HTMLElement>('.cockpit-kept')!.hidden = true;
   }
@@ -1389,6 +1418,13 @@ export abstract class Deck<F extends Flight = SitedFlight> {
    * with a run flown by hand going on, which loses it and is asked first (leaving.ts, 'again').
    */
   private act(what: string): void {
+    // (on the Moon's surface: neither is an event of the flight, and neither is written down)
+    if (what === 'out' || what === 'off-surface') {
+      if (!this.surfaced) return;
+      if (what === 'off-surface') this.host.say?.('Not yet', LIFTOFF_NOT_YET);
+      else if (!this.host.goOut?.()) this.host.say?.('Nobody can go out', 'No one of this crew went out on to the surface');
+      return;
+    }
     if (this.pending) {
       if (what === 'resume' && !this.refused) {
         if (!this.restoring) this.settle(true);
@@ -1552,6 +1588,14 @@ export abstract class Deck<F extends Flight = SitedFlight> {
       return;
     }
     if (!down || e.repeat) return;
+    // landed on the Moon: Go out, and Lift off where Space would set off the next event (phases/surface.ts)
+    const verb = this.surfaced ? (is(key, 'deck.out') ? 'out' : is(key, 'deck.liftoff') ? 'off-surface' : null) : null;
+    if (verb) {
+      e.preventDefault();
+      e.stopPropagation();
+      this.act(verb);
+      return;
+    }
     if (this.warps && is(key, 'deck.warp')) {
       e.preventDefault();
       e.stopPropagation();

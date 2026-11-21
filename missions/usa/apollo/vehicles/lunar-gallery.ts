@@ -92,7 +92,21 @@ export function lunarGallery(
                 do: {
                   kind: 'toggle' as const,
                   // hinged on the pilot's side, the model's +z, and swung in toward him (LMA790-3-LM vol. I, 1.2.2.1.2; the ALSJ, Apollo 11 at 109:03:02)
-                  moves: [{ kind: 'swing' as const, node: FORWARD_HATCH, axis: [0, 1, 0] as [number, number, number], angle: (HATCH_OPEN_DEG * Math.PI) / 180, from: 0, to: 1 }],
+                  moves: [
+                    {
+                      kind: 'swing' as const,
+                      node: FORWARD_HATCH,
+                      axis: [0, 1, 0] as [number, number, number],
+                      angle: (HATCH_OPEN_DEG * Math.PI) / 180,
+                      from: 0,
+                      to: 1,
+                      machine: {
+                        kind: 'door' as const,
+                        confidence: 'derived' as const,
+                        source: 'a hinged hatch worked by hand: what the model is',
+                      },
+                    },
+                  ],
                   seconds: 3,
                   back: 'Close the hatch',
                 },
@@ -103,7 +117,8 @@ export function lunarGallery(
     }));
   const travel: Move = { kind: 'slide', by: [0, 28, 0], from: 0.25, to: 0.75 };
   const stage: Move = { kind: 'slide', by: [0, 4, 0], from: 0.89, to: 1 };
-  const stackParts: Part[] = deployedParts.map((p) => ({
+  // (in the launch stack the LM is folded in its adapter: nothing of it is worked by hand there, its hatch included)
+  const stackParts: Part[] = deployedParts.map(({ actions: _actions, ...p }) => ({
     ...p,
     group: `${callsign} in adapter`,
     order: 6,
@@ -190,9 +205,7 @@ export function lunarGallery(
     views,
     // (on the Moon each station is boarded and left by the forward hatch, from the porch: the commander's and the pilot's
     // figures outside are the crew's, lc39.ts `crew` and `lmp`)
-    seats: landed
-      ? seats?.map((s, i) => ({ ...s, from: FORWARD_HATCH, egress: ['surface' as const], figure: i ? 'lmp' : 'crew' }))
-      : seats,
+    seats: landed ? seats?.map((s, i) => ({ ...s, from: FORWARD_HATCH, egress: ['surface' as const], figure: i ? 'lmp' : 'crew' })) : seats,
     ...(landed
       ? {
           lander: {

@@ -18,19 +18,21 @@ const SUITED = 0.3;
  * Its clock is the flight's (`launch` is the flight's own), so the Sun is where the mission's clock has it. Nothing of the
  * flight's pad, its plan or its recovery is there: the stage loads it as it loads another flight (Stage.load), and loads the
  * flight again at lift-off. Until a run's landing (the descent) gives where and how the LM came down, it stands as the site
- * has it.
+ * has it. `whole` is the flight with its gallery's exhibits, the LM among them (address.ts `atSite` leaves them out of the pad).
  *
  * What is simplified: the LM's pads are set on the ground as a whole (its height is the mean of what each pad would need, on
  * the grids' heights under them), not each on its own; the crew stand where they are put to start, and go out by the deck's
  * Go out (deck/phases/surface.ts), which puts the commander on the porch.
  */
-export async function lunarStay(flight: SitedFlight, id: LunarSite): Promise<SitedFlight> {
+export async function lunarStay(flight: SitedFlight, id: LunarSite, whole: SitedFlight = flight): Promise<SitedFlight> {
   const def = LUNAR_SITE_DEFS.find((s) => s.id === id);
   if (!def) throw new Error(`no landing site ${id}`);
   const ground = (await lunarGround(id)).ground;
   const at = (x: number, z: number) => ground.at(x, z) ?? 0;
   const models: ModelDef[] = [];
-  const lm = flight.models.find((m) => m.lander);
+  // (the LM is an exhibit of its own in the gallery, not at the pad: it is found in the whole flight, and stands here as itself)
+  const found = whole.models.find((m) => m.lander);
+  const lm = found && (({ galleryCraft: _craft, galleryAlias: _alias, galleryFrom: _from, ...rest }) => rest)(found);
   const rest = { heading: def.rest.heading.value, pitch: def.rest.pitch.value, roll: def.rest.roll.value };
   const pose = landerPose(rest, lm?.lander?.pads ?? [], at);
   if (lm)

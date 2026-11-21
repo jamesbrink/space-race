@@ -1818,7 +1818,14 @@ export class OrbitDeck extends Deck {
     const whole = this.flown ?? orbitalFlown(this.flight);
     const handed = whole.down ? whole.coast.samples[whole.coast.samples.length - 1]!.t : Number.POSITIVE_INFINITY;
     // the phase it is in (phases/phase.ts), and what the middle panel shows in it
-    const here = { down, alone, burning: thrust > 0, entering: s.entered || t > handed, altitude: s.altitude };
+    // (stood at a landing site on the Moon, the deck is in its surface phase there: Go out and Lift off, deck.ts `onSurface`)
+    const here = {
+      down: down || this.surfaced !== null,
+      alone,
+      burning: thrust > 0,
+      entering: s.entered || t > handed,
+      altitude: s.altitude,
+    };
     this.figures(PHASES[phaseOf(here)].figures(here));
     this.figure('altitude', down ? 0 : Math.max(0, s.altitude) / KM, down || s.altitude < 99_950 ? 2 : 1);
     this.figure('speed', alone || high ? s.speed : t > 0 && !down ? s.groundSpeed : 0, 0);
@@ -1952,7 +1959,7 @@ export class OrbitDeck extends Deck {
                       : Math.min(...Object.values(whole.down?.opened[downOf(plan)?.bodies[0]?.id ?? ''] ?? {})) <= t
                         ? 'Under the parachutes'
                         : 'Falling';
-    set('phase', struck ? 'Structure strike' : phase);
+    set('phase', struck ? 'Structure strike' : this.surfaced ? `On the Moon: ${this.surfaced}` : phase);
     const leant = (x: number, plus: string, minus: string) =>
       Math.abs(x) < 0.05 * DEG ? '' : ` ${(Math.abs(x) / DEG).toFixed(1)}° ${x > 0 ? plus : minus}`;
     const leans = !alone && this.guidance ? leant(this.trim.pitch, 'downrange', 'back') + leant(this.trim.yaw, 'left', 'right') : '';
