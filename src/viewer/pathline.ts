@@ -678,7 +678,11 @@ export class Knotted {
     for (let q = 0; q < 3; q++) {
       out[o + q] = a * A[q]! + b * A[3 + q]! + d * B[q]! + e * B[3 + q]!;
       if (vel)
-        vel[q] = ((6 * s2 - 6 * s) / h) * A[q]! + (3 * s2 - 4 * s + 1) * A[3 + q]! + ((-6 * s2 + 6 * s) / h) * B[q]! + (3 * s2 - 2 * s) * B[3 + q]!;
+        vel[q] =
+          ((6 * s2 - 6 * s) / h) * A[q]! +
+          (3 * s2 - 4 * s + 1) * A[3 + q]! +
+          ((-6 * s2 + 6 * s) / h) * B[q]! +
+          (3 * s2 - 2 * s) * B[3 + q]!;
     }
   }
 }

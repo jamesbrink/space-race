@@ -503,7 +503,11 @@ test('where a path crosses a sphere about a moving centre is found to a millisec
   assert.equal(found[0].into, true);
   near(found[1].t, 1000 + half, 1e-3, 'out');
   assert.equal(found[1].into, false);
-  assert.deepEqual(crossingsOf(c, centre, radius, 1000).map((x) => x.into), [false], 'from inside: only the way out');
+  assert.deepEqual(
+    crossingsOf(c, centre, radius, 1000).map((x) => x.into),
+    [false],
+    'from inside: only the way out',
+  );
 });
 
 test('an orbit of the Moon drawn about the Moon as it is now closes on itself; drawn about the Earth it is a coil along the Moon’s way', () => {
