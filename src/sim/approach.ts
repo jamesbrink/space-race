@@ -1,18 +1,22 @@
 import type { OrbitalFix } from '../types/flight.ts';
 import type { Flight } from '../types.ts';
-import { add, cross, DEG, ecefToInertial, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
-import { coast } from '../world/orbit.ts';
-import { greenwichSiderealTime, julianDate } from '../world/time.ts';
+import { type EarthFrame, frameOf } from '../world/earthframe.ts';
+import { add, cross, DEG, geodeticToEcef, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
+import { coast, type State } from '../world/orbit.ts';
 import { type DockBody, DockPair } from './docking.ts';
 import { dockPlan } from './dockplan.ts';
 import { aboutAxis, conjugate, IDENTITY, multiply, turn, unturn } from './rigid.ts';
 
-/** Space-fixed heading and flight-path angle are defined relative to the geocentric
- * horizontal, even though the reported latitude and height are geodetic (Apollo 9 MR, table 7-I). */
-export function orbitalFix(fix: OrbitalFix, launch: string, at: number) {
+/**
+ * A tracking fix of the record's as a state at `at`, s from liftoff, in the flight's frame (world/earthframe.ts
+ * `frameOf`, the one every flown run is in): the place over the Earth laid in the frame by the Earth's angle in it at
+ * the fix's instant, the velocity built on it, and the state coasted from the fix to `at` under the Earth's gravity
+ * with J2 (world/orbit.ts, the flown runs' own; no air). Space-fixed heading and flight-path angle are defined relative
+ * to the geocentric horizontal, even though the reported latitude and height are geodetic (Apollo 9 MR, table 7-I).
+ */
+export function orbitalFix(fix: OrbitalFix, frame: EarthFrame, at: number): State {
   const earth = geodeticToEcef({ latitude: fix.latitude.value, longitude: fix.longitude.value, height: fix.height.value });
-  const gast = greenwichSiderealTime(julianDate(launch) + fix.t.value / 86400);
-  const r = ecefToInertial(earth, gast),
+  const r = frame.toInertial(earth, fix.t.value),
     up = unit(r),
     east = unit(cross([0, 0, 1], up)),
     north = cross(up, east);
@@ -53,7 +57,7 @@ export function terminalApproach(flight: Flight, redock = false, transpose = fal
   const start = trans?.at ?? end - (closing ? range / closing : 0);
   const fix = mission.fixes?.[redock ? 1 : 0];
   if (!fix) throw Error('No orbital fix for this docking');
-  const orbit = orbitalFix(fix, flight.launch, start);
+  const orbit = orbitalFix(fix, frameOf(flight), start);
   const properties = mission.massProperties?.[redock ? 1 : 0];
   if (!properties || properties.length !== 2) throw Error('No mass properties for the docking vehicles');
   const body = (mass: number, i: number): DockBody => {

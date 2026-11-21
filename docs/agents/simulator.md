@@ -1364,7 +1364,10 @@ extended strap). Gemini VIII to XII and Apollo 9 have no flight from the pad (no
 of their own for a chapter to begin from, and their targets' launches are separate flights. What they need is each
 flight's ascent and coast as a plan, its target named as a craft (`FlightPlan.target`, from the target's own run), and
 the record's manoeuvres given their purposes (`Pursuit`), as Apollo 7's are: then a chapter is a place in that one run.
-Until then what follows describes chapters that start at the record.
+Until then what follows describes chapters that start at the record. They are at least in the flown runs' frame: each
+fix is laid in the flight's own (world/earthframe.ts `frameOf`: approach.ts `orbitalFix`, the place over the Earth turned
+by the Earth's angle in that frame at the fix's instant) and coasted under the gravity the runs fly by (world/orbit.ts,
+the Earth with J2), so a craft of a chapter and a craft of a run can be set side by side with no turn between them.
 
 The terminal approaches start around a navigation fix from the flight report. Each spacecraft has an independent inertial state, body attitude and principal moments. The capture calculation evaluates velocity at the moving port, including its rotational velocity. Capture draws the rings together and corrects their relative attitude while preserving total linear and angular momentum. At hard dock, forces and torques act about the coupled centre, with the rotated inertia tensors and parallel-axis terms of both vehicles. The throttle remains with the firing body. Opening the joint preserves both outgoing states. Translation provides separation.
 

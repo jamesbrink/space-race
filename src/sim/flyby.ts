@@ -1,4 +1,4 @@
-/** Gemini X revisited a second, passive spacecraft. All three vehicles retain their own inertial states. */
+/** Gemini X revisited a second, passive spacecraft. All three vehicles retain their own states in the flight's frame (world/earthframe.ts `frameOf`). */
 import type { Flight } from '../types.ts';
 import { EARTH } from '../world/bodies.ts';
 import { add, cross, DEG, length, scale, sub, unit, type Vec3 } from '../world/frames.ts';
