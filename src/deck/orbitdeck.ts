@@ -504,6 +504,10 @@ export class OrbitDeck extends Deck {
     const down = begun ? (this.flown ?? orbitalFlown(this.flight)).down : null;
     return { descend: { follow: first.id, hands: hands(this), ...(down ? { from: down } : {}) } };
   }
+  /** The mission's entry interface, m, where its record names one: the predicted path marks it on a path that comes down from far out (viewer/path.ts `PathSource.entry`). */
+  get entry(): number | undefined {
+    return this.recordPlan.record?.entryInterface?.value;
+  }
   /** The run's line flown (sim/run.ts `Run.track`): the predicted path draws the line flown from it (viewer/path.ts `PathSource.track`). */
   track(): readonly LiveSample[] {
     return (this.run?.track() ?? []) as readonly LiveSample[];

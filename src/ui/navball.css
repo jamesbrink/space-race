@@ -105,6 +105,14 @@
 .path-chip.path-body { display: none; }
 .path-pass > i { background: #d9d6cc; }
 .path-pass b, .path-chip.path-pass b { color: #d9d6cc; }
+/* about the Moon, where the flight is in its sphere: its apsides there in the Moon's grey with the amber of an apsis, and the sphere's crossings as a ring in its grey */
+.path-apolune > i, .path-perilune > i { background: var(--amber); border-color: #d9d6cc; }
+.path-apolune b, .path-perilune b, .path-chip.path-apolune b, .path-chip.path-perilune b { color: #d9d6cc; }
+.path-sphere > i { rotate: none; border-radius: 50%; background: rgba(10, 11, 14, 0.7); border-color: #d9d6cc; }
+.path-sphere b, .path-chip.path-sphere b { color: #d9d6cc; }
+/* where a path from far out comes down through the entry interface */
+.path-interface > i { background: rgba(10, 11, 14, 0.7); border-color: var(--amber); }
+.path-interface b, .path-chip.path-interface b { color: var(--amber); }
 /* the record's own events, on its line: a small open diamond and thin words in that line's magenta (path.ts `plan`), quieter than anything of the prediction's; never a chip */
 .path-ref > i { left: -3.5px; top: -3.5px; width: 7px; height: 7px; background: rgba(10, 11, 14, 0.7); border: 1.5px solid #f08bd2; }
 .path-ref b { color: #f08bd2; font-weight: 400; }

@@ -6,10 +6,16 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { apsides } from '../src/sim/predict.ts';
+import { flight as apollo8 } from '../missions/usa/apollo/flights/apollo-8/flight.ts';
+import { moonOnEarthFlight } from '../src/sim/core/gravity.ts';
+import { frameOf } from '../src/world/earthframe.ts';
+import { useEphemeris } from '../src/world/ephemeris.ts';
 import {
+  aboutWeight,
   carried,
   clearOf,
   clipNear,
+  crossingsOf,
   curveAt,
   curveOf,
   DEPTH_LEAST,
@@ -17,6 +23,7 @@ import {
   depthOf,
   ERROR_PX,
   fadeIn,
+  Knotted,
   limbPx,
   overHorizon,
   ribbon,
@@ -28,6 +35,9 @@ import {
   turnsPast,
   whenSwept,
 } from '../src/viewer/pathline.ts';
+
+// (the Moon where the page has it without DE440: Meeus's)
+useEphemeris(null);
 
 const near = (got, want, tolerance, what) =>
   assert.ok(Math.abs(got - want) <= tolerance, `${what}: got ${got}, want ${want} within ${tolerance}`);
@@ -430,4 +440,98 @@ test('a curve is carried with a flight that has left it: by where it is, and by 
   // outside the curve's span there is nothing to measure against, and nothing is carried
   assert.equal(departure(c, 3001, r, v, left), false);
   assert.ok(left.every((x) => x === 0));
+});
+
+test('drawn about the Moon: the weight is whole inside the sphere and none an ease outside it, smooth between', () => {
+  const ease = 1000;
+  assert.equal(aboutWeight(50, 0, 100, ease), 1);
+  assert.equal(aboutWeight(0, 0, 100, ease), 1);
+  assert.equal(aboutWeight(100, 0, 100, ease), 1);
+  assert.equal(aboutWeight(-ease, 0, 100, ease), 0);
+  assert.equal(aboutWeight(100 + 2 * ease, 0, 100, ease), 0);
+  near(aboutWeight(100 + ease / 2, 0, 100, ease), 0.5, 1e-12, 'half way out');
+  // (never a step: from one second to the next it moves by less than the steepest the smooth step has, 1.5 / ease)
+  let was = aboutWeight(-2 * ease, 0, 100, ease);
+  for (let t = -2 * ease; t <= 100 + 2 * ease; t += 1) {
+    const w = aboutWeight(t, 0, 100, ease);
+    assert.ok(Math.abs(w - was) <= 1.5 / ease + 1e-12, `a step at ${t}`);
+    was = w;
+  }
+  // (a sphere left open at either end: inside from always, or to always)
+  assert.equal(aboutWeight(-1e12, Number.NEGATIVE_INFINITY, 0, ease), 1);
+  assert.equal(aboutWeight(1e12, 0, Number.POSITIVE_INFINITY, ease), 1);
+});
+
+test('the Moon’s way kept as knots an hour apart is within a decimetre of its ephemeris, and its velocity within a millimetre a second', () => {
+  const body = moonOnEarthFlight(frameOf(apollo8)).body;
+  const way = new Knotted((t) => body.where(t));
+  const at = [0, 0, 0];
+  const vel = [0, 0, 0];
+  let worst = 0;
+  let worstV = 0;
+  for (let k = 0; k < 400; k++) {
+    const t = -86_400 + k * 2_311.7;
+    way.at(t, at, 0, vel);
+    const want = body.where(t);
+    // (its velocity a minute either side: a second either side reads the ephemeris's last bits as centimetres a second)
+    const a = body.where(t + 60);
+    const b = body.where(t - 60);
+    worst = Math.max(worst, Math.hypot(at[0] - want[0], at[1] - want[1], at[2] - want[2]));
+    worstV = Math.max(worstV, Math.hypot(vel[0] - (a[0] - b[0]) / 120, vel[1] - (a[1] - b[1]) / 120, vel[2] - (a[2] - b[2]) / 120));
+  }
+  // (the ephemeris itself is no finer than a few centimetres here: its Julian date's last bit is 40 microseconds of the Moon's way)
+  assert.ok(worst < 0.1, `${worst.toFixed(4)} m off its ephemeris`);
+  assert.ok(worstV < 1e-3, `${worstV.toExponential(2)} m/s off`);
+});
+
+test('where a path crosses a sphere about a moving centre is found to a millisecond, in and out', () => {
+  // a centre going along x at 1 km/s, and a path along y at 2 km/s through where it will be at t = 1000
+  const centre = (t, out) => {
+    out[0] = 1000 * t;
+    out[1] = 0;
+    out[2] = 0;
+  };
+  const points = [];
+  for (let t = 0; t <= 2000; t += 37) points.push({ t, r: [1e6, 2000 * (t - 1000), 0], v: [0, 2000, 0] });
+  const c = curveOf(points);
+  const radius = 400_000;
+  // |(1e6 - 1000 t, 2000 (t - 1000))| = radius: 5e6 (t - 1000)^2 = radius^2, t = 1000 -+ radius / sqrt(5e6)
+  const half = radius / Math.sqrt(5e6);
+  const found = crossingsOf(c, centre, radius);
+  assert.equal(found.length, 2);
+  near(found[0].t, 1000 - half, 1e-3, 'in');
+  assert.equal(found[0].into, true);
+  near(found[1].t, 1000 + half, 1e-3, 'out');
+  assert.equal(found[1].into, false);
+  assert.deepEqual(crossingsOf(c, centre, radius, 1000).map((x) => x.into), [false], 'from inside: only the way out');
+});
+
+test('an orbit of the Moon drawn about the Moon as it is now closes on itself; drawn about the Earth it is a coil along the Moon’s way', () => {
+  const body = moonOnEarthFlight(frameOf(apollo8)).body;
+  const way = new Knotted((t) => body.where(t));
+  const GM = body.gm;
+  // a circle 110 km over the Moon, its period about two hours (Kepler's third law)
+  const a = body.radius + 110_000;
+  const period = 2 * Math.PI * Math.sqrt(a ** 3 / GM);
+  const m = [0, 0, 0];
+  const about = (t) => {
+    way.at(t, m);
+    const u = (2 * Math.PI * t) / period;
+    return [m[0] + a * Math.cos(u), m[1] + a * Math.sin(u), m[2]];
+  };
+  const now = 250_000;
+  const here = [0, 0, 0];
+  way.at(now, here);
+  const drawn = (t, w) => {
+    const p = about(t);
+    way.at(t, m);
+    return p.map((x, k) => x + w * (here[k] - m[k]));
+  };
+  const t0 = Math.ceil(now / period) * period;
+  const closes = Math.hypot(...drawn(t0, 1).map((x, k) => x - drawn(t0 + period, 1)[k]));
+  const coils = Math.hypot(...drawn(t0, 0).map((x, k) => x - drawn(t0 + period, 0)[k]));
+  assert.ok(closes < 1, `about the Moon, once round it ends ${closes.toFixed(3)} m from where it began`);
+  assert.ok(coils > 5e6, `about the Earth it ends ${(coils / 1000).toFixed(0)} km on`);
+  // and at the instant on show it is where the flight is, whichever it is drawn about
+  assert.ok(Math.hypot(...drawn(now, 1).map((x, k) => x - about(now)[k])) < 1e-6);
 });
