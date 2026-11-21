@@ -212,11 +212,26 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   hands and feet are on the rungs: each on the rung its height up the ladder gives it (`gait.ts`:
   `rungs`, by height alone, never by time: the left foot and the right hand go up two rungs while
   the others hold), put there by `OnFoot.onTheLadder` (`reach` for a hand, `step` for a foot). The
-  ladder is known only by its box, so the rungs are taken to be where `srlib.ladder` puts them: a
-  foot apart from a foot above its foot. A hand that carries something is not put on a rung: that
+  ladder is known by its box, so the rungs are taken to be where `srlib.ladder` puts them, a
+  foot apart from a foot above its foot, unless its mesh says where its are (extras `climb_pitch`, `climb_first`: the LM's,
+  8 in apart up its strut). **A ladder that leans** (the LM's lies along its forward strut, 27 degrees from the upright) is
+  found to lean from its own rails (walk.ts `axisOf`: the middles of its lowest and highest tenth, worked once a geometry, turned
+  as the mesh is): it has a `lean`, is climbed on its upper face whichever side it is come to from, and the climber hangs off
+  it where the lean has it at his height (`centreOf`), going in toward what it leans on as he rises. A ladder within 4.6
+  degrees of the upright is known by its box alone, as before (`tests/walk.test.mjs`). A hand that carries something is not put on a rung: that
   arm hangs with its load and he climbs with the other (the pose's `load`, `onTheLadder`). That is
   a rule of ours, estimated: on the day the pilot went up the structure by its lift, carrying the
   ventilator, and climbed nothing.
+- **Getting out on the Moon, and back in.** Stood at a landing site (app/surface.ts), the flight's crew who went out
+  (`ModelDef.surface`) stand before the LM's ladder in what they wore there, and the deck's Go out (deck.ts `onSurface`, keys.ts
+  `deck.out`; `sr.goOut`) puts the commander on the porch out of the forward hatch, facing out over the ladder
+  (`lander.out`). From there he walks to the porch's end looking down and on to the ladder, and down it; off its lowest rung
+  the last step to the footpad is the real one, some 27 in (lunar-module.md, "On the Moon"), and back up it takes a jump to the
+  bottom rung, as it did on the day. Up again and on the porch, the hatch is opened by hand (Open the hatch) and a station is
+  boarded through it (Board, `seats[].from`, `egress: ['surface']`): he is aboard, and E gets him out on to the porch again.
+  `pnpm test:walk --flight usa/apollo/apollo-11 --only Moon` walks it (tools/walk-test.mjs `moonRoutes`). **Time on the
+  surface** runs faster than it goes only with nobody on foot and nothing due (session.ts `surfaceTime`): on foot the clock is
+  held to real time (Clock.allow(1)), and off foot it is held at the flight's next event on its timeline (Clock.hold).
 - **Stairs are walked, not hopped.** The floor is sensed under the middle of the body and four
   points round it, so open treads with daylight between them carry it; the body follows a flight
   as fast as the legs go (`settle`'s `rate`) and a step down is as deep as a step up is tall.

@@ -71,7 +71,10 @@ test('every landing site is a SiteDef on the Moon with the instant its LM landed
     assert.match(s.landed.source, /Mission Report, [MJ]SC-0\d+ .*table \d-I .*p\. \d/);
     for (const k of ['heading', 'pitch', 'roll']) {
       const m = s.rest[k];
-      assert.ok(Number.isFinite(m.value) && ['documented', 'derived', 'estimated', 'assumed'].includes(m.confidence) && m.source, `${s.id} rest.${k}`);
+      assert.ok(
+        Number.isFinite(m.value) && ['documented', 'derived', 'estimated', 'assumed'].includes(m.confidence) && m.source,
+        `${s.id} rest.${k}`,
+      );
     }
     // the pitch and the roll at rest are what each report gives (Apollo 11's roll it does not); no report gives a heading
     assert.equal(s.rest.pitch.confidence, 'documented', s.id);
@@ -95,7 +98,16 @@ test('the crew who went out are walked on the Moon in what they wore there, buil
         assert.ok(existsSync(file), `${f.id} ${m.id}: ${file} is missing: run pnpm model`);
         const nodes = allNodes(file);
         // (the eyes are measured off the finest level: flights.test.mjs, as every walker's)
-        for (const joint of ['Hips', 'Spine', 'Head', 'Foot.L', 'Foot.R', 'Torso_PortableLifeSupport', 'Torso_OxygenPurgeSystem', ...(file === glb ? [m.walker.eyes] : [])])
+        for (const joint of [
+          'Hips',
+          'Spine',
+          'Head',
+          'Foot.L',
+          'Foot.R',
+          'Torso_PortableLifeSupport',
+          'Torso_OxygenPurgeSystem',
+          ...(file === glb ? [m.walker.eyes] : []),
+        ])
           assert.ok(nodes.has(joint) || nodes.has(joint.replace('.', '')), `${f.id} ${m.id}: no ${joint} in ${file}`);
       }
     }
@@ -103,7 +115,14 @@ test('the crew who went out are walked on the Moon in what they wore there, buil
 
 test('each LM that landed has its forward hatch on a hinge, a ladder to climb, and its pads where its stay sets them on the ground', () => {
   const landers = flights.flatMap((f) => f.models.filter((m) => m.lander).map((m) => [f, m]));
-  assert.deepEqual(landers.map(([f]) => f.id.split('/').pop()).sort(), ['apollo-11', 'apollo-12', 'apollo-14', 'apollo-15', 'apollo-16', 'apollo-17']);
+  assert.deepEqual(landers.map(([f]) => f.id.split('/').pop()).sort(), [
+    'apollo-11',
+    'apollo-12',
+    'apollo-14',
+    'apollo-15',
+    'apollo-16',
+    'apollo-17',
+  ]);
   for (const [f, m] of landers) {
     const glb = join(root, 'public', m.url);
     for (const file of [glb, glb.replace(/\.glb$/, '.lod1.glb'), glb.replace(/\.glb$/, '.lod2.glb')]) {

@@ -37,7 +37,7 @@ import { Effects } from '../viewer/effects.ts';
 import { uOrigin } from '../viewer/origin.ts';
 import { FlightPath } from '../viewer/path.ts';
 import type { Stage, Thing, WarmStep } from '../viewer/stage.ts';
-import { Clock, localTime, missionTime } from '../world/clock.ts';
+import { Clock, localTime, missionTime, RATES } from '../world/clock.ts';
 import { loadEphemeris } from '../world/ephemeris.ts';
 import { frameOf } from '../world/earthframe.ts';
 import { SiteWorld, solidModels, solidUrl } from '../sim/siteworld.ts';
@@ -226,6 +226,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       flown.fly(run); // its traces over the record's, as it grows
       sound.fly(run);
     },
+    goOut: () => goOut(),
     piloting: (on) => {
       if (on && stage.walk.active) stage.onFoot.exitWalk();
       if (!on) for (const m of mechanisms) stage.setMechanism(m.id, null); // (back on the record's clock)
@@ -424,6 +425,10 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
    * at seconds of the mission's clock. On foot there the crew walk by the Moon's gravity (Stage.load: `gravityOn`).
    */
   let onMoon: LunarSite | null = null;
+  /** The landing site stood at, by name, for what is said of where he walks. */
+  let moonPlace: string | null = null;
+  /** What the stage stands now: the flight at its pad, or stood at a landing site (`lunarStay`), whose models the walk acts on. */
+  let shown: SitedFlight = flight;
   /** Whether the path was drawn when the stage went to the Moon: it is again when it comes back. */
   let pathWas = false;
   async function surface(site: LunarSite | null, at?: number): Promise<boolean> {
@@ -431,14 +436,14 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     if (stage.walk.active) stage.onFoot.exitWalk();
     if (demo.active) demo.stop(true);
     if (at !== undefined) clock.seek(at);
-    const shown = site ? await lunarStay(flight, site) : flight;
+    const stay = site ? await lunarStay(flight, site, whole) : flight;
     if (gone) return false;
     ready = false;
-    ui.loading(site ? shown.site.name : flight.callsign);
+    ui.loading(site ? stay.site.name : flight.callsign);
     stage.veiled = true;
     const said = follow(
       ui.curtain,
-      shown.models.map((m) => m.name),
+      stay.models.map((m) => m.name),
       {
         place: { label: site ? 'The landing site’s ground' : 'The place round the pad', share: 0.15 },
         clouds: { label: 'Clouds', share: 0.2 },
@@ -447,7 +452,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       },
     );
     try {
-      await stage.load(shown, (f, parts) => said.arrive(f, parts));
+      await stage.load(stay, (f, parts) => said.arrive(f, parts));
       if (gone) return false;
       said.arrive(1);
       const onMoonWas = onMoon;
@@ -455,17 +460,63 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       // (the flight's path is drawn about the Earth: not over the Moon's ground)
       if (site && !onMoonWas) pathWas = path.showing;
       path.show(site ? false : pathWas, false);
-      stage.section(site ? shown.models[0]!.id : current.id, true);
+      stage.section(site ? stay.models[0]!.id : current.id, true);
       await stage.warm(undefined, (step, f) => said.step(step, f));
       if (gone) return false;
       said.end();
       ui.loaded();
+      // (the deck on the surface: Go out and Lift off; and the clock's pace there, held by whoever is on foot: surfaceTime)
+      moonPlace = site ? stay.site.name : null;
+      shown = stay;
+      cockpit.onSurface(moonPlace);
+      if (site) surfaceTime();
+      else if (onMoonWas) {
+        // (back from the Moon: its holds on the clock let go)
+        clock.hold(Number.NaN);
+        clock.allow(RATES[RATES.length - 1]!);
+      }
       return true;
     } finally {
       ready = true;
       stage.veiled = false;
     }
   }
+
+  /**
+   * Go out on to the Moon (the deck's Go out, deck/phases/surface.ts): off the flight deck and on foot as the first of the
+   * crew who went out (the commander), through the forward hatch and standing on the porch facing out over the ladder
+   * (the LM's `lander.out`, in its own frame, as it stands). False where nobody can: not on the Moon, or no LM or crewman.
+   */
+  function goOut(): boolean {
+    if (!onMoon || !ready) return false;
+    const out = stage.landerOut();
+    const who = flight.models.find((m) => m.walker && m.surface);
+    if (!out || !who) return false;
+    if (cockpit.active) {
+      // (leaving the deck puts its clock back to the start; on the Moon the day goes on where it was)
+      const [t, running] = [clock.t, clock.running];
+      cockpit.leave();
+      clock.seek(t);
+      clock.play(running);
+      surfaceTime();
+    }
+    return stage.enterWalk(who.id, out.at, out.facing);
+  }
+
+  /**
+   * The clock's pace on the Moon (Architecture 9): time may be run faster than it goes only with nobody on foot and
+   * nothing due. On foot it runs as it goes (Clock.allow(1)); off foot as fast as the clock allows anywhere, held at the
+   * flight's next event on the record's timeline (Clock.hold: a frame that would cross it stops on it at real time).
+   */
+  function surfaceTime(onFoot = stage.walk.active): void {
+    if (!onMoon) return;
+    clock.allow(onFoot ? 1 : RATES[RATES.length - 1]!);
+    const next = flight.timeline.find((e) => e.t > clock.t + 1e-6);
+    clock.hold(next ? next.t : Number.NaN);
+  }
+  clock.listen(() => {
+    if (onMoon && Number.isNaN(clock.dueAt)) surfaceTime();
+  });
 
   /** Fetch the flight's models and open on a section. */
   async function start(id: string, fly = false): Promise<void> {
@@ -678,6 +729,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   });
   // Walking as a figure is done from that figure's section, wherever it was asked for; stopping returns to that section's view.
   stage.onWalk = (on, model) => {
+    surfaceTime(on); // (on the Moon, nobody runs time on while someone is on foot; called before the walk is under way)
     if (on && current.id !== model) show(model, false, true); // the hardware stays where it is while someone is walking on it
     if (on && selected) select(null);
     if (!on) stopWorking();
@@ -708,12 +760,12 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
   let cardAt: { x: number; z: number } | null = null;
   let naming = 0;
   stage.onWalkTarget = (found) => {
-    const offered = found ? choices(found, flight, stage.onFoot.walkingAs ?? '', stage.onFoot.workings) : [];
+    const offered = found ? choices(found, shown, stage.onFoot.walkingAs ?? '', stage.onFoot.workings) : [];
     target = found && offered.length ? found : null;
     ui.wheel.close(); // what it was about is no longer in front of you
     // the ground under your own feet is named only once it has been looked at for a second (E works on it at once all the same)
     clearTimeout(naming);
-    const name = target ? nameOf(target, flight) : null;
+    const name = target ? nameOf(target, shown) : null;
     if (target && quiet(target, offered)) {
       ui.setWalkTarget(null);
       naming = window.setTimeout(() => ui.setWalkTarget(name), 1000);
@@ -749,14 +801,14 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       ui.showWalkCard(null);
       return;
     }
-    const list = choices(on, flight, stage.onFoot.walkingAs ?? '', stage.onFoot.workings);
+    const list = choices(on, shown, stage.onFoot.walkingAs ?? '', stage.onFoot.workings);
     // while it is open the walker stands still and the captured mouse points at choices; Escape shuts it
     stage.walk.hold(
       (dx, dy) => ui.wheel.nudge(dx, dy),
       () => ui.wheel.close(),
     );
     ui.wheel.open(
-      nameOf(on, flight),
+      nameOf(on, shown),
       list,
       (id) => perform(on, list.find((c) => c.id === id)!),
       () => stage.walk.release(),
@@ -766,7 +818,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
 
   /** Carry out a verb chosen on the wheel. */
   function perform(on: Target, { verb }: Choice): void {
-    const { part } = lookUp(on, flight);
+    const { part } = lookUp(on, shown);
     if (verb.do === 'info' && part) {
       ui.showWalkCard(part);
       cardAt = { x: stage.walk.body.position.x, z: stage.walk.body.position.z };
@@ -1149,8 +1201,11 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
       ui.showWalkCard(null);
     if (stage.walk.active) {
       const landmark = stage.onFoot.landmark();
-      const near = landmark && nameOf(landmark, flight);
-      ui.setWalkLocation([flight.launchSite, near && `Near ${near}`, stage.walkVehicleDirection()].filter(Boolean).join(' · '));
+      const near = landmark && nameOf(landmark, shown);
+      // (on the Moon, where he walks is the landing site)
+      ui.setWalkLocation(
+        [moonPlace ?? flight.launchSite, near && `Near ${near}`, stage.walkVehicleDirection()].filter(Boolean).join(' · '),
+      );
     }
     const s = stage.stats();
     const tris = s.triangles >= 1e6 ? `${(s.triangles / 1e6).toFixed(2)} M` : `${Math.round(s.triangles / 1e3)} k`;
@@ -1178,6 +1233,7 @@ export function siteSession(whole: SitedFlight, stage: Stage, kept?: GalleryKept
     },
     onMoon: (site, at) => surface(site, at),
     offMoon: () => surface(null),
+    goOut: () => goOut(),
     get moon() {
       return onMoon;
     },

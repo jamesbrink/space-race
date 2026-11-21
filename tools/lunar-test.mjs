@@ -9,8 +9,11 @@
 //   frozen   a frozen stage draws the same frame twice, in both looks
 //   hop      on foot as the first of the crew: a standing jump lifts the feet JUMP (2.4 m: walk.ts JUMP_HEIGHT under the
 //            Moon's 1.62 m/s^2) and the walker falls by the Moon's gravity
+//   out      the deck's Go out (`sr.goOut`) puts the commander on the LM's porch; on foot the clock runs as it goes
 //   back     `sr.offMoon` stands the flight at its pad again, under the Earth's gravity, and what the GPU holds is back to
 //            within SLACK of what it held before
+// Then the deck: taken at the pad, the flight stood on the Moon under it, its surface verbs shown, Space saying Lift off is
+// not flown yet, and V going out on to the porch.
 // --shots writes stills: the LM from across the site, from beside it, the walker's eyes on the Earth, and the light trace.
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -245,6 +248,27 @@ try {
   );
   await page.evaluate(() => sr.stage.onFoot.exitWalk());
 
+  // out: the LM stands on its pads, and the deck's Go out (sr.goOut) puts the commander on its porch, out of the hatch; on
+  // foot the clock runs as it goes, and off foot it may run faster again (session.ts surfaceTime)
+  const out = await page.evaluate(async () => {
+    await new Promise((done) => setTimeout(done, 1000));
+    const offFoot = sr.clock.fastest;
+    const ok = sr.goOut();
+    await new Promise((done) => setTimeout(done, 2000));
+    const p = sr.stage.walk.body.position;
+    const r = { ok, active: sr.stage.walk.active, up: p.y - (sr.stage.groundAt(p.x, p.z) ?? 0), onFoot: sr.clock.fastest, offFoot };
+    sr.stage.onFoot.exitWalk();
+    await new Promise((done) => setTimeout(done, 1000));
+    return { ...r, after: sr.clock.fastest };
+  });
+  check(out.ok && out.active, 'Go out: on foot as the commander');
+  check(out.up > 3 && out.up < 4, `on the porch, ${out.up.toFixed(2)} m over the ground under it`);
+  check(
+    out.onFoot === 1 && out.offFoot > 1 && out.after === out.offFoot,
+    `time runs as it goes on foot (${out.onFoot}x), faster off it (${out.offFoot}x, then ${out.after}x)`,
+  );
+  await shot('out-on-the-porch');
+
   // back to the pad
   const back = await page.evaluate(async () => {
     window.__phase = 'back';
@@ -270,6 +294,50 @@ try {
     setting.length === 0,
     `nothing the lunar setting made is held after it (${kept.length} textures made there kept: ${[...new Set(kept)].join('; ') || 'none'})`,
   );
+
+  // the deck on the Moon: taken at the pad, the stage stood at the landing site under it (as a run that lands will), the
+  // surface's verbs in place of the next event; V goes out on to the porch, and Space says Lift off is not flown yet
+  await page.keyboard.press('l');
+  await page.waitForTimeout(3000);
+  const onDeck = await page.evaluate(
+    async ({ site, t }) => {
+      const took = Boolean(document.querySelector('.cockpit.on, #ui.piloting'));
+      const stood = await sr.onMoon(site, t);
+      await new Promise((done) => setTimeout(done, 2000));
+      const verbs = document.querySelector('.deck-surface');
+      return {
+        took,
+        stood,
+        verbs: Boolean(verbs && !verbs.hidden),
+        next: document.querySelector('.cockpit-next')?.hidden ?? null,
+        phase: document.querySelector('[data-cell="phase"]')?.textContent ?? '',
+      };
+    },
+    { site: siteId, t: at },
+  );
+  check(onDeck.took && onDeck.stood, `the deck taken at the pad, and the flight stood on the Moon under it (${JSON.stringify(onDeck)})`);
+  check(onDeck.verbs && onDeck.next === true, 'the deck shows Go out and Lift off in place of the next event');
+  check(/On the Moon/.test(onDeck.phase), `its phase line says where it stands: "${onDeck.phase}"`);
+  await page.keyboard.press(' ');
+  await page.waitForTimeout(500);
+  const said = await page.evaluate(() => document.querySelector('#ui .notes')?.textContent ?? '');
+  check(/not flown yet/.test(said), `Space (Lift off) says it is not flown yet: "${said.trim().slice(0, 120)}"`);
+  await page.keyboard.press('v');
+  await page.waitForTimeout(2500);
+  const fromDeck = await page.evaluate(() => {
+    const p = sr.stage.walk.body.position;
+    return {
+      active: sr.stage.walk.active,
+      up: p.y - (sr.stage.groundAt(p.x, p.z) ?? 0),
+      deck: document.querySelector('#ui')?.classList.contains('piloting'),
+    };
+  });
+  check(
+    fromDeck.active && !fromDeck.deck && fromDeck.up > 3,
+    `V on the deck goes out: on foot on the porch, off the deck (${JSON.stringify(fromDeck)})`,
+  );
+  await shot('out-from-the-deck');
+  await page.evaluate(() => sr.stage.onFoot.exitWalk());
   check(errors.length === 0, `no errors${errors.length ? `: ${errors.slice(0, 3).join(' | ')}` : ''}`);
   await close();
 } finally {

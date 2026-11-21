@@ -44,6 +44,8 @@ export interface FlightDebug {
    */
   onMoon: (site: LunarSite, at?: number) => Promise<boolean>;
   offMoon: () => Promise<boolean>;
+  /** Stood on the Moon: the deck's Go out (on foot as the commander, on the porch out of the hatch); false where nobody can. */
+  goOut: () => boolean;
   readonly moon: LunarSite | null;
 }
 
