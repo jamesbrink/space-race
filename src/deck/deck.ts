@@ -21,6 +21,7 @@ import { type Clock, missionTime, Clock as Own } from '../world/clock.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { DEG, siteFrame, type Vec3 } from '../world/frames.ts';
 import { ask } from './ask.ts';
+import { fit } from './fit.ts';
 import type { NavSample } from './navball.ts';
 import { inProgress, type Stake, verdict } from './leaving.ts';
 import { type Entry, type EntryKind, pack, readTape, replay, SAVE, stampOf, type Taped } from './tape.ts';
@@ -190,7 +191,7 @@ const COMMANDS: [KeyName, string][] = [
 export type Watcher = (sample: LiveSample, live: VehicleState | null, news?: DeckNews) => void;
 
 const cell = (f: Figure) =>
-  `<div class="gauge" title="${f.about}"><span>${f.label}</span><i>${f.unit}</i><b data-cell="${f.id}">0</b></div>`;
+  `<div class="gauge" title="${f.about}"><span>${f.label}</span><i data-unit="${f.id}">${f.unit}</i><b data-cell="${f.id}">0</b></div>`;
 const pair = (f: Figure) =>
   `<div class="reading" title="${f.about}"><span>${f.label}</span><b><u data-cell="${f.id}">0</u>${f.unit ? `<i>${f.unit}</i>` : ''}</b></div>`;
 /** A supply as a bar of what is left, with the figure and the kilograms beside it (the systems strip). */
@@ -276,6 +277,8 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   /** What a finger on the on-screen stick and roll buttons asks, each -1 to 1: laid over the keys. */
   readonly finger = { pitch: 0, yaw: 0, roll: 0 };
   private figureKey = '';
+  /** Each figure's unit cell and the unit it is given in (`figure` may show a larger one). */
+  private readonly units = new Map<string, { el: HTMLElement; base: string }>();
   /** What the deck's own enter button says while the deck is not taken. */
   private readonly enterTip: string;
   /** A flight flown by hand, kept while the deck is left: where the clock stood, how fast it ran, and whether it was running. */
@@ -945,6 +948,18 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     const el = this.root.querySelector<HTMLElement>('.gauges')!;
     el.innerHTML = `\n          ${list.map(cell).join('\n          ')}\n        `;
     for (const c of el.querySelectorAll<HTMLElement>('[data-cell]')) this.cells.set(c.dataset.cell!, c);
+    for (const f of list) this.units.set(f.id, { el: el.querySelector<HTMLElement>(`[data-unit="${f.id}"]`)!, base: f.unit });
+  }
+
+  /** A figure of the middle panel put in its cell to fit it (fit.ts): fewer decimals, then a larger unit, as the number grows; null is a dash, and a name (what an orbit meets) is shown as it is. */
+  protected figure(id: string, value: number | string | null, decimals: number): void {
+    const unit = this.units.get(id);
+    // (none to show: a dash, in the figure's own unit)
+    const base = unit?.base ?? '';
+    const shown =
+      value === null ? { text: '—', unit: base } : typeof value === 'string' ? { text: value, unit: base } : fit(value, base, decimals);
+    this.put(id, shown.text);
+    if (unit && unit.el.textContent !== shown.unit) unit.el.textContent = shown.unit;
   }
 
   /** Put text in a cell, touching the page only if it has changed. */

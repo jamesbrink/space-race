@@ -1158,6 +1158,12 @@ read gives enough of to fly (issue #10).
   same in every phase today; a phase that differs in them gets them as fields of `Phase`, drawn on a change as
   `Deck.figures` draws the figures. The docking deck (dockdeck.ts, a `Deck` of its own) stays as it is until the dock
   phase takes it in.
+- **A figure fits its cell at every magnitude** (deck/fit.ts `fit`, deck.ts `Deck.figure`): at most five digits (a minus
+  sign counted, the point not), the decimals the deck asks for while they fit, fewer as the number grows, and past the
+  last whole number that fits the next larger unit, as KSP's: km, Mm, Gm; m/s, km/s; min, h, d. Far from the Earth a height
+  of 110,169.7 km reads 110.17 Mm and an apogee of 681,478 km 681.48 Mm, at 1280, 820 and 390 wide alike; a cell clips what
+  could still not fit rather than let it run into the next (`pnpm test:deck` fills every cell at the widest it can be given
+  and holds it inside its cell).
 - **Fly is taken by hand** (deck.ts `START`). Every entry to Fly stands the flight on its pad with guidance (G) and the
   sequencer (B) off, on every kind (the ballistic, the orbital and the docking deck alike; nothing remembers it): the player
   lights the engines, steers, throttles, stages, cuts, fires the retrorockets and puts out the parachutes, each with its
