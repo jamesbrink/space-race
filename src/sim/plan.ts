@@ -91,6 +91,8 @@ export interface Craft {
   lands?: Lands;
   /** What leaves, each flown on as a body of its own in the scene (sim/shed.ts), by the `Flight.flies.drops[].on` that lets it go. */
   sheds?: ShedBody[];
+  /** The legs it lands on, where it lands on them (a lunar module's): sim/surface.ts flies them against a body's ground. */
+  gear?: GearDef;
   /** What its stages let out after their engines have stopped (`VentDef`). */
   vents?: VentDef[];
 }
@@ -186,9 +188,11 @@ export interface JointDef {
   /**
    * An engine above lit while this joint holds fires into what is below (sim/staging.ts `hotStage`): `open`, the share
    * of the joint's side its jet escapes through; `turn`, the angle below the level it leaves at, degrees; `endures`, how
-   * many seconds at full thrust what is below stands it.
+   * many seconds at full thrust what is below stands it. `sequence`: where the hardware staged on one command that both
+   * let the joint go and lit the engine (the lunar module's Abort Stage), how long after that command the joint parts and
+   * the engine lights, s (sim/craftlive.ts `CraftControls.stage`).
    */
-  hot?: { engine: string; open: Measure; turn: Measure; endures: Measure };
+  hot?: { engine: string; open: Measure; turn: Measure; endures: Measure; sequence?: { parts: Measure; lights: Measure } };
   /**
    * The engines above this joint, while it holds, that would fire into a closed interstage: one with no open side to let
    * the jet out, as the hot-staged joints have (`hot`). Lit by a hand before the joint has gone, the jet is shut in against
@@ -219,8 +223,12 @@ export interface EngineDef {
   tanks: string[];
   /** N and s, at sea level (left out for one lit above the air) and in vacuum. */
   thrust: { seaLevel?: Measure; vacuum: Measure };
-  /** Left out for a motor whose propellant is not drawn from a tank (a retrorocket: its body's mass at its drop says it). */
-  isp?: { seaLevel?: Measure; vacuum: Measure };
+  /**
+   * Left out for a motor whose propellant is not drawn from a tank (a retrorocket: its body's mass at its drop says it).
+   * `throttled`: the vacuum figure against the share of rated thrust it burns at, where the record tabulates it (a deep-
+   * throttling engine's, which falls as it is throttled down): what its flow is worked from at each setting (sim/craftlive.ts).
+   */
+  isp?: { seaLevel?: Measure; vacuum: Measure; throttled?: Curve };
   /** Nozzle exit area, m^2, for one: the thrust in air is the vacuum thrust less this times the air's pressure. */
   exitArea?: Measure;
   /** A solid cannot be throttled or shut down: lit, it burns until it is spent. */
@@ -235,8 +243,11 @@ export interface EngineDef {
    * from liftoff. `flow`: the share of its rated propellant flow it draws against seconds from liftoff, where the record has
    * that apart from its thrust's (a J-2 shifted to a lower mixture ratio gives more impulse for each kilogram, so its flow
    * falls by more than its thrust): without it the flow follows the thrust's setting (`curve`), the impulse unchanged.
+   * `detent`: a fixed position above its range, of rated thrust, that it runs at and nowhere between (the descent engine's
+   * full throttle position, 92.5 per cent, over a throttling range that ends at 65): a lever past the range's top asks for
+   * it, as the descent engine control assembly gave full throttle to any command above 65 per cent (sim/lever.ts `onLever`).
    */
-  throttle?: { range?: [least: number, most: number]; curve?: Curve; flow?: Curve };
+  throttle?: { range?: [least: number, most: number]; curve?: Curve; flow?: Curve; detent?: Measure };
   /**
    * Its cutoff impulse, N s, one unit's, where the record gives one: what it still gives once it has been cut, from the
    * cutoff signal to no thrust (or to its stage's parting, where that is all the record gives). Its thrust falls evenly
@@ -382,6 +393,57 @@ export interface LimitDef {
   value: Measure;
   /** For a structure: the joint it breaks at. For a parachute: which. For a crew limit: aboard, or alone. */
   at?: string;
+}
+
+/**
+ * Landing gear: legs on a body of the craft, each a footpad on a crushable strut, with the probes that sense the surface
+ * below them and the limits the gear was made for (sim/surface.ts). Places are in the craft's own axes and datum (the
+ * frame its mass properties' centres of mass are given in), m.
+ */
+export interface GearDef {
+  /** The body the legs are on: they go with it. */
+  body: string;
+  legs: LegDef[];
+  /** How far below its footpad a probe reaches, m, and which legs carry one. */
+  probe?: { length: Measure; on: string[] };
+  /** The surface's drag on a footpad sliding over it, as a share of the load on it. */
+  friction: Measure;
+  /** The gear's stiffness before a strut crushes (each leg's load over its deflection, N/m), and its damping ratio. */
+  stiffness: Measure;
+  damping: Measure;
+  /** What the gear was made to land within. */
+  limits: LandingLimits;
+  /**
+   * The craft's centre of mass against its mass (the record's mass properties' table: each row a mass, kg, and the centre's
+   * place in the craft's axes and datum, m): what the legs stand about. Taken between the rows the mass lies between.
+   */
+  centres: { mass: Measure; at: [x: Measure, y: Measure, z: Measure] }[];
+}
+
+/** One leg: its footpad as it touches with nothing stroked, and its primary strut, which crushes in stages. */
+export interface LegDef {
+  id: string;
+  label: string;
+  /** The bottom of the footpad, unstroked, m, in the craft's axes and datum. */
+  pad: Vec3;
+  /** The way the footpad goes as its strut strokes: a unit vector up the strut, in the craft's axes. */
+  strut: Vec3;
+  /** The load along the strut it crushes at, N, in stages: each holds until the stroke reaches its `until`, m; past the last the strut is bottomed. */
+  crush: { until: Measure; load: Measure }[];
+}
+
+/**
+ * The touchdown the gear was made for: the most vertical speed; the horizontal speed allowed up to `knee` of vertical
+ * speed, falling evenly to none at `vertical` (the envelope's line); the steepest slope; and the most attitude off the
+ * local vertical and body rate it was shown stable with. Each with its source.
+ */
+export interface LandingLimits {
+  vertical: Measure;
+  horizontal: Measure;
+  knee: Measure;
+  slope: Measure;
+  attitude: Measure;
+  rate: Measure;
 }
 
 /** A piece of the stack's drag going up. */
@@ -949,6 +1011,13 @@ export function problems(plan: FlightPlan): string[] {
         if (t.supplies && !t.supplies.some((s) => s.name === ch.supply))
           out.push(`thruster set '${t.id}': chamber '${ch.name}' draws on supply '${ch.supply}', which the set does not have`);
       if (!t.does.length) out.push(`thruster set '${t.id}' does nothing`);
+    }
+    if (c.gear) {
+      need(n.bodies, 'body', c.gear.body, 'the landing gear');
+      const legs = new Set(c.gear.legs.map((l) => l.id));
+      for (const id of c.gear.probe?.on ?? [])
+        if (!legs.has(id)) out.push(`the landing gear's probe is on leg '${id}', which it does not have`);
+      for (const l of c.gear.legs) if (!l.crush.length) out.push(`landing leg '${l.id}' has no crush load`);
     }
     for (const ch of c.chutes) {
       need(n.bodies, 'body', ch.body, `chute '${ch.id}'`);

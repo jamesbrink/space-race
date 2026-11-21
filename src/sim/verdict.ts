@@ -7,7 +7,8 @@ import { hasLeft } from './craft.ts';
 import { ballisticOf, type Results } from './fly.ts';
 import { type Down, downOf } from './descent.ts';
 import { crewWords, type DescentCrew, type DescentFlown, shipOf } from './orbital.ts';
-import type { FlightPlan, Lands } from './plan.ts';
+import type { FlightPlan, LandingLimits, Lands } from './plan.ts';
+import type { LanderState, Touch } from './surface.ts';
 import type { FlownWhole } from './staged.ts';
 import type { VehicleState } from './vehicle.ts';
 
@@ -37,6 +38,49 @@ export function landsOf(plan: FlightPlan): { ship: string; Ship: string; on: Lan
     surface: lands?.on === 'sea' ? 'the sea' : lands?.on === 'land' ? 'the ground' : 'the surface',
     sank: lands?.sank ?? null,
   };
+}
+
+/** The horizontal speed the gear allows at a vertical speed, m/s: `horizontal` up to `knee`, falling evenly to none at `vertical` (NASA TN D-6850's envelope). */
+export function horizontalAllowed(limits: LandingLimits, vertical: number): number {
+  const [v, k, hz] = [limits.vertical.value, limits.knee.value, limits.horizontal.value];
+  if (vertical <= k) return hz;
+  return vertical >= v ? 0 : (hz * (v - vertical)) / (v - k);
+}
+
+/**
+ * How a lander's touchdown went (sim/surface.ts), against what its gear was made for (`GearDef.limits`): what it met the
+ * ground with at its first footpad's touch, and how it came to rest, said plainly. `ship`: what landed, as a sentence names it.
+ */
+export function landingVerdict(s: LanderState, limits: LandingLimits, ship = 'the lunar module'): Verdict {
+  const t: Touch | null = s.touch;
+  const Ship = `${ship[0]!.toUpperCase()}${ship.slice(1)}`;
+  const against =
+    `The gear was made for ${limits.vertical.value.toFixed(2)} m/s down (${limits.vertical.confidence}), ${limits.horizontal.value.toFixed(2)} m/s across ` +
+    `up to ${limits.knee.value.toFixed(2)} m/s down (${limits.horizontal.confidence}), slopes to ${limits.slope.value}° (${limits.slope.confidence}), and attitude to ` +
+    `${limits.attitude.value}° and rates to ${limits.rate.value}°/s (${limits.attitude.confidence}).`;
+  if (!t) return { how: `${Ship} has not touched the ground`, why: [], survivable: null, against };
+  const why: string[] = [];
+  const allowed = horizontalAllowed(limits, t.vertical);
+  if (t.vertical > limits.vertical.value)
+    why.push(`It came down at ${t.vertical.toFixed(2)} m/s: the gear was made for ${limits.vertical.value.toFixed(2)} m/s.`);
+  if (t.horizontal > allowed + 1e-9)
+    why.push(
+      `It was going ${t.horizontal.toFixed(2)} m/s across the ground: at ${t.vertical.toFixed(2)} m/s down the gear allows ${allowed.toFixed(2)} m/s.`,
+    );
+  if (t.slope > limits.slope.value)
+    why.push(`The ground under it sloped ${t.slope.toFixed(1)}°: the gear was made for ${limits.slope.value}°.`);
+  if (t.tilt > limits.attitude.value)
+    why.push(`It was ${t.tilt.toFixed(1)}° off the vertical as it touched: the gear was shown stable to ${limits.attitude.value}°.`);
+  if (t.rate > limits.rate.value)
+    why.push(`It was turning at ${t.rate.toFixed(1)}°/s as it touched: the gear was shown stable to ${limits.rate.value}°/s.`);
+  if (s.bottomed)
+    why.push(`A strut was crushed to the end of its stroke (the ${s.bottomed} leg): past that the gear takes the blow unbroken.`);
+  const how = Number.isFinite(s.toppled)
+    ? `${Ship} toppled over ${(s.toppled - t.t).toFixed(1)} s after it touched down`
+    : s.landed
+      ? `${Ship} landed at ${t.vertical.toFixed(2)} m/s down and ${t.horizontal.toFixed(2)} m/s across, ${s.landed.tilt.toFixed(1)}° off the vertical`
+      : `${Ship} touched down at ${t.vertical.toFixed(2)} m/s down and ${t.horizontal.toFixed(2)} m/s across`;
+  return { how, why, survivable: why.length === 0 && !Number.isFinite(s.toppled), against };
 }
 
 export function verdict(state: VehicleState, results: Results, plan: FlightPlan, peakG: number): Verdict {

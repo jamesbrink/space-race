@@ -9,7 +9,7 @@
  * A state is never changed in place: each act gives a new one, so a simulator's states can be kept and compared.
  * What the machine refused, and why, comes back as `Refusal`s for the simulator to say in its own words.
  */
-import { handRange } from './lever.ts';
+import { handRange, onLever } from './lever.ts';
 import type { Action, EventDef, FlightPlan, JointDef, Trigger } from './plan.ts';
 
 export interface EngineState {
@@ -155,8 +155,8 @@ export function act(plan: FlightPlan, s: CraftState, action: Action, t: number, 
     if (def.kind === 'solid') refused.push({ action, why: 'solid' });
     else {
       // (a liquid engine's lever: its own range, or the game's where it ran at one thrust: lever.ts `handRange`)
-      const { least, most } = handRange(def) ?? { least: 1, most: 1 };
-      state = { ...s, engines: { ...s.engines, [action.throttle]: { ...e, throttle: Math.min(most, Math.max(least, action.to)) } } };
+      const range = handRange(def);
+      state = { ...s, engines: { ...s.engines, [action.throttle]: { ...e, throttle: range ? onLever(range, action.to) : 1 } } };
     }
   } else if ('separate' in action) {
     const j = s.joints[action.separate];
