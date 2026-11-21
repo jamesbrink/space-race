@@ -175,7 +175,7 @@ class Ballistic extends Flier {
   }
 }
 
-/** Vostok 1's ascent on the orbital deck's arithmetic (deck/orbitdeck.ts `liftoff`, `begin`, `fly`): its steps asked by hand, the law leaned by the keys. */
+/** Vostok 1's ascent on the orbital deck's arithmetic (deck/phases/ascent.ts `liftoff`, `begin`; deck/orbitdeck.ts `fly`): its steps asked by hand, the law leaned by the keys. */
 class Orbital extends Flier {
   constructor(f) {
     super(f.launch);
@@ -386,7 +386,7 @@ test('Vostok 1 flown by hand up to its orbit, written and flown again at each in
 });
 
 /**
- * Vostok 1 alone in orbit with the hands free: the attitude turned by the keys frame by frame (orbitdeck.ts `turnTo`: each
+ * Vostok 1 alone in orbit with the hands free: the attitude turned by the keys frame by frame (deck/phases/coast.ts `turnTo`: each
  * frame's turn is the keys' rate times the time since the frame before, so the frames themselves are part of the run, and
  * the deck writes each down while it turns, its `framed`; the keys' change is written at the frame before, where the deck
  * last followed to), the braking engine fired by hand along it, and what follows flown from that (staged.ts `byHand`,

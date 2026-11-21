@@ -193,7 +193,13 @@ src/
   ui/runmark.ts  ui/runmark.css       the front page's mark on the row of a flight with a run kept
   app/stake.ts                        the one guard on every way out of a flight's page: `guarded`, called by `goHome` and `main.ts`, asks only where a run would be lost
   deck/cockpit.ts                     the deck's ballistic kind: a ballistic plan flown by hand, the live simulator stepped by the clock, the instruments
-  deck/orbitdeck.ts                   the deck's orbital kind (an orbital plan): the stages, the events and what the hands could reach, from the plan
+  deck/orbitdeck.ts                   the deck's orbital kind (an orbital plan): the stages, the events and what the hands could reach, from the plan;
+                                      its state, the run, the path and the instruments, with what each phase does in deck/phases/
+  deck/phases/phase.ts                the orbital deck's phases: which the flight is in, from the run's state (`phaseOf`), and what each shows (`PHASES`)
+  deck/phases/ascent.ts  deck/phases/coast.ts  deck/phases/burn.ts  deck/phases/entry.ts  deck/phases/surface.ts
+                                      what the orbital deck does in each phase, as functions of its state: the ascent (the steps, taking over, the
+                                      aborts, the parting), the coast (the lock, the hands), a burn (the braking burn, the manoeuvres), entry (the
+                                      descent's events by hand), down (the card)
   deck/flown.ts                       the Flown panel: the simulator's run against the clock, and against the reports' figures; a flight flown by hand over it
   deck/navball.ts                     the navball: attitude against the local horizon, prograde and retrograde, guidance's aim (`ballOf` is the mathematics, pure)
   viewer/dispose.ts                   letting go of a tree's geometries, materials and pictures on the GPU (a flight or a place the stage has left)
