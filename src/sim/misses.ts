@@ -250,6 +250,10 @@ const GT6A_RETRO =
 const GT6A_ENTRY =
   'The retrofire is timed by guidance for the landing place along the track (sim/plan.ts `LandingAim`), 277 s before the record’s instant, the run being that far from the real ship along its orbit after a day (the terminal phase, braking, station keeping and separation are not flown as made). The ground track at that instant passes west of the place, and the bank is held 55° to the left throughout, as Schirra held it until the computer took over, whose commands, left and right against an overshoot, are not read. Nothing adjusted';
 
+/** Skylab 2's rendezvous and return (skylab-2/mission.md): the profile flown on a workshop placed from the launch's commentary. */
+const SL2_SPLASH =
+  'Down at 13:54:40, 291 s after the record’s 13:49:49, 44 km short and 142 km across the track from the place the secondary sources give. The two deorbit firings are flown at the record’s instants, which are to the minute (Astronautics and Aeronautics, 1973), on the second visit’s planned impulses (258.5 and 191.9 ft/s), this flight’s own not having been read; the run has coasted 27 days alone from the first soft docking, a hundred metres from the workshop, and the computer steers the entry to a place across its track, which it flies long to reach. The ground’s timing of the firings for the recovery area is not flown. Not adjusted';
+
 /** Gemini VIII's rendezvous, made on GATV-5003 flown from its insertion vector, and its early entry (gt-8/mission.md). */
 const GT8_DH =
   'The four burns before the coelliptic are flown at the record’s instants and impulses: what they were aimed at (the apogee 15 nautical miles under the Agena’s, the phase, the node) is not a kind guidance solves yet. The run comes to them on an orbit whose apogee is some 5 km over the record’s, the ascent cut on the record’s period, which the report’s heights and period give some 3 km apart; so the coelliptic orbit the run solves on the Agena lies 5 to 7 km over the record’s, about 21 km under the Agena where the record has 25 (13.5 nautical miles), and closes on it slower. The Agena is 10 km farther than the record has it at the radar’s lock-on, before the coelliptic burn, and 37 km farther by the terminal phase’s instant. Not adjusted';
@@ -1258,6 +1262,14 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         slack: 60,
         why: `Down at 94:41:58, 448 s after the record: the retrofire 7 minutes late. ${GT12_ENTRY}`,
       },
+    },
+  }),
+  // Skylab 2 from the pad, its rendezvous made on the workshop (skylab-2/mission.md)
+  'usa/skylab/skylab-2': inUnits({
+    ascent: {},
+    shown: {},
+    descent: {
+      'cm.at': { by: 291.3, slack: 30, why: SL2_SPLASH, short: 'deorbit at the record’s minute' },
     },
   }),
   // Soyuz 1: the record from the pad and from its published orbit (missions/ussr/soyuz/flights/soyuz-1/mission.md, "Against the record")

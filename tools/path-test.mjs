@@ -178,6 +178,16 @@ const FLIGHTS = {
     orbit: [3000, 100_000],
     coast: 3000,
   },
+  // (twenty-eight days: the S-IB, the S-IVB to the orbit, the rendezvous with the workshop, the docked stay coasted, the two
+  // deorbit firings, the modules parted, the entry, the drogues and the mains)
+  sl2: {
+    id: 'usa/skylab/skylab-2',
+    instants: [
+      5, 60, 143, 170, 300, 600, 3000, 8_700, 25_500, 30_000, 1_000_000, 2_408_720, 2_419_900, 2_421_400, 2_422_000, 2_422_250, 2_422_400,
+    ],
+    orbit: [3000, 100_000],
+    coast: 3000,
+  },
   // (the S-IC, the S-II, the parking orbit, the S-IVB lit again for the injection and the coast toward the Moon after it)
   a8: {
     id: 'usa/apollo/apollo-8',

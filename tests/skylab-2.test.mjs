@@ -9,7 +9,7 @@ const [stack] = flight.models;
 test('the Skylab 2 spacecraft plinth holds CSM-116 with its station equipment', () => {
   assert.equal(lacks(flight, 'gallery'), null);
   assert.equal(lacks(flight, 'site'), null);
-  assert.ok(lacks(flight, 'fly'));
+  assert.equal(lacks(flight, 'fly'), null);
   const frames = framesOf(new URL(`../public/${stack.url}`, import.meta.url));
   const craft = craftNodes(headingsOf(stack), (node) => frames.box(node)?.lo[1]);
   for (const node of ['DockingProbe', 'PropellantStorageModule', 'DescentBatteries', 'ServiceWaterTank', 'VHFAntennas'])
