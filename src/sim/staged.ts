@@ -1247,7 +1247,16 @@ export function flyWhole(plan: FlightPlan, site: Geodetic, frame: EarthFrame, se
   const flown = coast.plan ?? plan;
   const down = downOf(flown) && end.phase === 'down' ? flyDown(flown, frame, seaLevel, end) : null;
   const crafts = several ? craftsOf(several, coast) : undefined;
-  return { ascent, coast, down, ...(target ? { target } : {}), ...(coast.plan ? { plan: coast.plan } : {}), ...(crafts ? { crafts } : {}) };
+  // (the target as the coast left it, begun again at each release, FlightPlan.parted)
+  const flownTarget = coast.target ?? target;
+  return {
+    ascent,
+    coast,
+    down,
+    ...(flownTarget ? { target: flownTarget } : {}),
+    ...(coast.plan ? { plan: coast.plan } : {}),
+    ...(crafts ? { crafts } : {}),
+  };
 }
 
 /** Whether a plan has a joint made in flight (`JointDef.formed`): only such a plan's run is flown as several craft. */
@@ -1658,7 +1667,8 @@ export function flyOn(
     ascent,
     coast,
     down: downOf(flown) && end.phase === 'down' ? flyDown(flown, frame, seaLevel, end, hands) : null,
-    ...(target ? { target } : {}),
+    // (the target as the coast left it, begun again at a release it flew on through, FlightPlan.parted)
+    ...((coast.target ?? target) ? { target: coast.target ?? target } : {}),
     ...(coast.plan ? { plan: coast.plan } : {}),
   };
 }

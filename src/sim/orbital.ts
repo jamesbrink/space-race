@@ -646,6 +646,8 @@ export interface OrbitFlown {
   burns?: BurnFlown[];
   /** What an entry steered to a place flew (`Hold.entry`, sim/entry.ts): its banks, and when each thing of it came. */
   entry?: EntryFlown;
+  /** The craft its manoeuvres were made on as this run left it, where it began it again at a release (`FlightPlan.parted`). */
+  target?: Target;
   /**
    * The plan as this run flew it, where guidance timed its braking burn for the landing place (`aimedAtLanding`): the
    * flight's plan with that burn's command, and all the clock sets off after it, so much sooner or later. What flies
@@ -1931,8 +1933,14 @@ export function flyOrbit(
   };
   /** The instants the checks ask how far the target is at: a step ends on each, and nothing else is done there. */
   const ranges = plan.checks.flatMap((c) => (c.of === 'orbit' && c.when && 'reading' in c.when && c.when.reading === 'range' ? [c] : []));
+  /** The instants the spacecraft let its target go after flying joined to it (`FlightPlan.parted`): a step ends on each. */
+  const releases = (plan.parted ?? []).map((m) => m.value).filter((at) => at > t);
   /** What happens at the instant now reached. */
   const arrive = (): void => {
+    // (let go of a target it flew joined to: the target is begun again where the spacecraft is, `FlightPlan.parted`)
+    const def = plan.target;
+    if (pursued && def && 'mass' in def && releases.includes(t))
+      pursued = rejoined(pursued, craftFrom(def, frame, seaLevel, { t, r: state.r, v: state.v }, field), t);
     moves.forEach((m, i) => {
       // (a burn lit on an elevation is lit where the target rises to it, and one that finishes it once it has: `retime`; one lit
       // at its periapsis there: below)
@@ -1991,6 +1999,7 @@ export function flyOrbit(
     ...(hands?.steered ?? []).map((x) => x.t),
     ...fixes.map((f) => f.at.value),
     ...ranges.map((c) => (c.when as { at: number }).at),
+    ...releases,
     ...(aimedFrom > t && aimedFrom < braking ? [aimedFrom] : []),
   ]
     .filter(Number.isFinite)
@@ -2137,10 +2146,11 @@ export function flyOrbit(
     // step ending there; or at its window's end, where it has not.
     moves.forEach((m, i) => {
       if (!m.toward || !('elevation' in m.toward) || lit[i] || !pursued) return;
+      const sought = pursued;
       const { angle, window } = m.toward.elevation;
       if (t < m.on - window.value) return;
       const above = (s: State, at: number): number => {
-        const it = pursued.at(at);
+        const it = sought.at(at);
         return it ? elevationOf(aboutOf(s, at).s, aboutOf(it, at).s.r) - angle.value * DEG : Number.NaN;
       };
       const part = (to: number): State => (to === t ? state : to === as ? last : advance(last, as, to - as, (s, at) => pushAs(s, at, as)));
@@ -2312,6 +2322,7 @@ export function flyOrbit(
           results: rest.results,
           ...(made.length ? { burns: made } : {}),
           ...(rest.entry ? { entry: rest.entry } : {}),
+          ...(rest.target ? { target: rest.target } : {}),
           plan: flown,
         };
       }
@@ -2406,5 +2417,17 @@ export function flyOrbit(
     const reached = geodeticToEcef({ latitude: results.ejectionLatitude, longitude: results.ejectionLongitude, height: 0 });
     results['entry.miss'] = Number.isNaN(results.ejectionAt) ? Number.NaN : length(sub(reached, aimed));
   }
-  return { samples, results, ...(burns.length ? { burns } : {}), ...(crossings.length ? { crossings } : {}), ...(entry ? { entry } : {}) };
+  return {
+    samples,
+    results,
+    ...(burns.length ? { burns } : {}),
+    ...(crossings.length ? { crossings } : {}),
+    ...(entry ? { entry } : {}),
+    ...(pursued ? { target: pursued } : {}),
+  };
+}
+
+/** A target that is `after` from the instant `at` on, and `before` until then. */
+function rejoined(before: Target, after: Target, at: number): Target {
+  return { from: before.from, at: (t) => (t >= at ? after.at(t) : before.at(t)) };
 }

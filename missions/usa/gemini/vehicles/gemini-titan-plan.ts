@@ -147,6 +147,11 @@ export interface GeminiTitanRecord {
   released?: Released[];
   /** The craft it went up to meet, which its manoeuvres made on it are solved on (plan.ts `FlightPlan.target`). */
   target?: TargetDef;
+  /**
+   * When it let that craft go after flying joined to it, docked or tethered (plan.ts `FlightPlan.parted`): from each, the
+   * target is where the spacecraft was, its docked burns (`thrusters: 'docked'`) in it.
+   */
+  parted?: Measure[];
   ascent: {
     guidance: Guidance;
     drag: { until: Measure; area: Measure; curve: Curve }[];
@@ -589,6 +594,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
     attitude,
     checks,
     ...(o.target ? { target: o.target } : {}),
+    ...(o.parted ? { parted: o.parted } : {}),
     record: {
       orbit: { ...o.orbit, injection: o.injection, mass: o.mass },
       landing: o.landing,
