@@ -1023,7 +1023,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   vehicle), Space gives the next in the record's order once no burn is to come (before it, the burn itself where a hand
   could fire it: the lock opened, or a spacecraft whose hand controls had no lock, `PlanRecord.manual` without a `code`,
   so a Mercury capsule's Space in orbit is "Fire the retrorockets", the retrofire event's `asked`, and only after it the
-  pack's jettison: orbitdeck.ts `burnNext`), and B with the spacecraft alone and no
+  pack's jettison: deck/phases/burn.ts `burnNext`), and B with the spacecraft alone and no
   burn to come is the descent's sequencer (before the timer's burn it gives that burn up too); each override's label says
   what did it on the day (`descent.automatic`: he could do none of it). The shock layer's glow takes the plan's `Craft.heating` (a `round` body is blunt at any attitude): the flux on the
   documented radius, no surface without its figures. The deck runs on until the last body is down. The smoke is laid no higher than 80 km
@@ -1102,7 +1102,7 @@ Before is what it did ahead of `sim/staging.ts`.
 | Ask a step twice | any time | heard once | heard once | heard once |
 | Throttle the stages by hand (the lever) | any time | not offered | the strap-ons and core throttled only by the control system's programme (their intermediate and final stages) | every stage held under the lever, the record's setting under it, each within the game's range (60 to 100 per cent, estimated: the engines' own is not read) and cut under it; held at 70 per cent from 20 s the stack flies its programme's angles low in thick air and breaks up by bending at 83 s |
 | Braking engine before parting | not offered | | its nozzle in Block E's adapter | not offered: the hot-staging rule would be its case, no figure read |
-| An abort, 150 to 730 s (X twice) | on the launch vehicle | not offered ("not simulated") | Molodtsov 2001: to 700 s every engine shut down and the spacecraft separated, its descent module at once, to come down as from orbit; to 730 s the third stage shut down and the whole spacecraft separated | the deck asks the live vehicle to cut every stage burning and let the last go (orbitdeck.ts `abort`, as the mode's `AbortMode.escape` says), so the spacecraft parts as the hardware lets it (held while the fairing covers it, pressed on until the push falls); from 150 to 700 s the modules part as it does, and the module comes down on its own sequence: aborted at 200 s it parts at 87 km, 10.3 g at most, the pilot down at 4.5 m/s. How the module left through the fairing before 154.6 s: not read |
+| An abort, 150 to 730 s (X twice) | on the launch vehicle | not offered ("not simulated") | Molodtsov 2001: to 700 s every engine shut down and the spacecraft separated, its descent module at once, to come down as from orbit; to 730 s the third stage shut down and the whole spacecraft separated | the deck asks the live vehicle to cut every stage burning and let the last go (deck/phases/ascent.ts `abort`, as the mode's `AbortMode.escape` says), so the spacecraft parts as the hardware lets it (held while the fairing covers it, pressed on until the push falls); from 150 to 700 s the modules part as it does, and the module comes down on its own sequence: aborted at 200 s it parts at 87 km, 10.3 g at most, the pilot down at 4.5 m/s. How the module left through the fairing before 154.6 s: not read |
 | An abort, to 40 s (X twice) | on the launch vehicle | not offered | Molodtsov: the pilot ejected on a radio command from the ground; the first 15 to 20 s had no satisfactory answer | he is ejected at once from the stack's state (the spacecraft's point up the stack, `StagedVehicle.aboard`) and flown down as the descent flies him from the ball (orbital.ts `flyEjected`: the seat thrown 20 m/s against its motion through the air, its parachute, the main canopy at 4 km falling, the reserve), to the ground under him (`floorAt`); the stack flies on, empty: aborted at 5 s (0.2 km) he is down at 4.5 m/s at T+25 s, at 35 s (3.3 km) at T+742 s. The card holds him to the descent's limits (`ejectedVerdict`). His seat's way out through the fairing's opening (the hatch's bearing round the stack is the model's own), and what the stack did near him: not read |
 | An abort, 40 to 150 s (X twice) | on the launch vehicle | not offered | Molodtsov: every engine shut down, the pilot ejected as the falling stack came down through 7 km | every stage burning is cut, and the seat waits for the spacecraft's point to come down through 7 km falling (`StagedVehicle.fell`). Falling as it was left, with no moment of the air on it (none read), the stack turns across the wind and breaks up by bending first: cut at 41 s it breaks at 69.8 s, 7.4 km up; at 60 s at 102.7 s, 16.3 km; at 120 s at 284.4 s, 44.3 km. The seat never fires, and the flight ends at the breakup, which is not modelled; the card says so. With no structure to break (a test's), cut at 60 s it comes down through 7 km at T+140 s at 498 m/s through the air, and he is ejected into 74 kPa |
 | An abort with no seats (the Voskhods) | on the launch vehicle | | Kamanin: to 27 s nothing could save the crew; 27 to 44 s the ship cut loose, "difficult but possible"; to 523 s the engines shut down and the ship separated | the first two said and not flown (their modes have no `escape`: the first had no seat, no tower and no suits to fly, the second has no record of how the ship was cut loose); from 44 s as Vostok's from 150 s. A mode that ejects a crew with no `DescentCrew.alone` is refused and said |
@@ -1134,6 +1134,24 @@ read gives enough of to fly (issue #10).
   stage's propellant as a bar, the braking engine, the lock's lamps), the steps Space walks through and the keys beyond the
   deck's own (a lock's digits). G and B are guidance and the sequencer on both, W S A D Q E steer on
   both, Space is the next thing on both, and the throttle is the deck's own on both (below, "The throttle").
+- **The orbital deck goes through phases** (`src/deck/phases/`). One deck flies the whole flight; what it shows changes
+  with the phase the flight is in, chosen from the run's state at the clock's instant (phase.ts `phaseOf`): down is
+  `surface`; on the launch vehicle (or struck on the pad) `ascent`; the spacecraft alone is in a `burn` while anything of
+  it burns, in `entry` once it has entered or its coast has handed over to the descent, and otherwise in `coast`. Each is
+  an entry in `PHASES` that gives the middle panel's figures (`Phase.figures`: going up the five a ballistic flight
+  shows, above 60 km the orbit it would be on, alone the orbit, down the five at rest: as before there were phases). What
+  each phase does is a module beside it, a set of functions of the deck's state (`OrbitDeck`, whose fields they read and
+  write): ascent.ts the steps, the taking over, the lever's cuts, the drops, the aborts and their escapes and the parting;
+  coast.ts the lock, the hands freed and the attitude by hand; burn.ts the braking burn and the record's manoeuvres;
+  entry.ts the descent's events by hand; surface.ts the end and its card. orbitdeck.ts keeps the deck's contract
+  (`Deck`), the run, the samples, the path, the clock's following and the instruments (`show`). The seam for the phases
+  to come (`PhaseId`: `rendezvous`, `dock` and `descent` are named and not yet chosen; `coast` and `surface` about the
+  Earth or the Moon): a phase is an id, a branch of `phaseOf` on what the run's state says (a joint formed, the surface
+  below, the central body), an entry in `PHASES` and a module of its own, never a second deck. The readings, the systems
+  strip, the steps Space walks and the extra keys are still the kind's (`DeckSpec`, `OrbitDeck.systems`, `show`), the
+  same in every phase today; a phase that differs in them gets them as fields of `Phase`, drawn on a change as
+  `Deck.figures` draws the figures. The docking deck (dockdeck.ts, a `Deck` of its own) stays as it is until the dock
+  phase takes it in.
 - **Fly is taken by hand** (deck.ts `START`). Every entry to Fly stands the flight on its pad with guidance (G) and the
   sequencer (B) off, on every kind (the ballistic, the orbital and the docking deck alike; nothing remembers it): the player
   lights the engines, steers, throttles, stages, cuts, fires the retrorockets and puts out the parachutes, each with its
@@ -1156,7 +1174,7 @@ read gives enough of to fly (issue #10).
   with the record's instant and its condition ("Next: engine cutoff at T+00:02:21"; a stage cut on a speed or on the
   record's orbit says so, with that speed or that orbit); the throttle row marks where the record had the lever
   (`ThrottleView.record`); above 60 km the middle figures are the orbit it would be on were it cut now (apogee, perigee,
-  the space-fixed speed: orbitdeck.ts `CLIMBING`). The end's card compares what was flown with the record (the ballistic
+  the space-fixed speed: deck/phases/phase.ts `CLIMBING`). The end's card compares what was flown with the record (the ballistic
   card's figures against the reports'; the orbital card's held checks and the landing's distance), as before. A key steers a
   launch vehicle flown by hand at `FINE` of full throw, a tenth (estimated: KSP's fine controls, the game's and no vehicle's;
   a simulated pilot holding the director on keys with a degree's deadband and 0.15 s to react breaks the Redstone up by its
@@ -1192,7 +1210,7 @@ read gives enough of to fly (issue #10).
   setting is the record's held under it (`min(Stage.throttle, lever)`), clamped to the stage's hand range, and kept as a
   schedule in the state (`StagedState.hand`) from which what each stage burns is integrated exactly; a lever at full and
   never moved writes nothing, and the run is the record's (tests/stagedlive.test.mjs). Under a stage's least the deck
-  asks for it to be cut (orbitdeck.ts `leverCuts`), whenever it is lit. Each sample of a run flown so carries the
+  asks for it to be cut (deck/phases/ascent.ts `leverCuts`), whenever it is lit. Each sample of a run flown so carries the
   settings (`LiveSample.throttles`), and the fires burn at them (`Ascent.fireLevels`). Not reached by it: the spacecraft's
   own burn in orbit (Space fires it whole, its impulse the plan's: orbital.ts), and the docking deck's thrusters, which
   are on or off. The arrows are the deck's while it is flown, not the camera's (viewer/camera/input.ts `SPOKEN`): the

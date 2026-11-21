@@ -198,28 +198,28 @@ export const tank = (id: string, label: string, about: string) =>
   `<div class="tank" title="${about}"><span>${label}</span><u class="bar"></u><b data-cell="${id}"></b><i data-cell="${id}-kg"></i></div>`;
 
 export abstract class Deck<F extends Flight = SitedFlight> {
-  protected readonly flight: F;
+  readonly flight: F;
   private readonly pageClock: Clock;
   private readonly pageHost: CockpitHost;
-  protected readonly root: HTMLElement;
+  readonly root: HTMLElement;
   protected readonly button: HTMLButtonElement;
   protected readonly cells = new Map<string, HTMLElement>();
   private readonly listeners: Watcher[] = [];
-  protected on = false;
+  on = false;
   /**
    * A kept run being flown again (tape.ts): on a clock of its own, at the page's time each entry had, telling the page
    * nothing; null otherwise. The deck's code reads `clock`, `host`, `watchers` and `now` and never knows the difference.
    */
   private replaying: { clock: Clock; now: number } | null = null;
   /** The clock the deck flies by: the page's, or its own while a kept run is flown again. */
-  protected get clock(): Clock {
+  get clock(): Clock {
     return this.replaying?.clock ?? this.pageClock;
   }
-  protected get host(): CockpitHost {
+  get host(): CockpitHost {
     return this.replaying ? SILENT : this.pageHost;
   }
 
-  protected escapeFromPad<T>(
+  escapeFromPad<T>(
     obstacles: NonNullable<TowerEscape['hull']>['obstacles'],
     at: number,
     command: (string | number)[],
@@ -243,7 +243,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
     return this.replaying ? [] : this.listeners;
   }
   /** The page's time as the deck's guards read it (a second Space, X twice), whole ms: as written in the tape while one is played. */
-  protected now(): number {
+  now(): number {
     return this.replaying ? this.replaying.now : Math.round(performance.now() - this.zero);
   }
   /** Where `now` counts from: the deck's making, or (a kept run taken up again) far enough back that its guards have lapsed. */
@@ -268,13 +268,13 @@ export abstract class Deck<F extends Flight = SitedFlight> {
    * The throttle lever (sim/lever.ts), one for every flight and every engine a hand can throttle: the arrows a notch, Z
    * full, Cut nothing. It starts full, which is the record's setting, and each kind gives it to what burns (`levered`).
    */
-  protected lever = new Lever([0, 1]);
+  lever = new Lever([0, 1]);
   /** The keys held (W S A D Q E), by the keyboard or their buttons. */
-  protected readonly held = new Set<string>();
+  readonly held = new Set<string>();
   /** What the deck hangs on the window (util/scope.ts). */
   protected readonly scope = new Scope();
   /** What a finger on the on-screen stick and roll buttons asks, each -1 to 1: laid over the keys. */
-  protected readonly finger = { pitch: 0, yaw: 0, roll: 0 };
+  readonly finger = { pitch: 0, yaw: 0, roll: 0 };
   private figureKey = '';
   /** What the deck's own enter button says while the deck is not taken. */
   private readonly enterTip: string;
@@ -300,7 +300,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
   private readonly announcedBreakups = new Set<string>();
   private hardestImpact: Impact | null = null;
   private breakupSeen = false;
-  protected impactSummary(): string {
+  impactSummary(): string {
     const hit = this.hardestImpact;
     return hit
       ? `<p class="cockpit-why">Largest collision: ${hit.name} at T+${hit.t.toFixed(1)} s, ${hit.speed.toFixed(2)} m/s closing and ${hit.energy.toFixed(1)} J absorbed.${this.breakupSeen ? ' Parts broke free during the flight.' : ''}</p>`
@@ -332,7 +332,7 @@ export abstract class Deck<F extends Flight = SitedFlight> {
    * `floorOver`): the site's surfaces once the page has them, what its pieces are called, and the floor under the land
    * for what comes down on the land by contact.
    */
-  protected atSiteOf(standing: () => Quat) {
+  atSiteOf(standing: () => Quat) {
     if (!this.flight.site) throw new Error('a flight with no site has none to meet');
     const site = siteFrame(this.flight.site);
     const flat = floorAt(site, this.flight.site.seaLevel.value);

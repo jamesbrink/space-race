@@ -241,7 +241,7 @@ export interface VostokRecord {
     /**
      * The record's own periods of orientation by hand, by plan (Vostok 2's two: the lock's code given to the pilot), each
      * from and to, seconds from liftoff, and what it was. As flown the deck gives the hands the attitude within them
-     * (orbitdeck.ts `planHands`) and the record's drawing turns the ship to its orbital orientation (staged.ts `recordSamples`).
+     * (deck/phases/coast.ts `planHands`) and the record's drawing turns the ship to its orbital orientation (staged.ts `recordSamples`).
      */
     periods?: { from: Measure; to: Measure; what: string }[];
   };

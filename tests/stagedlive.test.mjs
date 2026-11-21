@@ -521,7 +521,7 @@ test('the spacecraft cannot leave while the fairing is over it, nor the core whi
 });
 
 test('an abort as the deck asks it (Molodtsov’s modes from 150 s): every stage burning cut and the spacecraft let go, it parts once nothing presses it; from 150 to 700 s its descent module comes down as from orbit', () => {
-  // (orbitdeck.ts `abort`: the steps the deck asks, as the record's mode for the instant says; the hardware does the rest)
+  // (deck/phases/ascent.ts `abort`: the steps the deck asks, as the record's mode for the instant says; the hardware does the rest)
   const stepsAt = (t) => {
     const v = stagedVehicle(flight.plan, site, dated, sea, x);
     const s = asked({ asks: [], look: [t], until: t + 0.5 }).at[t];
@@ -563,7 +563,7 @@ test('an abort as the deck asks it (Molodtsov’s modes from 150 s): every stage
 });
 
 test('an abort before 150 s as the deck asks it (Molodtsov’s first two modes): the pilot ejected from the stack, at once to 40 s, as the stack falls through 7 km after every engine is cut to 150 s; the stack flies on', () => {
-  // (orbitdeck.ts `abort`, `eject` and `fly`: the mode's own data says what to do, plan.ts `AbortMode.escape`)
+  // (deck/phases/ascent.ts `abort`, `eject`, and orbitdeck.ts `fly`: the mode's own data says what to do, plan.ts `AbortMode.escape`)
   const centre = flight.flies.datum + plan.record.centre.value;
   const pilot = plan.craft[0].crew.alone;
   const ejected = (v, at) => {
