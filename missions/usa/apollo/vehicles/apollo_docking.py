@@ -129,15 +129,23 @@ def command(parent, base, alloy, dark):
 
 def lunar(parent, alloy, dark, *, drogue_installed=True):
     frame = station("SpiderDockingFrame", parent, LM_PLANE)
+    ring(frame, "LM3", alloy)
+    if drogue_installed:
+        drogue(frame, "LM3", alloy, dark)
+
+
+def ring(frame, prefix, alloy):
+    """The LM-type docking ring below a frame's mating plane: the Skylab docking adapter's two ports have the same."""
     surface(
-        "LM3_DockingRing",
+        f"{prefix}_DockingRing",
         [[(16, 0), (18.5, 0), (18.65, -0.28), (18.65, -1.45), (17.8, -1.61), (17.8, -3.20), (17.35, -3.20), (17.35, -2.55), (16, -2.55), (16, 0)]],
         alloy,
         frame,
     )
 
-    if not drogue_installed:
-        return
+
+def drogue(frame, prefix, alloy, dark):
+    """The drogue, its probe-head receptacle and supports, behind a frame's mating plane."""
 
     # Fig. A-13. One-inch sandwich wall measured normal to the conical guide.
     def face(z):
@@ -151,9 +159,9 @@ def lunar(parent, alloy, dark, *, drogue_installed=True):
         (14.83, face(0.83)),
         (14.2, face(0)),
     ]
-    surface("LM3_DockingDrogue", [section], alloy, frame)
+    surface(f"{prefix}_DockingDrogue", [section], alloy, frame)
     surface(
-        "LM3_ProbeHeadReceptacle",
+        f"{prefix}_ProbeHeadReceptacle",
         [
             [
                 (1.66, face(CONE_DEPTH)),
@@ -178,5 +186,5 @@ def lunar(parent, alloy, dark, *, drogue_installed=True):
         beams.tube(radial(14.62, a, face(1.06)), radial(16.15, a, -2.18), 0.44 * IN, segs=10)
         for da in (-math.radians(41), math.radians(41)):
             ribs.tube(radial(3.16, a + da, face(CONE_DEPTH)), radial(14.51, a + da, face(1.17)), 0.19 * IN, segs=8)
-    beams.build("LM3_DrogueSupportBeamsAndMounts", alloy, frame)
-    ribs.build("LM3_DrogueStringers", dark, frame)
+    beams.build(f"{prefix}_DrogueSupportBeamsAndMounts", alloy, frame)
+    ribs.build(f"{prefix}_DrogueStringers", dark, frame)

@@ -404,7 +404,7 @@ shows the flight that is only a vehicle (`tests/fixtures/vehicle-only`), through
 running) goes between the places with slow loads and real keys and checks what is promised above. `tools/shot.mjs out.png
 usa/mercury/mr-3-freedom-7/gallery "" 1440 900 --ui` takes its picture.
 
-A flight may give another exhibit a `galleryCraft` label. Its URL is `#<flight>/gallery/<model>`, optionally followed by a part or seat. Both the gallery-only and launch-site sessions switch exhibits on the gallery stage. Gemini X uses this for the dormant Agena Collins visited; the active docking target stands beside the Titan in the primary exhibit. A crew figure can be inspected alone in the gallery and walked at the launch site. The site projection keeps its walkers and drops the separate target exhibits, the primary target's parts, and views that select only those parts.
+A flight may give another exhibit a `galleryCraft` label. Its URL is `#<flight>/gallery/<model>`, optionally followed by a part or seat. Both the gallery-only and launch-site sessions switch exhibits on the gallery stage. Gemini X uses this for the dormant Agena Collins visited; the active docking target stands beside the Titan in the primary exhibit. Each Skylab flight uses it for the workshop as that crew found it on docking (`workshopModel`, missions/usa/skylab/vehicles/workshop.md). A crew figure can be inspected alone in the gallery and walked at the launch site. The site projection keeps its walkers and drops the separate target exhibits, the primary target's parts, and views that select only those parts.
 
 ### Driving the lunar rovers
 

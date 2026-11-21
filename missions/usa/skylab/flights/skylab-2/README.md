@@ -28,6 +28,8 @@ Broken cloud hung over the pad at liftoff. Observers reported fractocumulus at 2
 
 On 26 May the astronauts pushed a folded parasol through the scientific airlock and opened it over the bare workshop skin. As the workshop cooled, the crew could work inside for longer stretches. On 7 June Conrad and Kerwin went outside to release the trapped solar wing. It unfolded gradually in sunlight and supplied enough electricity to resume experiments. On 19 June Conrad and Weitz went outside again, this time to retrieve film from the Apollo Telescope Mount and change cameras. [NASA, Skylab chronology, entries for 26 May and 7 and 19 June](https://www.nasa.gov/wp-content/uploads/2023/04/sp-4011.pdf)
 
+In the Gallery, choose *Skylab workshop* to see the station as the crew found it on their fly-around: the bare goldized wall, the stub of the lost wing 2, and wing 1's beam fairing held a few degrees open by a strap from the torn shield. Its docking adapter carries the axial port they docked at and the radial port on the side away from the Sun. [MSFC Skylab Mission Report, Saturn Workshop, §§3–4](https://ntrs.nasa.gov/citations/19750002066) · [The workshop model](../../vehicles/workshop.md)
+
 CSM-116 pulled away from the station at 08:55 UTC on 22 June. Four hours later the crew fired the service engine to leave orbit. The command module splashed down in the Pacific after 28 days, 49 minutes and 49 seconds. USS *Ticonderoga* lifted the capsule aboard with the astronauts still inside. [NASA mission chronology, pp. 151–152](https://www.nasa.gov/wp-content/uploads/2023/04/1973.pdf) · [Historical Data Book, vol. III, table 2-49](https://ntrs.nasa.gov/citations/19880016046)
 
 ## Sources and reconstruction limits

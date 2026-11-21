@@ -2,6 +2,7 @@ import type { Flight } from '../../../../../src/types.ts';
 import { blockIICabin } from '../../../apollo/vehicles/cabin.ts';
 import { nodes } from '../../../apollo/vehicles/stack-gallery.ts';
 import { spacecraftMotors } from '../../vehicles/csm-motors.ts';
+import { workshopModel } from '../../vehicles/workshop-gallery.ts';
 import { command, csmViews, port, service } from './csm118.ts';
 import { specs, timeline } from './record.ts';
 import { launcher, SA208_THRUST, stackViews } from './sa208.ts';
@@ -57,5 +58,6 @@ export const flight: Flight = {
       views: [{ id: 'launcher', label: 'Saturn IB', nodes: nodes(launcher) }, ...csmViews, ...stackViews],
       parts: [...command, ...service, ...launcher],
     },
+    workshopModel(4),
   ],
 };

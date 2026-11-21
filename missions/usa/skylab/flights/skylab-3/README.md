@@ -4,6 +4,10 @@ At 07:10 EDT on 28 July 1973, Alan Bean, Owen Garriott and Jack Lousma left Kenn
 
 At range zero the Sun stood just 5.2° above the horizon at azimuth 71.2° true. The Moon stood higher in the same part of the sky, at elevation 21.8° and azimuth 77.0°. The simulator calculates these geometric directions from Pad 39B with the JPL DE440 ephemeris.
 
+## Skylab as they found it
+
+In the [Gallery](https://jamesbrink.online/space-race/#usa/skylab/skylab-3/gallery), choose *Skylab workshop* to see the station as the crew docked to it: the orange parasol over the bare gold wall and the workshop's one solar wing unfolded beside it. On their first spacewalk, on 6 August, Garriott and Lousma assembled two 55-foot poles on the solar observatory and hoisted the twin-pole sail over the parasol; Skylab 4's exhibit shows it there. [MSFC Skylab Mission Report, Saturn Workshop, §10.4](https://ntrs.nasa.gov/citations/19750002066) · [The workshop model](../../vehicles/workshop.md)
+
 ## Launch Complex 39B
 
 Approach the mobile launcher from the south ramp, take the tower elevator to level 320, and cross the white room to CSM-117. Bean boards the left couch, Garriott the centre and Lousma the right. The same 127-foot steel pedestal that supported SA-206 carried SA-207. The crawler delivered this stack to Pad B on June 11. [Visit the launch site](https://jamesbrink.online/space-race/#usa/skylab/skylab-3/site/pad) · [SA-207 flight evaluation, table 3-1](https://ntrs.nasa.gov/citations/19730025088)
