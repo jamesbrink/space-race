@@ -13,8 +13,7 @@
  * (`FlightPlan.gravity`). What the crew did next (the transposition, the lunar module drawn out, the S-IVB sent past the
  * Moon) is not flown. Nothing here names a flight: each figure is the record's.
  */
-import { derived, doc, estimated, type Measure } from '../../../../src/measure.ts';
-import type { ShedBody } from '../../../../src/types.ts';
+import { type Confidence, derived, doc, estimated, type Measure, measure } from '../../../../src/measure.ts';
 import type {
   AttitudeDef,
   BodyDef,
@@ -27,9 +26,11 @@ import type {
   ThrusterSet,
   Trigger,
 } from '../../../../src/sim/plan.ts';
+import { integral } from '../../../../src/sim/staged.ts';
+import type { ShedBody } from '../../../../src/types.ts';
 import { G0, P0 } from '../../../../src/world/bodies.ts';
 import { cmAero } from './command-module-aero.ts';
-import type { F1Figures, J2Figures, MixtureShift, SaturnVRecord } from './saturn-v-record.ts';
+import type { F1Figures, J2Figures, MixtureShift, SaturnVRecord, SiiMatch } from './saturn-v-record.ts';
 
 const IN = 0.0254;
 
@@ -74,6 +75,12 @@ function f1(id: string, label: string, count: number, f: F1Figures, decay?: Meas
     ...(decay ? { decay } : {}),
   };
 }
+
+/** The weaker of two confidences, for a figure made from both. */
+const weaker = (a: Confidence, b: Confidence): Confidence => {
+  const order: Confidence[] = ['documented', 'derived', 'assumed', 'estimated'];
+  return order[Math.max(order.indexOf(a), order.indexOf(b))]!;
+};
 
 /** A J-2 as the plan flies it, its thrust and flow held at the record's share after a mixture-ratio shift. */
 export function j2(
@@ -136,6 +143,65 @@ export function j2(
   };
 }
 
+/**
+ * The S-II's J-2s' figures as flown: the record's, times the trajectory match's adjustment where the record has one
+ * (`SaturnVRecord.sii.match`): the thrust by its factor and the flow by its own, and the low ratio's shares by the low
+ * ratio's factors.
+ */
+export function siiFigures(o: SaturnVRecord): { centre: J2Figures; outboard: J2Figures; shift: MixtureShift | undefined } {
+  const s2 = o.sii;
+  const m: SiiMatch | undefined = s2.match;
+  const shift = s2.outboard.shift;
+  if (!m) return { centre: s2.centre, outboard: s2.outboard, shift };
+  const times = (x: Measure, by: number, what: string, of: Measure[]): Measure =>
+    measure(
+      x.value * by,
+      of.reduce<Confidence>((c, y) => weaker(c, y.confidence), x.confidence === 'documented' ? 'derived' : x.confidence),
+      `${x.source}; times ${by.toFixed(5)}, ${what}`,
+    );
+  const high = (f: J2Figures): J2Figures => ({
+    thrust: times(f.thrust, m.high.thrust.value, `the trajectory match's factor on the thrust (${m.high.thrust.source})`, [m.high.thrust]),
+    isp: times(
+      f.isp,
+      m.high.thrust.value / m.high.flow.value,
+      `the match's factor on the thrust over its factor on the flow (${m.high.flow.source})`,
+      [m.high.thrust, m.high.flow],
+    ),
+  });
+  const low = m.low;
+  return {
+    centre: high(s2.centre),
+    outboard: high(s2.outboard),
+    shift:
+      shift && low
+        ? {
+            ...shift,
+            after: times(shift.after, low.thrust.value, `the match's factor on the low ratio's thrust share (${low.thrust.source})`, [
+              low.thrust,
+            ]),
+            ...(shift.flow
+              ? {
+                  flow: times(shift.flow, low.flow.value, `the match's factor on the low ratio's flow share (${low.flow.source})`, [
+                    low.flow,
+                  ]),
+                }
+              : {}),
+          }
+        : shift,
+  };
+}
+
+/** The S-II's two engines as the plan flies them (the centre and the four), lit at the record's mainstage. */
+export function siiEngines(o: SaturnVRecord): { centre: EngineDef; outboard: EngineDef; lit: Measure } {
+  const s2 = o.sii;
+  const { centre, outboard, shift } = siiFigures(o);
+  return {
+    centre: j2('j2-centre', 'Centre J-2', 'sii', 'sii-propellant', 1, centre, shift, {}, s2.decay?.centre),
+    outboard: j2('j2-outboard', 'Four outboard J-2s', 'sii', 'sii-propellant', 4, outboard, shift, {}, s2.decay?.outboard),
+    lit: s2.ignition,
+  };
+}
+
 const at = (time: Measure): Trigger[] => [{ time: time.value }];
 
 /** One of the record's events, set off by the clock at its instant unless `trigger` says otherwise: the instant is a figure the run is held to. */
@@ -159,19 +225,13 @@ export const event = (id: string, label: string, when: Measure, does: EventDef['
  */
 export function siiSpent(o: SaturnVRecord): number {
   const s2 = o.sii;
-  const flow = (f: J2Figures) => f.thrust.value / (G0 * f.isp.value);
-  const shift = s2.outboard.shift;
-  // what one engine burns from the ignition to t, over its flow: the seconds, each at its share
-  const held = (t: number) => {
-    const a = s2.ignition.value;
-    if (t <= a) return 0;
-    if (!shift) return t - a;
-    const s = shift.at.value;
-    return shift.before.value * Math.max(0, Math.min(t, s) - a) + (shift.flow ?? shift.after).value * Math.max(0, t - Math.max(a, s));
-  };
-  const burned = (t: number) => flow(s2.centre) * held(Math.min(t, s2.centre.cut.value)) + 4 * flow(s2.outboard) * held(t);
+  const { centre, outboard, lit } = siiEngines(o);
+  // what each draws from its lighting to t: its rated flow at its flow's shares (sim/staged.ts `integral`, as `schedule` has it)
+  const drawn = (e: EngineDef, t: number) =>
+    ((e.count * e.thrust.vacuum.value) / (G0 * e.isp!.vacuum.value)) * integral(e.throttle?.flow ?? e.throttle?.curve, lit.value, t);
+  const burned = (t: number) => drawn(centre, Math.min(t, s2.centre.cut.value)) + drawn(outboard, t);
   const load = s2.propellant.usable.value;
-  let [lo, hi] = [s2.ignition.value, s2.ignition.value + 3600];
+  let [lo, hi] = [lit.value, lit.value + 3600];
   for (let k = 0; k < 60; k++) {
     const mid = (lo + hi) / 2;
     if (burned(mid) < load) lo = mid;
@@ -239,6 +299,7 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
           spent + m.value - s2.outboard.cut.value,
           `the S-II's outboard cutoff as the run has it, and the record's ${(m.value - s2.outboard.cut.value).toFixed(2)} s after it to this, as the instrument unit timed it from that cutoff: the record's instant, ${m.value} s (${m.source}), a figure the run is held to`,
         );
+  const sii = siiEngines(o);
   const bodies: BodyDef[] = [
     { id: 'sic', label: 'S-IC, the first stage', count: 1, mass: s1.mass, nodes: ['SaturnFirstStage'] },
     { id: 'sii-skirt', label: 'S-II aft interstage', count: 1, mass: s2.skirt.mass, nodes: ['LowerInterstage'] },
@@ -281,8 +342,8 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
   const engines: EngineDef[] = [
     f1('f1-centre', 'Centre F-1', 1, s1.f1, s1.decay?.centre),
     f1('f1-outboard', 'Four outboard F-1s', 4, s1.f1, s1.decay?.outboard),
-    j2('j2-centre', 'Centre J-2', 'sii', 'sii-propellant', 1, s2.centre, s2.outboard.shift, {}, s2.decay?.centre),
-    j2('j2-outboard', 'Four outboard J-2s', 'sii', 'sii-propellant', 4, s2.outboard, s2.outboard.shift, {}, s2.decay?.outboard),
+    sii.centre,
+    sii.outboard,
     j2('sivb-j2', 'S-IVB J-2', 'sivb', 'sivb-propellant', 1, s3.first, undefined),
     j2('sivb-tli', 'S-IVB J-2 relit', 'sivb', 'sivb-propellant', 1, s3.second, s3.second.shift, {
       again: 'sivb-j2',
@@ -340,8 +401,8 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
     event('sic-outboard-cutoff', 'S-IC outboard engines cutoff', s1.outboardCut, [{ cut: 'f1-outboard' }]),
     event('sic-separation', 'S-IC/S-II separation', s1.separation, [{ separate: 'sic-separation' }]),
     // (one step each, as the live vehicle's sequence takes them: the four, then the centre, at the one instant)
-    event('sii-ignition', 'S-II ignition: the four outboard J-2s', s2.ignition, [{ ignite: 'j2-outboard' }]),
-    event('sii-centre-ignition', 'S-II ignition: the centre J-2', s2.ignition, [{ ignite: 'j2-centre' }]),
+    event('sii-ignition', 'S-II ignition: the four outboard J-2s', sii.lit, [{ ignite: 'j2-outboard' }]),
+    event('sii-centre-ignition', 'S-II ignition: the centre J-2', sii.lit, [{ ignite: 'j2-centre' }]),
     event('sii-skirt', 'S-II aft interstage jettison', s2.skirt.at, [{ separate: 'sii-skirt' }]),
     event('les-jettison', 'Launch escape tower jettison', o.les.at, [{ separate: 'les-jettison' }]),
     event('sii-centre-cutoff', `S-II centre engine cutoff${s2.centre.why ? ` (${s2.centre.why})` : ''}`, s2.centre.cut, [
@@ -380,7 +441,8 @@ export function saturnVPlan(o: SaturnVRecord): FlightPlan {
     thrusters,
     chutes: [],
     limits: [],
-    drag: o.ascent.drag,
+    // (the S-IC's base pushes until its outboard engines stop: the record's instant)
+    drag: o.ascent.drag.map(({ base, ...d }) => (base ? { ...d, base: { ...base, until: s1.outboardCut } } : d)),
     rarefied: o.ascent.rarefied,
     sheds,
     lands: { on: 'sea', ship: 'the command module' },

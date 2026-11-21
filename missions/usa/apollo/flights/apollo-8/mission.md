@@ -48,8 +48,7 @@ adapter with LTA-B still in it are let go at the parting and flown on as a body 
   against the reconstruction's 6,727 kN at 35 to 38 s reduced to standard pump inlet conditions (Table 5-2). The four
   outboard engines stopped on the fuel's low-level sensors, not the oxygen's, 2.45 s later than predicted (§5.4), with
   3,018 kg of usable oxygen left (Table 5-6).
-- **The S-II.** Lit at 90 per cent thrust, 158.47 s (the start's two seconds of rising thrust and its 433 kg are not
-  flown), each J-2 at its reconstructed thrust and impulse at ESC+61 s (Table 6-2: the five sum to the stage's 5,086,888
+- **The S-II.** Lit at 90 per cent thrust, 158.47 s (the start's rising thrust and its 433 kg are not flown), each J-2 at its reconstructed thrust and impulse at ESC+61 s (Table 6-2: the five sum to the stage's 5,086,888
   N, §6.3). **Its centre engine was not cut early on AS-503.** All five ran until the oxygen's low-level sensors called
   the cutoff at 524.02 s, sensed by the LVDC at 524.04 s (§6.4, Table 2-2), so the centre's cut is the outboards' instant
   and its `why` is empty. The centre engine is where the trouble that later flights cut it early for was first seen:
@@ -107,12 +106,44 @@ flight's evaluation where it gives it (orbital.ts says which, and whose figure i
 | Speed at S-II/S-IVB separation | −89.0 m/s | −64.2 m/s |
 | S-IVB first cutoff | +14.9 s | +11.3 s |
 
-The S-II still falls some 25 to 40 m/s behind the record at its cutoff with the stack's mass right: its
-start's rising thrust (some 3 m/s) is not flown, nor its thrust through the high ratio beyond the ESC+61 s snapshot, and
-its closed loop is the law's one linear tangent. Where the tables below and the paragraphs after them give the run's
+What the S-II still fell short of the record then is the subject of the section below ("The S-II's trajectory match and the
+stack's air"). Where the tables below and the paragraphs after them give the run's
 figures, they are the run as it now stands (tests/fixtures/figures.json).
 
+## The S-II's trajectory match and the stack's air (issues F1 and F2, November 2026)
+
+Re-flown with what the flight evaluations give and the run had not flown (saturn-v-record.ts, saturn-v-plan.ts):
+
+- **The trajectory match** (`sii.match`): AS-503's evaluation found, with a six-degree-of-freedom simulation fitted to
+  the tracked trajectory (Table 6-3, within 1.1 m/s), the S-II's average thrust 0.15 per cent over its engines' figures
+  at the ESC+61 s time slice and its mass loss 0.24 per cent under them: this flight’s own figures. The reconstructed
+  thrust itself is flat through the high ratio (each evaluation's Fig. 6-3), so the time slice is its history there.
+- **The stack's air** (`saturnVDrag`): AS-503's evaluation §20.2, the forebody's axial force coefficient against the Mach
+  number (Fig. 20-2) and the force on the S-IC's base from its base pressure against the height (Fig. 20-1, plan.ts
+  `DragDef.base`), in place of the Saturn IB's curve.
+
+| Against the record | Before | Now |
+| --- | --- | --- |
+| Speed at S-IC/S-II separation | −26.9 m/s | −24.2 m/s |
+| Speed at S-II/S-IVB separation | −64.2 m/s | −59.2 m/s |
+| Height at S-II/S-IVB separation | −5.00 km | −4.80 km |
+| S-IVB first cutoff | +11.33 s | +10.60 s |
+| Speed at parking orbit insertion | −9.5 m/s | −4.3 m/s |
+
+The S-II's start (AS-503's Fig. 6-4, the J-2s' buildup transients: nothing until 1.5 s after the engine start command,
+some 0.87 of their mainstage thrust before the high EMR select) was flown and measured: it gives some 1 s of the S-IVB's
+late cutoff back. It is not flown: as a curve of thrust against the clock it cannot follow an engine a hand lights at
+another time, which would light into nothing until the record's instant; it wants the start counted from the engine's
+own lighting. Measured on the run as the tests fly it, what is left of the S-IVB's late cutoff is chiefly the S-IC's:
+some 0.19 s for each m/s of energy short at the S-IC's separation, then a few seconds more that nothing read accounts
+for. Flown with the closed loop's tangent measured against a level held among the stars (as the iterative guidance
+steered) instead of the turning local level, or with a second tangent rate after the S-II's centre cutoff, the S-IVB
+cutoff moves by under 0.4 s: the law's shape is not what was short. See src/sim/misses.ts.
+
 ## The run against the record
+
+(As flown before the S-II's trajectory match and AS-503's air were added; the section above gives what they
+moved, and src/sim/misses.ts the run as it now stands.)
 
 Flown on the record's sequence and solved law (`flyWhole`, tests/staged.test.mjs; the figures are tests/fixtures/figures.json's):
 
@@ -218,7 +249,7 @@ place within five nautical miles.
   burns; the tower clearance yaw (1.76 to 9.72 s) and the S-IC's outboard engines' cant (20.64 s) are not flown.
 - The first plane's push apart is read off Fig. 12-3 (about 11 m/s, estimated); the second's is NOT FOUND (3 m/s, Apollo
   11's estimate).
-- The drag curve is the Saturn IB's (estimated), on the 33 ft disc; the stack's area in orbit is a quarter of its outside.
+- The drag is AS-503's forebody coefficient and S-IC base pressure (§20.2, read off its figures: estimated), on the 33 ft disc; the stack's area in orbit is a quarter of its outside.
 - The steering's authority and the S-IVB's attitude jets' are estimates (NOT FOUND), as Apollo 11's.
 - The second burn's 4.5-ratio share is AS-506's (assumed); its two and a half seconds at that ratio barely matter.
 - The command module's mass at launch is the mission report's after the modules parted (estimated).
