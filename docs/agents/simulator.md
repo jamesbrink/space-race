@@ -76,7 +76,12 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   How far such a craft then is from where the record later has it is the published orbit's error and the air's, and is
   the run's finding. A target that stays up is flown as far as its plan's record says (`PlanRecord.coastUntil`: the
   Gemini targets, three days from their own liftoff, which covers the flight that went up to each;
-  tests/pursuit.test.mjs), three days where it says nothing. Nothing the
+  tests/pursuit.test.mjs), three days where it says nothing. Which form a flight uses is a matter of how near the
+  target's own run is to where the record has the target when it is met, and the same test holds what the Gemini
+  targets' runs miss their reports' insertion vectors by: an Agena's is on the record's orbit (it is flown to the
+  table's height, speed and climb) but 20 to 39 km ahead along it and 0.13 to 0.63 degrees out of its plane, and the
+  ATDA's orbit is 9.5 km of axis long, 2,700 km along by the first rendezvous. Until their ascents are held to the
+  vector's place and plane, the flights that went up to them are to name the report's orbit (`orbit`), not the flight. Nothing the
   spacecraft does moves it, and no observation of the record's is written into it. A burn made on it says what it was for
   (`Action.ignite.toward`, plan.ts `Pursuit`): `reach`, the target at a stated place from the craft at a stated instant
   and in its plane (a corrective combination, a terminal phase); `coelliptic`, an orbit of the target's shape; `station`,

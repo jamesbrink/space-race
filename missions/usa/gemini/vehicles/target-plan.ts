@@ -5,6 +5,23 @@
  * alone. Each flight's orbital.ts writes its record (`targetRecord`, from the mission report's own weights, times and
  * states) and its flight.ts flies the plan written from it (`targetPlan`). Nothing in src/ names a target.
  *
+ * An Agena is flown to the insertion its report's trajectory table has: the law's height is the table's, over the
+ * ellipsoid (`Guidance.target.over`), and its engine is cut at the table's speed there (what its velocity meter's cut
+ * came to), so the orbit it is left on is the record's to the table's last digit: a foot a second there is 0.5 km of
+ * semi-major axis and 5 km along the orbit every revolution after, and a height read over the wrong figure of the
+ * Earth (the ball the insertion's elements are over, up to 3.2 km under the ellipsoid at 28.6 degrees north) put
+ * GATV-5003 320 km from its report's own vector by the time Gemini VIII reached it. What is left, set beside the
+ * report's insertion vector (each crewed flight's `docking.fixes[0]`; tests/pursuit.test.mjs holds the figures): it is
+ * 16 to 35 km ahead along that orbit, the Atlas having been flown low and so long downrange (its pitch programme was
+ * not found: src/sim/misses.ts); and it is not in the vector's plane. The law reaches the record's inclination from the
+ * plane through the pad, and at 28.87 degrees from a pad at 28.49 the node is then wherever that leaves it: 0.3 to 1.3
+ * degrees from the vector's, the planes 0.13 to 0.63 degrees apart (15 to 74 km across, 18 to 86 m/s to turn one into
+ * the other). The table's latitude, longitude and heading at insertion, which fix the plane, are not in these records
+ * and the law has no unknown for them. The ATDA's plane is right and its orbit is not: the Atlas's verniers, which set
+ * it, give 13 ft/s too much (misses.ts). So no target's run is yet a craft for its spacecraft to meet: a flight that
+ * goes up to one is given the report's orbit (`TargetDef.orbit`: the insertion vector, or what the report tracked
+ * nearer the rendezvous), until the ascent here is held to the vector's place and plane.
+ *
  * A target is uncrewed and stays up: its coast has no burn of the record's and nothing comes down (sim/orbital.ts
  * `shipOf`), and it is flown for three days (`COAST`), which covers the spacecraft that went up to it: that flight's
  * plan names this one as its target (`TargetDef.flight`) and meets this flight's own run. One that never reached orbit is flown as the record had it fail, on the plan as planned for the law
@@ -337,6 +354,18 @@ export function targetRecord(f: LaunchFigures, payload: 'agena' | 'atda'): Targe
     `374 lb, the standard Agena shroud’s whole drop weight (${CATALOG}, 10.1): the Gemini target’s modified A-12 shroud’s own was not read (${LSFR}, III.E-4)`,
   );
   const engine = agena && t.ignition !== undefined && t.cutoff !== undefined;
+  // (the speed the Agena's engine is cut at: the insertion's own where the report's table has it, which is what the
+  // velocity meter's cut came to; the planned one it was set to give, for a flight planned or one that never got there.
+  // A foot a second at insertion is 0.5 km of semi-major axis, 5 km along the orbit every revolution after)
+  const reached = f.fell ? undefined : f.states.insertion?.speed;
+  const cutSpeed =
+    t.speed && reached !== undefined
+      ? {
+          value: reached,
+          source: `the insertion's space-fixed speed, ${reached.toLocaleString('en-US')} ft/s (${f.states.source}): what the velocity meter's cut came to. It was set for ${t.speed.source}`,
+        }
+      : t.speed;
+
   const shrouded = agena && t.shroud !== undefined;
   const separatedMass = (w.separated - (shrouded ? shroudMass.value / LB : 0)) * LB;
   const record: TargetRecord = {
@@ -386,7 +415,7 @@ export function targetRecord(f: LaunchFigures, payload: 'agena' | 'atda'): Targe
               ),
               ignition: doc(t.ignition!, `the main engine's start (${times})`),
               cutoff: doc(t.cutoff!, `the main engine's cutoff (${times})`),
-              ...(t.speed ? { speed: doc(t.speed.value * FT, t.speed.source) } : {}),
+              ...(cutSpeed ? { speed: doc(cutSpeed.value * FT, cutSpeed.source) } : {}),
               ...(f.fell?.shutdown ? { fails: { after: doc(f.fell.shutdown.after, f.fell.shutdown.source) } } : {}),
             },
           }
@@ -446,6 +475,11 @@ export function targetRecord(f: LaunchFigures, payload: 'agena' | 'atda'): Targe
             ins.altitude * FT,
             `${ins.altitude.toLocaleString('en-US')} ft at ${agena ? 'insertion' : 'vernier engine cutoff'} (${ins.source})`,
           ),
+          // (the trajectory table's altitude is geodetic, `TableState`: over the ellipsoid under the place, not over the ball
+          // the insertion's elements are over, which at 28.6 degrees north is 0.1 to 3.2 km lower. Laid over the ball the
+          // insertion came out that much low at the right speed, its period up to 6.7 s short, and the target up to 320 km
+          // along its orbit from the report's own vector by the time its spacecraft reached it)
+          over: 'ellipsoid',
           climb: doc(ins.climb, `the space-fixed flight-path angle at ${agena ? 'insertion' : 'vernier engine cutoff'} (${ins.source})`),
           inclination: doc(ins.inclination, `the insertion's osculating inclination (${ins.source})`),
         },
@@ -633,6 +667,17 @@ function ascentChecks(f: LaunchFigures, agena: boolean): RecordCheck[] {
         value: i.inclination,
         unit: '°',
         tolerance: 0.1,
+        confidence: 'documented',
+        source: i.source,
+      },
+      // (what sets where it is along its orbit revolutions later: a second of period is 7.7 km a revolution. Held to half
+      // the last digit the report prints it to, and half a second for the instant the osculating orbit is read at)
+      {
+        id: 'period',
+        label: 'Period at insertion (osculating)',
+        value: i.period * 60,
+        unit: 's',
+        tolerance: 30 * 10 ** -(String(i.period).split('.')[1]?.length ?? 0) + 0.5,
         confidence: 'documented',
         source: i.source,
       },

@@ -195,7 +195,9 @@ const GT3_SHOWN =
 const TARGET_LOW =
   'The stack is 5 to 11 km low from booster engine cutoff to the Agena’s start, at the right speed to 60 m/s and near the right climb. The Atlas is flown on a stated law (up to 15 s, a ' +
   'pitch-over of 15 s, estimated, the turn to 97.3 s, a linear tangent from there) solved for the insertion alone: the autopilot’s pitch programme for the booster phase, which set these, ' +
-  'was not found, and the law’s pitch-over lays it over early (1 to 2 degrees flat at booster cutoff). Not adjusted';
+  'was not found, and the law’s pitch-over lays it over early (1 to 2 degrees flat at booster cutoff). Flown lower, it is farther downrange: an Agena reaches its insertion (the record’s height, speed and ' +
+  'climb, and so the record’s orbit: its axis within 35 m of the report’s insertion vector’s) 16 to 35 km farther along that orbit than the vector has it at the same instant, 2.1 to 4.6 s of its motion, ' +
+  'and stays so (tests/pursuit.test.mjs): the flight that goes up to it meets it that much early. Not adjusted';
 const TARGET_FLAT = `Flatter at booster engine cutoff than the record. ${TARGET_LOW}`;
 const ATDA_FLAT =
   'Nearly five degrees flatter at booster engine cutoff. The ATDA’s Atlas had its own pitch programme ("Revises the pitch program amplitude and time slots", LSFR Table IV.D-1), not found; ' +
@@ -205,12 +207,16 @@ const TARGET_FAST =
 const TARGET_EARLY =
   'The Agena reaches the planned insertion speed 4.5 s before the record’s cutoff. Its impulse is the 8247’s from a secondary source (293 s) and its shroud’s weight the standard Agena’s; the vehicle was ' +
   'cut by its velocity meter, flown here as the planned space-fixed speed. Not adjusted';
-const TARGET_APOGEE =
-  'The engine is cut at the planned insertion speed, at the law’s height and climb, and the orbit comes out 160 by 168 to 171 nautical miles where the record has 156 to 159 by 164 to 166: the record’s ' +
-  'insertion was a few ft/s short of the plan, at a slightly greater height. Nothing in the Agena’s own guidance is flown but its cutoff. Not adjusted';
 const ATDA_APOGEE =
-  'Apogee 176 nautical miles against 167. The sustainer is cut at the planned 25,298 ft/s, and the two verniers then burn their recorded 18.8 s alone and add 73 m/s where the record’s states have 23 ' +
-  '(25,290 to 25,365 ft/s): their thrust as printed, taken as the pair’s, and their flow at the sustainer’s impulse, neither read for the verniers alone. Not adjusted';
+  'Apogee 176 nautical miles against 167. The sustainer is cut at the planned 25,298 ft/s, which it reaches 1.9 s before the record’s cutoff, and the two verniers then burn alone to their recorded ' +
+  'cutoff, 20.7 s, and add 88 ft/s (27 m/s) where the record’s states have 75 in 18.8 s (25,290 to 25,365 ft/s): their thrust as printed, taken as the pair’s, and their flow at the sustainer’s impulse, ' +
+  'neither read for the verniers alone. The record has them cut by the guidance’s command, flown here at that command’s instant; cut at the table’s speed there instead, they never burn alone (the staged ' +
+  'ascent has no cut on a speed for an engine lit at liftoff on a shared tank: sim/staged.ts `schedule`). The orbit’s axis comes out 9.5 km long and its period 11.6 s: the ATDA’s own run falls 90 km farther back along its orbit every revolution than the report’s insertion ' +
+  'vector carried on, 2,700 km by Gemini IX-A’s first rendezvous 51 h on, so the flight that went up to it cannot meet this run and is to be given the ATDA’s orbit as tracked (`TargetDef.orbit`). Not adjusted';
+
+const TARGET_PERIOD =
+  'The report’s period at insertion, 90.56 min, is not its own orbit’s. Its insertion vector (25,365 ft/s at 981,195 ft, climbing 0.04 degrees), which the run is flown to, has 90.48 min, and its ' +
+  'heights (159.0 by 163.6 nautical miles) are of the size of the other Agenas’, whose reports print 90.46 and 90.47. The printed digit is taken as a misprint, or a misreading here, of 90.46; the vector is flown. Not adjusted';
 
 const GT4_DECAY =
   'The orbit comes down more slowly than Gemini IV’s did: by the 61st revolution its apogee is some 20 km higher than Table 4-III’s and its perigee 5 to 8 km. It is drifted on the air of the day’s Sun ' +
@@ -1542,18 +1548,17 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     ascent: {
       'beco.altitude': { by: -6130, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
       'beco.climb': { by: -1.628, slack: 0.2, why: TARGET_FLAT, short: 'the Atlas’s pitch programme not found' },
-      'seco.altitude': { by: -10500, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
-      'veco.altitude': { by: -10390, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
-      'agena-start.altitude': { by: -10160, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
+      'seco.altitude': { by: -9115, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
+      'veco.altitude': { by: -8806, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
+      'agena-start.altitude': { by: -8006, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
     },
   }),
   'usa/gemini/gatv-5003': inUnits({
     ascent: {
       'beco.altitude': { by: -5315, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
-      'beco.climb': { by: -1.013, slack: 0.2, why: TARGET_FLAT, short: 'the Atlas’s pitch programme not found' },
-      'seco.altitude': { by: -9081, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
-      'veco.altitude': { by: -8006, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
-      'agena-start.altitude': { by: -10520, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
+      'seco.altitude': { by: -7706, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
+      'veco.altitude': { by: -6450, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
+      'agena-start.altitude': { by: -8326, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
     },
   }),
   'usa/gemini/atda': inUnits({
@@ -1561,6 +1566,7 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       'beco.altitude': { by: -5752, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
       'beco.climb': { by: -4.653, slack: 0.2, why: ATDA_FLAT, short: 'the ATDA Atlas’s own programme not found' },
       apogee: { by: 17020, slack: 1000, why: ATDA_APOGEE, short: 'the verniers’ figures' },
+      period: { by: 10.48, slack: 1, why: ATDA_APOGEE, short: 'the verniers’ figures' },
     },
   }),
   'usa/gemini/gatv-5005': inUnits({
@@ -1582,7 +1588,6 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       'veco.altitude': { by: -9497, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
       'veco.speed': { by: 61.12, slack: 5, why: TARGET_FAST, short: '5302’s thrusts, not 5306’s' },
       'agena-start.altitude': { by: -8865, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
-      apogee: { by: 10290, slack: 1000, why: TARGET_APOGEE, short: 'cut on the planned speed' },
     },
   }),
   'usa/gemini/gatv-5001': inUnits({
@@ -1592,7 +1597,7 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       'seco.altitude': { by: -10050, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
       'veco.altitude': { by: -10170, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
       'agena-start.altitude': { by: -10030, slack: 1000, why: TARGET_LOW, short: 'the Atlas’s pitch programme not found' },
-      apogee: { by: 8799, slack: 1000, why: TARGET_APOGEE, short: 'cut on the planned speed' },
+      period: { by: -5.012, slack: 0.5, why: TARGET_PERIOD, short: 'the report’s period is not its vector’s' },
     },
   }),
 };
