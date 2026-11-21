@@ -25,14 +25,24 @@ export const solidUrl = (flight: { id: string }, def: { id: string }): string =>
 /**
  * The models of a flight that have solids, and as what: a `structure` stands at the site and is neither a person nor
  * what flies (its pieces are baked); the `vehicle` is the model the run carries off the pad (its hulls are). None for
- * a flight with no site.
+ * a flight with no site. A vehicle's docking target, which the gallery stands beside it (`ModelDef.target`), went up from
+ * another pad on another vehicle: it is no part of what stands or flies here, its nodes absent as the site has them
+ * (app/address.ts `atSite`), so it has no hull to be carried off the pad.
  */
 export function solidModels(flight: Flight): { def: ModelDef; kind: 'structure' | 'vehicle' }[] {
   if (!flight.site) return [];
   const flown = flight.flies?.model;
   return flight.models
     .filter((m) => !m.walker && !m.galleryOnly && (m.backdrop === 'ground' || m.id === flown))
-    .map((def) => ({ def, kind: def.id === flown ? ('vehicle' as const) : ('structure' as const) }));
+    .map((def) => ({ def: atPad(def), kind: def.id === flown ? ('vehicle' as const) : ('structure' as const) }));
+}
+
+/** A model as it stands at its site: its docking target's nodes absent. */
+function atPad(def: ModelDef): ModelDef {
+  const heading = def.target?.heading;
+  if (!heading) return def;
+  const away = def.parts.filter((p) => p.group === heading).map((p) => p.node);
+  return { ...def, absent: [...(def.absent ?? []), ...away] };
 }
 
 /** What a swept sphere met at a site. */
