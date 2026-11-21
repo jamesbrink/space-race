@@ -365,3 +365,49 @@ test('a target given as a published orbit is flown from it as stated, on and bac
   );
   assert.deepEqual(byElements.at(0), { r: own.r, v: own.v });
 });
+
+test('each Agena’s run is on its report’s orbit but not in its plane, and a little ahead; the ATDA’s is not on its own orbit', async () => {
+  // Each crewed flight's docking chapter has its target's insertion vector from the mission report's trajectory table
+  // (`docking.fixes[0]`). Carried on under gravity (no air) to the docking, it is what the target's own run is set beside:
+  // not the truth to better than the table's last digits (a foot a second is 5 km a revolution), but the record's own.
+  // What is held here is what the targets' runs miss it by, each with its cause (src/sim/misses.ts, target-plan.ts): a
+  // flight that goes up to a target is given the report's orbit (`TargetDef.orbit`) until these are put right.
+  const { metOf } = await import('../src/sim/staged.ts');
+  const { orbitalFix } = await import('../src/sim/approach.ts');
+  const { frameOf } = await import('../src/world/earthframe.ts');
+  const { angleBetween, DEG } = await import('../src/world/frames.ts');
+  const { meanOf } = await import('../src/world/meanelements.ts');
+  for (const [name, target, until] of MEETINGS) {
+    const crewed = await gemini(name);
+    const other = await gemini(target);
+    const frame = frameOf(crewed);
+    const met = metOf({ flight: other.id, label: other.callsign }, frame, 0);
+    const fix = crewed.docking.fixes[0];
+    // a minute past the vector's instant, when every run's engine is off
+    const t = fix.t.value + 60;
+    const [run, vector] = [met.at(t), orbitalFix(fix, frame, t)];
+    const axis = (s) => meanOf({ r: frame.toDate(s.r), v: frame.toDate(s.v) }).a;
+    const long = axis(run) - axis(vector);
+    const pole = (s) => unit(cross(s.r, s.v));
+    const tilt = angleBetween(pole(run), pole(vector)) / DEG;
+    const last = until ?? crewed.docking.at;
+    const ahead = -placeFrom(met.at(last), orbitalFix(fix, frame, last).r).ahead;
+    if (target === 'atda') {
+      // the Atlas's verniers leave it 9.5 km of semi-major axis long (misses.ts, the ATDA's apogee and period): it falls
+      // back some 90 km a revolution, less what the air of three days takes off its orbit. Its plane is the vector's
+      assert.ok(long > 8000 && long < 11_000, `the ATDA’s axis ${long.toFixed(0)} m long`);
+      assert.ok(ahead < -2_000_000, `the ATDA ${(ahead / 1000).toFixed(0)} km along from its vector by the last leaving`);
+      assert.ok(tilt < 0.02, `the ATDA’s plane ${tilt.toFixed(3)} degrees from its vector’s`);
+      continue;
+    }
+    // the record's orbit: the mean semi-major axis within 50 m of the vector's (half a foot a second is 260 m)
+    assert.ok(Math.abs(long) < 50, `${other.callsign}: its axis ${long.toFixed(1)} m from its vector’s`);
+    // ahead of the vector along it by what the ascent was long downrange, with the little the air adds by then (the
+    // vector is carried on without air): 20 to 39 km, which is 2.6 to 5 s of its motion
+    assert.ok(ahead > 10_000 && ahead < 45_000, `${other.callsign}: ${(ahead / 1000).toFixed(1)} km ahead of its vector at the docking`);
+    // and not in its plane: the law reaches the record's inclination from the plane through the pad, and at 28.87 degrees
+    // from a pad at 28.49 the node that leaves is anybody's (0.3 to 1.3 degrees off): 0.13 to 0.63 degrees between the
+    // planes, 15 to 74 km across at most, 18 to 86 m/s to turn one into the other
+    assert.ok(tilt > 0.1 && tilt < 0.7, `${other.callsign}: its plane ${tilt.toFixed(3)} degrees from its vector’s`);
+  }
+});
