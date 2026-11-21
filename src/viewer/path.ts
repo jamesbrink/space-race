@@ -951,6 +951,14 @@ export class FlightPath {
    */
   private now = 0;
   private shift = 0;
+  /**
+   * The instant the scene is drawn at, the flight's (the sample's): a line that lies among the stars is turned with the
+   * Earth to it, as the vehicle and the globe are. Never the instant on the line the vehicle is found at (`now`), which
+   * the search for it moves: turned to that, the line swung about the Earth's axis by the Earth's turn in the seconds the
+   * search was off (far out a few seconds of it are tens of kilometres, and the search, its slope taken with the turn held,
+   * went further off each step), and Apollo 8's line lay 30 to 240 km off the vehicle past 250,000 km.
+   */
+  private turnAt = 0;
   private sampledFor = '';
   private readonly keyNow = new Float64Array(21).fill(Number.NaN);
   private readonly markAt = new Float64Array(3);
@@ -1923,7 +1931,7 @@ export class FlightPath {
   private alongAt(shown: Shown, t: number, out: Float64Array, o: number, mix: number): void {
     shown.hint = curveAt(shown.curve, t, this.at3, 0, shown.hint);
     carried(this.at3, 0, t, shown.left, shown.leftAt);
-    this.sceneOf(this.at3, 0, t + this.shift, shown.frame, this.now + this.shift, out, o);
+    this.sceneOf(this.at3, 0, t + this.shift, shown.frame, this.turnAt, out, o);
     const was = shown.was;
     if (was && mix < 1 && t >= was.curve.t[0]! && t <= was.curve.t[was.curve.n - 1]!) {
       const from = was.was ? new Float64Array(3) : this.easeAt;
@@ -2078,6 +2086,7 @@ export class FlightPath {
     // is now can be made: the curve is gone round again, whole revolutions on, so the line still starts at the vehicle;
     // its slow turn in a revolution, the Earth's bulge, is taken up where it is taken onto the vehicle)
     this.shift = shown.result.outcome === 'orbit' ? turnsPast(s.t, t0, t1) : 0;
+    this.turnAt = s.t;
     // how far the flight has left the curve on show, and the one it is eased from: each is drawn carried with it by that
     // much (a path flown under guidance is held to its programme instead, and made again as soon as the flight leaves it)
     for (let x: Shown | null = shown; x; x = x.was) {
@@ -2175,7 +2184,7 @@ export class FlightPath {
     for (const mk of this.marks) {
       from.set(mk.r);
       carried(from, 0, mk.t, shown.left, shown.leftAt);
-      this.sceneOf(from, 0, mk.t + this.shift, shown.frame, now + this.shift, a, 0);
+      this.sceneOf(from, 0, mk.t + this.shift, shown.frame, this.turnAt, a, 0);
       mk.at.set(a[0]!, a[1]!, a[2]!);
     }
     // (and the ring where it comes down)
@@ -2196,8 +2205,8 @@ export class FlightPath {
       near: 1.02 * camera.near,
     };
     // on the map: the vehicle's own marker where it is drawn, and what else flies
-    this.layOthers(shown.frame, now + this.shift, lens, vessel ? this.vessel : null);
-    this.layRef(shown.frame, now + this.shift, lens, vessel !== null, toShip);
+    this.layOthers(shown.frame, this.turnAt, lens, vessel ? this.vessel : null);
+    this.layRef(shown.frame, this.turnAt, lens, vessel !== null, toShip);
     if (same) {
       this.hang();
       return;
@@ -2252,7 +2261,7 @@ export class FlightPath {
           return;
         }
         hint = curveAt(flown, t, v, 0, hint);
-        this.sceneOf(v, 0, t, shown.frame, now + shift, out, o);
+        this.sceneOf(v, 0, t, shown.frame, this.turnAt, out, o);
         if (pinned) {
           const w = weight(f1 - t);
           for (let k = 0; k < 3; k++) out[o + k] = out[o + k]! + pin[k]! * w;
@@ -2697,6 +2706,7 @@ export class FlightPath {
     const now = s.t;
     this.now = now;
     this.shift = 0;
+    this.turnAt = now;
     // (over the turning ground; on the map, what reaches beyond the stationary radius as it lies among the stars: `frameFor`)
     const frame = this.mapped && this.bareHigh(now, s) ? 'orbit' : 'surface';
     // (standing on the pad nothing flies, and the stage has no vehicle to give: the flight's own place is where it is)
