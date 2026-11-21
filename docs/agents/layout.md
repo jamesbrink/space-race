@@ -54,6 +54,9 @@ missions/                             the record: one folder per nation, program
                                       (`ApolloLunarRecord`: a Saturn V record and the spacecraft's, its flight's orbital.ts) and the plan written
                                       from it (`apolloLunarPlan`: `saturnVPlan` to the injection, the spacecraft's parting, each firing solved for
                                       what it was for, the modules' parting, the entry, the landing system; the Moon's field and the sphere);
+                                      lm-plan.ts, the lunar module as a craft of its own (`lmPlan`: the DPS with its range and full throttle
+                                      position, the APS, the staging joint fired into, the legs), from a flight's lm-record.ts (`LmRecord`);
+                                      lm-rcs.ts, its sixteen attitude thrusters at R-567's places (`lmRcsChambers`, `lmRcsSet`);
                                       sm-rcs.ts, the service module's reaction control system as the attitude is flown with it (`smRcsChambers`,
                                       the sixteen chambers at their quads; `smRcsSet`, with the SCS's deadbands and minimum impulse; `massRow`);
                                       command-module-aero.ts, the Block II command module's trim drag (CM-107's, TN D-6725);
@@ -120,6 +123,7 @@ missions/                             the record: one folder per nation, program
       aloft.ts                        the air over its pad and the surface's hours round liftoff, from ERA5 (tools/era5-aloft.mjs; weather.ts hands it on)
       afloat.ts                       (Liberty Bell 7) the capsule in the sea after the landing: its weight afloat, the record's instants to its going down, the helicopter (`flies.afloat`), the hatch thrown off (`flies.hatch`)
       recovery.ts                     (Liberty Bell 7) Hunt Club 1 flown on the record's clock: in, round, over the capsule, its line on it, away (`Flight.recovery`); Hunt Club 3 and its hoist, and Grissom in the sea (`Flight.swimmer`)
+      lm.ts                           (a lunar landing) its lunar module's record as data (`LmRecord`: masses, loads, mass properties, probes), which vehicles/lm-plan.ts writes its plan from
       pad.ts                          the pad's morning for a flight that has its own (vostok-2: Site 1 on 6 August 1961; vostok-3 and vostok-4: on 11 and 12 August 1962;
                                       ma-6-friendship-7: Complex 14 on 20 February 1962, with its pilot at the structure's foot; ma-7-aurora-7: on
                                       24 May 1962; ma-8-sigma-7: on 3 October 1962; ma-9-faith-7: on 15 May 1963; gt-3: Complex 19 on 23 March 1965;
@@ -399,6 +403,7 @@ src/
   sim/stagedlive.ts                   the same ascent stepped a tick at a time and steered by hand or by guidance
   sim/staging.ts                      what happens when a hand stages a vehicle: the rules every vehicle is held to, whatever it is
   sim/craftlive.ts                    a spacecraft in orbit flown live: its own engines lit, throttled, cut and lit again by hand, tick by tick, on the coast's forces and the rocket equation; guidance's steering of a burn lit so (`guide`)
+  sim/surface.ts                      a lander's legs on a body's ground (`Ground`, `bodyGround` over a landing site's `LandingGround`): crushable struts, the contact probes' lamp, tip-over as the rigid body on its pads, landed and held on the Moon turning with it (`moonFixed`), the jets worked on it (`stepWithJets`)
   sim/attitude.ts                     a spacecraft's attitude in orbit as a rigid body its own jets turn (`ThrusterSet.chambers`, the record's mass properties): Hold its autopilot (deadbands, rate damping, minimum impulse), the keys a rate or the jets direct; stepped so a kept run flies again the same
   sim/lever.ts                        the throttle lever as a hand has it, and every liquid engine's hand range (`handRange`: its own, or the game's where it ran at one thrust)
   sim/misses.ts                       the recorded misses: where a flown run falls outside a documented check's tolerance, and why
@@ -531,6 +536,7 @@ where it was left.
 - `tools/docking.mjs` flies the Apollo and Gemini decks in Chrome, including a saved joint maneuver.
 
 - `tests/onestate.test.mjs` holds every flight into orbit to one state from the pad to the ground (simulator.md, "One state, changed only by what pushes it"): between any two samples of the record's run the velocity changes by gravity and by what the run says was pushing, the only step at one instant is the parting joint's push, the coast begins from the state the ascent left, a last stage cut by its guidance on the orbit leaves the record's period (on changed copies of three flights too), and every flight leaves its pad along its azimuth in the batch run, the samples drawn and the live vehicle.
+- `tests/lunarlanding.test.mjs` holds the lunar module (Apollo 11's, lm-plan.ts) and its legs (sim/surface.ts): the descent engine's lever and full throttle position and its flow by setting, the ascent engine fired into the descent stage and Abort Stage's one command, the contact light at the probes' length, the struts' stroke against a touchdown's energy, tip-over past the pads' angle and standing on 12°, a hover held by hand on the throttle, Hold on its jets in the hover, and a landed lunar module held turning with the Moon.
 - `tests/attitude.test.mjs` holds the attitude in orbit on its jets (sim/attitude.ts): a chamber's torque against the record's moment of inertia, the gas it burns, a free tumble's momentum and energy, Hold damping a tumble into its deadbands, the keys' rate, steps that do not depend on how often they are asked, and guidance steering and cutting a burn lit by hand.
 - `tests/longrun.test.mjs` holds a flight of days to what a phone can hold (issue #173): Gemini VII's record run, fourteen days, and Apollo 8's, six days out to the Moon and home, by how many samples each keeps and how much heap it holds; `tests/rails.test.mjs` holds a coast kept by how fast its motion changes to the one that kept every step, between its samples.
 - `tests/lunargravity.test.mjs` holds the Moon's field to the published table and to its potential's gradient, the Moon's axes to the IAU's pole, the two sides of the sphere to the same gravity, and a coast through the sphere (Apollo 8's injection as the run reaches it) to one state across the crossing, to the same coast on rails, and to the Mission Report's pericynthion (a recorded miss).

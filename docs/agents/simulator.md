@@ -1443,6 +1443,49 @@ read gives enough of to fly (issue #10).
   plan's account; the lever, the starts and a tank run dry; a Gemini's thrusters each way and its retrorockets; a Vostok's
   TDU to its integrator and a Soyuz's SKD on its tank. tests/resume.test.mjs flies an SPS burn by hand, throttled, cut and
   lit again, written and flown again to the bit.
+- **The lunar module, and its legs on the ground** (Architecture 5; missions/usa/apollo/vehicles/lm-plan.ts, lm-record.ts,
+  lm-rcs.ts; sim/surface.ts). The lunar module is a plan of its own (`lmPlan(record)`, from a flight's `LmRecord`: Apollo
+  11's is apollo-11/lm.ts), the craft alone from its separation from the command and service module (the undocking is
+  the several-craft run's, Architecture 3): the descent stage with the descent engine (DPS) and its legs, the ascent stage
+  with the ascent engine (APS) and the sixteen attitude thrusters, held by the staging joint. Its axes are its own (R-567:
+  +X up the thrust axis, +Y right, +Z forward out of the hatch), its datum LM coordinates' origin. Gravity is the Moon's
+  whole field with the Earth's and the Sun's on both sides (`central: 'moon'`, `RSPHERE`). The DPS: 10,500 lbf rated
+  (R-567's FMAX; TN D-7143), throttled 10 to 65 per cent with its full throttle position at 92.5 (`EngineDef.throttle.detent`:
+  past the range's top the lever is at it, sim/lever.ts `onLever`, as the handbook has automatic commands above 65 per cent
+  give full throttle), drawing at R-567's specific impulse for its setting (`isp.throttled`, 289.7 s at 11 per cent to 303
+  at full throttle). The APS: 15,568.8 N at 309 s, one thrust (the lever's game range, as every fixed-thrust engine's). The
+  RCS (lm-rcs.ts): each thruster at R-567's RCPOS, 444.82 N at 281.7 s (derived from R-567's mass flow), the 13 ms minimum
+  pulse, the 0.3° narrow deadband, 5°/s at full throw; the eight firing up or down listed for pitch and for the turn about Z,
+  the eight firing level for the turn about X (the type's roll is the lunar module's yaw); systems A and B as the handbook
+  names them. Flown live by sim/craftlive.ts (named by `engines: ['dps', 'aps']`: both are stages to `stagesOf`), whose
+  craft carries the one machine's state (`CraftState.parts`, sim/craft.ts): a hand's `separate` lets the joint go (what it
+  holds leaves with what is left in its tanks, its engines stop); an engine lit over a joint that still holds (`JointDef.hot`,
+  the APS over the descent stage, "fire in the hole") pushes only what escapes the joint (staging.ts `hotStage`, 0.8 open
+  at 10° below the level: 13.9 per cent, estimated) and what is below stands it `endures` seconds at full thrust, past which
+  the craft breaks up (`CraftState.broke`); Abort Stage is the joint's one command (`hot.sequence`, `CraftControls.stage`):
+  the stages part 0.447 s after it and the APS comes up 0.687 s after it (R-567 §6.4.8), so it fires into nothing. A craft
+  with no orbit about the Earth in its plan (no `record.orbit`) flies in no air. Near the ground the lunar module is a
+  lander (sim/surface.ts): a rigid body in the Moon's fixed frame (the mean-Earth/polar-axis frame its maps are in; Coriolis
+  and centrifugal in the motion of its centre of mass) under gravity, the DPS along +X, its jets' torque (`stepWithJets`:
+  sim/attitude.ts `jetsFor`, the autopilot or the hand) and its four legs on a `Ground` (a landing site's `LandingGround`
+  through `bodyGround`). Each leg is a footpad on a primary strut that crushes in stages (TN D-6850 fig. 7: 4,500 lbf to
+  about 10 in, then 9,500 lbf to 32 in): the ground pushes the pad along its normal through the leg's spring and damper
+  (estimated) in series with the honeycomb, which gives as soon as their push reaches its load along the strut and keeps
+  the stroke; sideways the pad is held where it touched until that asks more than friction (0.4, TN D-6850) times its load,
+  then slides. The work crushed, damped and held in the springs is kept, and accounts for the energy a touchdown brought to
+  2 per cent (tests/lunarlanding.test.mjs: at 9.9 ft/s each strut strokes 12.5 in, as the loads give). The probes (5.6 ft,
+  on the flight's legs: not the forward one from LM-5 on) light the contact lamp as a tip reaches the ground (`lamp`, at the
+  instant within the step). Tip-over is the rigid body on its pads (`toppled` past 60°); at rest (`STILL` for `RESTS`) it has
+  `landed`, and is held where it stands on the Moon, turning with it (`moonFixed`'s `toFlight`: the state an ascent
+  starts from) until a push over its weight lifts it. What it touched with (`Touch`) is held to the gear's limits by
+  sim/verdict.ts `landingVerdict`: TN D-6850's envelope (10 ft/s down; 4 ft/s across up to 7 down, to none at 10), its 12°
+  slope, and the 3σ attitude and rates its stability was shown for (5.69°, 6°/s). The hooks for what follows: the lever and
+  `stage` for the deck's descent and surface phases (B1b), `lamp` and `landed` for opening the lunar setting
+  (session.ts `surface(site)`) once a flight carries the lunar module, and the lander's state for P63/P64/P66 (A6a).
+  Not modelled: the leg's push other than along the ground's normal (the secondary struts' share, the pad's penetration of
+  the soil), the footpad as more than a point, the DPS gimbal's trim (thrust through the centre of mass), thrust
+  amplification near the ground, the +X thrusters' plumes on the descent stage (R-567 §6.4.5.3), the APS/RCS interconnect,
+  the Moon's own turn in Euler's equations, and the jets' plumes on the ground.
 - **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
   record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, sim/run.ts
   `orbitalRecord`, from the plan); what it drops is flown from the plan's `Craft.sheds`, each released from the outgoing trajectory at the joint's instant. The departing body's velocity is the retained body's less their relative separation speed (`orbitalRelease`), from the joint or the shed body's own push. After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says

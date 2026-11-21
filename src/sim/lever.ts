@@ -33,23 +33,44 @@ export interface HandRange {
   fixed: boolean;
   confidence: Confidence;
   source: string;
+  /**
+   * Where the engine has a fixed position above its range (`EngineDef.throttle.detent`, the descent engine's full throttle
+   * position): the range's own top and that position, which is then `most`. Between the two it does not run (`onLever`).
+   */
+  top?: number;
+  detent?: number;
+}
+
+/**
+ * The share of rated thrust an engine runs at for a lever at `k` (under its least the lever cuts it, which is the caller's):
+ * held to its range, and past the range's top, where it has a fixed position above it, at that position, as the descent
+ * engine's control assembly put any command above 65 per cent at full throttle (LMA790-3-LM, §2.5).
+ */
+export function onLever(range: HandRange, k: number): number {
+  const at = Math.min(range.most, Math.max(range.least, k));
+  return range.top !== undefined && range.detent !== undefined && at > range.top + 1e-9 ? range.detent : at;
 }
 
 /** The lever a hand has on an engine: null for a solid, which no hand can throttle or shut down. */
 export function handRange(engine: {
   kind: EngineNature['kind'];
-  throttle?: { range?: [least: number, most: number]; curve?: unknown };
+  throttle?: { range?: [least: number, most: number]; curve?: unknown; detent?: { value: number } };
 }): HandRange | null {
   if (engine.kind === 'solid') return null;
   const range = engine.throttle?.range;
+  const detent = engine.throttle?.detent?.value;
   if (range)
     return {
       least: range[0],
-      most: range[1],
+      most: detent ?? range[1],
+      ...(detent !== undefined ? { top: range[1], detent } : {}),
       real: true,
       fixed: false,
       confidence: 'documented',
-      source: 'the engine’s own range, as its plan gives it',
+      source:
+        detent !== undefined
+          ? 'the engine’s own range and its fixed position above it, as its plan gives them'
+          : 'the engine’s own range, as its plan gives it',
     };
   const fixed = !engine.throttle?.curve;
   return {
@@ -72,16 +93,27 @@ export class Lever {
   lit = false;
   readonly least: number;
   readonly most: number;
+  /** The range's top and the fixed position above it, where the engine has one (`HandRange.detent`): the lever goes from one to the other in one move. */
+  readonly top: number | undefined;
+  readonly detent: number | undefined;
 
   constructor(range: NonNullable<EngineNature['throttle']> | HandRange) {
-    if (Array.isArray(range)) [this.least, this.most] = range;
-    else ({ least: this.least, most: this.most } = range);
+    if (Array.isArray(range)) {
+      [this.least, this.most] = range;
+      this.top = this.detent = undefined;
+    } else ({ least: this.least, most: this.most, top: this.top, detent: this.detent } = range);
     this.at = this.most;
   }
 
-  /** Put it somewhere: no further than the engine's most. Under its least is allowed, and is off. */
+  /**
+   * Put it somewhere: no further than the engine's most. Under its least is allowed, and is off. Between the range's top
+   * and a fixed position above it (`detent`) it does not stop: moved up into the gap it goes to the position, down into it to the top.
+   */
   move(to: number): void {
-    this.at = Math.max(0, Math.min(this.most, to));
+    let at = Math.max(0, Math.min(this.most, to));
+    if (this.top !== undefined && this.detent !== undefined && at > this.top + 1e-9 && at < this.detent - 1e-9)
+      at = at > this.at ? this.detent : this.top;
+    this.at = at;
   }
 
   /** A notch up or down. */

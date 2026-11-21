@@ -409,6 +409,8 @@ function made(deck: OrbitDeck): void {
     integrator: 'Cut by its integrator',
     spent: 'Burned out',
     guidance: 'Cut by guidance',
+    gone: 'Staged',
+    broke: 'Broke up',
   }[b.ended ?? 'cut'];
   deck.host.say?.(
     burn.label,

@@ -22,22 +22,37 @@
  * pushing the record's impulse (`EngineDef.flown`) evenly over that time as the coast flies it, or its chambers' thrust over
  * the mass where the plan gives none.
  *
+ * Staging. What a joint lets go leaves when a hand separates it (`CraftControls.separate`): its bodies' mass as it stands
+ * (each as it left the pad less what its tanks have given), its tanks and its engines, on the one machine (sim/craft.ts
+ * `act`, `part`), whose state the craft keeps (`CraftState.parts`). An engine lit while the joint it stands on holds over a
+ * body below (`JointDef.hot`: the lunar module's ascent engine over the descent stage) fires into it: only what escapes the
+ * joint pushes the craft (staging.ts `hotStage`), and what is below stands it for `hot.endures` seconds at full thrust, past
+ * which the craft breaks up (`CraftState.broke`). Where the hardware staged on one command (`hot.sequence`, the lunar
+ * module's Abort Stage: the stages parted 0.447 s after it and the ascent engine came up 0.687 s after it), a hand staging
+ * it (`CraftControls.stage`) sets both off at those instants (`CraftState.chain`). The lever on an engine with a fixed
+ * position above its range (the descent engine's full throttle position) puts it there past the range's top
+ * (sim/lever.ts `onLever`); one whose specific impulse the plan tabulates against its setting draws at that figure.
+ *
  * Time: ticks of sim/vehicle.ts's TICK from the instant it began, so a run flown again comes to the same tick; an engine
- * stops at its own instant within a tick (dry, its integrator, spent), and the tick is flown in two pieces either side.
+ * stops at its own instant within a tick (dry, its integrator, spent), and the tick is flown in pieces either side, as it
+ * is at each step of a staging command.
  */
-import { clamp } from '../util/math.ts';
 import { EARTH, G0, MOON } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
 import { add, dot, length, scale, sub, type Vec3 } from '../world/frames.ts';
 import { gravity, type State } from '../world/orbit.ts';
 import { airAt } from './air.ts';
 import { centreAt, fieldFor, recentred, stepAbout, stepIn } from './core/gravity.ts';
-import { type HandRange, handRange } from './lever.ts';
+import { type CraftState as Machine, act, part, startCraft } from './craft.ts';
+import { along } from './fly.ts';
+import { type HandRange, handRange, onLever } from './lever.ts';
 import { shipPush, solarAt } from './orbital.ts';
-import type { EngineDef, FlightPlan, Pursuit } from './plan.ts';
+import type { Curve } from '../types.ts';
+import type { EngineDef, FlightPlan, JointDef, Pursuit } from './plan.ts';
 import { type BurnContext, solveBurn, type Target } from './pursuit.ts';
 import { externalDv, localVertical, Steering } from './steering.ts';
 import { stagesOf } from './staged.ts';
+import { hotStage } from './staging.ts';
 import type { Said } from './stagedlive.ts';
 import { TICK } from './vehicle.ts';
 
@@ -52,6 +67,8 @@ export interface CraftEngine {
   flow: number;
   /** Its exhaust's speed, g0 Isp, m/s: 0 where it has no specific impulse. */
   exhaust: number;
+  /** Its vacuum specific impulse against the share of rated thrust, s, where the plan tabulates it (`EngineDef.isp.throttled`): its flow at each setting is worked from it. */
+  isp?: Curve;
   /** The tank it draws on, by the plan's id (the first of `EngineDef.tanks`, as the coast reads it), or null. */
   tank: string | null;
   /** The hand's lever on it (sim/lever.ts): null for a solid. */
@@ -84,7 +101,7 @@ export interface CraftBurn {
   sensed: number;
   push: Vec3;
   /** Why it stopped: a hand's cut, the lever under its least, its tank empty, its integrator, a solid spent, guidance's cut. */
-  ended?: 'cut' | 'lever' | 'dry' | 'integrator' | 'spent' | 'guidance';
+  ended?: 'cut' | 'lever' | 'dry' | 'integrator' | 'spent' | 'guidance' | 'gone' | 'broke';
 }
 
 export interface CraftState {
@@ -106,6 +123,14 @@ export interface CraftState {
   burns: readonly CraftBurn[];
   /** What the hardware made of what a hand asked, in order (the deck says each once). */
   said: readonly Said[];
+  /** The one machine's state (sim/craft.ts): which joints have parted and which bodies have left, as `separate` and `stage` part them. */
+  parts: Machine;
+  /** Each engine fired into the body below it while their joint holds (`JointDef.hot`): seconds at full thrust, by engine id. */
+  scorch: Readonly<Record<string, number>>;
+  /** What a staging command has still to do (`CraftControls.stage`): each joint to part or engine to light, at its instant, s. */
+  chain: readonly { at: number; part?: string; light?: string }[];
+  /** It broke up: when, and why in the deck's words. Nothing more is flown. */
+  broke: { t: number; text: string } | null;
 }
 
 export interface CraftControls {
@@ -118,6 +143,13 @@ export interface CraftControls {
   lever?: number;
   /** Instants, s from liftoff, at which guidance cuts an engine burning, by id (sim/steering.ts `Steering.cutAt`): it stops there within the tick. */
   stop?: Readonly<Record<string, number>>;
+  /** Joints to let go now, by id: what they hold leaves (its mass, its tanks, its engines), as a hand's separation does. */
+  separate?: readonly string[];
+  /**
+   * Joints to stage on their one command, by id (`JointDef.hot.sequence`, the lunar module's Abort Stage): the joint parts and
+   * its engine lights so long after this tick as the hardware had them.
+   */
+  stage?: readonly string[];
 }
 
 /** Where the craft is taken up: the coast's state, the ship's mass, what is left in its tanks and of each engine's starts. */
@@ -129,6 +161,8 @@ export interface CraftFrom {
   tanks: Readonly<Record<string, number>>;
   starts: Readonly<Record<string, number>>;
   axis: Vec3;
+  /** What has parted already (sim/craft.ts), where it is taken up after a staging: left out, everything is aboard. */
+  parts?: Machine;
 }
 
 export interface CraftVehicle {
@@ -159,6 +193,10 @@ const openOf = (burns: readonly CraftBurn[], id: string): number => {
   return -1;
 };
 
+/** What an engine draws at `share` of its rated thrust, kg/s: its thrust over its exhaust's speed, at the specific impulse the plan tabulates for that setting where it does. */
+export const flowOf = (e: CraftEngine, share: number): number =>
+  e.isp && e.flow > 0 ? (e.thrust * share) / (G0 * along(e.isp, share)) : e.flow * share;
+
 /** The spacecraft's engines of `plan` (every engine of its first craft that is not a stage's), or those of `ids`. */
 export function craftEngines(plan: FlightPlan, ids?: readonly string[], cutAt: Readonly<Record<string, number>> = {}): CraftEngine[] {
   const c = plan.craft[0]!;
@@ -176,6 +214,7 @@ export function craftEngines(plan: FlightPlan, ids?: readonly string[], cutAt: R
         thrust,
         flow: tank && exhaust > 0 ? thrust / exhaust : 0,
         exhaust,
+        ...(e.isp?.throttled ? { isp: e.isp.throttled } : {}),
         tank,
         range: handRange(e),
         integrator: cutAt[e.id] ?? null,
@@ -206,9 +245,27 @@ export function craftVehicle(
   const solidAccel = (e: CraftEngine, mass: number): number =>
     e.def.flown && e.def.burn ? e.def.flown.value / e.def.burn.value : e.thrust / mass;
   const burnOf = (e: CraftEngine) => e.def.burn?.value ?? 0;
-  const shareOf = (s: CraftState, e: CraftEngine): number => (e.range ? clamp(s.lever, e.range.least, e.range.most) : 1);
+  const shareOf = (s: CraftState, e: CraftEngine): number => (e.range ? onLever(e.range, s.lever) : 1);
+  const flowAt = flowOf;
+  const joints = plan.craft[0]!.joints;
+  const bodyOf = new Map(plan.craft[0]!.bodies.map((b) => [b.id, b]));
+  const tankOf = new Map(plan.craft[0]!.tanks.map((t) => [t.id, t]));
+  /** Whether an engine's body is still aboard. */
+  const aboardNow = (s: CraftState, e: CraftEngine): boolean => !Number.isFinite(s.parts.bodies[e.def.body] ?? Infinity);
+  /** The joint an engine fires into while it holds (`JointDef.hot`), where it still holds. */
+  const hotOf = (s: CraftState, e: CraftEngine): JointDef | null => {
+    const j = joints.find((x) => x.hot?.engine === e.id);
+    return j && !Number.isFinite(s.parts.joints[j.id]?.gone ?? Infinity) ? j : null;
+  };
+  /** The share of an engine's thrust that pushes the craft: what escapes the joint it fires into (staging.ts `hotStage`), else all of it. */
+  const pushShare = (s: CraftState, e: CraftEngine): number => {
+    const j = hotOf(s, e);
+    return j ? hotStage(j.hot!) : 1;
+  };
   const burning = (s: CraftState, id: string) => Number.isFinite(s.engines[id]?.lit ?? Infinity);
   const sign = (e: CraftEngine) => (e.def.astern ? -1 : 1);
+  /** A craft whose plan has no orbit about the Earth to fly its coast's air on (a lunar module, about the Moon): no air pushes it. */
+  const airless = !plan.record?.orbit;
 
   const start = (from: CraftFrom): CraftState => ({
     t: from.t,
@@ -223,7 +280,47 @@ export function craftVehicle(
     tanks: Object.fromEntries(all.flatMap((e) => (e.tank ? [[e.tank, from.tanks[e.tank] ?? 0]] : []))),
     burns: [],
     said: [],
+    parts: from.parts ?? startCraft(plan),
+    scorch: {},
+    chain: [],
+    broke: null,
   });
+
+  /**
+   * The joint `id` parted at `s.t` (sim/craft.ts `act` and `part`): every body it lets go leaves, with what is left in the
+   * tanks on it (its mass now: as it left the pad, less what its tanks have given), and every engine on one stops.
+   */
+  const parted = (s0: CraftState, id: string): CraftState => {
+    const held = s0.parts.joints[id];
+    if (!held || Number.isFinite(held.gone)) return s0;
+    const parts = part(plan, act(plan, s0.parts, { separate: id }, s0.t, false).state, id, s0.t);
+    const leaving = Object.keys(parts.bodies).filter(
+      (b) => Number.isFinite(parts.bodies[b]!) && !Number.isFinite(s0.parts.bodies[b] ?? Infinity),
+    );
+    let s: CraftState = { ...s0, parts };
+    const tanks = { ...s.tanks };
+    let mass = s.mass;
+    for (const b of leaving) {
+      const def = bodyOf.get(b)!;
+      let now = def.count * def.mass.value;
+      for (const t of tankOf.values())
+        if (t.body === b) {
+          if (t.id in tanks) now -= def.count * (t.usable ?? t.load).value - tanks[t.id]!;
+          delete tanks[t.id];
+        }
+      mass -= now;
+    }
+    s = { ...s, mass, tanks };
+    for (const e of all) if (burning(s, e.id) && leaving.includes(e.def.body)) s = stopped(s, e, s.t, 'gone');
+    const label = joints.find((j) => j.id === id)?.label ?? id;
+    return {
+      ...s,
+      said: [
+        ...s.said,
+        { t: s.t, title: 'Staged', text: `${cap(label)}: ${leaving.map((b) => bodyOf.get(b)!.label).join(' and ')} let go` },
+      ],
+    };
+  };
 
   /** An engine stopped at `at`, and why: its burn closed. */
   const stopped = (s: CraftState, e: CraftEngine, at: number, why: NonNullable<CraftBurn['ended']>): CraftState => {
@@ -237,6 +334,8 @@ export function craftVehicle(
   /** What the controls ask at this instant: the lever, the cuts, the lightings, each through the hardware's rules. */
   const command = (s0: CraftState, c: CraftControls): CraftState => {
     let s: CraftState = { ...s0, axis: c.axis };
+    // (what is let go goes first: an engine lit at the same tick is lit on what is left)
+    for (const id of c.separate ?? []) s = parted(s, id);
     const said = [...s.said];
     const say = (title: string, text: string) => said.push({ t: s.t, title, text });
     const light = (e: CraftEngine, byLever = false) => {
@@ -250,6 +349,7 @@ export function craftVehicle(
         return;
       }
       if (e.def.starts.ground) return void say('Not lit', `${cap(e.label)} can be lit only on the ground`);
+      if (!aboardNow(s, e)) return void say('Not lit', `${cap(e.label)} has gone with ${bodyOf.get(e.def.body)!.label}`);
       if (e.tank && (s.tanks[e.tank] ?? 0) <= 0) return void say('Not lit', `${cap(e.label)}: its tanks are empty`);
       const { levered: _, ...rest } = was;
       s = {
@@ -284,11 +384,22 @@ export function craftVehicle(
       const e = byId.get(id);
       if (e) light(e);
     }
-    return said.length === s.said.length ? s : { ...s, said };
+    s = said.length === s.said.length ? s : { ...s, said };
+    for (const id of c.stage ?? []) {
+      const j = joints.find((x) => x.id === id);
+      const seq = j?.hot?.sequence;
+      if (!j || !seq || Number.isFinite(s.parts.joints[id]?.gone ?? Infinity) || s.chain.some((x) => x.part === id)) continue;
+      const chain = [...s.chain, { at: s.t + seq.parts.value, part: id }, { at: s.t + seq.lights.value, light: j.hot!.engine }];
+      s = { ...s, chain: chain.sort((a, b) => a.at - b.at) };
+    }
+    return s;
   };
 
-  type Stop = 'dry' | 'integrator' | 'spent' | 'guidance';
-  /** How long from `s` each burning engine has before it stops by itself (dry, its integrator, spent) or guidance cuts it (`stops`), s. */
+  type Stop = 'dry' | 'integrator' | 'spent' | 'guidance' | 'scorch';
+  /**
+   * How long from `s` each burning engine has before it stops by itself (dry, its integrator, spent), guidance cuts it
+   * (`stops`), or what it fires into while their joint holds has stood all it stands (`scorch`), s.
+   */
   const untilStop = (s: CraftState, stops: Readonly<Record<string, number>> = {}): { e: CraftEngine; at: number; why: Stop }[] => {
     const on = all.filter((e) => burning(s, e.id));
     const out: { e: CraftEngine; at: number; why: Stop }[] = [];
@@ -297,12 +408,14 @@ export function craftVehicle(
     const draws = new Map<string, number>();
     let flow = 0;
     for (const e of on) {
-      const f = e.flow * shareOf(s, e);
+      const f = flowAt(e, shareOf(s, e));
       flow += f;
       if (e.tank) draws.set(e.tank, (draws.get(e.tank) ?? 0) + f);
     }
     for (const e of on) {
       const st = s.engines[e.id]!;
+      const hot = hotOf(s, e);
+      if (hot) out.push({ e, at: Math.max(0, (hot.hot!.endures.value - (s.scorch[e.id] ?? 0)) / shareOf(s, e)), why: 'scorch' });
       if (solid(e)) {
         out.push({ e, at: st.lit + burnOf(e) - s.t, why: 'spent' });
         continue;
@@ -310,7 +423,7 @@ export function craftVehicle(
       if (e.tank && (draws.get(e.tank) ?? 0) > 0) out.push({ e, at: (s.tanks[e.tank] ?? 0) / draws.get(e.tank)!, why: 'dry' });
       if (e.integrator !== null) {
         const left = e.integrator - st.sensed;
-        const f = e.thrust * shareOf(s, e);
+        const f = e.thrust * shareOf(s, e) * pushShare(s, e);
         // (the mass at which what it gives reaches what is left: m_b = m_a exp(-left flow / F), drawn at `flow`)
         const at = flow > 0 ? (s.mass * -Math.expm1((-left * flow) / f)) / flow : (left * s.mass) / f;
         out.push({ e, at: Math.max(0, at), why: 'integrator' });
@@ -324,7 +437,10 @@ export function craftVehicle(
     if (h <= 0) return s;
     const on = all.filter((e) => burning(s, e.id));
     const shares = on.map((e) => shareOf(s, e));
-    const flow = on.reduce((sum, e, i) => sum + e.flow * shares[i]!, 0);
+    // (what of each engine's thrust pushes the craft: all of it, or what escapes the joint it fires into)
+    const pushes = on.map((e) => pushShare(s, e));
+    const flows = on.map((e, i) => flowAt(e, shares[i]!));
+    const flow = flows.reduce((sum, f) => sum + f, 0);
     const a = s.t;
     const m0 = s.mass;
     const massAt = (at: number) => m0 - flow * (at - a);
@@ -333,11 +449,12 @@ export function craftVehicle(
       if (!on.length) return null;
       let k = 0;
       on.forEach((e, i) => {
-        k += sign(e) * (solid(e) ? solidAccel(e, m0) : (e.thrust * shares[i]!) / massAt(at));
+        k += sign(e) * (solid(e) ? solidAccel(e, m0) : (e.thrust * shares[i]! * pushes[i]!) / massAt(at));
       });
       return scale(axis, k);
     };
     const push = (q: State, at: number): Vec3 => {
+      if (airless) return thrustAt(at) ?? [0, 0, 0];
       const air = airAt(frame, q.r, q.v, at, seaLevel);
       return shipPush(plan, a, air.wind, air.altitude, null, solarAt(frame, q.r, at, air.altitude), { push: thrustAt(at) });
     };
@@ -345,16 +462,22 @@ export function craftVehicle(
     const m1 = massAt(a + h);
     // what each engine gave: its share of the rocket equation's on what was drawn, or its thrust over the mass
     const given = on.map((e, i) =>
-      solid(e) ? solidAccel(e, m0) * h : flow > 0 ? ((e.thrust * shares[i]!) / flow) * Math.log(m0 / m1) : (e.thrust * shares[i]! * h) / m0,
+      solid(e)
+        ? solidAccel(e, m0) * h
+        : flow > 0
+          ? ((e.thrust * shares[i]! * pushes[i]!) / flow) * Math.log(m0 / m1)
+          : (e.thrust * shares[i]! * pushes[i]! * h) / m0,
     );
     const engines = { ...s.engines };
     const tanks = { ...s.tanks };
     const burns = [...s.burns];
+    let scorch = s.scorch;
     on.forEach((e, i) => {
       const st = engines[e.id]!;
       engines[e.id] = { ...st, sensed: st.sensed + given[i]! };
-      const drawn = e.flow * shares[i]! * h;
+      const drawn = flows[i]! * h;
       if (e.tank) tanks[e.tank] = Math.max(0, (tanks[e.tank] ?? 0) - drawn);
+      if (pushes[i]! < 1) scorch = { ...scorch, [e.id]: (scorch[e.id] ?? 0) + shares[i]! * h };
       const k = openOf(burns, e.id);
       if (k >= 0) {
         const b = burns[k]!;
@@ -366,24 +489,40 @@ export function craftVehicle(
         };
       }
     });
-    return { ...s, t: a + h, r: next.r, v: next.v, mass: m1, engines, tanks, burns };
+    return { ...s, t: a + h, r: next.r, v: next.v, mass: m1, engines, tanks, burns, scorch };
+  };
+
+  /** It broke up at `s.t`, `e` firing into what its joint holds below for longer than that stands: every engine stops. */
+  const broken = (s0: CraftState, e: CraftEngine): CraftState => {
+    const j = hotOf(s0, e)!;
+    const below = j.gone.map((b) => bodyOf.get(b)?.label ?? b).join(' and ');
+    const text = `${cap(e.label)} fired into ${below} for longer than it stands (${j.hot!.endures.value} s at full thrust, ${j.hot!.endures.confidence}): the craft broke up`;
+    let s: CraftState = { ...s0, broke: { t: s0.t, text } };
+    for (const x of all) if (burning(s, x.id)) s = stopped(s, x, s.t, 'broke');
+    return { ...s, said: [...s.said, { t: s.t, title: 'Broke up', text }] };
   };
 
   const tick = (state: CraftState, controls: CraftControls): CraftState => {
-    let s = command(state, controls);
+    let s = state.broke ? state : command(state, controls);
     const ticks = s.ticks + 1;
     const end = s.t0 + ticks * TICK;
-    // in pieces: to each instant an engine stops by itself (or guidance cuts it) within the tick, and on to the tick's end
-    for (let n = 0; n < 8 && s.t < end; n++) {
+    // in pieces: to each instant an engine stops by itself (or guidance cuts it), or a staging command's next step comes,
+    // within the tick, and on to the tick's end
+    for (let n = 0; n < 16 && s.t < end; n++) {
       const left = end - s.t;
       const stops = untilStop(s, controls.stop).filter((x) => x.at < left);
-      const first = stops.reduce((m, x) => Math.min(m, x.at), Infinity);
+      const next = s.chain[0] && s.chain[0].at - s.t < left ? Math.max(0, s.chain[0].at - s.t) : Infinity;
+      const first = stops.reduce((m, x) => Math.min(m, x.at), next);
       if (!Number.isFinite(first)) {
         s = fly(s, left);
         break;
       }
       s = fly(s, first);
       for (const x of stops.filter((y) => y.at <= first + 1e-12)) {
+        if (x.why === 'scorch') {
+          if (burning(s, x.e.id)) s = broken(s, x.e);
+          continue;
+        }
         s = stopped(s, x.e, s.t, x.why);
         const said = {
           dry: `${cap(x.e.label)} stopped: its tanks are empty`,
@@ -392,6 +531,12 @@ export function craftVehicle(
           guidance: `${cap(x.e.label)} cut by guidance: the velocity to be gained is gained`,
         }[x.why];
         s = { ...s, said: [...s.said, { t: s.t, title: x.why === 'spent' ? 'Burned out' : 'Shut down', text: said }] };
+      }
+      // (a staging command's steps due now: the joint parted, the engine lit, as the hardware's sequence did them)
+      while (!s.broke && s.chain[0] && s.chain[0].at - s.t <= 1e-12) {
+        const step = s.chain[0];
+        s = { ...s, chain: s.chain.slice(1) };
+        s = command(s, { axis: s.axis, ...(step.part ? { separate: [step.part] } : {}), ...(step.light ? { light: [step.light] } : {}) });
       }
     }
     return { ...s, t: end, ticks };
@@ -406,8 +551,8 @@ export function craftVehicle(
     const e = byId.get(id);
     if (!e || solid(e) || !(aim.size > 0)) return null;
     const [t0, m0] = [s.t, s.mass];
-    const thrust = e.thrust * shareOf(s, e);
-    const flow = e.flow * shareOf(s, e);
+    const thrust = e.thrust * shareOf(s, e) * pushShare(s, e);
+    const flow = flowAt(e, shareOf(s, e));
     // (the thrust's acceleration as its propellant goes, from the lighting: as the coast's own steered burns have it)
     const accel = (at: number): number => thrust / Math.max(1e-9, m0 - flow * Math.max(0, at - t0));
     const exhaust = e.exhaust > 0 ? e.exhaust : undefined;
@@ -418,6 +563,7 @@ export function craftVehicle(
       const ctx: BurnContext = {
         fly: (x, from, to, push) =>
           advance(x, from, to - from, (q, at) => {
+            if (airless) return push ?? [0, 0, 0];
             const air = airAt(frame, q.r, q.v, at, seaLevel);
             return shipPush(plan, from, air.wind, air.altitude, null, solarAt(frame, q.r, at, air.altitude), push ? { push } : undefined);
           }),

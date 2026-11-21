@@ -246,12 +246,24 @@ function coast(a: Attitude, s: AttitudeState, c: AttitudeControls, h: number): A
   return { ...s, t: s.t + h, q: body.q, w: body.w, ref: c.hold || aimAt(c, s.t) ? s.ref : body.q, firing: [0, 0, 0] };
 }
 
+/** What the chambers do over a step (`jetsFor`): their torque, N m in the body's axes, and the autopilot's and the supplies' state after it. */
+export interface Firing {
+  torque: Vec3;
+  /** What the autopilot holds after the step, and whether it was working (Hold, or an aim): with it off what it holds is where the craft lies. */
+  ref: Quat;
+  auto: boolean;
+  left: number[];
+  firing: Vec3;
+  owed: Vec3;
+}
+
 /**
- * One step of `h` seconds with the chambers worked as `c` asks: under Hold (or an aim) the autopilot's law on each axis,
- * direct the hand's throw; a pulse owed from the last step runs on; each chamber as far as its supply has propellant, its
- * torque spread over the step for the time it is open.
+ * The chambers over a step of `h` seconds worked as `c` asks, without flying the body (what a simulator that turns the
+ * craft by other torques besides, a lander's on its legs, sim/surface.ts, adds to its own): under Hold (or an aim) the
+ * autopilot's law on each axis, direct the hand's throw; a pulse owed from the last step runs on; each chamber as far as
+ * its supply has propellant, its torque spread over the step for the time it is open.
  */
-function fire(a: Attitude, s: AttitudeState, c: AttitudeControls, h: number): AttitudeState {
+export function jetsFor(a: Attitude, s: AttitudeState, c: AttitudeControls, h: number): Firing {
   const inertia = a.inertia(c.mass);
   // (a hand on the controls has them over guidance's line while it is there: let go, the line takes the craft back)
   const asked = c.stick[0] !== 0 || c.stick[1] !== 0 || c.stick[2] !== 0;
@@ -294,8 +306,14 @@ function fire(a: Attitude, s: AttitudeState, c: AttitudeControls, h: number): At
     left[j.supply] = Math.max(0, left[j.supply]! - j.flow * open);
     torque = add(torque, scale(j.torque, open / h));
   }
-  const body = flyBody(s.q, s.w, torque, inertia, h);
-  return { t: s.t + h, q: body.q, w: body.w, ref: auto ? ref : body.q, left, firing: now.map((x) => x / h) as unknown as Vec3, owed };
+  return { torque, ref, auto, left, firing: now.map((x) => x / h) as unknown as Vec3, owed };
+}
+
+/** One step of `h` seconds firing: the chambers as `jetsFor` works them, their torque held over the step on the rigid body. */
+function fire(a: Attitude, s: AttitudeState, c: AttitudeControls, h: number): AttitudeState {
+  const f = jetsFor(a, s, c, h);
+  const body = flyBody(s.q, s.w, f.torque, a.inertia(c.mass), h);
+  return { t: s.t + h, q: body.q, w: body.w, ref: f.auto ? f.ref : body.q, left: f.left, firing: f.firing, owed: f.owed };
 }
 
 /** One step of `h` seconds (a tick, or a partial step to an instant a command comes at): free where it is quiet, else firing. */
