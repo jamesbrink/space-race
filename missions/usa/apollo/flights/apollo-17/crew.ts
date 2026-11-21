@@ -1,4 +1,4 @@
-import { lc39Crew } from '../../crew/lc39.ts';
+import { lc39Crew, moonSuits } from '../../crew/lc39.ts';
 
 // Apollo 17 Press Kit, p. 80 and pp. 101, 103, 105. NASA KSC-72PC-613 and 627 show the launch garments.
 export const launchCrew = lc39Crew(
@@ -24,5 +24,5 @@ export const launchCrew = lc39Crew(
         'A flexible waist let Schmitt bend to sample rocks and sit in the rover while his suit was pressurized. The Apollo and eagle emblem on his left breast bears the three crew names.',
     },
   ],
-  true,
+  moonSuits('apollo-17', ['Cernan', 'Schmitt'], 'A7LB', 7),
 );

@@ -1,6 +1,6 @@
 /** A model and its parts: what each is, how it moves, its views, its cabin and its mechanisms. */
 import type { Confidence, Measure } from '../measure.ts';
-import type { RoverSite } from '../world/lunar-terrain.ts';
+import type { LunarSite, RoverSite } from '../world/lunar-terrain.ts';
 import type { Burns } from './sim.ts';
 
 /** A hard-dock interface. The frame is at the mating plane, +Y outward, +Z along the clocking datum. Lengths are in metres. Each ring hinge closes about local +Z. Each nose hook extends along local +X. */
@@ -648,9 +648,23 @@ export interface ModelDef {
   cutawayQuadrant?: [1 | -1, 1 | -1];
   /**
    * A person who went out onto the Moon (with `walker`): while the flight is on the surface the stage stands them at the
-   * landing site, beside the LM (app/surface.ts).
+   * landing site, before the LM's ladder (app/surface.ts), as this model: the same person in what he wore out there (the
+   * suit for the surface, its backpack, its visor), built to the same joints, and walked by the same gait.
    */
-  surface?: boolean;
+  surface?: { url: string; scale: string };
+  /**
+   * The lunar module that landed, and where (`site`, missions/usa/places/moon/ by id): while the flight is on the surface
+   * it stands at the landing site as its site says it
+   * stood (LunarSiteDef `rest`; app/surface.ts), its pads on the ground: `pads`, each pad's middle in the model's own
+   * frame, metres (x and z: the plane its pads stand on is y = 0); `out`, where whoever goes out stands once through the
+   * hatch, in the model's own frame, metres (the deck's Go out puts the commander there, facing the model's +x).
+   */
+  lander?: { site: LunarSite; pads: [number, number][]; out?: [number, number, number] };
+  /**
+   * How it is tipped from upright, after `rotationY`, radians: `pitch` about its own z (its +x, its front, raised for a
+   * positive one) and `roll` about its own x (its +z side lowered for a positive one). An LM as it came to rest.
+   */
+  attitude?: { pitch: number; roll: number };
   /**
    * This model is a person the site can be walked as (viewer/onfoot/walk.ts): the walk starts where the
    * figure stands, at its eye height, looking the way it faces. A flight may have several.
@@ -699,10 +713,11 @@ export interface ModelDef {
     hide?: string[];
     /**
      * Where the seat can be left for the outside, and so whether a walk outside is offered: 'pad' through the hatch
-     * while `open`, 'orbit' in flight (an EVA), 'sea' after landing. Left out: on the pad only. Nothing in the viewer
-     * offers 'orbit' or 'sea' yet; a spacecraft that allowed them says so here and the offer follows the data.
+     * while `open`, 'orbit' in flight (an EVA), 'sea' after landing, 'surface' on the Moon (an LM's station, left by its
+     * forward hatch for the porch: the flight deck's Go out, deck/phases/surface.ts). Left out: on the pad only. Nothing
+     * in the viewer offers 'orbit' or 'sea' yet; a spacecraft that allowed them says so here and the offer follows the data.
      */
-    egress?: ('pad' | 'orbit' | 'sea')[];
+    egress?: ('pad' | 'orbit' | 'sea' | 'surface')[];
     standIn?: { mesh: string; look: [number, number, number]; up?: [number, number, number] };
     figure?: string;
   }[];

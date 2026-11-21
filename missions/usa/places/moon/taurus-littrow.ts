@@ -49,8 +49,7 @@ export const TAURUS_LITTROW = landingSite({
     roll: {
       value: -2.6,
       confidence: 'documented',
-      source:
-        'Apollo 17 Mission Report, JSC-07904, section 8.1, p. 8-1: "a left roll of about 2.6 degrees" (left negative)',
+      source: 'Apollo 17 Mission Report, JSC-07904, section 8.1, p. 8-1: "a left roll of about 2.6 degrees" (left negative)',
     },
   },
 });

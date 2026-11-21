@@ -1311,7 +1311,7 @@ To look at it: `sr.stage.moonPose(latitude, longitude, height, azimuth, elevatio
 
 Once a run is on the Moon's surface the stage stands at the landing site, in the lunar setting
 (`viewer/lunar/setting.ts`, BackdropKind `moon`): the flight is loaded again there as another flight would be
-(app/surface.ts `lunarStay`: the LM where a model of it landed has been built, the crew who went out; `Stage.load`), and
+(app/surface.ts `lunarStay`: the flight's own LM, its `lander` model, turned and tipped as its site says it came to rest and its pads set on the ground, `ModelDef.attitude`; the crew who went out, in what they wore there; `Stage.load`), and
 the pad's place again at lift-off. The surface is a phase of Fly, not a fourth place. Until the LM lands in a run it is
 asked for by hand: `sr.onMoon(site, seconds)`, `sr.offMoon()`. What keeps it right:
 

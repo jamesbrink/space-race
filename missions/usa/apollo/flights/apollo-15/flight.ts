@@ -1,6 +1,6 @@
 import type { Flight } from '../../../../../src/types.ts';
 import { LC39A_EDT, mobileLauncher } from '../../../places/cape-canaveral/lc-39.ts';
-import { lc39Crew } from '../../crew/lc39.ts';
+import { lc39Crew, moonSuits } from '../../crew/lc39.ts';
 import { WEATHER } from './weather.ts';
 import { roverModel } from '../../vehicles/rover-gallery.ts';
 import { boardingHatches } from '../../vehicles/hatch.ts';
@@ -174,7 +174,7 @@ export const flight: Flight = {
             'The lunar module pilot’s garment has six chest connectors, a side-entry closure and a flexible waist for sitting on the rover.',
         },
       ],
-      true,
+      moonSuits('apollo-15', ['Scott', 'Irwin'], 'A7LB', 7),
     ),
     roverModel(15),
   ],

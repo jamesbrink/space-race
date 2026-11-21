@@ -18,6 +18,7 @@ export function lunarSitesJson() {
         approach: s.approach.value,
         centre: s.centre.value,
         stereo: s.stereo,
+        rest: { heading: s.rest.heading.value, pitch: s.rest.pitch.value, roll: s.rest.roll.value },
       },
     ]),
   );
