@@ -703,6 +703,16 @@ export function stackOf(plan: FlightPlan) {
       const drag = drags.find((d) => at < d.until.value) ?? drags[drags.length - 1]!;
       return drag.area.value * along(drag.curve, mach);
     },
+    /**
+     * The force on the base along the long axis at a record instant `at` and a height over the sea, N (`DragDef.base`):
+     * forward where the base's pressure is over the air's. Nothing for a piece with none, or past its `until`.
+     */
+    base: (at: number, altitude: number): number => {
+      const drag = drags.find((d) => at < d.until.value) ?? drags[drags.length - 1]!;
+      const b = drag.base;
+      if (!b || at >= b.until.value) return 0;
+      return b.factor.value * along(b.pressure, altitude) * drag.area.value;
+    },
   };
 }
 
@@ -810,6 +820,8 @@ export function ascend(
     });
     // (the last stage, stopped and still on: what it lets out pushes the stack along its axis)
     if (as >= plan[plan.length - 1]!.to) thrust += stack.vent(t);
+    // (the force on the base, where the drag has one: along the axis, as the thrust is)
+    thrust += stack.base(as, air.altitude);
     const dragArea = stack.dragArea(as, air.mach);
     const axis = axisAt(s, t, m, air.ground);
     let f: Vec3 = scale(axis, thrust);

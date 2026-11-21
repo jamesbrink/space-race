@@ -11,7 +11,7 @@
  */
 import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
 import type { OrbitFix, PlanCheck } from '../../../../../src/sim/plan.ts';
-import type { SaturnVRecord } from '../../vehicles/saturn-v-record.ts';
+import { type SaturnVRecord, saturnVDrag, siiMatchTaken } from '../../vehicles/saturn-v-record.ts';
 
 const IN = 0.0254;
 const LB = 0.45359237;
@@ -198,6 +198,7 @@ export const orbital: SaturnVRecord = {
       3,
       'm/s: NOT FOUND. The S-II’s retrorockets and the S-IVB’s two ullage motors parted the stages (§10.6.3: both fired, the dynamics normal). Apollo 14’s estimate (Apollo 11’s), taken',
     ),
+    match: siiMatchTaken("SA-511's S-II"),
     decay: {
       centre: assumed(
         (143_360 * LBF) / 4,
@@ -366,24 +367,7 @@ export const orbital: SaturnVRecord = {
         inclination: doc(32.54, `${EVAL}, Table 4-4: the parking orbit's inclination`),
       },
     },
-    drag: [
-      {
-        until: doc(SECOND_CUT, 'to the end of the ascent'),
-        area: derived(Math.PI * (198 * IN) ** 2, 'the 33 ft stage’s disc (saturn-v.md)'),
-        curve: {
-          points: [
-            [0, 0.25],
-            [0.8, 0.3],
-            [1.1, 0.55],
-            [1.4, 0.45],
-            [2, 0.36],
-            [6, 0.23],
-          ],
-          confidence: 'estimated',
-          source: 'NOT FOUND for the Saturn V: the slender stack’s curve Apollo 7’s Saturn IB is flown on, taken (as Apollo 11’s)',
-        },
-      },
-    ],
+    drag: saturnVDrag(doc(SECOND_CUT, 'to the end of the ascent'), 'SA-511'),
     steering: estimated(
       2,
       'deg/s² at full throw, about each axis: NOT FOUND. Four outboard F-1s gimballed ±5.17° (MSFC-MAN-503, §IV) some thirty metres below the stack’s centre of mass give it of the order of 1.4 at liftoff, more as it lightens; the S-II’s and the S-IVB’s gimbals of the same order: one figure taken for the three (Apollo 11’s)',

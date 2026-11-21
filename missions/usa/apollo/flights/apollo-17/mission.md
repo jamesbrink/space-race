@@ -109,12 +109,44 @@ flight's evaluation where it gives it (orbital.ts says which, and whose figure i
 
 What is left of the S-II's early dry tank is its flow before the shift: Table 6-1's figures at ESC+61 s, held over the
 high ratio's five minutes, draw some 0.3 per cent more than the stage's books (Table 16-9); the snapshot's thrust is
-kept, and its flow with it. The S-II still falls some 25 to 40 m/s behind the record at its cutoff with the stack's mass right: its
-start's rising thrust (some 3 m/s) is not flown, nor its thrust through the high ratio beyond the ESC+61 s snapshot, and
-its closed loop is the law's one linear tangent. Where the tables below and the paragraphs after them give the run's
+kept, and its flow with it. What the S-II still fell short of the record then is the subject of the section below ("The S-II's trajectory match and the
+stack's air"). Where the tables below and the paragraphs after them give the run's
 figures, they are the run as it now stands (tests/fixtures/figures.json).
 
+## The S-II's trajectory match and the stack's air (issues F1 and F2, November 2026)
+
+Re-flown with what the flight evaluations give and the run had not flown (saturn-v-record.ts, saturn-v-plan.ts):
+
+- **The trajectory match** (`sii.match`): AS-503's evaluation found, with a six-degree-of-freedom simulation fitted to
+  the tracked trajectory (Table 6-3, within 1.1 m/s), the S-II's average thrust 0.15 per cent over its engines' figures
+  at the ESC+61 s time slice and its mass loss 0.24 per cent under them: AS-503’s taken for this S-II, whose evaluation gives the propulsion reconstruction alone. The reconstructed
+  thrust itself is flat through the high ratio (each evaluation's Fig. 6-3), so the time slice is its history there.
+- **The stack's air** (`saturnVDrag`): AS-503's evaluation §20.2, the forebody's axial force coefficient against the Mach
+  number (Fig. 20-2) and the force on the S-IC's base from its base pressure against the height (Fig. 20-1, plan.ts
+  `DragDef.base`), in place of the Saturn IB's curve.
+
+| Against the record | Before | Now |
+| --- | --- | --- |
+| Speed at S-IC/S-II separation | −17.1 m/s | −14.4 m/s |
+| Speed at S-II/S-IVB separation | −48.0 m/s | −25.4 m/s |
+| Height at S-II/S-IVB separation | +1.19 km | +1.18 km |
+| S-IVB first cutoff | +8.86 s | +6.52 s |
+| Speed at parking orbit insertion | −2.3 m/s | −2.3 m/s |
+
+The S-II's start (AS-503's Fig. 6-4, the J-2s' buildup transients: nothing until 1.5 s after the engine start command,
+some 0.87 of their mainstage thrust before the high EMR select) was flown and measured: it gives some 1 s of the S-IVB's
+late cutoff back. It is not flown: as a curve of thrust against the clock it cannot follow an engine a hand lights at
+another time, which would light into nothing until the record's instant; it wants the start counted from the engine's
+own lighting. Measured on the run as the tests fly it, what is left of the S-IVB's late cutoff is chiefly the S-IC's:
+some 0.19 s for each m/s of energy short at the S-IC's separation, then a few seconds more that nothing read accounts
+for. Flown with the closed loop's tangent measured against a level held among the stars (as the iterative guidance
+steered) instead of the turning local level, or with a second tangent rate after the S-II's centre cutoff, the S-IVB
+cutoff moves by under 0.4 s: the law's shape is not what was short. See src/sim/misses.ts.
+
 ## The run against the record
+
+(As flown before the S-II's trajectory match and AS-503's air were added; the section above gives what they
+moved, and src/sim/misses.ts the run as it now stands.)
 
 Flown on the record's sequence and solved law (`flyWhole`, tests/staged.test.mjs):
 
@@ -148,7 +180,7 @@ record's to the orbit. Recorded as a miss. Not adjusted.
 - The S-IC's attitude programme is traced off a figure; the iterative guidance is a linear tangent in each of its two
   burns; the tower clearance yaw (1.7 to 9.7 s) and the outboard F-1s' cant (20.6 s) are not flown.
 - The S-II's mixture-ratio shift is flown at the record's instant, as a step in thrust and a larger one in flow (the low ratio's higher impulse).
-- The separation of the S-IC is pushed at 8 m/s read off a figure; the drag curve is the Saturn IB's (estimated); the
+- The separation of the S-IC is pushed at 8 m/s read off a figure; the drag is AS-503's forebody coefficient and S-IC base pressure (§20.2, read off its figures: estimated); the
   steering's authority, the S-IVB's attitude jets', the S-II/S-IVB push and the turn to the injection's attitude are
   estimates (NOT FOUND), as Apollo 11's.
 - The tower's jettison instant is estimated from the air-to-ground (Table 2-2: data not available).

@@ -40,7 +40,7 @@ const inUnits = (runs: Record<string, Record<string, Omit<Miss, 'absolute'>>>): 
   );
 
 const A8_INJECTION =
-  'The injection the run reaches is not the record’s, and the Moon is 380,000 km on. The run’s ascent puts the stack in its parking orbit 11 s late (the S-II’s shortfall, recorded under its ascent); the second burn is lit by the clock and cut on the record’s speed 1.5 s before the record’s cutoff; at the S-IVB/spacecraft separation fix (12,056.3 s) the run is 0.9° of longitude behind the record’s place and 5.5 m/s slower, on an orbit of eccentricity 0.9737 against 0.9743. Left alone from the spacecraft’s parting (its push apart, 0.5 m/s, estimated) it passes 1,544 n. mi. over the Moon 2.35 h after the Mission Report’s solution for the injection, which is 130 n. mi. under the surface (Table 5-III; its solutions move 131 n. mi. for the 1.1 ft/s of the first separation manoeuvre). This run is the injection left alone, flown on the flight’s plan to the parting and no further: it does not close when the firings after it are flown, for it is the injection’s own error. The flight’s run flies them, and its first midcourse correction takes this error out on the way (the shown run’s mcc-1.velocity, 155.6 ft/s for the flight’s 20.4), so that it comes to the insertion where the flight did (76.5 n. mi. up at 8,399 ft/s, Table 5-II: 76.6 and 8,391). The coast itself is the same flown about the Earth throughout on rails, within 2 m through the sphere and past the Moon (tests/lunargravity.test.mjs). Not adjusted';
+  'The injection the run reaches is not the record’s, and the Moon is 380,000 km on. The run’s ascent puts the stack in its parking orbit 10.6 s late (the stack’s shortfall, recorded under its ascent); the second burn is lit by the clock and cut on the record’s speed 1.5 s before the record’s cutoff; at the S-IVB/spacecraft separation fix (12,056.3 s) the run was 0.9° of longitude behind the record’s place and 5.5 m/s slower, on an orbit of eccentricity 0.9737 against 0.9743, before the S-II’s trajectory match and AS-503’s air were flown (1,544 n. mi. over the Moon then). Left alone from the spacecraft’s parting (its push apart, 0.5 m/s, estimated) it passes 1,694 n. mi. over the Moon 2.4 h after the Mission Report’s solution for the injection, which is 130 n. mi. under the surface (Table 5-III; its solutions move 131 n. mi. for the 1.1 ft/s of the first separation manoeuvre). This run is the injection left alone, flown on the flight’s plan to the parting and no further: it does not close when the firings after it are flown, for it is the injection’s own error. The flight’s run flies them, and its first midcourse correction takes this error out on the way (the shown run’s mcc-1.velocity, 155.6 ft/s for the flight’s 20.4), so that it comes to the insertion where the flight did (76.5 n. mi. up at 8,399 ft/s, Table 5-II: 76.6 and 8,391). The coast itself is the same flown about the Earth throughout on rails, within 2 m through the sphere and past the Moon (tests/lunargravity.test.mjs). Not adjusted';
 const A8_MCC1 =
   'The injection the run reaches is not the record’s (the lunar run, below: left alone from the parting it passes far over the Moon and hours after the Mission Report’s solution for the injection, -130.2 n. mi. at 69:13:58), and the first correction is solved on the run’s own state for what the flight’s reached, 66.3 n. mi. at 69:10:40 (Table 5-III), and for the plane of the planned 12-degree orbit (the press kit): it takes 155.6 ft/s where the flight’s took 20.4 (24.8 calculated, §5.4) from a trajectory its two separation manoeuvres had moved to 458.1 n. mi. The run’s approach cannot be turned into the planned plane from the injection it reached: the nearest it comes is 166.2 degrees to the Moon’s equator, 13.8 from retrograde, and that is what it is left at. Not adjusted';
 const A8_MCC2 =
@@ -50,19 +50,14 @@ const A8_MCC3 =
 const A8_ENTRY =
   'The run comes through the interface at what the third midcourse correction was aimed at, Table 5-IV’s -6.395 degrees from the best-estimate vectors after it, where the flight came through at -6.50 (Table 5-V): a shallower entry, its first peak 6.04 g against the flight’s 6.84. The command module flies CM-107’s trim aerodynamics (TN D-6725, assumed for CM-103) and the computer navigates on the run’s own state, with no error of its platform. Not adjusted';
 const SATURN_FLOWN =
-  'The run flies the F-1s’ and the S-II J-2s’ cutoff impulse (their flight evaluations’ §5.4 and §6.4: plan.ts EngineDef.decay), the S-II’s ullage motors where it carried them (JointDef.ahead) and the J-2s’ flow after the mixture-ratio shift at the impulse the low ratio gave (Stage.drawn)';
-const SIC_A11 = `The S-IC flies flatter than the record on the record’s own attitude commands (its flight evaluation’s Fig. 10-4, traced along the middle of its stroke and flown open): at the centre engine’s cutoff it is lower and faster, at the separation 1.8° flatter. The figure’s time axis has no offset (its gridline at range zero labelled, its plateau and the guidance’s step where Table 2-2 has them); read along the stroke’s upper edge, as first read, it is 2.4° flatter still. Its thrust is Fig. 5-3’s within a per cent or two and its mass the mass tables’ to a ton at each cutoff; half again or twice the drag (estimated: the Saturn V’s curve not read), tried and not flown, slows it but leaves it flatter still. Left: the control system’s following of its command, not flown (the law puts the axis on the command at once), and the drag. ${SATURN_FLOWN}. See apollo-11/mission.md. Not adjusted`;
+  'The run flies the F-1s’ and the S-II J-2s’ cutoff impulse (their flight evaluations’ §5.4 and §6.4: plan.ts EngineDef.decay), the S-II’s ullage motors where it carried them (JointDef.ahead), the J-2s’ flow after the mixture-ratio shift at the impulse the low ratio gave (Stage.drawn), its J-2s’ figures with AS-503’s trajectory match (sii.match: its Table 6-3, a simulation fitted to the tracked trajectory) and the Saturn V’s own air, AS-503’s forebody coefficient and S-IC base pressure (§20.2, saturnVDrag)';
+const SIC_A11 = `The S-IC flies flatter than the record on the record’s own attitude commands (its flight evaluation’s Fig. 10-4, traced along the middle of its stroke and flown open): at the centre engine’s cutoff it is lower and faster, at the separation 1.8° flatter. The figure’s time axis has no offset (its gridline at range zero labelled, its plateau and the guidance’s step where Table 2-2 has them); read along the stroke’s upper edge, as first read, it is 2.4° flatter still. Its thrust is Fig. 5-3’s within a per cent or two and its mass the mass tables’ to a ton at each cutoff; AS-503’s own air (§20.2), now flown, leaves it as flat; the flight path angles are the space-fixed ones (the vertical speeds the tables give agree with the heights climbed), it is as fast Earth-fixed (Table 4-1) as space-fixed, and the geocentric vertical would move it 0.06°. Flown on Apollo 12’s programme (AS-507’s Fig. 10-5, the same azimuth) it comes to the record’s centre cutoff within 1 m/s and 70 m and to its separation within 16 m/s, 0.9 km and 1.1°: what is left is in the tracing of Fig. 10-4’s first hundred seconds (2 to 5° further over than AS-505’s and AS-507’s from 40 to 80 s, its line leaving zero 7 s before the programme’s start), and the control system’s following of its command, not flown. ${SATURN_FLOWN}. See apollo-11/mission.md. Not adjusted`;
 const SII_A11 =
   'The S-II’s closed loop, flown as the law’s one linear tangent against the turning local level from 204 s (the iterative guidance’s own command fell near evenly in the inertial frame, Fig. 10-4), takes the stack to the record’s speeds within 30 m/s but lower, from the S-IC’s flatter start. See apollo-11/mission.md. Not adjusted';
 const TLI_A11 =
   'The translunar injection, cut on its speed (Table 4-2’s space-fixed 10,841.0 m/s), is cut 6.0 s after the record’s cutoff: the stack comes to it with more of the S-IVB’s propellant left from a first burn that ends on the record’s instant, and its C3, eccentricity and mass hold their checks. See apollo-11/mission.md. Not adjusted';
-const SIC_A14 = `The S-IC flies the record’s own attitude commands, its flight evaluation’s Fig. 9-4 read with its frame beginning at 9.0 s and 1.6° on the scale of the rest (its first intervals short on both axes, its yaw panel drawing none of the tower clearance yaw, its pitch line coming into the frame after the programme’s start): the greatest dynamic pressure is then the record’s, but the stack climbs steeper and comes to the S-IC’s separation 41 m/s slow and 1.3 km high, within the checks, and the S-II, from there, lets the S-IVB go 64 m/s slow. Read as first read, its first hundred seconds drawn short, the S-IC flew flatter (4.3 kPa over at the greatest dynamic pressure) and the S-II held its checks. ${SATURN_FLOWN}. See apollo-14/mission.md. Not adjusted`;
-const SII_SHORT = `${SATURN_FLOWN}; with them the S-IC holds its record on this flight’s own pitch programme, its separation within 30 m/s, and the S-II takes it a further 25 to 40 m/s behind the record at the S-II’s cutoff. The stack’s mass at the first cutoff is the mass tables’ within a ton, so what is short is impulse or loss: the S-II’s thrust is held at its ESC+61 s figures through the high ratio, its start’s rising thrust is not flown, the S-II’s closed loop is flown as the law’s one linear tangent, and the drag is estimated. Not adjusted`;
-const A8_SII = `${SII_SHORT}. On AS-503 the S-II’s centre engine was not cut early: the check is at the five engines’ cutoff`;
-const SIVB_SHORT = `The S-II lets the S-IVB go slower than the record (above, within its checks where they are not listed), and the S-IVB’s guidance burns longer than the record’s to make the parking orbit, which it reaches within a few hundred metres of the record’s heights. ${SATURN_FLOWN}. Not adjusted`;
-const SIC_A15 =
-  'The greatest dynamic pressure is 39.9 kPa at 81.4 s where the record has 36.8 at 82.0. The S-IC flies the record’s own attitude commands (its flight evaluation’s Fig. 9-10, traced off the page, its frame read as beginning at 7.8 s on the scale of the rest, to some two seconds and half a degree; read with the frame at range zero it is 43.7 kPa) and comes to its centre cutoff 1.1 km lower and 6 m/s faster than the record, and to its separation 1.7 km low and 7 m/s slow, within the checks; the drag is the slender Saturn IB’s curve (estimated: the Saturn V’s not read), and the control system’s following of its command is not flown. See apollo-15/mission.md. Not adjusted';
-const SII_A13 = `The S-II’s four outboard J-2s are cut when the run has spent the stage’s propellant, as its oxygen depletion sensors cut them (saturn-v-plan.ts siiSpent), and the run spends it 2.1 s before the record’s cutoff. Its usable load is the mass tables’ (Table 16-3), within a few hundred kilograms of what Table 16-9 has the engines burn; after the shift the J-2s draw the low ratio’s flow (AS-503’s impulse there taken), but before it at Table 6-1’s figures at ESC+62 s, which over the high ratio’s 370 s draw some 0.3 per cent more than the books: the snapshot’s flow, not the phase’s. See apollo-13/mission.md. Not adjusted`;
+const SIC_A14 = `The S-IC flies the record’s own attitude commands, its flight evaluation’s Fig. 9-4 read with its frame beginning at 9.0 s and 1.6° on the scale of the rest (its first intervals short on both axes, its yaw panel drawing none of the tower clearance yaw, its pitch line coming into the frame after the programme’s start): the greatest dynamic pressure is then the record’s, but the stack climbs steeper and comes to the S-IC’s separation 38 m/s slow and 1.5 km high, within the checks, and the S-IVB, from there, burns 9.3 s longer than the record’s to make the parking orbit (some 0.19 s for each m/s of energy short at the S-IC’s separation, as on every Saturn V). Read as first read, its first hundred seconds drawn short, the S-IC flew flatter (4.3 kPa over at the greatest dynamic pressure) and the S-II held its checks. ${SATURN_FLOWN}. See apollo-14/mission.md. Not adjusted`;
+const SIVB_SHORT = `The S-IVB’s guidance burns longer than the record’s to make the parking orbit, which it reaches within a few hundred metres of the record’s heights: the stack comes to it short of the record’s energy, some 0.19 s of the S-IVB for each m/s short at the S-IC’s separation (where the S-IC, on this flight’s own pitch programme, is within its checks) and a few seconds more that nothing read accounts for. The S-II’s mass at its cutoff is the mass tables’ within a ton; its thrust is flat through the high ratio (its evaluation’s Fig. 6-3); its closed loop, flown as the law’s linear tangent, gives the same cutoff within 0.4 s measured against a level held among the stars or with a second rate after the centre cutoff. Its start’s rising thrust (AS-503’s Fig. 6-4), flown, gives some 1 s of it back, but is not flown: a curve against the clock cannot follow an engine a hand lights at another time. ${SATURN_FLOWN}. Not adjusted`;
 
 const BOOSTER =
   'the powered flight ends 4 per cent too fast. It leaves the pad at only 1.19 g, so most of the thrust goes to holding it up and the speed gained is ' +
@@ -862,11 +857,7 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   }),
   'usa/apollo/apollo-8': inUnits({
     ascent: {
-      'sii-centre-cutoff.speed': { by: -64.02, slack: 7, why: A8_SII, short: 'the S-II falls short' },
-      'sii-centre-cutoff.altitude': { by: -5_020, slack: 600, why: A8_SII, short: 'lower through the S-II' },
-      'sii-separation.speed': { by: -64.19, slack: 7, why: SII_SHORT, short: 'the S-II falls short' },
-      cutoffAt: { by: 11.33, slack: 1.2, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
-      'insertion.speed': { by: -9.48, slack: 1.5, why: SIVB_SHORT, short: 'still burning at the record’s insertion' },
+      cutoffAt: { by: 10.6, slack: 1.1, why: SIVB_SHORT, short: 'the S-IVB makes up the stack’s shortfall' },
     },
     shown: {
       'mcc-1.velocity': { by: 41.19, slack: 4, why: A8_MCC1, short: 'the injection is not the record’s' },
@@ -875,64 +866,46 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
       entryG: { by: -0.8039, slack: 0.1, why: A8_ENTRY, short: 'a shallower entry' },
     },
     lunar: {
-      pericynthion: { by: 3_101_000, slack: 150_000, why: A8_INJECTION, short: 'the injection is not the record’s' },
+      pericynthion: { by: 3_378_000, slack: 150_000, why: A8_INJECTION, short: 'the injection is not the record’s' },
       pericynthionAt: { by: 8_458, slack: 600, why: A8_INJECTION, short: 'the injection is not the record’s' },
     },
   }),
   'usa/apollo/apollo-10': inUnits({
     ascent: {
-      cutoffAt: { by: 8.765, slack: 0.9, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
+      cutoffAt: { by: 8.199, slack: 0.8, why: SIVB_SHORT, short: 'the S-IVB makes up the stack’s shortfall' },
     },
   }),
   'usa/apollo/apollo-11': inUnits({
     ascent: {
       maxQ: {
-        by: 7_498,
-        slack: 800,
-        why: `The greatest dynamic pressure is 42.7 kPa at 86.1 s where the record has 35.2 at 83.0: ${SIC_A11}`,
+        by: 7_365,
+        slack: 750,
+        why: `The greatest dynamic pressure is 42.6 kPa at 86.1 s where the record has 35.2 at 83.0: ${SIC_A11}`,
         short: 'the S-IC flies flatter and faster',
       },
-      'sic-centre-cutoff.speed': { by: 53.12, slack: 6, why: SIC_A11, short: 'the S-IC flies flatter and faster' },
-      'sic-centre-cutoff.altitude': { by: -2_931, slack: 400, why: SIC_A11, short: 'the S-IC flies flatter' },
-      'sic-separation.altitude': { by: -4_783, slack: 500, why: SIC_A11, short: 'the S-IC flies flatter' },
-      'sic-separation.climb': { by: -1.829, slack: 0.2, why: SIC_A11, short: 'the S-IC flies flatter' },
-      'sii-centre-cutoff.altitude': { by: -11_760, slack: 1_200, why: SII_A11, short: 'lower through the S-II' },
-      'sii-separation.altitude': { by: -5_726, slack: 600, why: SII_A11, short: 'lower through the S-II' },
-      'injection.at': { by: 6.029, slack: 0.6, why: TLI_A11, short: 'the injection cut later' },
-    },
-  }),
-  'usa/apollo/apollo-13': inUnits({
-    ascent: {
-      'sii-outboard-cutoff.stop': { by: -2.145, slack: 0.25, why: SII_A13, short: 'the S-II spends its propellant early' },
-      cutoffAt: { by: 5.487, slack: 0.6, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
+      'sic-centre-cutoff.speed': { by: 55.58, slack: 6, why: SIC_A11, short: 'the S-IC flies flatter and faster' },
+      'sic-centre-cutoff.altitude': { by: -2_863, slack: 300, why: SIC_A11, short: 'the S-IC flies flatter' },
+      'sic-separation.speed': { by: 51.12, slack: 5.5, why: SIC_A11, short: 'the S-IC flies flatter and faster' },
+      'sic-separation.altitude': { by: -4_661, slack: 500, why: SIC_A11, short: 'the S-IC flies flatter' },
+      'sic-separation.climb': { by: -1.803, slack: 0.2, why: SIC_A11, short: 'the S-IC flies flatter' },
+      'sii-centre-cutoff.altitude': { by: -11_400, slack: 1_100, why: SII_A11, short: 'lower through the S-II' },
+      'sii-separation.altitude': { by: -5_526, slack: 550, why: SII_A11, short: 'lower through the S-II' },
+      'injection.at': { by: 6.314, slack: 0.65, why: TLI_A11, short: 'the injection cut later' },
     },
   }),
   'usa/apollo/apollo-14': inUnits({
     ascent: {
-      'sii-separation.speed': { by: -64.33, slack: 7, why: SIC_A14, short: 'the stack slower from a steeper S-IC' },
-      cutoffAt: { by: 11.65, slack: 1.2, why: SIC_A14, short: 'the S-IVB makes up the S-II’s shortfall' },
-      'insertion.speed': { by: -10.92, slack: 1.5, why: SIC_A14, short: 'still burning at the record’s insertion' },
+      cutoffAt: { by: 9.281, slack: 0.9, why: SIC_A14, short: 'the S-IVB makes up a steeper S-IC’s shortfall' },
     },
   }),
   'usa/apollo/apollo-12': inUnits({
     ascent: {
-      cutoffAt: { by: 7.523, slack: 0.8, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
-    },
-  }),
-  'usa/apollo/apollo-15': inUnits({
-    ascent: {
-      maxQ: { by: 3_091, slack: 300, why: SIC_A15, short: 'the S-IC through the densest air' },
-      cutoffAt: { by: 6.006, slack: 0.6, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
-    },
-  }),
-  'usa/apollo/apollo-16': inUnits({
-    ascent: {
-      cutoffAt: { by: 7.314, slack: 0.8, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
+      cutoffAt: { by: 7.064, slack: 0.7, why: SIVB_SHORT, short: 'the S-IVB makes up the stack’s shortfall' },
     },
   }),
   'usa/apollo/apollo-17': inUnits({
     ascent: {
-      cutoffAt: { by: 8.858, slack: 0.9, why: SIVB_SHORT, short: 'the S-IVB makes up the S-II’s shortfall' },
+      cutoffAt: { by: 6.516, slack: 0.65, why: SIVB_SHORT, short: 'the S-IVB makes up the stack’s shortfall' },
     },
   }),
   'usa/apollo/apollo-7': inUnits({

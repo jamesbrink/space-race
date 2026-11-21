@@ -153,6 +153,12 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   afterwards: level along the motion, pitched as the programme says, and from its freeze held among the stars (worked
   from the stack's turning rate, so the law keeps no memory and every run has the same axis). Apollo 7's vent and oxygen
   dump are the velocities the flight evaluation's platform measured, as forces.
+- **A first stage's base pushes or holds back by its own pressure** (`DragDef.base`; staged.ts `stackOf` `base`). Where the
+  record gives the base's force apart from the forebody's (the Saturn V: AS-503's evaluation, §20.2), the drag piece's
+  curve is the forebody's axial force coefficient on the dynamic pressure, and its `base` the base's pressure over the air's
+  against the height: times its factor and the piece's area it acts along the long axis, as the thrust does, in all three
+  integrators (`ascend`'s `forces`, stagedlive.ts `accel`, fliers.ts `guided`), until the stage whose base it is stops.
+  The fire pumps the base above the ambient between some 9 and 40 km, which no coefficient on q follows.
 - **A solved burn draws what it gave** (`BurnFlown.fuel`, orbital.ts `fuelFor`; `coastEngineState` takes a run's burns).
 - **The braking burn is timed for the landing place where the ground timed it so** (`PlanRecord.landing.aimed`, plan.ts
   `LandingAim`; orbital.ts `flyOrbit`, `delayed`). The ground worked every retrofire's instant from where the ship then
@@ -1047,7 +1053,11 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   (saturn-v-plan.ts `siiSpent`, the instant `schedule` finds the tank dry) and times the separation and the S-IVB's start
   from that cutoff at the record's intervals, as the instrument unit's time base 4 did: those events' instants are the
   run's, derived, and the record's are figures in their sources and checks. An ascent check `<event>.stop` holds when the
-  run itself stopped the engine an event cuts (staged.ts `stopOf`). A start the stack comes
+  run itself stopped the engine an event cuts (staged.ts `stopOf`). The S-II's J-2s' figures are the reconstruction's
+  at its time slice times the trajectory match's adjustment (`sii.match`: AS-503's own, Table 6-3, and taken for every
+  later S-II, saturn-v-plan.ts `siiFigures`). Their start's rising thrust is not flown: a throttle curve is against the
+  clock, and an engine a hand lights at another time would light into it; a start counted from the engine's own lighting
+  is still to be given to the plan. A start the stack comes
   down from before its cutoff (eight degrees of pitch-over on a heavy first stage) is halved and bisected to one in the
   air before Newton's method (`steer`); every earlier flight's start is in the air and is not touched.
 - **A Saturn V flies to the Moon and home** (missions/usa/apollo/vehicles/apollo-lunar-plan.ts `apolloLunarPlan`, written
