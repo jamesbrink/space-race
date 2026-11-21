@@ -96,8 +96,11 @@ export interface Thrusters {
 export interface Manoeuvre {
   id: string;
   label: string;
-  /** Which pair fired: the aft-firing (pushing toward the nose) or the forward-firing (toward the tail). */
-  thrusters: 'aft' | 'forward';
+  /**
+   * Which pair fired: the aft-firing (pushing toward the nose) or the forward-firing (toward the tail); or, docked, the
+   * target's own engine pushing the pair (`oams.docked`), toward the spacecraft's tail, the impulse the pair's.
+   */
+  thrusters: 'aft' | 'forward' | 'docked';
   /**
    * `below`: along the motion, the line pitched down from the level by so many degrees (up, negative); `yaw`: turned in
    * the level toward the left of the motion first (the right, negative: plan.ts `Hold`).
@@ -172,7 +175,11 @@ export interface GeminiTitanRecord {
   rarefied: NonNullable<Craft['rarefied']>;
   /** How fast a hand turned the spacecraft (deg/s). */
   hand: Measure;
-  oams: { aft: Thrusters; forward: Thrusters };
+  /**
+   * The spacecraft's two pairs; and where the record has burns made docked on the target's engine, that engine (its
+   * impulse the docked pair's: the spacecraft is flown alone, the target not with it, plan.ts `TargetDef`).
+   */
+  oams: { aft: Thrusters; forward: Thrusters; docked?: Thrusters };
   moves: Manoeuvre[];
   /** The adapter's two sections: the equipment section, its mass and when it was let go; the retrograde section, its mass with its rockets unfired. */
   adapter: { equipment: { mass: Measure; gone: Measure }; retro: { mass: Measure } };
@@ -236,8 +243,8 @@ const engineOf = (e: TitanEngine): Pick<EngineDef, 'thrust' | 'isp' | 'nozzle'> 
 });
 
 /** The body each pair of thrusters is on: the aft-firing pair at the equipment section's foot, the forward-firing on the retrograde section. */
-const THRUSTER_BODY = { aft: 'equipment-section', forward: 'retro-section' } as const;
-const THRUSTER_ID = { aft: 'aft-thrusters', forward: 'forward-thrusters' } as const;
+const THRUSTER_BODY = { aft: 'equipment-section', forward: 'retro-section', docked: 'equipment-section' } as const;
+const THRUSTER_ID = { aft: 'aft-thrusters', forward: 'forward-thrusters', docked: 'docked-thrusters' } as const;
 
 /** A Gemini-Titan flight's plan, from its record. */
 export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
@@ -289,8 +296,8 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
     { id: 'retro-section-release', label: 'Retrograde section let go', gone: ['retro-section'], at: r.gone, after: o.entry.mass },
   ];
   const ground = { count: 1, ground: true, confidence: 'documented' as const, source: 'the first stage’s engine was started on the pad' };
-  const thrusters = (pair: 'aft' | 'forward'): EngineDef => {
-    const t = o.oams[pair];
+  const thrusters = (pair: 'aft' | 'forward' | 'docked'): EngineDef => {
+    const t = o.oams[pair]!;
     return {
       id: THRUSTER_ID[pair],
       label: t.name,
@@ -307,7 +314,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
         source: 'hypergolic thrusters opened and shut by their valves as often as the crew asked: no limit read, taken as a thousand',
       },
       burns: 'hydrazine-n2o4',
-      ...(pair === 'forward' ? { astern: true as const } : {}),
+      ...(pair !== 'aft' ? { astern: true as const } : {}),
     };
   };
   const engines: EngineDef[] = [
@@ -340,6 +347,7 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
     },
     thrusters('aft'),
     thrusters('forward'),
+    ...(o.oams.docked ? [thrusters('docked')] : []),
     {
       id: 'retrorockets',
       label: 'Retrograde rockets',

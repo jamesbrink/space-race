@@ -13,6 +13,9 @@ import {
 } from '../../vehicles/gemini-targets.ts';
 import { dimensions, LB, NMI, SEDR2, thrusters, titanEngines } from '../../vehicles/gemini-titan.ts';
 import { lateVehicle } from '../../vehicles/late-vehicle.ts';
+import { geminiFlies } from '../../vehicles/gemini-flies.ts';
+import { geminiTitanPlan } from '../../vehicles/gemini-titan-plan.ts';
+import { INSERTION, orbital } from './orbital.ts';
 import { crewAboard, crewArrives, hatchesShut, pad } from './pad.ts';
 import { WEATHER } from './weather.ts';
 
@@ -28,7 +31,8 @@ export const flight: Flight = {
   docking: {
     controls: geminiControls,
     massProperties: dockingProperties(REPORT, 104.84, 344.1, 7114),
-    fixes: [targetFix(REPORT + ', table 4.3-V, final insertion', -5914.731, 556.05, 28.52, -59.63, 981195, 25365, 0.04, 95.54)],
+    // (the Agena at its insertion, the vector the flight's plan flies its target from: orbital.ts `INSERTION`)
+    fixes: [INSERTION],
     interface: 'cone',
     target: 'GATV 5001',
     transfer: crewTransfer(
@@ -234,6 +238,16 @@ export const flight: Flight = {
     ...thrusters('spacecraft 12, as described in its mission report'),
     ...agenaMotors(),
   ],
+  // the flight as an orbit, written from its record: the Titan's two stages, the orbit, the rendezvous made on the Agena,
+  // the docked phasing burns, the separation, the retrofire and the lifting entry, each figure with its source (orbital.ts;
+  // mission.md), flown through the day's air over the pad. Fly still opens on the docking chapter (src/app/address.ts `lacks`)
+  plan: { ...geminiTitanPlan(orbital), aloft: WEATHER.aloft },
+  flownNote:
+    'The ascent is flown on GLV-12’s own weights and engines, from its mission report, on a stated steering law, and the coast on from the state it leaves. ' +
+    'The Agena is flown from the report’s tracking at its insertion: the three burns before the coelliptic are flown at the record’s instants and impulses, and the coelliptic, the terminal phase, its corrections and the braking are solved on the Agena as each is made. ' +
+    'The dockings, the tether and the walks are not flown: the two phasing burns the Agena made with the pair docked are flown on the ship at the pair’s impulse, and the separation, the last phasing burn, the retrofire and the entry as recorded (mission.md).',
+  // the flight in the scene: the stack off the pad, what leaves it and the re-entry module's descent (vehicles/gemini-flies.ts)
+  flies: geminiFlies(orbital),
   models: [vehicle, pad, crew, pilot],
   surroundings: 'models/usa/places/cape-canaveral/lc19/1965-03.glb',
 };

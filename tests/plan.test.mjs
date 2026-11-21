@@ -361,7 +361,7 @@ for (const f of titans) {
       assert.equal(m.on, r.on.value);
       assert.equal(m.off, r.off.value);
       if (r.deltaV) assert.ok(Math.abs(Math.abs(m.accel) * (m.off - m.on) - r.deltaV.value) < 1e-12, `${r.id}: its impulse`);
-      assert.equal(m.accel < 0, r.thrusters === 'forward', `${r.id}: which way it pushes`);
+      assert.equal(m.accel < 0, r.thrusters !== 'aft', `${r.id}: which way it pushes`);
     });
     // the coast's burn the four rockets as one, spent and not cut; the section goes so long after
     const coast = coastOf(plan);

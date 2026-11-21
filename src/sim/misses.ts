@@ -262,6 +262,16 @@ const GT8_BRAKING =
 const GT8_ENTRY =
   'It comes down 31 km to the left (north) of where the ship landed, the drogue on the record’s place along the track. The retrofire is timed by guidance for the landing place along the track (sim/plan.ts LandingAim); the bank is the crew’s and the computer’s as read off the report’s Figure 5.1.5-17 and flown by the clock (10 degrees south to 400,000 ft, the back-up 52 south, then the computer’s banks to the north), not commanded on the run’s own range to the target as the computer’s were: the cross-range the run carries to 10:31 is not taken out. Its plane after the rendezvous is the Agena’s, flown on from the insertion vector. Not adjusted';
 
+/** Gemini XII's rendezvous, made on GATV-5001 flown from its insertion vector, its docked burns and its entry (gt-12/mission.md). */
+const GT12_DOCKED =
+  'The orbit after the first docked burn and every burn after it holds its perigee and misses its apogee, 13 to 15 km over the record’s: the second and third dockings and the station keeping round them, which took the record’s orbit down from 162.7 by 156.4 nautical miles after the rendezvous to 161.4 by 153.0 before the first eclipse phasing (Tables 4.3-III and 4.3-II), are not flown, so the run comes to the docked burns some 7 km higher in its axis, and each burn, at the pair’s measured impulse, takes as much off it as the record’s did. Not adjusted';
+const GT12_TPI =
+  'The terminal phase is lit at the record’s instant, the Agena 11 km nearer than the record has it as the coelliptic burn was made (the run’s orbit after the three burns before it within 4 km of the record’s), and solved to reach the Agena when the ground’s theoretical braking was to be (3:38:12): 8.9 m/s where the crew’s, from the backup charts, was 6.6 (21.8 ft/s). Not adjusted';
+const GT12_CORRECTIONS =
+  'The run has no navigation, radar or platform error: the terminal phase it solves reaches the Agena, and the corrections the crew made from their charts, which took out theirs, solve to nothing. Not adjusted';
+const GT12_ENTRY =
+  'The retrofire is timed by guidance for the landing place along the track (sim/plan.ts LandingAim), 7 minutes after the record’s instant: after 94 hours on an orbit whose axis is some 7 km over the record’s (the docked burns, above) the run is that far behind the real ship along it. It comes down 36 km to the right of where the ship landed: the bank is the crew’s 10° and back-up 45° to the south and then lift up where the control system held the computer’s banks, which are not flown, and the track the run is on at retrofire is not the ship’s. Not adjusted';
+
 /** Soyuz 1's period after its correction, and its landing across the track. */
 const PERIOD_S1 =
   'The heights of Mishin’s first orbit, 200.9 by 224.1 km, are flown as mean heights over the WGS 84 ellipsoid under the apsis (the convention where heights come without a period), and so go round in 88.36 min where Mishin has 88.62 for them: the Soviet heights were over a ball some kilometres lower (tests/orbital.test.mjs, "the heights over the mean Earth"). The correction, the middle of Mishin’s 3.1 to 3.8 m/s, takes 0.10 min off the period where his figures fall by 0.07: it stays short. Not adjusted';
@@ -1222,6 +1232,31 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
         by: 93.5,
         slack: 15,
         why: 'Down at 10:43:00, 94 s after the record: the drogue out 33 s after the report’s table has it (its figure has it 13 s earlier still), and the rest the parachutes: the main at the 8,700 ft read off the report’s figure, on the 84.2 ft ringsail’s 31.6 ft/s, where the figure has the ship from the main’s deployment to the water in 195 s. As Gemini-Titan 7’s. Not adjusted',
+      },
+    },
+  }),
+  // Gemini XII from the pad, its rendezvous made on GATV-5001 (its coast from the published orbit is not run: a flight with a
+  // target is flown with it, tests/orbital.test.mjs)
+  'usa/gemini/gt-12': inUnits({
+    ascent: {},
+    shown: {
+      'after-28800.apogee': { by: 12_720, slack: 2_000, why: GT12_DOCKED },
+      'after-57600.apogee': { by: 13_490, slack: 2_000, why: GT12_DOCKED },
+      'after-190800.apogee': { by: 13_120, slack: 2_000, why: GT12_DOCKED },
+      'after-226800.apogee': { by: 14_800, slack: 2_000, why: GT12_DOCKED },
+      'after-336000.apogee': { by: 15_430, slack: 2_000, why: GT12_DOCKED },
+      'terminal-phase.velocity': { by: 2.26, slack: 0.5, why: GT12_TPI },
+      'midcourse-2.velocity': { by: -0.9449, slack: 0.2, why: GT12_CORRECTIONS },
+      'midcourse-4.velocity': { by: -1.492, slack: 0.2, why: GT12_CORRECTIONS },
+      'at-8575.range': { by: -11_180, slack: 3_000, why: GT12_TPI },
+      ejectionAt: { by: 395.6, slack: 60, why: GT12_ENTRY },
+      crossTrack: { by: 36_162, slack: 5_000, why: GT12_ENTRY },
+    },
+    descent: {
+      'reentry-module.at': {
+        by: 447.7,
+        slack: 60,
+        why: `Down at 94:41:58, 448 s after the record: the retrofire 7 minutes late. ${GT12_ENTRY}`,
       },
     },
   }),
