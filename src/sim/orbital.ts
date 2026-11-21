@@ -31,9 +31,10 @@ import {
 import { elementsOf, planeThrough, type State, sunlit } from '../world/orbit.ts';
 import { ratioOf } from '../world/thermosphere.ts';
 import { airAt, airDrag } from './air.ts';
-import { centreAt, fieldFor, stepAbout, stepIn, termsOf } from './core/gravity.ts';
+import { centreAt, EARTH_FIELD, fieldFor, stepAbout, stepIn, termsOf } from './core/gravity.ts';
 import { atmosphere, meanFreePath } from './atmosphere.ts';
 import { Descent, type DescentContext, type DescentSnapshot, type DownBody, downOf } from './descent.ts';
+import { bankFlown, type EntryDef, type EntryFlown, type EntryHands, type EntryPilot, entryPilot } from './entry.ts';
 import { along } from './fly.ts';
 import { ENTRY_G } from './loads.ts';
 import {
@@ -163,9 +164,10 @@ export const crewWords = (crew: { words?: CrewWords } | undefined): CrewWords =>
  * What a hand gave in the descent (the flight deck, orbitdeck.ts): each event at an instant, seconds from liftoff, by id
  * (`ejection`; `<body id>/<parachute name>`), and the automatic sequence's switch as it was thrown: from each instant on
  * as it says, on before the first. The automatic sequence (the barometric switches, the timer) acts only while it is on;
- * what a hand gives acts whatever it is. The modules' parting is the plan's own (`entry.separation`).
+ * what a hand gives acts whatever it is. The modules' parting is the plan's own (`entry.separation`). And, of an entry
+ * steered to a place (`Hold.entry`), the stick's roll and the guidance switch (sim/entry.ts `EntryHands`).
  */
-export interface DescentHands {
+export interface DescentHands extends EntryHands {
   given: Record<string, number>;
   switched: { t: number; on: boolean }[];
 }
@@ -534,6 +536,15 @@ export interface OrbitResults {
   pericynthion?: number;
   pericynthionAt?: number;
   moonImpactAt?: number;
+  /**
+   * An entry steered to a place (`Hold.entry`, sim/entry.ts), on its own events: `entry.sensed`, `entry.backup`,
+   * `entry.takeover`, `entry.final` and `entry.ended`, how long after it came through the interface the load reached
+   * 0.05 g, the crew rolled to the backup bank, the autopilot was given the computer's commands, the computer began its
+   * final phase and it stopped steering, s; `entry.takeoverHeight`, the height above the sea as the autopilot was given
+   * the commands, m; `entry.reversals`, how many times the computer reversed the bank's side; `entry.miss`, how far from
+   * its target it reached the height the coast ends at, m. NaN for what never came.
+   */
+  [entry: `entry.${string}`]: number;
 }
 /** What a check of the orbit at an instant reads. */
 export type OrbitReading = 'perigee' | 'apogee' | 'period';
@@ -601,6 +612,8 @@ export interface OrbitFlown {
   crossings?: { t: number; to: 'earth' | 'moon' }[];
   /** The coast's manoeuvres as this run flew them, in the order lit; left out with none. */
   burns?: BurnFlown[];
+  /** What an entry steered to a place flew (`Hold.entry`, sim/entry.ts): its banks, and when each thing of it came. */
+  entry?: EntryFlown;
   /**
    * The plan as this run flew it, where guidance timed its braking burn for the landing place (`aimedAtLanding`): the
    * flight's plan with that burn's command, and all the clock sets off after it, so much sooner or later. What flies
@@ -869,7 +882,8 @@ export function orbitDrag(ship: Ship, joined: boolean, height: number, mach: num
  * the sea; and, while `aim` is given (a unit vector in that frame), the braking engine's even acceleration along it.
  * `sun`: the factor the day's Sun puts on the standard's density there (`solarAt`). `more`: a manoeuvre's push, m/s^2, in
  * the same frame (`movingAt`), and the plumb line there, which the entry body's lift is turned from (`liftOf`): it lifts
- * only alone, with a lift of its own, while a bank is held.
+ * only alone, with a lift of its own, while a bank is held: the plan's by the clock (`bankAt`), or `more.bank`, the bank an
+ * entry steered to a place is flying (`Hold.entry`: its pilot's, sim/entry.ts).
  */
 export function shipPush(
   plan: FlightPlan,
@@ -878,7 +892,7 @@ export function shipPush(
   altitude: number,
   aim: Vec3 | null,
   sun = 1,
-  more?: { push?: Vec3 | null; up?: () => Vec3 },
+  more?: { push?: Vec3 | null; up?: () => Vec3; bank?: number | null },
 ): Vec3 {
   const ship = shipOf(plan);
   const air = atmosphere(altitude);
@@ -891,7 +905,7 @@ export function shipPush(
   let drag = scale(airDrag(wind, airspeed, air.density * sun, area), 1 / mass);
   // (the entry body alone, trimmed and banked: its lift square to its motion through the air, turned from the plumb line)
   const lift = ship.entry.aero.lift;
-  const bank = lift && more?.up && at >= ship.parted ? bankAt(ship, at) : null;
+  const bank = lift && more?.up && at >= ship.parted ? (more.bank !== undefined ? more.bank : bankAt(ship, at)) : null;
   if (lift && bank !== null) drag = add(drag, liftOf(drag, wind, more!.up!(), along(lift, mach), bank));
   if (more?.push) drag = add(drag, more.push);
   // (the braking engine is on the instrument module: parted, it pushes no more)
@@ -919,6 +933,97 @@ export function bankAt(ship: Pick<Ship, 'banks'>, at: number): number | null {
   let held: number | null = null;
   for (const b of ship.banks) if (b.at <= at) held = b.bank;
   return held;
+}
+
+/**
+ * The bank at `at` on a run, degrees: from the instant an entry steered to a place begins (`Ship.guided`), what that run's
+ * entry flew (`OrbitFlown.entry`'s banks; its first attitude where the run is not given); before it, the plan's (`bankAt`).
+ */
+export function bankOn(ship: Pick<Ship, 'banks' | 'guided'>, at: number, flown?: EntryFlown['banks']): number | null {
+  if (ship.guided && at >= ship.guided.at) return (flown && bankFlown(flown, at)) ?? ship.guided.def.initial.value;
+  return bankAt(ship, at);
+}
+
+/**
+ * `plan` with its entry flown open: no computer (`EntryDef.computer` left out), so the first attitude and then the crew's
+ * backup bank to the end, which is the entry a ground times a braking burn on (the backup bank is the one that reaches
+ * the place with nothing steering). With `backup` false, without that either: the first attitude held all the way, as a
+ * plain bank (an entry begun far from the planned one, where the target means nothing).
+ */
+export function openLoop(plan: FlightPlan, backup = true): FlightPlan {
+  if (!plan.attitude.some((a) => 'entry' in a.hold)) return plan;
+  const out = structuredClone(plan);
+  for (const a of out.attitude)
+    if ('entry' in a.hold) {
+      const { computer: _, ...open } = a.hold.entry;
+      a.hold = backup ? { entry: open } : { bank: open.initial };
+    }
+  return out;
+}
+
+/** An entry body flown alone (`flyEntry`): each step's state, and what its entry flew. */
+export interface EntryRun {
+  samples: { t: number; r: Vec3; v: Vec3; altitude: number; speed: number; g: number; bank: number }[];
+  flown: EntryFlown;
+  /** Where it reached the floor: s from liftoff, degrees north and east; null if it never came down to it. */
+  end: { t: number; latitude: number; longitude: number } | null;
+}
+
+/**
+ * A lifting body alone, flown from a state down to the height `floor` above the sea under an entry steered to a place
+ * (`def`, sim/entry.ts): gravity with J2, the standard air turning with the Earth on its drag at trim, and its lift
+ * banked as its pilot has it, by the coast's own forces and steps (a second above 100 km, a twentieth below). No plan
+ * and no flight: what an entry is held to before a flight flies one (a return from the Moon, tests/entry.test.mjs), and
+ * what guidance can fly ahead from a state to aim a return on. It gives up `most` seconds on (a skip that does not come back).
+ */
+export function flyEntry(
+  body: { mass: number; aero: AeroDef },
+  def: EntryDef,
+  frame: EarthFrame,
+  from: { t: number; r: Vec3; v: Vec3 },
+  floor: number,
+  hands?: EntryHands,
+  most = 3600,
+): EntryRun {
+  const { mass, aero } = body;
+  const pilot = entryPilot(def, frame, from.t, hands);
+  const pushAt = (s: State, at: number): Vec3 => {
+    const air = airAt(frame, s.r, s.v, at, 0);
+    const drag = scale(airDrag(air.wind, air.airspeed, air.air.density, aero.area.value * along(aero.drag, air.mach)), 1 / mass);
+    return aero.lift ? add(drag, liftOf(drag, air.wind, frame.upOver(air.here, at), along(aero.lift, air.mach), pilot.bank)) : drag;
+  };
+  const marks = [...(hands?.rolls ?? []), ...(hands?.steered ?? [])].map((x) => x.t).sort((p, q) => p - q);
+  let state: State = { r: from.r, v: from.v };
+  let t = from.t;
+  const sampleAt = (s: State, at: number) => {
+    const air = airAt(frame, s.r, s.v, at, 0);
+    return { t: at, r: s.r, v: s.v, altitude: air.altitude, speed: air.airspeed, g: length(pushAt(s, at)) / G0, bank: pilot.bank };
+  };
+  let before = sampleAt(state, t);
+  pilot.advance(t, state, before.g * G0);
+  const samples = [before];
+  while (t < from.t + most) {
+    const mark = marks.find((m) => m > t + 1e-9);
+    const h = Math.min(before.altitude > THICK ? 1 : 0.05, mark === undefined ? Infinity : mark - t);
+    const last = state;
+    state = stepIn(EARTH_FIELD, state, t, h, pushAt);
+    t = mark !== undefined && Math.abs(t + h - mark) < 1e-9 ? mark : t + h;
+    let now = sampleAt(state, t);
+    if (now.altitude <= floor && now.altitude < before.altitude) {
+      // (back along the last step to the instant it came through the height)
+      const part = (before.altitude - floor) / (before.altitude - now.altitude);
+      state = { r: add(last.r, scale(sub(state.r, last.r), part)), v: add(last.v, scale(sub(state.v, last.v), part)) };
+      t = before.t + part * (now.t - before.t);
+      now = sampleAt(state, t);
+      samples.push(now);
+      const here = frame.place(state.r, t);
+      return { samples, flown: pilot.flown, end: { t, latitude: here.latitude, longitude: here.longitude } };
+    }
+    pilot.advance(t, state, now.g * G0);
+    samples.push(now);
+    before = now;
+  }
+  return { samples, flown: pilot.flown, end: null };
 }
 
 /**
@@ -1099,6 +1204,7 @@ export function shipOf(plan: FlightPlan): Ship {
   for (const a of plan.attitude) if ('aim' in a.hold) aim = a;
   let turnedAt = Number.NEGATIVE_INFINITY;
   const banks: { at: number; bank: number }[] = [];
+  let guided: Ship['guided'];
   for (const e of plan.events) {
     if (!e.automatic) continue;
     const at = clockAt(plan, e);
@@ -1110,6 +1216,8 @@ export function shipOf(plan: FlightPlan): Ship {
         turnedAt = at;
       }
       if ('bank' in def.hold && at < Number.MAX_SAFE_INTEGER) banks.push({ at, bank: def.hold.bank.value });
+      if ('entry' in def.hold && at < Number.MAX_SAFE_INTEGER && !(guided && guided.at <= at))
+        guided = { at, id: def.id, def: def.hold.entry };
     }
   }
   banks.sort((p, q) => p.at - q.at);
@@ -1126,6 +1234,7 @@ export function shipOf(plan: FlightPlan): Ship {
     ...(plan.record!.landing ? { landing: plan.record!.landing } : {}),
     moves: manoeuvres,
     banks,
+    ...(guided ? { guided } : {}),
   };
   ships.set(plan, ship);
   return ship;
@@ -1157,6 +1266,8 @@ export interface Ship {
   moves: Move[];
   /** The banks the plan's events hold the entry body at, from their instants, degrees, in order (`Hold.bank`). */
   banks: { at: number; bank: number }[];
+  /** The entry steered to a place (`Hold.entry`, sim/entry.ts), from the instant its event sets it, and the attitude's id. */
+  guided?: { at: number; id: string; def: EntryDef };
 }
 const ships = new WeakMap<FlightPlan, Ship>();
 
@@ -1337,7 +1448,11 @@ export function flyOrbit(
   const interfaceHeight = plan.record?.entryInterface?.value ?? INTERFACE;
   /** Each manoeuvre's line, fixed as it lit (`movesOf`). */
   const lines: (Vec3 | undefined)[] = moves.map(() => undefined);
-  const lifts = Boolean(ship.entry.aero.lift && ship.banks.length);
+  // (an entry steered to a place, `Hold.entry`: its pilot from the instant its event sets it, or from where this run begins
+  // after that, sim/entry.ts)
+  const guided = ship.guided;
+  let pilot = null as EntryPilot | null;
+  const lifts = Boolean(ship.entry.aero.lift && (ship.banks.length || guided));
 
   // (from the published orbit, or from wherever the ascent flown left the spacecraft: sim/staged.ts)
   let t = from ? from.t : ship.orbit.injection.at.value;
@@ -1381,7 +1496,11 @@ export function flyOrbit(
     const air = airOf(s, at);
     const more =
       moves.length || lifts
-        ? { push: either(movingAt(moves, lines, as), held(s, at, as)), up: () => frame.upOver(frame.place(s.r, at), at) }
+        ? {
+            push: either(movingAt(moves, lines, as), held(s, at, as)),
+            up: () => frame.upOver(frame.place(s.r, at), at),
+            ...(pilot ? { bank: pilot.bank } : {}),
+          }
         : undefined;
     return shipPush(
       plan,
@@ -1617,6 +1736,10 @@ export function flyOrbit(
       results.retroPerigee = el.a * (1 - el.e) - radius;
     }
     if (t === parted) results.separationAltitude = airOf(state, t).altitude;
+    if (guided && !pilot && t >= guided.at) {
+      pilot = entryPilot(guided.def, frame, t, hands);
+      pilot.advance(t, state, length(push(state, t)));
+    }
   };
   for (const [i, move] of moves.entries())
     if (move.on < t && move.toward && 'station' in move.toward && t < move.toward.until.value && pursued?.at(t)) {
@@ -1645,6 +1768,9 @@ export function flyOrbit(
     handover,
     ...moves.flatMap((m) => [m.on, m.off]),
     ...ship.banks.map((b) => b.at),
+    ...(guided ? [guided.at] : []),
+    ...(hands?.rolls ?? []).map((x) => x.t),
+    ...(hands?.steered ?? []).map((x) => x.t),
     ...fixes.map((f) => f.at.value),
     ...ranges.map((c) => (c.when as { at: number }).at),
     ...(aimedFrom > t && aimedFrom < braking ? [aimedFrom] : []),
@@ -1809,8 +1935,10 @@ export function flyOrbit(
        * fifty minutes of its end).
        */
       const missAt = (by: number): number => {
+        // (flown open, on the crew's backup bank where the entry is steered: the entry the ground timed the burn on, and
+        // one whose landing moves with the burn's instant, as a steered one's does not)
         const trial = flyOrbit(
-          delayed(plan, braking, by),
+          openLoop(delayed(plan, braking, by)),
           site,
           frame,
           seaLevel,
@@ -1886,6 +2014,7 @@ export function flyOrbit(
           samples: [...samples, ...rest.samples.slice(1)],
           results: rest.results,
           ...(made.length ? { burns: made } : {}),
+          ...(rest.entry ? { entry: rest.entry } : {}),
           plan: flown,
         };
       }
@@ -1894,6 +2023,11 @@ export function flyOrbit(
     let now = sample();
     phase = phaseAt(t, now.g, phase);
     now = { ...now, phase };
+    if (pilot) {
+      pilot.advance(t, state, now.g * G0);
+      if (results['entry.takeoverHeight'] === undefined && !Number.isNaN(pilot.flown.takeover))
+        results['entry.takeoverHeight'] = now.altitude;
+    }
 
     if (t <= on) results.apogee = Math.max(results.apogee, length(state.r) - radius);
     // the shadow's edge, where half the Sun is hidden: placed along the step
@@ -1964,5 +2098,15 @@ export function flyOrbit(
   // (a coast that ends up there, in a stretch let go: it ends at its last step, a sample)
   if (letGo > 0) keep(before);
   for (const b of burns) results[`${b.lit}.velocity`] = b.velocity;
-  return { samples, results, ...(burns.length ? { burns } : {}), ...(crossings.length ? { crossings } : {}) };
+  const entry = pilot?.flown;
+  if (entry && guided) {
+    // (each of the entry's own events as so long after the interface, and where it ended against its target)
+    for (const id of ['sensed', 'backup', 'takeover', 'final', 'ended'] as const) results[`entry.${id}`] = entry[id] - results.interfaceAt;
+    results['entry.takeoverHeight'] ??= Number.NaN;
+    results['entry.reversals'] = entry.reversals;
+    const aimed = geodeticToEcef({ latitude: guided.def.target.latitude.value, longitude: guided.def.target.longitude.value, height: 0 });
+    const reached = geodeticToEcef({ latitude: results.ejectionLatitude, longitude: results.ejectionLongitude, height: 0 });
+    results['entry.miss'] = Number.isNaN(results.ejectionAt) ? Number.NaN : length(sub(reached, aimed));
+  }
+  return { samples, results, ...(burns.length ? { burns } : {}), ...(crossings.length ? { crossings } : {}), ...(entry ? { entry } : {}) };
 }

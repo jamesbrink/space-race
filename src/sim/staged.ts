@@ -59,7 +59,7 @@ import { ENTRY_G } from './loads.ts';
 import {
   aimFor,
   aimOf,
-  bankAt,
+  bankOn,
   type CoastContacts,
   chuteEvent,
   coastEngineState,
@@ -1433,7 +1433,7 @@ export function recordSamples(
   const trim = ship.entry.aero.trim ? ship.entry.aero.trim.value * DEG : 0;
   const trimmed = (s: { t: number; r: Vec3 }, wind: Vec3): Vec3 => {
     const back = scale(unit(wind), -1);
-    const bank = trim ? bankAt(ship, s.t) : null;
+    const bank = trim ? bankOn(ship, s.t, whole.coast.entry?.banks) : null;
     if (bank === null) return back;
     const lift = liftOf(back, wind, unit(s.r), 1, bank);
     return length(lift) > 0 ? add(scale(back, Math.cos(trim)), scale(unit(lift), Math.sin(trim))) : back;

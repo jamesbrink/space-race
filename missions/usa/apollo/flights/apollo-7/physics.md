@@ -183,30 +183,57 @@ adapter's four panels stood open and are not counted (`src/sim/misses.ts`).
 ## Entry and splashdown
 
 Entry starts from the reconstructed 400,000-ft interface. The plan uses the
-reported orbital state and onboard flight-path angle. The measured
-lift-to-drag trend is read from Fig. 5.2-1, with the low-Mach end held below the
-figure's range. Drag coefficients come from the later CM-107, which has the same
-Block II outline and a different center of mass. The crew's initial
-lift-up attitude, approximately 55° backup bank and the digital autopilot's
-reversals are represented by readings from the plotted roll trace. The
-simulator does not run the Apollo guidance computer or reconstruct the actual
-upper-air winds and transonic RCS pulses. [Apollo 7 Mission Report, §§3.3,
-5.2 and 5.16 and Figs. 5.2-1 and 5.16-28](https://apollojournals.org/afj/ap07fj/pdf/a07-mission-report.pdf),
-[Apollo 7 Entry Postflight Analysis](https://apollojournals.org/afj/ap07fj/pdf/a07-entry-postflight-analysis-19740072689.pdf)
+reported orbital state and onboard flight-path angle. The lift over drag is the
+one the computer worked from its accelerometers in this entry, tabulated against
+Mach number in the entry's postflight analysis (Table IIa), with its ends held.
+Drag coefficients come from the later CM-107, which has the same Block II outline
+and a different center of mass.
+
+The entry is steered, on its own events and not by the clock
+(`src/sim/entry.ts`; `docs/agents/simulator.md`, "An entry is steered"). The
+command module computer's entry programs are flown as the flight program's
+listing has them (Colossus 2A, Apollo 11's: Apollo 7 flew Sundisk, whose listing
+has not been read, so the program, its two pad loads and the roll autopilot's
+limits are `assumed`), closed on the target the computer was given, 27° 37.8' N,
+64° 10.2' W. The crew fly what the report says they flew: the lift up to 0.2 g,
+then the 55° backup bank, planned for about thirty seconds while the downrange
+error was checked and kept until the computer's first roll command of its own,
+and from there the digital autopilot on the computer's commands, rolled at no
+more than 20°/s. The report's two accounts of the backup bank's side disagree
+(§3.3 has roll-right, §5.16.1 roll-left); the roll trace has it on the side of
+the computer's first commands, and the program's roll is positive to the left, so
+the lift is turned to the right. The computer navigates on the run's own state:
+no platform or accelerometer error is modelled. The upper-air winds and the
+transonic RCS pulses are not reconstructed. [Apollo 7 Mission Report, §§3.3,
+5.2, 5.16.1 and 8.1 and Figs. 5.2-1 and 5.16-28](https://apollojournals.org/afj/ap07fj/pdf/a07-mission-report.pdf),
+[Apollo 7 Entry Postflight Analysis](https://apollojournals.org/afj/ap07fj/pdf/a07-entry-postflight-analysis-19740072689.pdf),
+[Colossus 2A, REENTRY CONTROL](https://github.com/virtualagc/virtualagc/blob/master/Comanche055/REENTRY_CONTROL.agc)
 and [NASA TN D-6725, Table I](https://ntrs.nasa.gov/api/citations/19720013191/downloads/19720013191.pdf).
 
-The flight report gives a peak load of 3.41 g in the structural analysis and
-the reconstructed trajectory 3.33 g; the run's is held against it in
-`src/sim/misses.ts`. Flown from the pad on its own forces, the simulated capsule
-splashes down 66 s after the reported 260:09:03, 59 km from the recovery force's
-position: level with it along its track, which is what the deorbit firing is timed
-for, and 59 km to the right, which no timing takes off. Lit by the clock instead it
-is 98 s late and 219 km off. With every tracking state joined, as until November
-2026, it was 41 s late and 47 km off: that agreement was the tracking's, not the
-simulator's. The entry itself is not yet the flight's: the run reaches the interface
-961 s after the burn where the flight took 851, and the bank angles, still flown at
-the record's instants after the burn, turn the lift aside 110 s early: 5.66 g for
-3.33. The twin drogues
+| The entry's own events | Run | Record |
+| --- | --- | --- |
+| 0.05 g, after the interface | 131 s | 131 s (259:55:38) |
+| 0.2 g, the computer's final phase | 163 s | 159 s (259:56:06) |
+| The autopilot given the computer's commands | 225 s, at 209,600 ft | about 238 s (the roll trace), at about 202,000 ft |
+| Greatest load | 3.09 g | 3.33 g reconstructed, 3.41 in the structural analysis |
+| The computer stops steering (1,000 ft/s) | 543 s | 533 s (260:02:20) |
+| Reversals of the bank's side | 5 | 4 on the roll trace |
+| From the target at the drogues | 0.8 km | 2.2 n. mi. reconstructed, 1.0 onboard |
+
+The computer commands no roll of its own for a minute after 0.2 g, as on the
+flight, because the target then lies within its limit across the track: that
+wait is the law's, not a figure given to it. Flown at the record's instants after
+the burn, as until November 2026, the same banks gave 5.66 g.
+
+The deorbit firing is timed to bring the run down at the landing place, and the
+trial flights that time it are flown open on the backup bank: the bank the ground
+worked to reach the place with nothing steering. Flown from the pad on its own
+forces, the simulated capsule splashes down 93 s after the reported 260:09:03,
+0.9 km from the computer's target and 14 km from the recovery force's position,
+which is itself 7.7 nautical miles from the target by dead reckoning from a loran
+fix (§8.3.2, "may have been as much as ±7 n. mi. in error"). With every tracking
+state joined, as until November 2026, it was 41 s late and 47 km off: that
+agreement was the tracking's, not the simulator's. The twin drogues
 have one equivalent drag area and the three mains another. The opening model
 approximates staged reefing with continuous inflation. [Apollo 7 Mission
 Report, Tables 2-I and 3-VI and §§5.1, 5.5 and 5.16](https://apollojournals.org/afj/ap07fj/pdf/a07-mission-report.pdf).

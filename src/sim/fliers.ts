@@ -36,6 +36,7 @@ import { airDrag, blowing, skyOf } from './air.ts';
 import { crossing, integrate, sensed, trapezoid } from './apparent.ts';
 import { AIR_TOP } from './atmosphere.ts';
 import { Descent, type DescentContext, type DownBody, downOf } from './descent.ts';
+import { bankFlown, type EntryFlown, type EntryPilot, entryPilot } from './entry.ts';
 import { ballisticOf, chuteArea, dragArea, thrustIn } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { tearOf } from './loads.ts';
@@ -265,7 +266,10 @@ export function ballistic(plan: FlightPlan, site: Geodetic, seaLevel: number, st
  * lit, from where the ship was then (`lit`, the run's own state at the burn's start: the line is a function of that
  * state and the Sun then, `aimOf`); without it, the line it would have lit along from the state at the start. The
  * coast's manoeuvres (orbital.ts `movesOf`) are flown as flyOrbit flies them, each along the line it lights on (one in
- * progress at the start, along the line from the state then), and the entry body's lift while a bank is held.
+ * progress at the start, along the line from the state then), and the entry body's lift while a bank is held. An entry
+ * steered to a place (`Hold.entry`, sim/entry.ts) is flown on the banks the run on show flew, where they are given
+ * (`banks`: `OrbitFlown.entry`'s, so the path is that run's); without them by a pilot of its own from the start, with what
+ * the hands gave (`descend.hands`): where its guidance would take it from there.
  */
 export function spacecraft(
   plan: FlightPlan,
@@ -273,14 +277,16 @@ export function spacecraft(
   site: Geodetic,
   seaLevel: number,
   start: { t: number; r: Vec3; v: Vec3 },
-  options: { lit?: { r: Vec3; v: Vec3 }; descend?: Descend } = {},
+  options: { lit?: { r: Vec3; v: Vec3 }; descend?: Descend; banks?: EntryFlown['banks'] } = {},
 ): Flier {
   // (the Sun is of date: turned into the frame the state is in)
   const never = (x: number): boolean => !(x < Number.MAX_SAFE_INTEGER);
   const ship = shipOf(plan);
   const [on, off, parted] = [ship.on, ship.off, ship.parted];
   const moves = ship.moves;
-  const marks = [on, off, parted, ...moves.flatMap((m) => [m.on, m.off]), ...ship.banks.map((b) => b.at)]
+  const guided = ship.guided;
+  let pilot = null as EntryPilot | null;
+  const marks = [on, off, parted, ...moves.flatMap((m) => [m.on, m.off]), ...ship.banks.map((b) => b.at), ...(guided ? [guided.at] : [])]
     .filter((x) => !never(x) && x >= start.t)
     .sort((a, b) => a - b);
   const aimAt = (t: number, r: Vec3, v: Vec3): Vec3 =>
@@ -305,7 +311,15 @@ export function spacecraft(
   const lines: (Vec3 | undefined)[] = moves.map((m) =>
     start.t > m.on && start.t < m.off ? lineOf(m, start.t, start.r, start.v) : undefined,
   );
-  const lifts = Boolean(ship.entry.aero.lift && ship.banks.length);
+  const lifts = Boolean(ship.entry.aero.lift && (ship.banks.length || guided));
+  /** The bank of an entry steered to a place at `at`: the run's own where its banks are given, else this path's pilot's; undefined before it. */
+  const steeredBank = (at: number): number | undefined =>
+    !guided || at < guided.at ? undefined : options.banks ? (bankFlown(options.banks, at) ?? guided.def.initial.value) : pilot?.bank;
+  const piloted = (t: number, r: Vec3, v: Vec3, altitude: number): void => {
+    if (!guided || options.banks || down || t < guided.at) return;
+    pilot ??= entryPilot(guided.def, frame, t, options.descend?.hands);
+    pilot.advance(t, { r, v }, length(flier.push(t, r, v, altitude)));
+  };
   const moving = () => moves.some((m, i) => lines[i] && since >= m.on && since < m.off);
   // (the ship as it is from the last instant it changed at: its mass, the whole ship's until the modules part, is read
   // there and not at a step's own instants, the last of which is the parting itself)
@@ -313,7 +327,7 @@ export function spacecraft(
   // (with `descend`, at the height the pilot leaves at the descent flies on from there, the followed body down to the ground)
   let down: Flier | null = null;
   const ground = floorOf(site, seaLevel);
-  return {
+  const flier: Flier = {
     kind: 'coast',
     cutoff: null,
     quiet: Math.max(never(on) ? Number.NEGATIVE_INFINITY : off, ...moves.map((m) => m.off)),
@@ -333,12 +347,19 @@ export function spacecraft(
             altitude,
             burning ? aim : null,
             solarAt(frame, p, at, altitude),
-            moves.length || lifts ? { push: movingAt(moves, lines, since), up: () => frame.upOver(frame.place(p, at), at) } : undefined,
+            moves.length || lifts
+              ? {
+                  push: movingAt(moves, lines, since),
+                  up: () => frame.upOver(frame.place(p, at), at),
+                  ...(steeredBank(at) === undefined ? {} : { bank: steeredBank(at)! }),
+                }
+              : undefined,
           ),
     next: (t) => (down ? down.next(t) : after(marks, t)),
     below: () => (down ? down.below() : ship.floor),
     settle(t, r, v, altitude, falling) {
       down?.settle?.(t, r, v, altitude, falling);
+      piloted(t, r, v, altitude);
     },
     arrive(t, r, v, altitude, by): Arrival {
       if (down) return down.arrive(t, r, v, altitude, by);
@@ -348,6 +369,7 @@ export function spacecraft(
         return down.arrive(t, r, v, altitude, 'time');
       }
       since = t;
+      piloted(t, r, v, altitude);
       const events: EventKind[] = [];
       moves.forEach((m, i) => {
         if (t === m.on) lines[i] = lineOf(m, t, r, v);
@@ -368,6 +390,7 @@ export function spacecraft(
       return { events };
     },
   };
+  return flier;
 }
 
 /** What a prediction of a descent follows: the body (`Down.bodies[].id`, descent.ts), the hands' commands, and the run, for a start part-way down. */

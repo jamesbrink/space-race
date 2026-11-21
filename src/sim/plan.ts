@@ -18,6 +18,7 @@ import type { Confidence, Measure } from '../measure.ts';
 import type { AbortRecord, AbortSequence, Aloft, Body, Burns, Curve, Heating, ShedBody, Thruster, Winds } from '../types.ts';
 import type { Vec3 } from '../world/frames.ts';
 import type { PeriodKind } from '../world/meanelements.ts';
+import type { EntryDef } from './entry.ts';
 import type { DescentCrew, Guidance } from './orbital.ts';
 
 /** Which deck flies it and how the record's run is made: up and down again, or up into orbit and down from it. */
@@ -502,6 +503,12 @@ export type Hold =
    * motion at 90 (orbital.ts `liftOf`). Its lift is flown only while a bank is held: trimmed and its roll kept.
    */
   | { bank: Measure }
+  /**
+   * A lifting body's entry steered to a place (sim/entry.ts): from the event that sets it the bank is its crew's and its
+   * computer's, commanded on the entry's own state (the load felt, the range to go) and never by the clock, and a hand's
+   * stick while the guidance switch is off. Its lift is flown as a bank's is.
+   */
+  | { entry: EntryDef }
   /** Left to itself. */
   | { free: true };
 

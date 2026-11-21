@@ -95,10 +95,12 @@ for (const f of all.filter((x) => x.plan?.kind === 'orbital' && downOf(x.plan) &
     const start = { t: s.t, r: s.r, v: s.v };
     // (the plan as the run flew it: its braking burn where guidance timed it for the landing place, sim/plan.ts `LandingAim`)
     const as = flown().plan ?? f.plan;
-    const short = predicted(spacecraft(as, dated, site, sea, start), start);
+    // (an entry steered to a place is predicted on the banks the run flew, as the deck's path is: sim/fliers.ts `spacecraft`)
+    const banks = coast.entry ? { banks: coast.entry.banks } : {};
+    const short = predicted(spacecraft(as, dated, site, sea, start, banks), start);
     assert.ok(short.impact && Math.abs(short.impact.altitude - coastOf(f.plan).floor) < 1, 'without it, it stops where the pilot leaves');
     held(
-      predicted(spacecraft(as, dated, site, sea, start, { descend: { follow: first.id } }), start),
+      predicted(spacecraft(as, dated, site, sea, start, { ...banks, descend: { follow: first.id } }), start),
       down.landed[first.id],
       `${first.id} from the coast`,
     );

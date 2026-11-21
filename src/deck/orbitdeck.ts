@@ -1,5 +1,6 @@
 import type { Impact } from '../sim/contact.ts';
 import { type DownBody, type DownChute, downOf } from '../sim/descent.ts';
+import { bankFlown } from '../sim/entry.ts';
 import { apparentBy, type Descend, guided, spacecraft } from '../sim/fliers.ts';
 import { along, MEAN_RADIUS } from '../sim/fly.ts';
 import {
@@ -273,6 +274,14 @@ export class OrbitDeck extends Deck {
   private given: Record<string, number> = {};
   private switched: { t: number; on: boolean }[] = [];
   private partedBy: number | null = null;
+  /**
+   * The entry by hand (sim/entry.ts `EntryHands`), on a flight whose entry is steered to a place (`Hold.entry`): the
+   * guidance switch as thrown with the spacecraft alone and no burn to come, each change of the stick's roll with Hold as
+   * it stood, and the bank the run had where the record's flight was taken over part-way down.
+   */
+  private entryGuided: { t: number; on: boolean }[] = [];
+  private rolls: { t: number; stick: number; hold: boolean }[] = [];
+  private bankTaken: number | null = null;
   /** The abort asked for going up: the record's mode for the instant (`PlanRecord.aborts`) and when. */
   private aborted: { mode: AbortMode; t: number } | null = null;
   private padImpact: Impact | null = null;
@@ -462,7 +471,14 @@ export class OrbitDeck extends Deck {
     const lit = was ? { lit: { r: was.centre ?? was.r, v: was.v } } : {};
     // (and on from the height the pilot leaves at, the descent module the run on show follows, with what the hands gave,
     // to its landing: begun part-way down, from the run's own state of it)
-    return propagate(spacecraft(plan, this.frame, site, sea, start, { ...lit, ...this.descendOf(plan, true) }), start, where, options);
+    // (and through a steered entry on the banks the run on show flew: the path is that run's, sim/fliers.ts `spacecraft`)
+    const banks = this.flown?.coast.entry ? { banks: this.flown.coast.entry.banks } : {};
+    return propagate(
+      spacecraft(plan, this.frame, site, sea, start, { ...lit, ...banks, ...this.descendOf(plan, true) }),
+      start,
+      where,
+      options,
+    );
   }
   /**
    * How the spacecraft of `plan` goes on down from the height the pilot leaves at (sim/fliers.ts `descending`): the descent
@@ -473,7 +489,7 @@ export class OrbitDeck extends Deck {
     const first = downOf(plan)?.bodies[0];
     if (!first) return {};
     const down = begun ? (this.flown ?? orbitalFlown(this.flight)).down : null;
-    return { descend: { follow: first.id, hands: { given: this.given, switched: this.switched }, ...(down ? { from: down } : {}) } };
+    return { descend: { follow: first.id, hands: this.hands, ...(down ? { from: down } : {}) } };
   }
   /** The run's line flown (sim/run.ts `Run.track`): the predicted path draws the line flown from it (viewer/path.ts `PathSource.track`). */
   track(): readonly LiveSample[] {
@@ -632,6 +648,9 @@ export class OrbitDeck extends Deck {
       this.moved,
       this.given,
       this.switched,
+      this.entryGuided,
+      this.rolls,
+      this.bankTaken,
       this.partedBy,
       this.aborted && [this.aborted.t, this.aborted.mode.until.value],
       this.ejected?.at ?? null,
@@ -653,6 +672,8 @@ export class OrbitDeck extends Deck {
   }
   /** The attitude turned by hand is integrated frame by frame (`turnTo`): while the hands turn it, each frame is part of the run. */
   protected override get framed(): boolean {
+    // (and a frame on which the stick's roll changes in a steered entry by hand: the entry is flown again from its instant)
+    if (this.rollDue(this.clock.t)) return true;
     if (!this.hand || this.fired !== null || !(this.free || this.byPlan !== null)) return false;
     const p = this.push();
     return p.pitch !== 0 || p.yaw !== 0 || p.roll !== 0;
@@ -724,6 +745,7 @@ export class OrbitDeck extends Deck {
     this.fired = null;
     this.moved = [];
     this.handover = null;
+    this.bankTaken = null;
     this.priorMoves = 0;
     this.planned = null;
     this.mine = this.recordOnPad ? null : 0;
@@ -743,6 +765,8 @@ export class OrbitDeck extends Deck {
     this.given = {};
     this.switched = [];
     this.partedBy = null;
+    this.entryGuided = [];
+    this.rolls = [];
     this.aborted = null;
     this.padImpact = null;
     this.padGrazes = [];
@@ -1076,6 +1100,8 @@ export class OrbitDeck extends Deck {
     if (!waiting && t > this.parting) {
       // (B, alone: the descent's automatic sequence off or on again; before the timer's burn that gives the burn up too)
       if (which === 'sequence' && !this.burnPending(t)) return void this.switchDescent();
+      // (G, alone on a flight whose entry is steered: the entry's computer off, the bank the stick's, or on again)
+      if (which === 'guidance' && !this.burnPending(t) && this.steers) return void this.switchEntry();
       if (!this.free && this.fired === null) {
         this.freeHands(
           `Taken over: not the flight of ${this.day}. Steer with the flight controls and use the action button to fire the ${this.burnName.toLowerCase()}`,
@@ -1590,6 +1616,9 @@ export class OrbitDeck extends Deck {
     const coast = orbitalFlown(this.flight).coast.samples;
     if (t < coast[0]!.t || t >= coast.at(-1)!.t) return;
     this.handover = { t, ...between(coast, t) };
+    // (taken part-way down a steered entry, it goes on from the bank the record's run had there)
+    const banks = orbitalFlown(this.flight).coast.entry?.banks;
+    this.bankTaken = banks ? bankFlown(banks, t) : null;
     this.priorMoves = shipOf(plan).moves.filter((move) => move.on <= t).length;
   }
 
@@ -1859,7 +1888,37 @@ export class OrbitDeck extends Deck {
    */
   private descentPlan(): { plan: FlightPlan; hands: DescentHands } {
     const base = this.planned ?? (this.free || this.mine !== null ? this.givenUp() : this.recordPlan);
-    return { plan: partingAt(base, this.parts), hands: { given: this.given, switched: this.switched } };
+    return { plan: partingAt(base, this.parts), hands: this.hands };
+  }
+
+  /**
+   * What the hands have given the descent (sim/orbital.ts `DescentHands`): its events and the sequencer's switch, and of
+   * an entry steered to a place the guidance switch and the stick's roll.
+   */
+  private get hands(): DescentHands {
+    return {
+      given: this.given,
+      switched: this.switched,
+      ...(this.steers ? { steered: [{ t: Number.NEGATIVE_INFINITY, on: this.entryOwn }, ...this.entryGuided], rolls: this.rolls } : {}),
+      ...(this.bankTaken === null ? {} : { bank: this.bankTaken }),
+    };
+  }
+  /** Whether this flight's entry is steered to a place (`Hold.entry`, sim/entry.ts). */
+  private get steers(): boolean {
+    return shipOf(this.recordPlan).guided !== undefined;
+  }
+  /**
+   * Who has the entry's bank before any switch is thrown in the descent: the computer on the record's flight, and on a
+   * flight of one's own while guidance is on and the hands are not free (deck.ts `START`: off, so the bank is the hand's).
+   */
+  private get entryOwn(): boolean {
+    return this.free || this.mine !== null ? this.guidance && !this.free : true;
+  }
+  /** Whether the entry's computer has the bank at `t`. */
+  private entrySteered(t: number): boolean {
+    let on = this.entryOwn;
+    for (const s of this.entryGuided) if (s.t <= t) on = s.on;
+    return on;
   }
 
   /** When the modules part on the flight as it now stands, s from liftoff (`descentPlan`), or never (the largest safe integer). */
@@ -2087,6 +2146,8 @@ export class OrbitDeck extends Deck {
     if (taken) this.downMine = t;
     for (const [k, at] of Object.entries(this.given)) if (at > t) delete this.given[k];
     this.switched = this.switched.filter((s) => s.t <= t);
+    this.entryGuided = this.entryGuided.filter((s) => s.t <= t);
+    this.rolls = this.rolls.filter((r) => r.t <= t);
     if (this.partedBy !== null && this.partedBy > t) this.partedBy = null;
     if (id === coastOf(this.recordPlan).parting) this.partedBy = t;
     else this.given[id] = t;
@@ -2112,6 +2173,48 @@ export class OrbitDeck extends Deck {
     if (tore?.by === 'fouled') return `Out, in the shadow of the ${chute?.fouls?.by.join(' and ')}: it streams and does not fill.`;
     if (tore && Math.abs(tore.t - t) < 1e-6) return `Out, and torn at once: ${(tore.q / 1000).toFixed(1)} kPa on its cloth.`;
     return tore ? `Out; it tears at ${this.wall(tore.t)}.` : 'Out.';
+  }
+
+  /** G with the spacecraft alone, no burn to come and an entry steered to a place: its computer off, or on again, from the clock's instant. */
+  private switchEntry(): void {
+    const t = this.clock.t;
+    const on = !this.entrySteered(t);
+    if (this.recorded) {
+      this.downMine = t;
+      this.takeOrbitAt(t);
+    }
+    this.entryGuided = [...this.entryGuided.filter((s) => s.t < t), { t, on }];
+    this.rolls = this.rolls.filter((r) => r.t <= t);
+    this.refly();
+    this.host.say?.(
+      'Guidance',
+      on
+        ? 'On: the computer has the bank again, and steers for its target'
+        : 'Off: the bank is yours. Roll the lift with the roll keys; Hold keeps it where you leave it',
+    );
+  }
+
+  /**
+   * The stick's roll in a steered entry with the guidance switch off (sim/entry.ts): each change of it, and of Hold, is
+   * the hand's at the clock's instant, and the rest of the entry is flown again with it. Looking back over the run, what
+   * was rolled stays as it was; a roll asked for there begins the entry again from that instant.
+   */
+  private rollTo(t: number): void {
+    const due = this.rollDue(t);
+    if (!due) return;
+    this.rolls = [...this.rolls.filter((r) => r.t < t), { t, ...due }];
+    this.refly();
+  }
+  /** The stick's roll and Hold as they stand at `t`, where that is a change the entry is to be flown again with (`rollTo`); else null. */
+  private rollDue(t: number): { stick: number; hold: boolean } | null {
+    if (!this.steers || !this.run || t <= this.parting || t < this.parts || this.burnPending(t) || this.entrySteered(t)) return null;
+    if (t >= (this.flown ?? orbitalFlown(this.flight)).coast.samples.at(-1)!.t) return null;
+    const stick = Math.round(this.push().roll * 10) / 10;
+    let last: { t: number; stick: number; hold: boolean } | undefined;
+    for (const r of this.rolls) if (r.t <= t) last = r;
+    const looking = this.rolls.length > 0 && t < this.rolls.at(-1)!.t;
+    if (looking ? stick === 0 : (last?.stick ?? 0) === stick && (last?.hold ?? this.hold) === this.hold) return null;
+    return { stick, hold: this.hold };
   }
 
   /** B with the spacecraft alone and no burn to come: the descent's automatic sequence off, or on again, from the clock's instant. */
@@ -2310,6 +2413,7 @@ export class OrbitDeck extends Deck {
       this.turnTo(t);
       if (logged !== this.hand.log.at(-1)) this.drawHands();
     }
+    this.rollTo(t);
     if (t > this.over() + 12) {
       this.clock.pause();
       this.clock.seek(this.over() + 12);
@@ -2703,7 +2807,9 @@ export class OrbitDeck extends Deck {
               : 'As flown: automatic',
     );
     const guidance = this.root.querySelector<HTMLButtonElement>('[data-do=guidance]')!;
-    guidance.setAttribute('aria-pressed', String(this.guidance && !this.free));
+    // (alone, with no burn to come and an entry steered to a place, guidance is the entry's computer)
+    const steering = alone && !this.burnPending(t) && this.steers;
+    guidance.setAttribute('aria-pressed', String(steering ? this.entrySteered(t) : this.guidance && !this.free));
     guidance.disabled = Boolean(this.padImpact);
     // (alone, with no burn to come, the sequencer is the descent's automatic sequence)
     const descending = alone && !this.burnPending(t);
