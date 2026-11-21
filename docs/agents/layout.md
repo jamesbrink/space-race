@@ -395,6 +395,7 @@ tools/
   separation-test.mjs                 browser check of the relative motion of released spacecraft parts in the rendered model
   flight-pixels.mjs                   checks the cockpit and chase canvas through adaptive resolution changes during flight
   flicker-test.mjs                    browser check for z-fighting
+  spacelight-test.mjs                 browser check that the light on a vehicle above the air holds still frame to frame: the record's flight flown past the cloud, at 8x and 1x from the chase view
   model-eviction-test.mjs             browser check that departed model levels and late loads are released while shared models survive a flight change
   flights-test.mjs                    browser check of going flight to flight with no reload: the right flight each time, memory and listeners back to their level, Back and Forward
   frozen-test.mjs                     browser check that a frozen stage draws the same frame twice, both looks

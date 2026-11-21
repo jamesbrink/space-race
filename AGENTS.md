@@ -43,6 +43,7 @@ pnpm lunar:terrain    # bake each landing site's ground (public/lunar/<site>.ter
 pnpm front:earth      # bake the front page's Earth (public/front/earth.*) from public/globe/ and the hour's cloud; pnpm front:moon its Moon
 pnpm preview          # serve the production bundle
 pnpm test:flicker     # needs `pnpm dev` running: z-fighting check in a real browser
+pnpm test:spacelight  # needs `pnpm dev` running: the light on a vehicle above the air does not flicker (Apollo 11 flown past the cloud, at 8x and 1x)
 pnpm bench            # what a frame costs, what the page weighs, how long it takes to open (docs/agents/rendering.md)
 pnpm figures          # the simulators' figures to the last digit against tests/fixtures/figures.json (run on hal9000; --write blesses)
 pnpm test:camera      # needs `pnpm dev` running: the camera driven with real input, its promises checked every frame
