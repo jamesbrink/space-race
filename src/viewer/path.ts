@@ -1513,7 +1513,7 @@ export class FlightPath {
     if (this.shown && (this.shown.plan !== want.plan || this.shown.result.from > s.t)) this.unpredict();
     // (and so does a coast the flight has left by more than another path lies off (`PIN_FAR`): carried with it to the first
     // order, it would bend as the orbit it was made on does, not as the flight's own)
-    if (this.shown && this.shown.result.kind !== 'guided' && this.leftBy(this.shown, s) > this.pinFar(s)) this.unpredict();    // (the flight still on the curve on show, with the same plan: that curve is still its future, and nothing is predicted again)
+    if (this.shown && this.shown.result.kind !== 'guided' && this.leftBy(this.shown, s) > this.pinFar(s)) this.unpredict(); // (the flight still on the curve on show, with the same plan: that curve is still its future, and nothing is predicted again)
     if (this.shown && this.shown.key !== want.key && this.shown.plan === want.plan && this.holds(this.shown, s)) this.shown.key = want.key;
     if (this.shown?.key !== want.key && this.wantedAt === null) this.wantedAt = performance.now();
     if (this.job && (this.job.plan !== want.plan || this.job.from > s.t || this.shown?.key === want.key)) this.job = null;

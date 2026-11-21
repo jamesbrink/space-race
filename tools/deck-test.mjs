@@ -1724,7 +1724,11 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'warp') {
     });
     await page.evaluate(() => window.sr.clock.play(true));
     await page.waitForFunction(() => window.sr.cockpit.warpable() === null, null, { timeout: 60_000 }).catch(() => {});
-    const before = await page.evaluate(() => ({ live: window.sr.cockpit.liveNow, why: window.sr.cockpit.warpable(), t: window.sr.clock.t }));
+    const before = await page.evaluate(() => ({
+      live: window.sr.cockpit.liveNow,
+      why: window.sr.cockpit.warpable(),
+      t: window.sr.clock.t,
+    }));
     if (!before.live) fail(where, 'flown by hand, the stack is not the live vehicle');
     if (before.why !== null) fail(where, `flown by hand, no warp on the coast: "${before.why}"`);
     else {
@@ -1754,7 +1758,9 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'warp') {
         if (!mid.railed) fail(where, 'warping, the stack was not on its railway throughout');
         if (!(mid.rate > 100_000)) fail(where, `warping at ${mid.rate} times`);
         if (end.warp || Math.abs(end.t - going.warp.t) > 0.2) fail(where, `it landed at T+${end.t}, not T+${going.warp.t}`);
-        console.log(`  ${where}: from T+${before.t.toFixed(0)} to ${going.warp.what} at T+${going.warp.t.toFixed(1)} on its railway throughout, at up to ${Math.round(mid.rate).toLocaleString('en-GB')} times; at T+${end.t.toFixed(2)} a moment after`);
+        console.log(
+          `  ${where}: from T+${before.t.toFixed(0)} to ${going.warp.what} at T+${going.warp.t.toFixed(1)} on its railway throughout, at up to ${Math.round(mid.rate).toLocaleString('en-GB')} times; at T+${end.t.toFixed(2)} a moment after`,
+        );
       }
     }
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
