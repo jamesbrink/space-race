@@ -37,6 +37,13 @@ const SLIDE = 1.2;
 const POLE = 0.02;
 /** How far over the body's radius the eye stays, m: over its highest ground. */
 const CLEAR = 12_000;
+/**
+ * How far the first view of a path that goes far round is tipped from square onto its plane toward the vehicle: the
+ * tangent of the tip is this share of the body's radius over the vehicle's distance from its centre, so the vehicle is
+ * on the near side of the body where the body could hide it (a low orbit is seen 40 degrees from square on) and a path
+ * far out is seen almost square on (a degree at the Moon's distance). Chosen.
+ */
+const TIP = 0.85;
 
 const v = new THREE.Vector3();
 const w = new THREE.Vector3();
@@ -158,7 +165,7 @@ export class MapRig extends OrbitRig {
       return;
     }
     this.slide = null;
-    if (!this.focusSet || (this.focus === 'moon' && !of.moon)) this.focus = craft ? focusOf(of.extent, of.radius, 'craft') : 'body';
+    if (!this.focusSet || (this.focus === 'moon' && !of.moon)) this.focus = this.auto(of, 'craft');
     if (!craft && this.focus === 'craft') this.focus = 'body';
     this.frame();
     const fit = this.fit();
@@ -178,9 +185,31 @@ export class MapRig extends OrbitRig {
     if (side.lengthSq() < 1e-6) side.crossVectors(of.pole, up);
     if (side.lengthSq() < 1e-6) side.set(1, 0, 0);
     side.normalize();
-    const way = up.clone().addScaledVector(side, 0.7).normalize();
+    let way = up.clone().addScaledVector(side, 0.7).normalize();
+    // (a path that goes far round, an orbit or a path to the Moon, is seen square onto its own plane, tipped toward the
+    // vehicle by `TIP`, from the side of it the last view was on: seen from over the vehicle, a seven-day path to the Moon
+    // lay end-on, a stub with the Moon off to one side)
+    const plane = this.focus !== 'craft' && craft ? of.plane : undefined;
+    if (plane && craft) {
+      const body = this.bodyOf(of);
+      const at = new THREE.Vector3().copy(craft.centre).applyMatrix4(craft.matrix);
+      const out = at.distanceTo(body.centre);
+      const toward = at.sub(body.centre).normalize();
+      const n = plane.clone();
+      if (n.dot(w.copy(from.position).sub(pivot)) < 0) n.negate();
+      way = n.addScaledVector(toward, (TIP * body.radius) / Math.max(out, body.radius)).normalize();
+    }
     super.enter({ ...from, position: way.multiplyScalar(fit).add(middle) }, middle);
     this.handSet = false;
+  }
+
+  /**
+   * What it turns about when nobody has chosen: the Moon while the vehicle is in its sphere (`MapOf.inMoon`), else the
+   * vehicle or the body it flies round (`focusOf`, from how it was, the Moon's counted as the body's).
+   */
+  private auto(of: MapOf, was: MapFocus): MapFocus {
+    if (of.inMoon && of.moon) return 'moon';
+    return this.world.craft() ? focusOf(of.extent, of.radius, was === 'moon' ? 'body' : was) : 'body';
   }
 
   /** The eye at this rig's own angles, `distance` from `pivot`. */
@@ -251,8 +280,7 @@ export class MapRig extends OrbitRig {
     if (of) {
       // (the Moon gone from the map, or no vehicle to turn about: the body the flight is round)
       if ((this.focus === 'moon' && !of.moon) || (this.focus === 'craft' && !this.world.craft())) this.turnAbout('body');
-      else if (!this.focusSet && this.focus !== 'moon')
-        this.turnAbout(this.world.craft() ? focusOf(of.extent, of.radius, this.focus) : 'body');
+      else if (!this.focusSet) this.turnAbout(this.auto(of, this.focus));
       // (what is shown has grown or shrunk, or what the controls leave clear has changed: a view nobody has set takes it all in again)
       const fit = this.fit();
       if (!this.handSet && !this.journey && Math.abs(Math.log(fit) - this.zoomer.goal) > 1e-3) this.zoomer.goal = Math.log(fit);
@@ -313,7 +341,7 @@ export class MapRig extends OrbitRig {
     this.handSet = false;
     const of = this.of;
     if (!of) return;
-    this.turnAbout(this.world.craft() ? focusOf(of.extent, of.radius, 'craft') : 'body');
+    this.turnAbout(this.auto(of, 'craft'));
     this.zoomer.goal = Math.log(this.fit());
   }
 }

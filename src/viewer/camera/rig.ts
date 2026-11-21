@@ -71,6 +71,13 @@ export interface MapOf {
   extent: number;
   /** Another body to turn about, where it is drawn (the Moon: viewer/flightmoon.ts): its centre in the scene and its radius, m. */
   moon?: { centre: THREE.Vector3; radius: number };
+  /**
+   * The way the plane of the vehicle's motion faces, in the scene (a unit vector: the normal of its motion about the body
+   * whose sphere it is in), which the map first looks onto. Left out, none is known.
+   */
+  plane?: THREE.Vector3;
+  /** Whether the vehicle is in the Moon's sphere: the map then turns about the Moon until someone chooses. */
+  inMoon?: boolean;
 }
 
 /** What a rig may ask of the world it is in. Lengths are metres in the scene's frame. */

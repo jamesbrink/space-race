@@ -40,10 +40,16 @@ where there is something to map (`World.map`, a `MapOf`: the body, how far it ha
 the flight reaches from its centre and from the vehicle; the stage is given it by whoever draws the path,
 `Stage.mapOf`), and nobody on foot has one. Taken up with nobody having set it, it takes in all that is shown
 (`mapFit`: in the height of the frame the controls leave clear, and in its width where the frame is narrower than it
-is tall, a phone held upright) from over the vehicle, to the side the last view saw it from, so the vehicle is on the
-near side of the Earth. What it turns about is chosen for it (`focusOf`: the vehicle while everything shown lies within four tenths of
+is tall, a phone held upright). Turned about the vehicle (a lob, a fall) it looks from over the vehicle, to the side the
+last view saw it from. Turned about a body (an orbit, a path to the Moon) it looks square onto the plane of the vehicle's
+motion about that body (`MapOf.plane`, from the side of it the last view was on), tipped toward the vehicle by `TIP`
+(the tangent of the tip 0.85 of the body's radius over the vehicle's distance from its centre, chosen): a low orbit is
+seen 40 degrees from square on with the vehicle on the near side of the Earth, a path to the Moon almost square on, the
+whole of it and the Moon with it. (From over the vehicle, as every map was first framed before, a seven-day path to the
+Moon lay end-on: a stub, with the Moon off to one side.) What it turns about is chosen for it (`focusOf`: the vehicle while everything shown lies within four tenths of
 the Earth's radius of it, a lob or a fall; the Earth's centre once anything is over six tenths, an orbit; between, as
-it was), and that and the distance follow the path as it grows, until the hands choose: a zoom sets the distance, and C
+it was; and the Moon while the vehicle is in the Moon's sphere, `MapOf.inMoon`, the sphere the predicted path draws about
+the Moon in), and that and the distance follow the path as it grows, until the hands choose: a zoom sets the distance, and C
 there (`Cameras.refocus`: in the map C is the map's own, `map.focus`) the next thing to turn about, from as far off as
 it was: the vehicle, the Earth, and the Moon once it is drawn (`MapOf.moon`, given by the stage from viewer/flightmoon.ts),
 and round. About the Moon the map takes in the Moon and the vehicle with it (out to 40 of the Moon's radii), comes in to
