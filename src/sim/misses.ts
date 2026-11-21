@@ -895,14 +895,6 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
   }),
   'usa/apollo/apollo-7': inUnits({
     shown: {
-      entryG: {
-        by: 2.329,
-        slack: 0.3,
-        why:
-          'The entry’s greatest load is 5.66 g where the reconstructed trajectory has 3.33 and the structural analysis 3.41. The run comes through the interface 961 s after its deorbit burn where the flight took 851: its orbit there is not the flight’s (the apsides lie elsewhere after eleven days), though the burn is timed to bring it down at the place. ' +
-          'The bank angles are still flown at the record’s instants after the burn, so the roll to 55 degrees comes 110 s early in the entry and the lift is turned aside before the load’s peak. They want commanding on the entry’s own events, as the crew and the computer flew them; that is not done. Not adjusted',
-        short: 'the banks flown by the clock, early in a later entry',
-      },
       'sps-1.velocity': {
         by: 6.823,
         slack: 0.7,

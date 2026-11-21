@@ -4,7 +4,7 @@
  */
 import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
 import { trackedState } from '../../../../../src/sim/orbital.ts';
-import type { Action, AttitudeDef, EventDef, FlightPlan, OrbitFix, PlanCheck, Pursuit, Trigger } from '../../../../../src/sim/plan.ts';
+import type { AttitudeDef, FlightPlan, OrbitFix, PlanCheck, Pursuit } from '../../../../../src/sim/plan.ts';
 import { earthFrame } from '../../../../../src/world/earthframe.ts';
 import { cross, dot, ecefToGeodetic, enuAxes, scale, sub, unit } from '../../../../../src/world/frames.ts';
 import { step } from '../../../../../src/world/orbit.ts';
@@ -32,10 +32,6 @@ const MAIN = T(260, 4, 13);
 const SPLASH = T(260, 9, 3);
 const J2_OFF = 616.75;
 const INSERTION = 626.76;
-
-function timed(id: string, label: string, at: number, actions: Action[], source = EVENTS, when: Trigger[] = [{ time: at }]): EventDef {
-  return { id, label, when, do: actions, automatic: true, at: doc(at, source), record: { id, label }, source };
-}
 
 function fix(
   source: string,
@@ -99,6 +95,16 @@ const impulse = (id: string, label: string, fps: number, source: string): PlanCh
   confidence: 'documented',
   source,
 });
+/** A figure of the steered entry (orbital.ts `OrbitResults`, `entry.<id>`), as the record has it. */
+const entryCheck = (
+  id: string,
+  label: string,
+  value: number,
+  unit: string,
+  tolerance: number,
+  confidence: PlanCheck['confidence'],
+  source: string,
+): PlanCheck => ({ id: `entry.${id}`, label, value, unit, tolerance, of: 'orbit', confidence, source });
 /** How far the S-IVB was from the spacecraft at an instant, m. */
 const range = (
   id: string,
@@ -387,12 +393,62 @@ const rcsBurns: Burn[] = rcs.map((burn, i) => ({
   ...(rcsToward[i] ? { toward: rcsToward[i] } : {}),
 }));
 
-const bank = (id: string, angle: number, inferred = false): AttitudeDef => ({
-  id,
-  label: 'Entry bank',
-  source: inferred ? `${REPORT}, Fig. 5.16-28, approximate flight bank after computer takeover` : `${ENTRY}, §5.2`,
-  hold: { bank: inferred ? estimated(angle, `${REPORT}, Fig. 5.16-28, approximate telemetered bank`) : doc(angle, `${ENTRY}, §5.2`) },
-});
+const CMC_PROGRAM =
+  'Colossus 2A (Comanche 055, Apollo 11) flight program listing, REENTRY CONTROL, pp. 844 to 881: taken for this flight’s Sundisk, whose listing has not been read';
+/**
+ * The entry, steered to the computer's target (sim/entry.ts) and commanded on its own events, as the crew and the computer
+ * flew it (the mission report, §5.16.1): the lift held up by hand to 0.2 g, where the computer went to its final phase; the
+ * crew's backup bank, rolled to as the downrange error was checked against the ground's, planned for about thirty seconds
+ * and kept until the computer first commanded a bank of its own; then the digital autopilot on the computer's commands.
+ * The record's roll trace (Fig. 5.16-28) is no longer flown: what it shows of the entry is held as checks (`entryCheck`).
+ */
+const entry: AttitudeDef = {
+  id: 'entry-steered',
+  label: 'Entry',
+  source: `${REPORT}, §5.16.1, entry; ${ENTRY}, §5.1`,
+  hold: {
+    entry: {
+      target: {
+        latitude: doc(27 + 37.8 / 60, `${REPORT}, §8.1, onboard computer target point: 27° 37.8' N`),
+        longitude: doc(-(64 + 10.2 / 60), `${REPORT}, §8.1, onboard computer target point: 64° 10.2' W`),
+      },
+      initial: doc(0, `${REPORT}, §5.16.1: "the crew maintained the lift vector up until shortly after 0.2g"`),
+      backup: {
+        bank: doc(
+          55,
+          `${REPORT}, §3.3: "the lift vector was held at a 55-degree roll-right attitude"; ${ENTRY}, §5.2: "a bank angle of -55.0 degrees", as the roll trace has it (${REPORT}, Fig. 5.16-28), on the side of the computer’s first commands, and the program’s roll is positive to the left of the motion (its lateral logic: REENTRY CONTROL, pp. 849 and 873), so the lift was turned to the right. §5.16.1 has "a 55-degree roll-left lift vector orientation": taken for the roll’s sense about the body’s axis, which points back along the motion`,
+        ),
+        from: doc(0.2, `${REPORT}, §5.16.1: rolled to as the computer sensed 0.2g and changed to its final phase`),
+        least: doc(
+          30,
+          `${REPORT}, §5.16.1: "to be held for about 30 seconds while the computer go/no-go check was being completed"; the crew kept it until the computer’s first non-zero roll command`,
+        ),
+      },
+      computer: {
+        kind: 'apollo',
+        lad: assumed(
+          0.3,
+          'R-577, Colossus GSOP, Section 5 (Rev. 14), Fig. 7.0-1a: LADPAD, nominal 0.3; this flight’s pad load has not been read',
+        ),
+        lod: assumed(
+          0.18,
+          'R-577, Colossus GSOP, Section 5 (Rev. 14), Fig. 7.0-1a: LOD, nominal 0.18; this flight’s pad load has not been read',
+        ),
+        program: { confidence: 'assumed', source: CMC_PROGRAM },
+      },
+      roll: {
+        rate: assumed(
+          20,
+          'Colossus 2A (Comanche 055) listing, CM ENTRY DIGITAL AUTOPILOT, roll constants: VM = 20 deg/s; taken for Sundisk',
+        ),
+        acceleration: assumed(
+          9.1,
+          'Colossus 2A (Comanche 055) listing, CM ENTRY DIGITAL AUTOPILOT, roll constants: A = 9.1 deg/s², two jets; taken for Sundisk and this module’s inertia',
+        ),
+      },
+    },
+  },
+};
 
 const ascentCheck = (id: string, label: string, value: number, unit: string, tolerance: number, source: string): PlanCheck => ({
   id,
@@ -405,37 +461,6 @@ const ascentCheck = (id: string, label: string, value: number, unit: string, tol
   source,
 });
 
-// Representative readings of the actual roll trace (Fig. 5.16-28), including its reversals.
-const entryProgramme = [
-  [T(259, 56, 6), 0],
-  [T(259, 56, 20), -15],
-  [T(259, 56, 31), -55],
-  [T(259, 57, 25), -55],
-  [T(259, 57, 43), -46],
-  [T(259, 58, 0), -70],
-  [T(259, 58, 15), 47],
-  [T(259, 59, 0), 52],
-  [T(259, 59, 59), 56],
-  [T(260, 0, 12), -40],
-  [T(260, 0, 55), -83],
-  [T(260, 1, 13), 59],
-  [T(260, 1, 45), 62],
-  [T(260, 1, 52), -74],
-  [T(260, 2, 14), -100],
-  [T(260, 2, 18), -240],
-  [T(260, 2, 26), -278],
-  [T(260, 3, 10), -297],
-] as const;
-const entryAttitudes = entryProgramme.map(([, angle], i) => bank(`entry-bank-${i}`, angle, true));
-const entryBanks = entryProgramme.map(([at], i) =>
-  timed(
-    `entry-bank-${i}`,
-    i === 3 ? 'Digital autopilot selected' : 'Entry bank',
-    at,
-    [{ attitude: entryAttitudes[i]!.id }],
-    `${REPORT}, Fig. 5.16-28, approximate digitization of actual roll`,
-  ),
-);
 const service = sps[7];
 const shield = DROGUE - 1.6;
 const shieldMass = derived((12_277 - 11_936) * LB, `${WEIGHTS}, Mach 10 less drogue deployment; includes char and CM consumables`);
@@ -518,14 +543,24 @@ export const orbital: SaturnIBRecord = {
       mass: doc(11_936 * LB, `${WEIGHTS}, at drogue deployment; held through descent`),
       lift: {
         points: [
-          [0, 0.37],
-          [4, 0.37],
-          [10, 0.35],
-          [20, 0.33],
-          [25, 0.31],
+          [0.688, 0.21],
+          [0.942, 0.295],
+          [1.618, 0.46],
+          [3.344, 0.37],
+          [3.375, 0.357],
+          [8.551, 0.347],
+          [11.227, 0.345],
+          [13.373, 0.332],
+          [15.284, 0.325],
+          [17.163, 0.323],
+          [19.161, 0.314],
+          [21.156, 0.307],
+          [23.316, 0.31],
+          [25.463, 0.305],
+          [27.72, 0.316],
         ],
-        confidence: 'estimated',
-        source: `${REPORT}, Fig. 5.2-1, flight-derived L/D digitized approximately through Mach 4; held below Mach 4`,
+        confidence: 'documented',
+        source: `${ENTRY}, Table IIa, trim aerodynamics, postflight: the lift over drag the computer worked from its accelerometers in this entry, against Mach number (what ${REPORT}, Fig. 5.2-1 plots); the ends held beyond Mach 0.688 and 27.72`,
       },
       trim: derived(20, `${REPORT}, Fig. 5.2-1, trim about 160 deg angle of attack (20 deg from heat shield forward)`),
     },
@@ -549,7 +584,7 @@ export const orbital: SaturnIBRecord = {
     },
   },
   burns: [formationBurn, separationBurn, ...rcsBurns, ...spsBurns],
-  entry: { parting: bank('entry-lift-up', 0), attitudes: entryAttitudes, events: entryBanks },
+  entry: { parting: entry, attitudes: [], events: [] },
   els: {
     shield: {
       at: derived(shield, `${REPORT}, §5.5, 1.6 s before drogue mortar firing`),
@@ -732,6 +767,70 @@ export const orbital: SaturnIBRecord = {
       confidence: 'documented',
       source: `${REPORT}, Table 3-VI, trajectory deceleration`,
     },
+    // The entry's own events, each as so long after the interface, and what the roll trace shows of the computer's steering.
+    entryCheck(
+      'sensed',
+      '0.05 g after the interface',
+      T(259, 55, 38) - INTERFACE,
+      's',
+      10,
+      'documented',
+      `${REPORT}, §5.16.1: 0.05g at 259:55:38`,
+    ),
+    entryCheck(
+      'final',
+      'The computer’s final phase (0.2 g) after the interface',
+      T(259, 56, 6) - INTERFACE,
+      's',
+      10,
+      'documented',
+      `${REPORT}, §5.16.1: the computer sensed 0.2g at 259:56:06 and changed to the final phase program; ${ENTRY}, §5.1.1`,
+    ),
+    entryCheck(
+      'takeover',
+      'The autopilot given the computer’s commands, after the interface',
+      T(259, 57, 25) - INTERFACE,
+      's',
+      15,
+      'estimated',
+      `${REPORT}, Fig. 5.16-28, read: the roll leaves the backup bank at about 259:57:25`,
+    ),
+    entryCheck(
+      'takeoverHeight',
+      'Height as the autopilot was given the commands',
+      202_000 * FT,
+      'm',
+      10_000 * FT,
+      'documented',
+      `${REPORT}, §5.16.1: the first non-zero roll command "at about 202 000-foot altitude"`,
+    ),
+    entryCheck(
+      'ended',
+      'The computer stops steering, after the interface',
+      T(260, 2, 20) - INTERFACE,
+      's',
+      20,
+      'documented',
+      `${ENTRY}, Table IIIb and §5.1.3: CMC termination at 260:02:20 (936,140 s)`,
+    ),
+    entryCheck(
+      'reversals',
+      'Reversals of the bank’s side',
+      4,
+      '',
+      1,
+      'estimated',
+      `${REPORT}, Fig. 5.16-28, read: the roll crosses from one side to the other at about 259:58:15, 260:00:12, 260:01:13 and 260:01:52`,
+    ),
+    entryCheck(
+      'miss',
+      'From the computer’s target at drogue deployment',
+      2.2 * NMI,
+      'm',
+      3 * NMI,
+      'documented',
+      `${REPORT}, §3.3: "a 2.2 n. mi. overshoot indicated by the reconstructed trajectory" at drogue deployment (the onboard guidance had a 1.0 n. mi. undershoot)`,
+    ),
     { id: 'cm.at', label: 'Splashdown', value: SPLASH, unit: 's', tolerance: 120, of: 'descent', confidence: 'documented', source: EVENTS },
     // The rendezvous, flown by guidance on the stage as its own craft: the record's impulses and ranges are what it is held to.
     impulse('sps-1', 'Corrective combination, impulse', 204.1, `${REPORT}, Table 3-V`),

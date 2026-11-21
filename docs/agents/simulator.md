@@ -93,6 +93,40 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   came down at says so beside its landing and is flown by the clock at its recorded instant: Vostok 1, Voskhod 2 (fired
   by hand a revolution late), Aurora 7 (late and yawed, 250 miles long) and Gemini 3 (short of its planned place, which
   is not in its record). A plan a hand has changed is not aimed again. The flight deck asks the plan as flown for the record's instants (run.ts `flownPlan`, deck/orbitdeck.ts `recordPlan`).
+- **An entry is steered to its place on its own events** (`Hold.entry`, sim/entry.ts `EntryDef`; orbital.ts `flyOrbit`,
+  `flyEntry`). A lifting entry whose record has a computer steering it to a target is not flown on the record's banks by
+  the clock: from the event that sets the hold (the modules' parting) its bank is whoever has it, commanded from the state
+  the run is in. Three things, kept apart. **The law** (`EntryLaw`: one command each cycle from what the computer
+  navigates, `EntryNav`): the Apollo command module computer's entry programs P63 to P67 (`apolloLaw`), equation for
+  equation from Colossus 2A's listing (Comanche 055, REENTRY CONTROL, with the GSOP R-577 section 5.7's flowcharts and
+  names, Morth's R-532 and TN D-6725 for what each part is for), in the program's own units, its constants and the final
+  phase's stored reference trajectory descaled from the listing (`CMC`, `REFERENCE`): the first attitude to 0.05 g and to
+  a load KAT, constant drag, HUNTEST's range prediction and the up-control reference it finds, the ballistic arc, the
+  final phase on the stored reference, the load limiter, and the lateral logic that reverses the bank's side. **The
+  pilot** (`entryPilot`): who has the bank (the record's crew on a backup bank until they give the autopilot the
+  commands, `EntryDef.backup`; the computer; a hand's stick while the guidance switch is off, `EntryHands`), and the
+  roll that takes the capsule there, the autopilot's at its limits (its greatest rate and its two-jet acceleration; its
+  dead zones are not modelled), by the shorter way unless the law says over the top. **The data** (`EntryDef`): the
+  target, the banks the crew held, the computer's pad loads (LAD, LOD) and whose program its constants are taken to be,
+  the roll's limits, each a `Measure`. The computer navigates on the run's own state: no platform or accelerometer error
+  is modelled, so a run ends nearer its target than the flights did (Apollo 7's at 1.2 km where the reconstruction had 2.2
+  nautical miles). Nothing is fitted. The run keeps what it flew (`OrbitFlown.entry`: the banks, and when each thing
+  came), its results are the entry's own events as so long after the interface (`entry.sensed`, `.backup`, `.takeover`,
+  `.final`, `.ended`, `.takeoverHeight`, `.reversals`, `.miss`), and the record's bank trace is held as checks of those and
+  no longer flown. The attitude drawn (staged.ts `recordSamples`, `bankOn`) and the predicted path (fliers.ts
+  `spacecraft`, given the run's `banks`; without them a pilot of its own from the start, which is where guidance would
+  take it from there) follow the banks flown. Where the braking burn is timed for the landing place the trial flights
+  are flown open (`openLoop`: no computer, the crew's backup bank to the end), since the backup bank is the one the
+  ground worked to reach the place with nothing steering, and a steered entry's landing does not move with the burn's
+  instant; an escape from the launch vehicle flies its entry with the lift up and nothing steering (`openLoop(plan,
+  false)`). Apollo 7 is flown so (its entryG miss, 5.66 g for 3.33 with the banks by the clock, is closed: 3.33 g, the
+  autopilot given the commands 233 s after the interface for the record's 238, and every `entry.*` check held);
+  tests/entryguidance.test.mjs holds the law to a return from the Moon before any flight flies one (Apollo 10's entry
+  from its tracked state: the first peak 6.84 g for 6.78, the final phase's 4.55 for 4.6, steering ended at 450 s for
+  438.6, 0.75 nautical miles from the target; and Apollo 11's corridor, up control entered on the 1,500 mile range and
+  not on the 1,285). A Gemini's computer is a second `EntryComputer` kind with a law of its own on the same pilot and
+  plumbing (the pilot takes any `EntryLaw`, and a command may ask a steady roll in place of a bank,
+  `EntryCommand.rolling`: the test flies a stand-in so); it is not written.
 - **A body in orbit with no recorded attitude presents the mean of every attitude** (`Craft.rarefied.area`,
   `TargetDef.dragArea`): a quarter of its outside, as a convex body (Cauchy), derived from the model's own sizes, the
   attitude assumed random and said so. Apollo 7's command and service modules and its S-IVB are flown so. Where the
@@ -363,7 +397,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     lights), against it for a pair that pushes toward the tail (`EngineDef.astern`). flyOrbit and the predicted path
     (fliers.ts `spacecraft`) fly them alike, and a check of the orbit at an instant reads what each left. The entry body
     lifts (`AeroDef.lift`, lift over drag against Mach number) while a bank is held (`Hold.bank`, from the event that sets
-    it): orbital.ts `liftOf`, square to the motion through the air in the plane of the plumb line, turned about the motion by
+    it; or the bank an entry steered to a place is flying, `Hold.entry`, "An entry is steered" above): orbital.ts `liftOf`, square to the motion through the air in the plane of the plumb line, turned about the motion by
     the bank. Mercury's and the Vostoks' plans have neither, and fly what they flew before to the last bit. Given up
     (staged.ts `givenUp`, the hands free) the manoeuvres are too; a hand fires the record's next one along the long axis
     (`movedTo`, its impulse and length the record's; on the deck, Space before the coast's burn).
@@ -1076,7 +1110,13 @@ read gives enough of to fly (issue #10).
   a simulated pilot holding the director on keys with a degree's deadband and 0.15 s to react breaks the Redstone up by its
   bending load at T+49 s at full throw, and flies it whole to its cutoff, 60 km up at 2.0 km/s at T+140 s, at a tenth: with Hold off); the
   finger's stick asks as far as it is pushed, and a spacecraft's jets are worked at their own throw. The launch site's own
-  clock, the idle show, every batch run and every figure are the record's still.
+  clock, the idle show, every batch run and every figure are the record's still. In an entry steered to a place
+  (`Hold.entry`), with the spacecraft alone and no burn to come, G is the entry's computer (orbitdeck.ts `switchEntry`):
+  off (as it is on a flight of one's own), the bank is the stick's roll (`rollTo`: each change of the roll keys and of Hold
+  is written at the clock's instant and the rest of the entry flown again, sim/entry.ts `EntryHands`): with Hold the stick
+  asks a roll rate, the autopilot's greatest at full throw, and the bank stays where it is left; without it the keys are
+  the roll jets and nothing stops the roll but the stick. The lift is always there (the capsule trims itself); only its
+  direction is the pilot's.
 - **The deck is an instrument, not a page.** What is always there: the navball and the path in the left corner; the
   phase and the two switches, the five figures, the throttle and the one action with its abort in the middle; the supplies
   as bars and the lamps (braking, lock, jets, what burns) on the right. Secondary detail is folded: the readings (the air,

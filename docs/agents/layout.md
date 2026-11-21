@@ -485,6 +485,7 @@ where it was left.
 
 - `src/sim/transfer.ts` advances Gemini orbital rendezvous from the crew and target navigation fixes.
 - `src/sim/dockplan.ts` constructs independent orbital craft from the flight plan schema and measured masses.
+- `src/sim/entry.ts` steers a lifting entry to a place (`Hold.entry`): a computer's law (the Apollo command module computer's entry programs, from its flight program's listing), the pilot that rolls the capsule to its commands or to a hand's stick, and the data a plan gives them. `tests/entryguidance.test.mjs` holds it to Apollo 10's return from the Moon and Apollo 11's entry corridor.
 - `src/sim/rendezvous.ts` reconstructs the LM terminal phase from radar geometry and RCS maneuvers.
 - `src/sim/flyby.ts` propagates the three vehicles during a second target visit.
 - `src/sim/tether.ts` applies a tensile impulse at the two spacecraft attachment points.

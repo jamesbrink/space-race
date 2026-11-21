@@ -8,7 +8,7 @@ import { type State, step } from '../world/orbit.ts';
 import { airAt, airDrag } from './air.ts';
 import { isBreakupImpact } from './breakup.ts';
 import type { Impact } from './contact.ts';
-import { coastEvents, flyDown, flyOrbit, heightsBall, shipOf } from './orbital.ts';
+import { coastEvents, flyDown, flyOrbit, heightsBall, openLoop, shipOf } from './orbital.ts';
 import type { FlightPlan, ServiceAbort, TowerEscape } from './plan.ts';
 import { flowOf, givenUp, partingAt } from './staged.ts';
 
@@ -208,7 +208,9 @@ export function withServiceAbort(
   site: Geodetic,
   seaLevel: number,
 ): { plan: FlightPlan; duration: number; achieved: number } {
-  const base = withEscapeTranslation(plan, mode.translation.engine, from.t, mode.translation.duration.value, axis);
+  // (an entry steered to the planned landing place is flown from here with its lift up and nothing steering: the place is
+  // the far end of the flight that was not made)
+  const base = openLoop(withEscapeTranslation(plan, mode.translation.engine, from.t, mode.translation.duration.value, axis), false);
   const longer = mode.goal.kind === 'orbit';
   const target = mode.goal.target.value;
   const engine = base.craft[0]!.engines.find((e) => e.id === mode.engine)!;

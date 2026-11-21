@@ -383,9 +383,9 @@ test('Apollo 7 is one state through its staging, every tracking timestamp, each 
     assert.ok(dv <= allowed, `in the entry at T+${b.t}: ${dv.toFixed(2)} m/s, where the load read allows ${allowed.toFixed(2)}`);
     most = Math.max(most, b.g);
   }
-  // (5.66 g where the flight had 3.33: the bank angles are flown at the record's instants after the burn, early in an
-  // entry that comes later after it than the flight's did. Recorded in src/sim/misses.ts, `entryG`)
-  assert.ok(most > 3 && most < 6.5, `the entry's greatest load is ${most.toFixed(2)} g`);
+  // (3.33 g on the reconstructed trajectory, 3.41 in the structural analysis: the entry is steered to the computer's target
+  // on its own events, sim/entry.ts. Flown at the record's instants after the burn, its banks gave 5.66 g)
+  assert.ok(most > 2.9 && most < 3.8, `the entry's greatest load is ${most.toFixed(2)} g`);
   // and the descent begins where the coast ends
   const track = Object.values(whole.down.tracks)[0];
   assert.ok(length(sub(track[0].r, whole.coast.samples.at(-1).r)) < 1e-6, 'the descent begins where the coast ends');

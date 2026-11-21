@@ -106,8 +106,9 @@ export interface SaturnIBRecord {
   /** The firings in orbit, in the order they are flown. */
   burns: Burn[];
   /**
-   * The entry as the record flies it: the attitude held from the modules' parting (`parting`), and the attitudes and
-   * events after it (the banks flown).
+   * The entry as the record flies it: the attitude held from the modules' parting (`parting`: lift up, or an entry
+   * steered to the computer's target on its own events, `Hold.entry`, sim/entry.ts), and any attitudes and events after
+   * it (banks flown by the clock, where a record has only those).
    */
   entry: { parting: AttitudeDef; attitudes: AttitudeDef[]; events: EventDef[] };
   /**
