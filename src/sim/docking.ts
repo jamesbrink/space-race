@@ -43,7 +43,11 @@ const inertiaAt = (b: DockBody, x: Vec3): Vec3 => {
   const v = unturn(b.q, x);
   return turn(b.q, [v[0] * b.inertia[0], v[1] * b.inertia[1], v[2] * b.inertia[2]]);
 };
-function coastBody(b: DockBody, time: number, dt: number, force: Vec3 = zero, torque: Vec3 = zero) {
+/** One step of a state's flight with a push: world/orbit.ts `step` (the Earth with J2) unless a field is given (sim/core/gravity.ts `stepIn`). */
+export type Stepper = (s: State, t: number, h: number, push?: (s: State, t: number) => Vec3) => State;
+
+/** A rigid body flown `dt` on: its turning by its angular momentum and `torque`, its centre on gravity and `force`. */
+export function coastBody(b: DockBody, time: number, dt: number, force: Vec3 = zero, torque: Vec3 = zero, stepper: Stepper = step) {
   const h = inertiaAt(b, turn(b.q, b.w));
   const rates = (q: Quat, impulse: number): Vec3 => {
     const local = unturn(q, add(h, scale(torque, impulse)));
@@ -52,7 +56,7 @@ function coastBody(b: DockBody, time: number, dt: number, force: Vec3 = zero, to
   const half = rotateFor(b.q, b.w, dt / 2);
   b.q = rotateFor(b.q, rates(half, dt / 2), dt);
   b.w = rates(b.q, dt);
-  Object.assign(b, step(b, time, dt, force === zero ? undefined : () => scale(force, 1 / b.mass)));
+  Object.assign(b, stepper(b, time, dt, force === zero ? undefined : () => scale(force, 1 / b.mass)));
 }
 const mean = (a: Vec3, b: Vec3, share: number) => add(a, scale(sub(b, a), share));
 function ring(b: DockBody) {
@@ -88,6 +92,8 @@ export class DockPair {
   /** The lunar module is initially bolted to a carrier. Both inherit the same rigid motion until extraction. */
   private carrierMount: { payload: Pick<DockBody, 'mass' | 'port' | 'inertia'>; mass: number; arm: number; inertia: Vec3 } | null = null;
   released: DockBody | null = null;
+  /** What a state is flown on: the Earth with J2 (world/orbit.ts `step`) unless the run's field is given. */
+  stepper: Stepper = step;
   tetherLength = 0;
   tension = 0;
   get mounted() {
@@ -263,21 +269,21 @@ export class DockPair {
       const ta = turn(a.q, torques[0]),
         tb = turn(b.q, torques[1]);
       if (this.phase === 'free') {
-        coastBody(a, this.t, h, fa, ta);
-        coastBody(b, this.t, h, fb, tb);
+        coastBody(a, this.t, h, fa, ta, this.stepper);
+        coastBody(b, this.t, h, fb, tb, this.stepper);
       } else {
         const c = this.centre!;
         const torque = add(add(ta, tb), add(cross(sub(a.r, c.r), fa), cross(sub(b.r, c.r), fb)));
         this.momentum = add(this.momentum, scale(torque, h));
         const acceleration = scale(add(fa, fb), 1 / (a.mass + b.mass));
-        this.centre = step(c, this.t, h, () => acceleration);
+        this.centre = this.stepper(c, this.t, h, () => acceleration);
         this.elapsed += h;
         const progress = Math.min(1, this.elapsed / this.limits.retract);
         this.place(rotateFor(b.q, b.w, h), progress);
         if (progress === 1) this.phase = 'hard';
       }
       this.tension = this.phase === 'free' && this.tetherLength > 0 ? tetherImpulse(...this.bodies, this.tetherLength, h) : 0;
-      if (this.released) coastBody(this.released, this.t, h);
+      if (this.released) coastBody(this.released, this.t, h, zero, zero, this.stepper);
       this.t += h;
     }
   }

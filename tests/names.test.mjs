@@ -27,6 +27,7 @@ for (const f of flights) {
   for (const c of p.craft) {
     add(c.id, 'craft');
     for (const kind of ['bodies', 'joints', 'engines', 'tanks', 'thrusters', 'chutes']) for (const x of c[kind] ?? []) add(x.id, kind);
+    for (const b of c.bodies) for (const m of b.crew ?? []) add(m, 'crew member');
     for (const s of c.sheds ?? []) add(s.on, 'a shed body’s on');
   }
   for (const e of p.events) {

@@ -138,6 +138,80 @@ export interface BodyDef {
   aero?: AeroDef;
   /** How fast it is thrown clear as it leaves, m/s, against its motion through the air (a hatch blown, a seat on its rockets). */
   thrown?: Measure;
+  /**
+   * Who rides in it from liftoff, by each crew member's id (the plan's own word for them, never a name the code knows):
+   * a member moves to another body only by an `Action.board`. The commander is the first named, reading the bodies
+   * from the plan's last (what carries the crew) back (sim/components.ts `commanderOf`); the player goes with them.
+   */
+  crew?: string[];
+  /**
+   * It as a rigid piece of the stack, where a craft it is part of is flown as a rigid body among others (sim/proximity.ts:
+   * docking): where its centre of mass is, m along the stack's long axis (+X) from the model's origin as it stood on the
+   * pad, and its moments of inertia about that centre, kg m^2, about its own long axis (roll) and across it (pitch, about
+   * +Y; yaw, about +Z), each one unit's. A craft of several is the bodies laid along one axis: its centre and its moments
+   * across are worked from these by the parallel axes; the products of inertia and any centre off the axis are not.
+   */
+  rigid?: { centre: Measure; inertia: [roll: Measure, pitch: Measure, yaw: Measure] };
+}
+
+/**
+ * One side of a joint made in flight (`JointDef.formed`): the body its port is on, where the port's mating plane is, m
+ * along the stack's long axis as that body stood on the pad (the frame `BodyDef.rigid.centre` is in), which way along
+ * that axis it faces out (+1 toward the nose, -1 toward the base), and its key's clocking about the axis, degrees from
+ * the body's +Z: two ports capture keyed when the one's clocking, turned to face the other, is the other's.
+ */
+export interface PortDef {
+  body: string;
+  station: Measure;
+  faces: 1 | -1;
+  clock: Measure;
+}
+
+/**
+ * What a docking mechanism takes before it captures (sim/docking.ts `CaptureLimits`): the probe's travel past the plane
+ * it first touches at, m; how far off the axis, m; how far tilted and turned from its key, degrees; how fast closing and
+ * sideways, m/s; how fast the two turn against each other, deg/s; and how long it takes to draw them from capture to the
+ * hard joint, s.
+ */
+export interface CaptureDef {
+  stroke: Measure;
+  radius: Measure;
+  tilt: Measure;
+  roll: Measure;
+  closing: Measure;
+  sideways: Measure;
+  angular: Measure;
+  retract: Measure;
+}
+
+/**
+ * How the record's crew flew a docking (`Action.dock`, sim/proximity.ts `approachInput`): with the thrusters `by` (a set
+ * that turns and translates, its `push` and `torque` the most it gives), backed away from where they began at
+ * `departing`, m/s; turned end for end `turnAfter` s after they began and to the passive port's key; held `standOff` m
+ * off its port; and closed at `closing`, m/s, so as to reach the port at `contact`, s from liftoff (the record's instant
+ * of capture: the closing is timed on it, as the crew timed theirs on the flight plan, and the run's own capture is then
+ * a figure held to it). The controller that does it is estimated (plan decision 7: a record crew is estimated
+ * behaviour), the figures are the record's.
+ */
+export interface ApproachDef {
+  by: string;
+  departing: Measure;
+  turnAfter: Measure;
+  standOff: Measure;
+  closing: Measure;
+  contact: Measure;
+}
+
+/**
+ * A joint made in flight by docking (sim/components.ts): absent until the physics captures it (sim/docking.ts `DockPair`:
+ * the two ports within `capture`), when the two craft its ports are on become one; a `separate` of it (an undocking)
+ * parts them again. The ports are on bodies of two different craft as it is made, `ports[0]` the active one. Its
+ * `gone` is empty: what leaves as it parts is whatever its ports' sides are then.
+ */
+export interface FormedDef {
+  ports: [PortDef, PortDef];
+  capture: CaptureDef;
+  approach?: ApproachDef;
 }
 
 /** How a body meets the air: coefficients against Mach number on a reference area; lift as a ratio to drag at its trim. */
@@ -205,6 +279,8 @@ export interface JointDef {
    * flown from it: tests/sim.test.mjs and tools/figures.mjs start the spacecraft's half from the record's state then.
    */
   heading?: Measure;
+  /** A joint made in flight, by docking (`FormedDef`): it does not hold until it is captured. */
+  formed?: FormedDef;
 }
 
 /** An engine: how many chambers alike, what each gives, what it draws on and how it can be worked. */
@@ -413,6 +489,11 @@ export interface EventDef {
   source: string;
   /** Not set off until another event arms it (`{ arm }`): a timer that is started. */
   armed?: false;
+  /**
+   * The craft it is done on, by a body of it, where its actions name no hardware (an attitude, an arming): left out, the
+   * commander's. One that names hardware is done by whichever craft holds it (sim/components.ts `holderOf`).
+   */
+  craft?: string;
 }
 
 /** When an event happens. */
@@ -457,7 +538,11 @@ export type Action =
   | { deploy: string }
   | { release: string }
   | { attitude: string }
-  | { arm: string };
+  | { arm: string }
+  /** A crew member (`BodyDef.crew`) moves to a body of the craft they are in: through a tunnel, a hatch. */
+  | { board: string; to: string }
+  /** The record's crew fly the approach to a formed joint's capture (`FormedDef.approach`), on the craft its active port is on. */
+  | { dock: string };
 
 /**
  * What a burn is for (`Action.ignite.toward`): the command guidance carries out on the live state (sim/pursuit.ts), as
@@ -544,11 +629,18 @@ export interface Arrival {
  * (`TargetOrbit`), flown on from its instant, and back from it to an instant before, on the same forces as a
  * `joint`'s (orbital.ts `orbitTarget`). `epoch` is the instant its `t` is counted from, UTC (ISO 8601): the liftoff
  * of the flight whose elapsed time the record gives it in, or the instant itself with `t` 0.
+ *
+ * A `flight` or an `orbit` that names a `body` is that body's craft of the plan (one of `FlightPlan.craft` after the
+ * first, met in flight): where that craft begins, for a run that flies it beside the spacecraft (sim/proximity.ts).
+ *
+ * `craft`: another craft of the same run, by a body in it (sim/components.ts): whatever craft holds that body as the run
+ * flies it, a piece the spacecraft parted from or a craft of the plan met in flight (staged.ts `FlownWhole.crafts`).
  */
 export type TargetDef =
   | { joint: string; label: string; mass: Measure; dragArea: Measure }
-  | { flight: string; label: string }
-  | { orbit: TargetOrbit; epoch: string; label: string; mass: Measure; dragArea: Measure };
+  | { flight: string; label: string; body?: string }
+  | { orbit: TargetOrbit; epoch: string; label: string; mass: Measure; dragArea: Measure; body?: string }
+  | { craft: string; label: string };
 
 /**
  * An orbit as a record publishes it, at one instant. `fix`: a tracking vector, the place over the Earth with the
@@ -848,6 +940,7 @@ export function names(plan: FlightPlan) {
     chutes: new Set(craft.flatMap((c) => c.chutes.map((ch) => ch.id))),
     events: new Set(plan.events.map((e) => e.id)),
     attitudes: new Set(plan.attitude.map((a) => a.id)),
+    crew: new Set(craft.flatMap((c) => c.bodies.flatMap((b) => b.crew ?? []))),
   };
 }
 
@@ -924,6 +1017,10 @@ export function problems(plan: FlightPlan): string[] {
     'attitude',
     plan.attitude.map((a) => a.id),
   );
+  unique(
+    'crew member',
+    plan.craft.flatMap((c) => c.bodies.flatMap((b) => b.crew ?? [])),
+  );
   const need = (set: Set<string>, kind: string, id: string, where: string) => {
     if (!set.has(id)) out.push(`${where} names ${kind} '${id}', which is not in the plan`);
   };
@@ -934,6 +1031,18 @@ export function problems(plan: FlightPlan): string[] {
       for (const h of j.holds ?? []) need(n.joints, 'joint', h, `joint '${j.id}'`);
       if (j.hot) need(n.engines, 'engine', j.hot.engine, `joint '${j.id}'`);
       for (const e of j.closed?.engines ?? []) need(n.engines, 'engine', e, `joint '${j.id}'`);
+      if (j.formed) {
+        const where = `formed joint '${j.id}'`;
+        if (j.gone.length) out.push(`${where} lets bodies go by name: what leaves as it parts is its ports' sides`);
+        const [a, b] = j.formed.ports;
+        for (const p of j.formed.ports) {
+          need(n.bodies, 'body', p.body, where);
+          const body = plan.craft.flatMap((x) => x.bodies).find((x) => x.id === p.body);
+          if (body && !body.rigid) out.push(`${where}: its port's body '${p.body}' has no \`rigid\` to fly it by`);
+        }
+        if (a.body === b.body) out.push(`${where} joins '${a.body}' to itself`);
+        if (j.formed.approach) need(n.thrusters, 'thruster set', j.formed.approach.by, where);
+      }
     }
     for (const e of c.engines) {
       need(n.bodies, 'body', e.body, `engine '${e.id}'`);
@@ -974,11 +1083,22 @@ export function problems(plan: FlightPlan): string[] {
       else if ('release' in a) need(n.chutes, 'chute', a.release, where);
       else if ('attitude' in a) need(n.attitudes, 'attitude', a.attitude, where);
       else if ('arm' in a) need(n.events, 'event', a.arm, where);
+      else if ('board' in a) {
+        if (!n.crew.has(a.board)) out.push(`${where} boards '${a.board}', who is no crew member of the plan`);
+        need(n.bodies, 'body', a.to, where);
+      } else if ('dock' in a) {
+        const j = plan.craft.flatMap((c) => c.joints).find((x) => x.id === a.dock);
+        if (!j?.formed?.approach) out.push(`${where} docks by '${a.dock}', which is no formed joint with an approach`);
+      }
     }
+    if (e.craft) need(n.bodies, 'body', e.craft, where);
     if (e.armed === false && !plan.events.some((x) => x.do.some((a) => 'arm' in a && a.arm === e.id)))
       out.push(`${where} waits to be armed, and nothing arms it`);
   }
   if (!plan.attitude.length) out.push('the plan has no attitude to hold from liftoff');
+  const target = plan.target;
+  if (target && 'craft' in target) need(n.bodies, 'body', target.craft, 'the target');
+  if (target && 'body' in target && target.body) need(n.bodies, 'body', target.body, 'the target');
   // (a launch vehicle flown on a steering law is turned by something: with no authority stated its live vehicle cannot follow
   // the law or a hand, and goes where it was pointed on the pad)
   if (plan.attitude.some((a) => 'law' in a.hold) && !plan.craft.some((c) => c.thrusters.some((t) => t.authority && t.authority.value > 0)))
