@@ -58,6 +58,7 @@ import {
   type Ahead,
   type BurnContext,
   coelliptic,
+  level,
   elevationOf,
   flownFrom,
   needsTarget,
@@ -1879,7 +1880,8 @@ export function flyOrbit(
         return;
       }
     }
-    const toward = kind ? undefined : pursued?.at(t) ? m.toward : undefined;
+    // (the target asked for only by a burn made on it: one made on nothing would fly it on to the burn's day for nothing)
+    const toward = kind || !m.toward ? undefined : pursued?.at(t) ? m.toward : undefined;
     if (toward && 'station' in toward) {
       lines[i] = undefined;
       holding[i] = true;
@@ -1900,10 +1902,21 @@ export function flyOrbit(
             aimedAt[i]!,
             scale(record.line, record.velocity),
           )
-        : (() => {
-            const dv = coelliptic(pursued!, state, t);
-            return dv && { line: unit(dv), length: length(dv) / size };
-          })();
+        : 'level' in toward
+          ? level(
+              flyAhead,
+              pursued!,
+              state,
+              t,
+              size,
+              'ahead' in toward.level ? { ahead: toward.level.ahead.value } : { above: toward.level.above.value },
+              toward.at.value,
+              record.velocity * (dot(record.line, state.v) < 0 ? -1 : 1),
+            )
+          : (() => {
+              const dv = coelliptic(pursued!, state, t, undefined, 'planar' in toward && toward.planar === true);
+              return dv && { line: unit(dv), length: length(dv) / size };
+            })();
     if (!solved) {
       burns.push({ ...record, ...(m.fuel === undefined ? {} : { fuel: m.fuel }) });
       return;

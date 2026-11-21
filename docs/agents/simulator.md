@@ -84,7 +84,12 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   vector's place and plane, the flights that went up to them are to name the report's orbit (`orbit`), not the flight. Nothing the
   spacecraft does moves it, and no observation of the record's is written into it. A burn made on it says what it was for
   (`Action.ignite.toward`, plan.ts `Pursuit`): `reach`, the target at a stated place from the craft at a stated instant
-  and in its plane (a corrective combination, a terminal phase); `coelliptic`, an orbit of the target's shape; `station`,
+  and in its plane (a corrective combination, a terminal phase); `level`, along the level motion, forward or back, sized so
+  that at a stated instant the target stands so far ahead of the craft (a phasing burn: the Skylab profile's NC1) or so far
+  above it (a height adjustment: its NC2), the one figure for the burn's one unknown, where a `reach` half a revolution on
+  would ask the impossible of the plane (sim/pursuit.ts `level`); `coelliptic`, an orbit of the target's shape, and with
+  `planar` in its plane as well, the wedge taken out where the burn before it brought the craft to that plane (the
+  Skylab profile's NSR after its corrective combination); `station`,
   braked to rest at a stated place by the record's end of the braking and held there. As the burn lights, guidance solves
   its line and its length from the state the run is in, by flying it ahead on the run's own forces (`flyOrbit`'s
   `flyAhead`) until it does that; a braking's thrust is commanded step by step from the range and its rate, within what
@@ -1025,7 +1030,16 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   parachutes, the heat shield); the flight is the record's: its masses, loads and engines' figures, its sequence, its firings
   in orbit (`Burn`: each in its own attitude, held to the record's impulse, made on another craft where it says so), the
   craft they are made on (`target`), its entry as flown and its landing system's instants. A Skylab visit is another record
-  on it: SA-206 and SA-207 from Pad 39B's milkstool, the workshop its target once a target can be given by its orbit.
+  on it (missions/usa/skylab/vehicles/skylab-plan.ts for what the visits share): Skylab 2's (skylab-2/orbital.ts, mission.md)
+  is SA-206 from Pad 39B's milkstool to its flight evaluation, and the workshop its target, given by its orbit
+  (`TargetDef.orbit`: on the plane of the spacecraft's tracked insertion, as far downrange as the launch commentary put it,
+  `workshopInPlane`). The rendezvous is the visits' shared profile (JSC-63400, chapter 5), each burn a purpose: NC1 `level`
+  for the workshop's place at NC2, NC2 `level` for its height at the corrective combination, NCC `reach` for its place at
+  the coelliptic burn, NSR `coelliptic` and `planar`, TPI `elevation` at 27°, the braking `station` to the first soft
+  docking; the profile's figures this flight's record does not give are the second visit's plan's and say so. The docked
+  stay is not flown docked (no joint is formed yet): the spacecraft coasts on alone beside the workshop for 27 days, the
+  stand-up EVA, the failed captures and the hard dock are marks, and the two deorbit firings are flown at the record's
+  minutes, the entry steered to the landing place (`Hold.entry`).
 - **A Saturn V leaves its orbit for the Moon** (missions/usa/apollo/vehicles/saturn-v-plan.ts, written from each flight's
   record, `SaturnVRecord`). Its ascent is a stated law as every flight's: the S-IC's tilt programme flown open (each flight's
   read off a figure of its own flight evaluation), then the linear tangent from the instant the iterative guidance began,

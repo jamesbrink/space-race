@@ -27,6 +27,7 @@ test('a fire without a nozzle record uses the neutral display fallback', () => {
  */
 const FALLBACK = {
   'usa/apollo/apollo-7': ['h1-inboard', 'h1-outboard', 'sivb-j2', 'sps'],
+  'usa/skylab/skylab-2': ['h1-inboard', 'h1-outboard', 'sivb-j2', 'sps'],
   // (the F-1's and the J-2's chamber pressures and expansions are not yet in a Saturn V record)
   'usa/apollo/apollo-8': ['f1-centre', 'f1-outboard', 'j2-centre', 'j2-outboard', 'sivb-j2', 'sivb-tli', 'sps'],
   'usa/apollo/apollo-10': ['f1-centre', 'f1-outboard', 'j2-centre', 'j2-outboard', 'sivb-j2', 'sivb-tli'],

@@ -9,6 +9,7 @@ import { launch, open, url as urlOf } from './browser.mjs';
 const url = urlOf(process.argv.slice(2));
 const FLIGHTS = {
   'usa/apollo/apollo-7': ['Ignition', 'Inboard H-1 engines cut off'],
+  'usa/skylab/skylab-2': ['Ignition', 'Inboard H-1 engines cut off'],
   'usa/apollo/apollo-8': ['Ignition', 'S-IC centre engine cutoff'],
   'usa/apollo/apollo-10': ['Ignition', 'S-IC centre engine cutoff'],
   'usa/apollo/apollo-11': ['Ignition', 'S-IC centre engine cutoff'],

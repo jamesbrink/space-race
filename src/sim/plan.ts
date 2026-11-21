@@ -537,8 +537,20 @@ export type Pursuit =
    * the record's lighting and `at` were before the record's.
    */
   | { reach: { ahead: Measure; above: Measure }; at: Measure; arrival?: Arrival }
-  /** Leaves the craft on an orbit of the target's shape, the height between them the same all the way round. */
-  | { coelliptic: true }
+  /**
+   * Along the level motion (the horizontal in the craft's plane), forward or back, sized so that at the instant `at`, s
+   * from liftoff, the target stands so far `ahead` of the craft (a phasing burn: the Skylab profile's NC1, a Gemini NC) or
+   * so far `above` it (a height adjustment: NC2, a Gemini NH): one figure for the burn's one unknown. Where the instant is
+   * half a revolution on (or one and a half), the place in the target's plane a `reach` asks for besides is not to be had.
+   */
+  | { level: { ahead: Measure } | { above: Measure }; at: Measure }
+  /**
+   * Leaves the craft on an orbit of the target's shape, the height between them the same all the way round. With `planar`,
+   * in the target's plane besides: the motion laid along it where the craft is, the wedge between the two orbits taken out
+   * (lit where the burn before it brought the craft to the target's plane, as a coelliptic burn that also nulls the
+   * out-of-plane motion was: the Skylab profile's NSR after its corrective combination).
+   */
+  | { coelliptic: true; planar?: true }
   /**
    * Braked to rest with the target at this place from it by the firing's recorded end, and held there until `until`,
    * s from liftoff: thrust commanded all the while from the range and its rate, within what the engine can give. The
