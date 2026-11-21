@@ -1,7 +1,7 @@
 # Working notes for agents in this repo
 
 SPACE RACE: every crewed spacecraft and its launch vehicle, modelled to scale in Blender and shown
-in three.js. The catalog includes 45 crewed flights and seven Gemini target launches. All have a Gallery, and every flight except Skylab 4 has a Launch site. The last three Apollo flights also have drivable lunar rovers. The six Mercury, six Vostok and two Voskhod flights, Gemini 3, 4, 5, 6A and 7, Soyuz 1, 3, 4, 10, 12, 16 and T-2 (Soyuz 1 as the record had its parachutes fail), Apollo 7, Apollo 8 (to the Pacific, by way of ten revolutions of the Moon), Apollo 10 to 17 (through the translunar injection) and the seven Gemini targets (the two lost ones as the record had them fail) can be flown from launch.
+in three.js. The catalog includes 45 crewed flights and seven Gemini target launches. All have a Gallery, and every flight except Skylab 4 has a Launch site. The last three Apollo flights also have drivable lunar rovers. The six Mercury, six Vostok and two Voskhod flights, Gemini 3, 4, 5, 6A and 7, Soyuz 1, 3, 4, 10, 12, 16 and T-2 (Soyuz 1 as the record had its parachutes fail), Apollo 7, Skylab 2 (to the workshop, its stay coasted beside it, and home), Apollo 8 (to the Pacific, by way of ten revolutions of the Moon), Apollo 10 to 17 (through the translunar injection) and the seven Gemini targets (the two lost ones as the record had them fail) can be flown from launch.
 The goal is a
 simulator in which you fly the USA's, the USSR's and later programmes from the historical record to the present, so **the models and the
 numbers have to be right, and where they are not yet right the repo has to say so**.
