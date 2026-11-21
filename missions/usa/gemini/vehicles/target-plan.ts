@@ -6,7 +6,8 @@
  * states) and its flight.ts flies the plan written from it (`targetPlan`). Nothing in src/ names a target.
  *
  * A target is uncrewed and stays up: its coast has no burn of the record's and nothing comes down (sim/orbital.ts
- * `shipOf`). One that never reached orbit is flown as the record had it fail, on the plan as planned for the law
+ * `shipOf`), and it is flown for three days (`COAST`), which covers the spacecraft that went up to it: that flight's
+ * plan names this one as its target (`TargetDef.flight`) and meets this flight's own run. One that never reached orbit is flown as the record had it fail, on the plan as planned for the law
  * (`FlightPlan.planned`): GATV-5002's engine shut down 0.91 s after it was started, and GATV-5004's Atlas lost control
  * of a booster chamber at 120.63 s (`Guidance.lost`). The ascent's steering is the stated law (sim/staged.ts), not the
  * Atlas's radio guidance or the Agena's own: none of their programmes was read.
@@ -38,6 +39,19 @@ const GVIII = 'Gemini Program Mission Report, Gemini VIII, MSC-G-R-66-4 (April 1
 const SLV3A = 'Wikipedia, "Atlas SLV-3", the SLV-3A’s MA-5 engines (secondary, no primary source read)';
 const XLR81 = 'Wikipedia, "XLR81", the Bell 8247 (XLR81-BA-13) of the Gemini Agena: 293 s in vacuum (secondary, no primary source read)';
 const CATALOG = 'Lockheed, NASA Agena D Mission Capabilities and Restraints Catalog, LMSC-A604166-2 (8 October 1965; NTRS 19660009137)';
+
+/**
+ * How far a target's coast is flown: three days from its liftoff, on gravity and the air alone. That covers the
+ * spacecraft that went up to it: every Agena was docked with inside nine hours of its own liftoff (GATV-5003 the
+ * latest, 8 h 14 min), and the ATDA, which could not be, was left for the last time 69 h 39 min after its own (Gemini
+ * IX-A's 22:59 elapsed, 46 h 39 min 31 s after the ATDA went up; tests/pursuit.test.mjs holds each target's run to
+ * its spacecraft's). What a target did after it was left, its own engines fired by the ground's command, is not flown:
+ * a later visit (Gemini X's to GATV-5003, four months on) is made on its orbit as then published (`TargetDef.orbit`).
+ */
+const COAST = derived(
+  3 * 86_400,
+  'three days from liftoff: past the last instant the spacecraft it went up for was at it (the ATDA, 69 h 39 min after its own liftoff; an Agena docked with inside nine hours), flown on gravity and the air alone',
+);
 
 /** A state the report's trajectory table gives: geodetic altitude, ft; space-fixed speed, ft/s; space-fixed flight-path angle, deg. */
 export interface TableState {
@@ -155,6 +169,8 @@ export interface TargetRecord {
   injection: { at: Measure; heading: 'north'; arc: Measure; anomaly: Measure };
   /** The target in orbit, kg (or, for one that fell, as it fell). */
   mass: Measure;
+  /** How far its coast is flown, s from liftoff (`PlanRecord.coastUntil`): none for one that fell, which is flown until it is down. */
+  coast?: { until: Measure };
   events: Instant[];
   checks: (Omit<RecordCheck, 'id'> & { id: keyof OrbitResults })[];
   /** The record as it was to be flown, for one whose flight went otherwise: what the law is solved on. */
@@ -482,6 +498,7 @@ export function targetRecord(f: LaunchFigures, payload: 'agena' | 'atda'): Targe
               ? 'what it weighed as it left the Atlas: it never reached orbit'
               : 'what it weighed as it left the Atlas: no in-orbit weight is given',
           ),
+    ...(f.fell ? {} : { coast: { until: COAST } }),
     events: [
       { id: 'liftoff', label: 'Liftoff', at: doc(0, times) },
       { id: 'beco', label: 'Booster engine cutoff', at: doc(t.beco, times) },
@@ -819,6 +836,7 @@ export function targetPlan(o: TargetRecord): FlightPlan {
       },
       centre: o.ascent.centre,
       marks: o.events.filter((e) => !actionAt.has(e.at.value)).map((e) => ({ id: e.id, label: e.label, at: e.at })),
+      ...(o.coast ? { coastUntil: o.coast.until } : {}),
     },
     ...(o.planned ? { planned: targetPlan(o.planned) } : {}),
   };

@@ -1,3 +1,4 @@
+import { enrol } from '../../../../src/sim/roster.ts';
 import type { Flight, Part } from '../../../../src/types.ts';
 import { LC14 } from '../../places/cape-canaveral/lc-14.ts';
 import { AGENA, ATDA, agenaDimensions, agenaMotors, agenaParts, atdaDimensions, atdaMotors, TARGET_GROUP } from './gemini-targets.ts';
@@ -79,10 +80,14 @@ export function lostParts(unit: '5002' | '5004'): Part[] {
   ]);
 }
 
+/**
+ * A target's launch as a flight. It is enrolled with the simulator as it is built (sim/roster.ts), so the flight that
+ * went up to it can name it as its target (`TargetDef.flight`) wherever this flight's `flight.ts` has been loaded.
+ */
 export function targetFlight(id: keyof typeof targetLaunches, parts: Part[], orbital?: TargetRecord): Flight {
   const record = targetLaunches[id];
   const augmented = id === 'atda';
-  return {
+  const flight: Flight = {
     id: 'usa/gemini/' + id,
     nation: 'USA',
     agency: 'NASA',
@@ -129,4 +134,6 @@ export function targetFlight(id: keyof typeof targetLaunches, parts: Part[], orb
       ...targetSiteModels(id, record),
     ],
   };
+  enrol(flight);
+  return flight;
 }

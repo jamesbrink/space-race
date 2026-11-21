@@ -1,8 +1,10 @@
 /**
- * The stage a spacecraft left in orbit and went back to (`Flight.flies.target`), where it is at an instant of a run: a
- * craft of its own, flown from the parting on its own forces (sim/pursuit.ts, orbital.ts `targetFrom`). Nothing moves
- * it but gravity and the air: where the record has it from the spacecraft (the plan's checks of its range) is what a
- * run is compared with, never what the stage is put on.
+ * A flight's target, where it is at an instant of a run. The stage a spacecraft left in orbit and went back to
+ * (`Flight.flies.target`) is a craft of its own, flown from the parting on its own forces (sim/pursuit.ts, orbital.ts
+ * `targetFrom`). Nothing moves it but gravity and the air: where the record has it from the spacecraft (the plan's
+ * checks of its range) is what a run is compared with, never what the stage is put on. A target that is another
+ * flight's vehicle, or a craft flown from a published orbit (`TargetDef.flight`, `orbit`: staged.ts `metOf`), is where
+ * it is whatever the run did.
  */
 import type { SitedFlight } from '../types.ts';
 import { length, scale, sub, unit } from '../world/frames.ts';
@@ -10,6 +12,7 @@ import { type State, step } from '../world/orbit.ts';
 import { targetFrom } from './orbital.ts';
 import type { Target } from './pursuit.ts';
 import { between, type Run, recordOf } from './run.ts';
+import { metOf } from './staged.ts';
 import type { LiveSample } from './vehicle.ts';
 
 /** A stage let go by an abort on the way up: flown on by gravity alone, down to the sea. */
@@ -35,8 +38,13 @@ interface Track {
 }
 const tracks = new WeakMap<Run, Track>();
 
-/** The target of the flight as flown to orbit: none on a launch that was aborted. */
+/**
+ * The target of the flight at `t` on a run. A stage the run let go, as flown to orbit: none on a launch that was aborted.
+ * Another flight's vehicle or a craft flown from a published orbit: that craft, which no run of this flight moves.
+ */
 export function targetAt(flight: SitedFlight, run: Run, t: number): State | undefined {
+  const def = flight.plan?.target;
+  if (def && !('joint' in def)) return metOf(def, run.frame, flight.site.seaLevel.value).at(t);
   if (!run.launchAborted) return detachedStageAt(flight, run, t);
 }
 
