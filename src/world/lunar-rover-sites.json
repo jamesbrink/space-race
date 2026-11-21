@@ -3,14 +3,18 @@
   "sites": {
     "hadley": {
       "unloaded": [
-        "LM10_RoverThermalCover"
+        "LM10_RoverThermalCover",
+        "LM3_CountryPlacard",
+        "LM3_CountryLetters"
       ],
       "sunAt": "1971-08-01T11:48:48Z",
       "lander": "models/usa/apollo/apollo-15/falcon.glb"
     },
     "descartes": {
       "unloaded": [
-        "LM11_RoverThermalCover"
+        "LM11_RoverThermalCover",
+        "LM3_CountryPlacard",
+        "LM3_CountryLetters"
       ],
       "sunAt": "1972-04-22T16:33:35Z",
       "lander": "models/usa/apollo/apollo-16/orion.glb"
@@ -24,7 +28,9 @@
         "LM12_QuadIIIBlanket",
         "LM12_RoverThermalCover",
         "LM12_EnlargedMESACover",
-        "LMSurfaceEquipment"
+        "LMSurfaceEquipment",
+        "LM3_CountryPlacard",
+        "LM3_CountryLetters"
       ],
       "sunAt": "1972-12-13T00:17:02Z",
       "lander": "models/usa/apollo/apollo-17/challenger.glb"

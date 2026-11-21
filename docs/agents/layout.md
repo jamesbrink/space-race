@@ -83,6 +83,9 @@ missions/                             the record: one folder per nation, program
                                       rebuild_dsky_front.py <step> <survey.glb>` (it runs Blender itself for the survey);
                                       rebuild_console_apertures.py needs numpy, scipy and shapely; rebuild_dsky_panels.py the standard
                                       library alone. vehicles/reference/README.md says what each file is and where it came from
+    usa/apollo/vehicles/lrv_deploy.py the lunar rover to the vehicle contract, hung on the hinges its deployment from quadrant I moves,
+                                      and that deployment's five phases written into its nodes (`run`); rover-gallery.ts says how the
+                                      site stands it and works it by hand (`lunarRover.deploy`)
     vehicles/periscope.ts             Mercury's periscope: its door and objective on the flight's clock (`MechanismDef`, clocked moves)
     crew/<suit>.parts.ts              a suit's parts as flight data (sk-1.parts.ts; g4c-suit.parts.ts, with a Gemini man standing at Complex 19; g5c-suit.parts.ts)
     crew/<suit>_wearers.py            every wearer a suit's module names, built at every level of detail under the clearance check in one
@@ -282,7 +285,8 @@ src/
   viewer/onfoot/gait.ts               how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   viewer/onfoot/ragdoll.ts            a figure gone limp after a long fall: points, sticks, and the bones laid along them
   viewer/onfoot/works.ts              things that work when worked: doors (toggles) and lifts, from a part's actions
-  viewer/onfoot/drive.ts              driving: a kinematic bicycle model and the vehicle contract's nodes
+  viewer/onfoot/drive.ts              driving: a kinematic bicycle model and the vehicle contract's nodes; a vehicle on its own suspension (rear steer, wishbones) rides on its springs under the place's gravity
+  viewer/onfoot/suspension.ts         a vehicle's double wishbones: each wheel steered, rolled and stood on the ground (or hanging), its links aimed
   viewer/onfoot/carry.ts              what a walking figure has in its hand, by the model's grip contract
   viewer/onfoot/hose.ts               a hose or tether of fixed length hanging between two moving anchors
   viewer/onfoot/going.ts              people walking off a site or onto it (types.ts Going): where each figure is at an instant of the clock, pure
@@ -296,7 +300,7 @@ src/
   viewer/lunar/light.ts               the light on the Moon's ground as numbers: the Sun's disc over the horizon, the exposure (pure, tested)
   viewer/farearth.ts                  the Earth from the Moon (the globe's maps small, the day's cloud, the air): the front page's and the lunar setting's
   viewer/lunar-driving-ground.ts      the rover's gallery scene's ground: the lunar setting with a state of its own, the LM on it, the Sun's shadow round the rover
-  viewer/lunar-rover.ts               drives and steers a four-wheel lunar rover over the surveyed ground
+  viewer/lunar-rover.ts               the gallery's quick drive of the rover: the shared Vehicle on the rover's site's ground
   world/lunar-terrain.ts              samples the triangles of the LROC and LOLA terrain under a rover's wheels (`LunarTerrain`); the landing sites and the rovers' by id
   world/lunar-ground.ts               a landing site's ground over the Moon: the descent strip (`DescentStrip`, its file format), the grids and the strip as one (`LandingGround`), by latitude and longitude or in the site's frame
   world/moonsky.ts                    the sky from the Moon at an instant (`skyAt`): the Earth, the Sun, the Earth's and the stars' axes in the Moon's frame (pure, tested by front.test.mjs)
@@ -538,6 +542,7 @@ where it was left.
 - `tests/longrun.test.mjs` holds a flight of days to what a phone can hold (issue #173): Gemini VII's record run, fourteen days, and Apollo 8's, six days out to the Moon and home, by how many samples each keeps and how much heap it holds; `tests/rails.test.mjs` holds a coast kept by how fast its motion changes to the one that kept every step, between its samples.
 - `tests/lunargravity.test.mjs` holds the Moon's field to the published table and to its potential's gradient, the Moon's axes to the IAU's pole, the two sides of the sphere to the same gravity, and a coast through the sphere (Apollo 8's injection as the run reaches it) to one state across the crossing, to the same coast on rails, and to the Mission Report's pericynthion (a recorded miss).
 - `tests/cislunar.test.mjs` checks the path beyond a low orbit: a low orbit predicted to the bit as before, an orbit of more than six hours followed once round, a path that leaves the Earth's sphere, one that meets the Moon and one that passes it, Apollo 10's record predicted on from its injection to the Moon near the record's time (and to the same passing under a sphere's whole field), and the frame a path is drawn in.
+- `tests/lunar-rover-deploy.test.mjs` holds each rover to the vehicle contract and its deployment to its models: the site's figure for where it stands against the model's, every motion's node there, deployed it stands as built, and stowed its floor is where its LM's model has the folded rover; `tests/lunar-rover-drive.test.mjs` drives it on its suspension under the Moon's gravity (the handbook's speed, its turning circle, the slide at speed, a bump left at speed); `tests/lunar-rover-clearance.test.mjs` keeps its wheels off its frames at every steer and on a twist.
 - `tests/lunarsetting.test.mjs` holds the light on the Moon's ground to no step (the Sun's disc over the horizon, the exposure), every landing site to its LM's landing instant, the crew who went out to the landing flights' commanders and LM pilots, and the Sun over each site at its landing low in the east (world/moonsky.ts, against the point under it)
 - `tests/flightmoon.test.mjs` holds the flight scene's Moon to the flight's own gravity's place for it, its axes to the Moon's frame, the eye's up turned toward it without a step, and its eclipse of the Sun without a step across the shadow's edge
 - `tests/pathref.test.mjs` checks the record's line as numbers: the curve against made paths and three flights' records, the events' rule, the window drawn.

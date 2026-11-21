@@ -30,6 +30,18 @@ lid). The vehicle's node carries `vehicle` (what it is), `wheelbase`, `track`, `
 level of detail. A steered wheel can also be turned and rolled as one node, as the viewer's
 `drive` move does today: the hub is then taken for the kingpin, 10 cm out.
 
+A vehicle that steers and rides otherwise says so in its extras (the lunar rover:
+missions/usa/apollo/vehicles/lrv_deploy.py). `rear_steer`: both ends steer, opposed, and its origin is
+under the middle of its wheelbase, which it turns about. `inner_lock` (degrees, the inner wheel's at
+full lock) and `steer_time` (seconds lock to lock) in place of what the turning circle implies;
+`top_speed` (m/s) and `power` (W, its motors together). `suspension: "wishbone"`: each wheel hangs on
+double wishbones named `<name>_Steer_<corner>`, `<name>_Wheel_<corner>`, `<name>_Link_<corner>_<kind>`
+(with `_In` and `_Out`), `<name>_Mount_<corner>_<kind>`, `<name>_Barrel_<corner>` and
+`<name>_Piston_<corner>` (viewer/onfoot/suspension.ts), built as it rides loaded, and it rides on them:
+`mass` and `payload` (kg), `clearance_loaded` and `clearance_empty` (m, the frame's underside over the
+ground) and `rated_gravity` (m/s², where those clearances hold) give its springs. Its seats carry
+`seat` and the place to get on from `stand`, as above.
+
 How a body is made. The lower body is one skin lofted through cross-sections (`Car.section`):
 a flat floor, a wheel well wherever a wheel stands, the side with its tuck-under, a rounded
 shoulder, a fin if it has one, and the crowned bonnet or boot lid. Three curves along the length

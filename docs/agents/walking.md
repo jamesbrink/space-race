@@ -232,6 +232,13 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   `pnpm test:walk --flight usa/apollo/apollo-11 --only Moon` walks it (tools/walk-test.mjs `moonRoutes`). **Time on the
   surface** runs faster than it goes only with nobody on foot and nothing due (session.ts `surfaceTime`): on foot the clock is
   held to real time (Clock.allow(1)), and off foot it is held at the flight's next event on its timeline (Clock.hold).
+- **The rover comes off the LM by hand.** Where a flight took a rover (`ModelDef.lunarRover.deploy`), it stands at the landing
+  site stowed in quadrant I of the LM, the LM's pose carried over to it (app/surface.ts `stowedRover`), and its slider is its
+  deployment, the LRV Operations Handbook's phases (lunar-rovers.md, "Deployment"): from the wheel, Operate the outer tapes (it
+  tips out and unfolds until its rear wheels are down), the centre tape (its front let down) and the saddle release, each
+  waiting for the one before. Off its saddle it settles on its springs and is got onto at the driver's seat ("Get in and
+  drive"), and driven. How far each was worked and where the rover was left go with the run flown by hand (tape.ts
+  `Taped.surface`, session.ts `surfaceLeft`), not the browser's session storage, and come back with it.
 - **Stairs are walked, not hopped.** The floor is sensed under the middle of the body and four
   points round it, so open treads with daylight between them carry it; the body follows a flight
   as fast as the legs go (`settle`'s `rate`) and a step down is as deep as a step up is tall.
@@ -331,6 +338,16 @@ Nothing in `walk.ts`, `gait.ts` or their hooks in `onfoot/onfoot.ts` (`OnFoot`, 
   rim at ten to two (`reach`), and a tall one sinks and leans back to clear the roof (`seatFit`,
   measured straight up from the hip point); the eyes are taken off the posed head and kept under
   the roof. The chase view sits behind the whole vehicle and over its roof, looking at it.
+  **A vehicle on its own suspension** says so in its extras (vehicles.py: `rear_steer`, `suspension: 'wishbone'` with its
+  mass, payload and the clearances its springs give it loaded and empty, `inner_lock`, `steer_time`, `power`): both its ends
+  steer, opposed, about the middle of its wheelbase; each wheel hangs on double wishbones (`onfoot/suspension.ts`, the
+  lunar rover's, which the gallery's quick drive drives too) and its frame heaves, pitches and rolls on four springs at a fixed
+  1/120 s under the place's gravity (`Vehicle.gravity`, from `OnFootHost.gravity`); a wheel whose spring has nothing to push
+  hangs, with none bearing it flies; what drives, brakes and turns it is what the ground under its wheels gives (`rollOn`:
+  its motors' power over its speed, its grip times the gravity, past which a turn slides wide). The ones that bear are stood
+  on the ground under them each frame. One a part says may not be driven yet (`Part.drives`, its functions' interlocks) is
+  not got into, and says why; the moment it may, it is let go of the slider where it stands and settles onto the ground
+  under it (`OnFoot.settleVehicles`), as it does when he gets off it.
 - **Places can be taken.** `ModelDef.seats` (a couch) is boarded from the wheel at its `from`
   node while the clock is in its `open` window (the clock is not moved for it); `stage.onFoot.seated`
   says where, E gets out where he got in. A model without the node can name a `standIn` mesh

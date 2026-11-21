@@ -40,7 +40,7 @@ export const HADLEY = landingSite({
       value: 270,
       confidence: 'estimated',
       source:
-        'the report gives no yaw at rest (MSC-05161 section 7.1 has the pitch and the roll from the gimbal angles alone). Taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead)',
+        'the report gives no yaw at rest (MSC-05161 section 7.1 has the pitch and the roll from the gimbal angles alone). Taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead). The Journal bears out west: the "plus-Z (west)" footpad touched down and the "minus-Z (east)" one went back into the crater (ALSJ, the landing, at 104:42:29)',
     },
     pitch: {
       value: 6.9,

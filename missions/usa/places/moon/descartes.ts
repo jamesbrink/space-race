@@ -39,7 +39,7 @@ export const DESCARTES = landingSite({
       value: 270.31,
       confidence: 'estimated',
       source:
-        'Apollo 16 Mission Report, MSC-07230, section 9, p. 9-19: "with a slight yaw to the south", given no figure; taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead), the slight yaw left out',
+        'Apollo 16 Mission Report, MSC-07230, section 9, p. 9-19: "with a slight yaw to the south", given no figure; taken as its approach (the LM flew its last minutes facing along its ground track, its +Z ahead), the slight yaw left out. Young’s technical debrief bears out its facing along its track: the yaw taken out, "from zero yaw all the way down" (ALSJ, the landing, after 104:30:44)',
     },
     pitch: {
       value: 2.5,
