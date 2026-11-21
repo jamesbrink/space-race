@@ -20,6 +20,7 @@
     "collision": "node tools/collision-bake.mjs",
     "test:flight-pixels": "node tools/flight-pixels.mjs",
     "test:flicker": "node tools/flicker-test.mjs",
+    "test:spacelight": "node tools/spacelight-test.mjs",
     "test:frozen": "node tools/frozen-test.mjs",
     "test:camera": "node tools/camera-test.mjs",
     "test:studio": "node tools/studio-test.mjs",
