@@ -488,6 +488,7 @@ const SIDE = () => {
     // an orbit, which goes round, and whose coming round is what is looked for)
     const round = shown.result.outcome === 'orbit' || shown.result.outcome === 'limit';
     let turned = false;
+    const round0 = ship.distanceTo(p.centre);
     out.aheadReach = 0;
     const clear = gap + fade;
     for (let i = 0; i < n; i++) {
@@ -523,7 +524,17 @@ const SIDE = () => {
         if (ahead) out.aheadNear = out.aheadNear === null ? dist : Math.min(out.aheadNear, dist);
         else {
           out.behindNear = out.behindNear === null ? dist : Math.min(out.behindNear, dist);
-          if (pg && last) out.behindPx += Math.hypot(pg.x - last.x, pg.y - last.y);
+          // (seen from near it, behind the vehicle within its own distance from the Earth's centre, the size of the way it
+          // goes round: further off than that, what lies behind its way is the path days on, gone round the Earth and out
+          // again, not a line drawn behind it. A path to the Moon looked ahead for fifteen days came back past 517,000 km
+          // behind Apollo 8 at T+165030, and from the chase view a stretch of it was in the picture)
+          if (pg && last && dist < round0) {
+            out.behindPx += Math.hypot(pg.x - last.x, pg.y - last.y);
+            // (and where on the line what is seen behind lies: its instants and how far from the vehicle, said with a failure)
+            out.behindFrom = Math.min(out.behindFrom ?? t, t);
+            out.behindTo = Math.max(out.behindTo ?? t, t);
+            out.behindSeenNear = Math.min(out.behindSeenNear ?? dist, dist);
+          }
         }
         last = !ahead && pg ? pg : null;
       }
@@ -1291,7 +1302,11 @@ class Run {
         this.fail(where, `nothing of the line is drawn ahead of the vehicle (it reaches ${m.aheadReach.toFixed(0)} m ahead)`);
     } else if (m.aheadNear > 1.05 * clear + 1)
       this.fail(where, `the line is first drawn ${m.aheadNear.toFixed(1)} m ahead of the vehicle (its clearance ${clear.toFixed(1)} m)`);
-    if (v !== 'far' && m.behindPx > 2) this.fail(where, `${m.behindPx.toFixed(0)} px of the line ahead are drawn behind the vehicle`);
+    if (v !== 'far' && m.behindPx > 2)
+      this.fail(
+        where,
+        `${m.behindPx.toFixed(0)} px of the line ahead are drawn behind the vehicle${m.behindFrom !== undefined ? ` (T+${m.behindFrom.toFixed(0)} to T+${m.behindTo.toFixed(0)} of it, ${(m.behindSeenNear / 1000).toFixed(1)} km from the vehicle at the nearest)` : ''}`,
+      );
     if (v === 'far' && m.behindNear !== null && m.behindNear < 1_000_000)
       this.fail(where, `the line ahead is drawn ${(m.behindNear / 1000).toFixed(0)} km behind the vehicle`);
     if (m.outcome !== 'impact' && m.endSeen && m.endAlpha > 0.02)
@@ -1831,7 +1846,9 @@ class Run {
           turned: shown?.result.impact ? 7.292115e-5 * (shown.result.impact.t - shown.result.from) : null,
           top: shown ? Math.max(...shown.result.points.map((q) => Math.hypot(q.r[0], q.r[1], q.r[2]))) : 0,
           passes: shown?.result.passes.map((x) => ({ body: x.body, t: x.t, height: x.height, strikes: x.strikes })) ?? [],
-          passMarks: p.marks.filter((x) => x.kind === 'pass').length,
+          passMarks: p.marks.filter((x) => x.kind === 'pass' || x.kind === 'perilune').length,
+          // (in the Moon's sphere the line is drawn about the Moon as it is now: the Moon has no way to the passing to draw)
+          about: Boolean(p.about),
           refFrame: p.refMesh.visible ? p.drawnRef.frame : null,
           bodies: p.heavens.map((h) => {
             const [x, y] = px(h.mark.at.x, h.mark.at.y, h.mark.at.z);
@@ -1906,7 +1923,7 @@ class Run {
           where,
           `the path passes the ${pass.body}, which is ${body ? (body.shown ? `marked ${body.off.toFixed(1)} px off its place` : 'not marked') : 'not on the map'}`,
         );
-      else if (!(body.disc > 2 && body.meet > 2 && body.way > 1))
+      else if (!(body.disc > 2 && body.meet > 2 && (body.way > 1 || m.about)))
         this.fail(
           where,
           `the ${pass.body} on the map lacks its outline (${body.disc}), its outline where the path passes it (${body.meet}) or its way there (${body.way})`,
