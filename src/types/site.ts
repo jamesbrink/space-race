@@ -65,10 +65,17 @@ export interface LunarSiteDef {
   /** The descent's ground track at the LM: the heading it was flown on there, degrees clockwise from north. The descent strip lies along it. */
   approach: Measure;
   /**
-   * When its LM touched down, UTC (ISO 8601), and from what: the hour the Earth's cloud in its sky is baked for
-   * (tools/front-earth.mjs `--lunar`: public/lunar/<id>.earth.day.jpg).
+   * When its LM touched down: UTC, seconds from 1970 (`landedAt` writes it as ISO 8601), from the mission report's
+   * range zero and the elapsed time of its landing. The hour the Earth's cloud in its sky is baked for (tools/front-earth.mjs
+   * `--lunar`: public/lunar/<id>.earth.day.jpg).
    */
-  landed: { at: string; source: string };
+  landed: Measure;
+  /**
+   * How its LM stood at rest on its pads, degrees: the bearing its forward hatch (its +Z, the model's +X) faced, clockwise
+   * from north; its pitch, up positive (its front higher than its back); and its roll, right positive (the right side, the
+   * pilot's, lower). Where the stage stands it (app/surface.ts), until a run's landing gives where and how it came down.
+   */
+  rest: { heading: Measure; pitch: Measure; roll: Measure };
 }
 
 /**
