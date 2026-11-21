@@ -789,6 +789,8 @@ function mapWorld(craft, state) {
             reach: state.reach,
             extent: state.extent,
             ...(state.moon ? { moon: state.moon } : {}),
+            ...(state.plane ? { plane: state.plane } : {}),
+            ...(state.inMoon ? { inMoon: true } : {}),
           },
   };
 }
@@ -1001,4 +1003,56 @@ test('the map is M`s: C never offers it, it comes back to the view it was taken 
   assert.ok(camera.position.distanceTo(was) < 1e-6, 'as that view was left');
   assert.equal(cams.refocus(), null);
   assert.deepEqual(rigs, ['chase', 'locked', 'map', 'locked']);
+});
+
+test('the map first looks square onto the path’s plane, tipped toward the vehicle: a low orbit from 40 degrees, a path to the Moon from almost square on', () => {
+  const plane = V(0.2, 0.3, 0.93).normalize();
+  for (const [height, most] of [
+    [200e3, 45],
+    [300_000e3, 2],
+  ]) {
+    // the vehicle in the plane, `height` over the ground
+    const up = V(1, 0, 0).sub(plane.clone().multiplyScalar(plane.x)).normalize();
+    const at = up.clone().multiplyScalar(R + height).add(V(0, -R, 0));
+    const craft = craftAt(at, 3);
+    const state = { turned: 0, reach: R + height + 1e6, extent: 2 * (R + height), plane };
+    const rig = new MapRig(mapWorld(craft, state), 35);
+    // (the view it was taken from on the plane's north side)
+    rig.enter({ position: at.clone().addScaledVector(plane, 50), quaternion: new THREE.Quaternion(), fov: 35 }, at);
+    rig.update(0, NONE, false);
+    assert.equal(rig.focus, 'body');
+    const toEye = posed(rig).position.sub(rig.pivot).normalize();
+    const off = (Math.acos(Math.min(1, toEye.dot(plane))) * 180) / Math.PI;
+    const want = (Math.atan((0.85 * R) / (R + height)) * 180) / Math.PI;
+    assert.ok(Math.abs(off - want) < 1e-3 && off < most, `${(height / 1e3).toFixed(0)} km up: ${off.toFixed(2)} degrees from square on (${want.toFixed(2)})`);
+    assert.ok(toEye.dot(up) > 0, 'tipped toward the vehicle: it is on the near side');
+    // (and from the other side of the plane, the other side)
+    const other = new MapRig(mapWorld(craft, state), 35);
+    other.enter({ position: at.clone().addScaledVector(plane, -50), quaternion: new THREE.Quaternion(), fov: 35 }, at);
+    other.update(0, NONE, false);
+    assert.ok(posed(other).position.sub(other.pivot).normalize().dot(plane) < 0);
+  }
+});
+
+test('the map turns about the Moon by itself while the vehicle is in its sphere, and about the Earth again once it leaves', () => {
+  const M = 1_737_400;
+  const moonAt = V(0, -R, 384_000e3);
+  const craft = craftAt(V(0, -R + 1_900e3, 384_000e3), 3);
+  const state = { turned: 0, reach: 390_000e3, extent: 400_000e3, moon: { centre: moonAt, radius: M }, inMoon: true };
+  const rig = new MapRig(mapWorld(craft, state), 35);
+  rig.enter({ position: V(0, -R + 1_901e3, 384_000e3), quaternion: new THREE.Quaternion(), fov: 35 }, V(0, -R + 1_900e3, 384_000e3));
+  rig.update(0, NONE, false);
+  assert.equal(rig.focus, 'moon', 'in the Moon’s sphere: about the Moon');
+  run(rig, 3, 60);
+  assert.ok(rig.pivot.distanceTo(moonAt) < 1e-6);
+  assert.ok(posed(rig).position.distanceTo(moonAt) < 40 * M, 'the Moon and the vehicle in the frame, not the Earth’s ball');
+  state.inMoon = false;
+  run(rig, 3, 60);
+  assert.equal(rig.focus, 'body', 'out of it: about the Earth');
+  // chosen by hand, it stays chosen
+  state.inMoon = true;
+  rig.refocus();
+  const chosen = rig.focus;
+  run(rig, 1, 60);
+  assert.equal(rig.focus, chosen);
 });
