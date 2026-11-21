@@ -5,13 +5,17 @@ from math import cos, pi, radians, sin, tau
 from mathutils import Matrix
 
 from lm5_equipment import box, point, tube
+from lrv_deploy import assemble, deployment_runs
 from lrv_wheels import build_wheels
 from rover_equipment import equipment
 from srlib import IN, MeshBuilder, frame, group, load_font, mark_shells, material, prof, text_mesh
 
 
 def chassis(m):
+    """The three hinged frames, each its own group: the centre (`RoverChassis`) and the two ends (`RoverForeChassis`,
+    `RoverAftChassis`), which `assemble` hangs on their hinges."""
     part = group("RoverChassis")
+    ends = {1: group("RoverForeChassis"), -1: group("RoverAftChassis")}
     rails, deck, fasteners, latches = (MeshBuilder() for _ in range(4))
     # Three hinged frames. The crew stands on the beaded aluminium floor of the centre section.
     # The underframe's low edge is the published loaded 14 in ground clearance.
@@ -24,16 +28,18 @@ def chassis(m):
         for dx in range(-22, 25, 4):
             tube(rails, (dx, y - 11.18, 17.6), (dx, y + 11.18, 17.6), 0.19)
     for fore in (1, -1):
+        end = MeshBuilder()
         for y in (-16.35, 16.35):
-            box(rails, (fore * 41.55, y, 19.9), (29.8, 1.3, 3.2))
-            tube(rails, (fore * 27, y, 15.3), (fore * 47, y, 19.0), 0.74)
+            box(end, (fore * 41.55, y, 19.9), (29.8, 1.3, 3.2))
+            tube(end, (fore * 27, y, 15.3), (fore * 47, y, 19.0), 0.74)
             for offset in (-0.95, 0.95):
                 tube(fasteners, (fore * 26.85, y + offset - 0.30, 18.16), (fore * 26.85, y + offset + 0.30, 18.16), 0.84)
             tube(latches, (fore * 26.85, y - 1.48, 18.16), (fore * 26.85, y + 1.48, 18.16), 0.36)
         for x in (29.75, 45.0, 55.6):
-            box(rails, (fore * x, 0, 19.90), (1.25, 31.4, 3.2))
+            box(end, (fore * x, 0, 19.90), (1.25, 31.4, 3.2))
         for sy in (1, -1):
-            tube(rails, (fore * 30, sy * 15.85, 18.85), (fore * 54, -sy * 15.85, 19.63), 0.53)
+            tube(end, (fore * 30, sy * 15.85, 18.85), (fore * 54, -sy * 15.85, 19.63), 0.53)
+        end.build("LRV_" + ("Fore" if fore > 0 else "Aft") + "Frame", m["alloy"], ends[fore])
     for mesh, tag, mat in (
         (rails, "StructuralFrames", "alloy"),
         (deck, "BeadedFloor", "deck"),
@@ -300,4 +306,7 @@ def build(mission):
     batteries(mission, m)
     controls(m)
     equipment(mission)
+    # one node to the vehicle contract, hung on the hinges the deployment moves (lrv_deploy.py)
+    assemble()
+    deployment_runs()
     return f"LRV-{mission - 14}: 90 in wheelbase, 72 in track, 32.19 in wire wheels and 14 in loaded chassis clearance"
