@@ -175,6 +175,9 @@ rules are the screen's, the same for every path, never tuned to a flight:
 - **Sampled for the eye.** The prediction is a curve (points with velocities, the cubic between them); each time the eye,
   the instant or the prediction moves it is cut into chords until none strays more than `ERROR_PX` (0.35 px) from the
   curve as seen from the eye, starting from multiples of a power of two seconds so the chords stay put as the clock runs.
+  A piece is halved 24 times at most, or to an eight-thousandth of a second where that is more (`FINEST`): a line of days
+  begins in pieces of hours, and the chord by the eye in the seat, which on a line of six hours was cut to that, was left
+  at 3 ms, 24 m, and strayed 1.2 px.
 - **A width on the screen, narrower with depth and never thin**: each chord is a quad pushed out across its own
   direction as projected (never a direction in the world, which near the eye projects to anything) and mitred to the
   next. At the vehicle it is its full width and strength; the deeper into the view it goes the narrower and fainter it
@@ -215,10 +218,30 @@ rules are the screen's, the same for every path, never tuned to a flight:
   that, the line stood and lunged with every prediction, and from a camera that goes with the vehicle it shook back and
   forth along itself: a point of it a minute ahead turned back on the screen 19 times in four seconds of Friendship 7's
   sustainer burn at life's rate, and 28 times at T+100 (none, carried). A path flown under guidance to its cutoff (K) is
-  held to its programme instead and is not carried.
+  held to its programme instead and is not carried. The first order holds only near the curve: a flight that has left a
+  coast on show by more than `PIN_FAR` (20 km) is on another path (a burn the clock ran through within a frame at hours a
+  second: Apollo 10's injection to the Moon, passed in one frame at 100,000 times, left the parking orbit's curve 16,000 km
+  and 3 km/s behind, and carried, the line bent as that orbit does and 295 px of it lay behind the vehicle), so that curve
+  goes and nothing is drawn ahead until the next prediction is made (path.ts `leftBy`).
+- **The frame is the path's own** (pathline.ts `drawnIn`, path.ts `frameFor`), never a flight's or a phase's. A path
+  that comes down before the Earth has turned an eighth of a turn under it (`WOUND`, three hours, estimated: a lob, an
+  ascent cut short and a return from a low orbit are well within it) is drawn over the ground, where it comes down, with
+  its ring. Any other (it goes round, runs out its time, passes the Moon, leaves the Earth, or comes down days from now)
+  is drawn in the navball's frame (O), but as it lies among the stars on the map and wherever it reaches beyond the
+  stationary radius (`STATIONARY`, 42,164 km, derived from the Earth's GM and its turning): out there the ground turns
+  under a path faster than the path goes round, and a line drawn over the ground is the Earth's turning and not the path.
+  (Drawn over the ground whenever it was not once round, as it was, a coast to the Moon and the record's line beside it
+  were three rings spiralling round the Earth, one for each day.) A path drawn among the stars that comes down has no
+  ring on the ground: the Earth will have turned under it by then, and its mark says how far from the pad. The record's
+  line and the line flown lie in the frame the prediction on show is drawn in; drawn over the ground, the record's line
+  stops at the stationary radius, going out before it, for the same reason (`layRef`, `leavesAt`); with nothing
+  predicted, on the map, what is drawn is drawn among the stars if any of it reaches beyond that radius (`bareHigh`).
+  Simplified: the frame changes at once where the path crosses either rule (a fall from far out, three hours before it
+  comes down), eased over the 0.3 s any new prediction is, not turned continuously from one to the other.
 - **On the map** (the `map` rig, camera.md; `PathHost.map`): the same lines by the same rules, with what a view of the
   whole Earth needs. The path is drawn whatever its switch (J) says. An orbit is drawn as it lies among the stars
-  whatever the navball's frame (a path that comes down is still drawn over the ground, where it comes down), and
+  whatever the navball's frame (only a path that comes down soon is still drawn over the ground, where it comes down:
+  above), and
   whole: on past the curve's end along the stretch already flown, a revolution later, moved by what the curve's two
   ends differ by (the Earth's bulge turns the orbit a little each time round), less and less of it toward the vehicle,
   so the line neither steps where the curve ends nor misses the vehicle where it closes. What the Earth hides is drawn
@@ -235,6 +258,17 @@ rules are the screen's, the same for every path, never tuned to a flight:
   room for them. With nothing predicted (down, or on the pad with guidance off) the map still shows the Earth and its
   outline, the vehicle's marker, the line flown and the record's line: none of them needs a prediction (path.ts
   `layBare`; standing on the pad the stage has no vehicle that flies to give, and the marker stands where the flight is).
+  **The Moon is on the map where it is** (`layBodies`), for every flight, once the eye is far enough out for it to be a
+  place on the map and not a direction (from 0.3 of the Moon's own distance from the Earth's centre, wholly from 0.4:
+  `BODY_FROM`, `BODY_FULL`, estimated): its marker by its name and its outline to scale, in the pale grey of its own
+  ground, at the place the prediction's gravity takes it to be (core/gravity.ts: DE440's where it is loaded, else Meeus's,
+  40 km of it). Where the path on show passes it (sim/predict.ts `Pass`) the passing is marked on the line by the Moon's
+  name with the height over its surface and the time to it (a chip when it is off the window; the path's figures have a
+  row for it), and the Moon's own way from now to then is drawn with its outline where it will be, so the path is seen
+  to go to where the Moon is going and not to where it is. Simplified: the Moon is an outline, not its disc lit as the
+  Sun has it (the flight scene's Moon is issue B3); near the Moon the path is still drawn about the Earth, among the
+  stars, where a path in orbit about the Moon is a coil along the Moon's way (drawn about the Moon: the rest of B4); the
+  map is fitted to the ball round the Earth that holds the path, so a path to the Moon fills a radius of it.
 - **The record's flight is a line of reference, there from the pad** (`viewer/pathref.ts`, path.ts `layRef`): the run
   the record itself makes of the flight (sim/run.ts `recordOf`, or the deck's own, `PathSource.intended`), for a flight
   flown by hand to be held to. One rule for any flight, from the run's samples and events alone.

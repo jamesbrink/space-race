@@ -588,7 +588,7 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   - the tear rule: loads.ts `tearOf`; the 0.05 g mark: `ENTRY_G`; a parachute's filling: `chuteArea`;
   - the apparent-velocity integrator: apparent.ts; when a load is spent: `spentAt`; one separation, along the joint's
     axis: forces.ts `keptShare`;
-  - the predictor's horizons: predict.ts `Horizons`. Its work is resumable in slices (`Predictor.run(budget)`, `Flier.prepare`).
+  - the predictor's horizons: predict.ts `Horizons`, and how much further the orbit it is on asks it to look (`lookAhead`); what holds a path and what it passes (`EARTH_HOLDS`, `sphereOf`, `Pass`), and what a state's ellipse runs into (`reaches`). Its work is resumable in slices (`Predictor.run(budget)`, `Flier.prepare`).
   - Different physics, and kept so: forces.ts `airForces` on a rigid body against a point's drag; flyDown's several canopies
     against a capsule's one; shed.ts `apart`; leaving the pad (vehicle.ts balances every force, stagedlive.ts thrust
     against weight).
@@ -1381,7 +1381,33 @@ read gives enough of to fly (issue #10).
   will do by itself (`Sequence`, from the live state and the plan, path.ts `sequence`: one rule, the plan's events in its order, each the sequencer sets off on the clock read by what it does, unless what it acts on has left the machine already: separation and its push along the joint's axis, as every simulator parts two bodies (`Sequence.axis`: the programme's under guidance, the axis it has otherwise), the retrorockets as fly.ts fires them,
   the pack, the parachutes at their heights; with the sequencer off, nothing, not even the parachutes, as the live
   simulator has it), until it meets the sea, has gone round (then it is an orbit, with its osculating elements) or
-  its horizons say (predict.ts `Horizons`: six hours, once round and 60,000 steps unless a plan says otherwise). Predicted from before separation it is the landing the live simulator then flies, within half
+  its horizons say (predict.ts `Horizons`: six hours, once round and 60,000 steps unless a plan says otherwise). **How far
+  ahead it looks follows from the orbit it is on, never from a flight or a phase of one** (`lookAhead`): six hours is the
+  least; an orbit that takes longer to go round is followed once round and a twentieth more (`ROUND`, estimated: the Earth's
+  bulge and the Moon change the time a little), read from the osculating ellipse about the Earth at the start and again
+  wherever a burn ends; one that does not close, or whose far end is beyond what the Earth holds (`EARTH_HOLDS`: its sphere
+  of influence against the Sun by Laplace's rule, 924,600 km, derived), for as long as anything is followed (`FARTHEST`:
+  once round the largest orbit that sphere holds, 36.2 days, derived). A time a caller gives is the time looked ahead,
+  whatever the path. So a parking orbit is looked six hours along, a transfer to the stationary height its ten and a half,
+  and a coast to the Moon the days it takes to go there and come back, by one rule. It ends besides where it leaves the
+  Earth's sphere (`outcome` 'escape') and where it meets another body. **What it passes**: each term of gravity that is
+  another body's pull says what body it is (core/gravity.ts `GravityTerm.body`, a `Passed`: its GM, its radius, where it
+  is); the propagator finds the nearest the path comes to each within that body's own sphere of influence (`sphereOf`:
+  Laplace's rule again, 66,000 km of the Moon), where the distance stops closing, to the last bit of the instant on the
+  step's cubic (`Prediction.passes`: the height over its sphere, the speed past it), takes no step more than a quarter of
+  the way to a body's centre (`NEAR`), and where the path meets the surface ends it there (`outcome` 'strike', the step
+  flown again to the instant it meets it). The Moon is a point mass pulling on a path about the Earth, but for a plan whose
+  gravity has a sphere (issue A1): its whole field is given the predictor as one term (core/gravity.ts `termsOf`), the
+  Moon's own about its centre within the sphere, and that term names the Moon too, so the passing is found under it (no
+  flight's plan gives a sphere yet; tests/cislunar.test.mjs flies Apollo 10's under one and finds the same passing to the
+  kilometre). The path near the Moon is still drawn about the Earth (measured: Apollo 10's record predicted on from after its injection
+  passes 2,240 km over the Moon at 79.1 h, 3.2 h after the record's lunar orbit insertion, and comes back to the Earth at
+  171.8 h: tests/cislunar.test.mjs; some 750 steps and 70 ms, spread over frames). The path's own points are laid out
+  for its length (`sampled`: a path too long to fit at sixteen seconds a piece begins with longer pieces where it is
+  straight, and keeps its bend). The deck's own figures of the orbit, Apogee and Period, are the state's ellipse about the
+  Earth, which is not what a state bound for the Moon will do: where that ellipse reaches another body's sphere the far
+  end names the body instead of a height it never comes to, and there is no period (`reaches`; '—' where it does not
+  close or leaves); the path's own rows say what happens (Ap, the Moon and how near, how it ends). Predicted from before separation it is the landing the live simulator then flies, within half
   a per cent (tests/predict.test.mjs). While the engine burns under guidance K chooses between "to cutoff" (thrust
   along `programmeAxis`, the tilt programme with the pilot's trim: attitude prescribed, as fly.ts's is, not the rigid
   body stepped), drawn dashed up to the cutoff, and "cut now"; the choice is a two-way control beside the figures,
@@ -1407,8 +1433,9 @@ read gives enough of to fly (issue #10).
   one (the run's samples in the form `track` gives the line flown in), else sim/run.ts `recordOf`, made once a flight;
   its events are the run's (`Run.events`) read against what the plan says each does, and nothing of it is fitted or
   moved by the live flight. Where the run misses the record (`MISSES`) the line is the run's. Whichever deck predicts (the ballistic deck's path.ts itself, the orbital deck's `predict`), path.ts
-  is given one `Predictor` and one `Prediction` and knows nothing of which it was. A path that comes down is drawn over
-  the ground (each point where it will be over the ground at its own instant); one that goes round is drawn in the
+  is given one `Predictor` and one `Prediction` and knows nothing of which it was. A path that comes down soon is drawn over
+  the ground (each point where it will be over the ground at its own instant); the frame of any other is the path's own
+  (rendering.md, "The frame is the path's own": among the stars on the map and beyond the stationary radius); one that goes round is drawn in the
   navball's frame (O), in Orbit as it lies in the frame that does not turn. It is an instrument's line, and lunar-lift's
   (../lunar-lift, js/predictor.js) is its model, with KSP's for what it shows: one clean line from the vehicle to where
   the path ends, always ahead of the vehicle and never behind it (its owner's rule), an orbit most of the way round.
