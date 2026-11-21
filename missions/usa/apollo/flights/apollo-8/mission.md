@@ -1,12 +1,15 @@
-# Apollo 8: the flight plan, from the pad through the translunar injection
+# Apollo 8: the flight plan, from the pad to the Pacific
 
 What the simulator flies Apollo 8 from: SA-503's launch from Pad 39A, the first crewed Saturn V, the parking orbit, the
-S-IVB lit again over the Pacific for the translunar injection, and the stack coasting on toward the Moon. It is written
-in [orbital.ts](orbital.ts) as a Saturn V record (`SaturnVRecord`, [saturn-v-record.ts](../../vehicles/saturn-v-record.ts)),
-and the plan is made from it by [saturn-v-plan.ts](../../vehicles/saturn-v-plan.ts). Nothing after the injection is
-flown: the command and service modules' separation from the S-IVB, the S-IVB's slingshot into orbit about the Sun with
-LTA-B still in its adapter, the lunar orbit and the return. The stack is flown whole from the second cutoff, the S-IVB,
-its instrument unit, the adapter with LTA-B and the command and service modules together, with the Moon pulling on it.
+S-IVB lit again over the Pacific for the translunar injection, and then CSM-103's own flight: its parting from the S-IVB,
+the two separation manoeuvres, the midcourse corrections, the lunar orbit's insertion and circularization, ten
+revolutions in the Moon's field, the transearth injection, the return's correction, the modules' parting, the entry under
+the command module computer and the parachutes to the sea. It is written in [orbital.ts](orbital.ts) as a lunar record
+(`ApolloLunarRecord`, [apollo-lunar-record.ts](../../vehicles/apollo-lunar-record.ts)): a Saturn V record to the injection
+(`SaturnVRecord`, [saturn-v-record.ts](../../vehicles/saturn-v-record.ts)) and the spacecraft's after it. The plan is made
+from it by [apollo-lunar-plan.ts](../../vehicles/apollo-lunar-plan.ts), on [saturn-v-plan.ts](../../vehicles/saturn-v-plan.ts)
+and the command and service modules' [csm-plan.ts](../../vehicles/csm-plan.ts). The S-IVB, its instrument unit and the
+adapter with LTA-B still in it are let go at the parting and flown on as a body of their own, nothing pushing them.
 
 ## What was read
 
@@ -137,6 +140,57 @@ cutoff is the mass tables' within half a ton, so what is short is impulse or los
 Table 7-10; the guidance data have 227,286 N s, 3.84 m/s), which is the difference between Table 4-3's C3 at the cutoff
 and Table 4-7's at the injection ten seconds later (−1,478,917 m²/s²). The run's coast lacks it.
 
+## After the injection: the spacecraft's flight
+
+**What was read.** The Mission Report (MSC-PA-R-69-1): Table 3-I, the sequence of events; §§5.3 to 5.8 and Tables 5-II to
+5-V, each manoeuvre's impulse, the trajectory at each, the pericynthion and the entry interface each left it on, and the
+entry's conditions; §6.9.1 and Tables 6.9-II and 6.9-III, the guidance's account of each firing and of the entry; Table
+6.11-I and §6.11.2, the service propulsion system's measured thrust and impulse and its load; Table A.6-I, the mass at
+each phase. The Apollo 8 Flight Journal's air-to-ground for the parting and the two separation manoeuvres. The press
+kit's lunar parking orbit, inclined 12 degrees to the lunar equator.
+
+**What is flown.** The spacecraft parts at 12,059.3 s, its push apart 0.5 m/s (the plus-X translation held 3 s before and
+5 s after, estimated). The separation manoeuvres are the record's impulses, 1.1 and 7.7 ft/s, radially upward (the
+second as Collins asked for it, 004:37:22; the first taken so). Every firing after them is lit at the record's instant
+and solved as it lights on the run's own state for what it reached on the day (sim/pursuit.ts `solveBurn`, steered by
+cross products, sim/steering.ts): the first midcourse correction for Table 5-III's pericynthion after it, 66.3 n. mi. at
+69:10:40, and for the planned orbit's plane, 12 degrees to the Moon's equator and retrograde (met where it can be, and
+otherwise as near as it goes); the second for 65.8 n. mi. at 69:10:39, the least impulse that gives it; the insertion for
+§5.5's 168.5 by 60.0 n. mi.; the circularization for 60.7 by 59.7, lit at the run's own periapsis within half a
+revolution of the record's instant, as the ground timed it; the transearth injection for Table 5-IV's -6.117 degrees at
+the interface at 146:46:12.8; the third midcourse correction for -6.395 there. The service propulsion system is
+CSM-103's as measured in the insertion, 20,498 lbf at 313.0 s, and each firing lights at Table A.6-I's mass for it. The
+modules part at 146:28:48; the command module's entry is steered to Table 5-V's target, 8.133 N 165.033 W, by the
+Colossus 2A entry program (assumed for Colossus 237) on CM-107's trim aerodynamics (assumed); the Earth landing system's
+heights are Apollo 7's. The whole flight is flown under the Earth with J2, the Moon's field and the Sun, the centre
+changed at the guidance computer's sphere, and by JPL's DE440.
+
+**The run against the record** (the record's run, under DE440, November 2026):
+
+| | Run | Record |
+| --- | --- | --- |
+| First midcourse correction | 155.6 ft/s in 14.8 s, the approach at 166.2 degrees | 20.4 ft/s (24.8 calculated) |
+| Second midcourse correction | 0.1 ft/s | 1.4 ft/s |
+| Lunar orbit insertion | 2,999.2 ft/s in 247.2 s, from 76.5 n. mi. at 8,399 ft/s | 2,997 ft/s in 246.9 s, from 76.6 at 8,391 |
+| Circularization | 135.8 ft/s in 9.6 s at the run’s periapsis, 73:18:40, to 60.7 by 59.7 n. mi. | 134.8 ft/s in 9.6 s at 73:35:07, to 60.7 by 59.7 |
+| Revolutions about the Moon | 10 | 10 |
+| Transearth injection | 3,527.6 ft/s in 207.4 s | 3,519 ft/s in 203.7 s |
+| Third midcourse correction | 0.6 ft/s | 4.8 ft/s |
+| Entry interface | 146:46:12.9 | 146:46:12.8 |
+| Peak load | 6.04 g | 6.84 g |
+| The computer's final phase | 133 s after the interface | 141.6 s |
+| Splashdown | 147:00:54, 8.130 N 165.029 W, 0.6 n. mi. from the recovery forces' place | 147:00:42, 8° 7.5' N 165° 1.2' W |
+
+What misses, and why, is recorded (src/sim/misses.ts, the shown run): the first correction makes up the run's own
+injection's error (the lunar run, below), and from that injection the approach cannot be turned into the planned plane;
+the second and the return's correction have only what the flight's navigation and execution errors gave them to do,
+which the run has none of, and are the least impulses, where the flight's were not; the entry comes through at the -6.395 degrees the correction was aimed at, where the flight came
+through at -6.50, and its peak is lower. The insertion, the circularization and the transearth injection hold their impulses within a per cent (the
+circularization lit at the run's own periapsis, 16 minutes before the flight's: the insertion's solution leaves its
+periapsis earlier in the orbit than the flight's did), and the transearth injection is lit where the flight's was (at 89:19:16.6 the run is at 7.9° S 174.7° E of the
+Moon's principal axes, Table 5-II 9.3° S 174.8° E). tests/apollo-8-flight.test.mjs holds the run to the recovery forces'
+place within five nautical miles.
+
 ## What disagrees
 
 - **SP-4029's parking orbit period.** It prints the insertion orbit as 99.99 by 99.57 n mi, 32.509°, "period 89.19
@@ -171,10 +225,22 @@ and Table 4-7's at the injection ten seconds later (−1,478,917 m²/s²). The r
 - The S-II's first two seconds at the 5.0 mixture ratio, the engines' starts (ullage, chilldown, the S-IVB's restart
   preparations), the S-II centre engine's oscillation and its 27,050 N loss, and the S-IVB's cutoff transients are not flown (the F-1s' and the S-II's are, as their cutoff impulse).
 - The aborts are said and not flown: the escape tower, Mode II, Mode III and Mode IV (press kit, pp. 12 and 27).
-- Nothing after the injection is flown by the flight's own plan. The coast on to the Moon is flown in
-  tests/lunargravity.test.mjs, on a copy of the plan whose gravity has the Moon's field, the Sun and the guidance
-  computer's sphere, and held to the Mission Report's pericynthion solution for the injection (Table 5-III: 130.2 n. mi.
-  under the surface at 69:13:58; `TLI_PERICYNTHION` in orbital.ts). The run passes 1,572 n. mi. over the Moon at 71.6
-  h: a recorded miss (src/sim/misses.ts, `lunar`), because the injection the run reaches is not the record's (at the
-  separation fix 0.9 degrees of longitude behind and 5.5 m/s slow). The separation manoeuvres and the midcourse
-  corrections are not flown.
+- The injection left alone is flown in tests/lunargravity.test.mjs, on the flight's plan to the spacecraft's parting and
+  no further, and held to the Mission Report's pericynthion solution for the injection (Table 5-III: 130.2 n. mi. under
+  the surface at 69:13:58; `TLI_PERICYNTHION` in orbital.ts). The run passes 1,544 n. mi. over the Moon at 71.58 h: a
+  recorded miss (src/sim/misses.ts, `lunar`), because the injection the run reaches is not the record's (at the
+  separation fix 0.9 degrees of longitude behind and 5.5 m/s slow). It is the injection's own error, and it does not
+  close when the firings after it are flown: the flight's run takes it out with its first midcourse correction.
+- The S-IVB's evasive manoeuvre, its oxygen dump and the slingshot past the Moon into orbit about the Sun are not flown:
+  the stage is let go pushed by nothing.
+- Every firing after the injection is solved for what the Mission Report says it reached, the aims being given only in
+  words; none flies the flight's navigation or execution errors, and the solved burn's attitude is where steering
+  commands it, with no autopilot lag and no tail-off.
+- The separation manoeuvres' lengths are estimated (two 100 lbf thrusters), and the first one's line is taken as the
+  second's, radially upward.
+- The command module flies CM-107's trim aerodynamics and the Colossus 2A entry program's constants and pad loads
+  (assumed); the computer navigates on the run's own state, with no platform error. The Earth landing system's heights,
+  waits and fills are Apollo 7's (assumed); the forward heat shield's mass is the command module's loss between the
+  interface and the drogues (derived, char and consumables in it).
+- The spacecraft's mass between its firings is not drawn down by what its thrusters and its crew used: each firing
+  lights at Table A.6-I's mass for it.

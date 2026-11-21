@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { globSync } from 'node:fs';
+import { globSync, readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { Quaternion, Vector3 } from 'three';
 import { CSM_MATING_HEIGHT } from '../missions/usa/apollo/vehicles/saturn-ib-plan.ts';
@@ -7,12 +7,17 @@ import { nlerp, turn } from '../src/sim/rigid.ts';
 import { between, either, orbitalRecord } from '../src/sim/run.ts';
 import { Sheds } from '../src/sim/shed.ts';
 import { Ascent } from '../src/viewer/ascent.ts';
+import { useEphemeris } from '../src/world/ephemeris.ts';
 import { add, dot, scale, siteFrame, sub } from '../src/world/frames.ts';
+
+const DE440 = new Uint8Array(readFileSync(new URL('../public/ephemeris/de440.bin', import.meta.url))).slice().buffer;
 
 for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('../', import.meta.url) })) {
   const { flight } = await import(`../${file}`);
   if (flight.plan?.kind !== 'orbital') continue;
   test(`${flight.designation}: released axial sections open a gap at their drawn mating planes`, () => {
+    // (a flight flown out to the Moon by JPL's ephemeris, as the page flies it)
+    useEphemeris(flight.plan.gravity?.sphere ? DE440 : null);
     const run = orbitalRecord(flight);
     const ascent = Ascent.of(flight);
     const up = new Vector3(0, 1, 0);
@@ -30,9 +35,18 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
             ? ['staging-nuts', 'equipment-section-release', 'retro-section-release']
             : flight.id === 'usa/apollo/apollo-7'
               ? ['sib-separation', 'les-jettison', 'cm-sm-separation', 'forward-shield-jettison']
-              : // (a Saturn V's stages, its aft interstage and its tower: saturn-v-plan.ts)
+              : // (a Saturn V's stages, its aft interstage and its tower: saturn-v-plan.ts; and one flown on to the sea, the
+                // S-IVB the spacecraft leaves, the service module and the forward heat shield: apollo-lunar-plan.ts)
                 flight.plan.craft[0].joints.some((j) => j.id === 'sii-separation')
-                ? ['sic-separation', 'sii-skirt', 'les-jettison', 'sii-separation']
+                ? [
+                    'sic-separation',
+                    'sii-skirt',
+                    'les-jettison',
+                    'sii-separation',
+                    ...(flight.plan.craft[0].joints.some((j) => j.id === 'spacecraft-separation')
+                      ? ['spacecraft-separation', 'cm-sm-separation', 'forward-shield-jettison']
+                      : []),
+                  ]
                 : ['booster-latch', 'retropack-straps'];
     for (const on of ids) {
       const body = run.sheds.get(on);

@@ -8,12 +8,13 @@ import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { ballisticOf } from '../src/sim/fly.ts';
+import { RSPHERE } from '../src/sim/core/gravity.ts';
 import { downOf } from '../src/sim/descent.ts';
 import { coastEvents, coastOf, movesOf, shipOf } from '../src/sim/orbital.ts';
 import { clockAt, eventOf, problems } from '../src/sim/plan.ts';
 import { act, startCraft } from '../src/sim/craft.ts';
 import { byHand, drawnFrom, givenUp, guidanceOf, movedTo, schedule, sequenceOf, stagesOf } from '../src/sim/staged.ts';
-import { siiSpent } from '../missions/usa/apollo/vehicles/saturn-v-plan.ts';
+import { saturnVPlan, siiSpent } from '../missions/usa/apollo/vehicles/saturn-v-plan.ts';
 import { HARDWARE } from '../missions/usa/mercury/vehicles/mercury-redstone.ts';
 import { dayOf } from './ballistic.mjs';
 import { recordFrom } from './records.mjs';
@@ -579,25 +580,69 @@ for (const f of saturns) {
     assert.ok(seq.stages[4].orbit, 'the first burn cut by its guidance on the orbit reached');
     assert.equal(seq.stages[5].speed.value, o.sivb.second.speed.value, 'the injection cut on its speed');
     assert.equal(seq.stages[5].from, o.sivb.second.ignition.value);
-    assert.equal(seq.stages[5].joint, null, 'the S-IVB is let go of by nothing: the run ends at its second cutoff');
+    // (the S-IVB let go of by nothing, the run ending at its second cutoff; or, a flight flown on to the Moon, as the
+    // spacecraft leaves it)
+    assert.equal(seq.stages[5].joint, 'spacecraft' in o ? 'spacecraft-separation' : null);
     // (the drops: the aft interstage and the tower, each let go at the record's instant)
     assert.deepEqual(
       seq.drops.map((d) => [d.joint, d.at]),
       [
         ['sii-skirt', o.sii.skirt.at.value],
         ['les-jettison', o.les.at.value],
+        // (and the forward heat shield, a flight's flown on to the sea: let go in the descent, by no instant of the ascent's)
+        ...('spacecraft' in o ? [['forward-shield-jettison', Number.POSITIVE_INFINITY]] : []),
       ],
     );
     const law = guidanceOf(plan);
     assert.equal(law.injection.engine, 'sivb-tli');
     assert.equal(law.injection.target, o.sivb.second.target);
     assert.equal(law.target.at, 'sivb-cutoff');
-    // nothing burns in the coast and nothing comes down: it is bound for the Moon, which pulls on it
+    // no braking burn in the coast: bound for the Moon, which pulls on it, and nothing comes down; or flown there and home,
+    // the last firing solved for the entry interface (orbital.ts `coastEvents`), its command module down at sea
     assert.equal(coastOf(plan).on, Number.POSITIVE_INFINITY);
+    if ('spacecraft' in o) return;
     assert.equal(downOf(plan), null);
     assert.deepEqual(plan.gravity, { central: 'earth', terms: ['j2', 'moon'] });
     assert.equal(plan.record.bound, o.bound);
   });
+
+  if ('spacecraft' in o)
+    test(`${f.id}: the lunar plan carries the record's spacecraft: the parting, each firing with what it was for, the modules' parting, the entry, the landing system`, () => {
+      assert.deepEqual(problems(plan), []);
+      const at = (id) => byId(plan.events, id).at;
+      // (the Saturn V's to the injection, the same to the last figure: only the spacecraft's bodies are the modules' own)
+      const ascent = saturnVPlan(o);
+      assert.deepEqual(plan.events.slice(0, ascent.events.length), ascent.events);
+      assert.deepEqual(plan.attitude.slice(0, ascent.attitude.length), ascent.attitude);
+      assert.deepEqual(
+        c.bodies.map((b) => b.id),
+        [...ascent.craft[0].bodies.filter((b) => b.id !== 'sm' && b.id !== 'cm').map((b) => b.id), 'sm', 'forward-shield', 'cm'],
+      );
+      assert.equal(byId(c.joints, 'spacecraft-separation').at, o.spacecraft.separation.at);
+      assert.deepEqual(byId(c.joints, 'spacecraft-separation').gone, ['sivb', 'payload']);
+      assert.equal(byId(c.joints, 'cm-sm-separation').at, o.spacecraft.modules.at);
+      assert.equal(byId(c.joints, 'cm-sm-separation').after, o.spacecraft.modules.after);
+      assert.equal(byId(c.engines, 'sps').thrust.vacuum, o.spacecraft.sps.thrust);
+      assert.equal(byId(c.engines, 'sps').deltaV, undefined, 'no burn is cut by its integrator as the braking burn');
+      // (each firing lit at its record's instant in its own attitude, with the record's impulse to hold it to and what it was for)
+      for (const b of o.burns) {
+        const lit = byId(plan.events, b.id);
+        assert.equal(lit.at, b.on);
+        assert.deepEqual(doing(lit), [`attitude:${b.aim.id}`, `ignite:${b.engine}`]);
+        assert.equal(lit.do[1].flown, b.flown);
+        assert.equal(lit.do[1].toward, b.toward);
+        assert.equal(at(`${b.id}-cutoff`), b.off.at);
+      }
+      assert.ok(o.burns.at(-1).toward && 'entry' in o.burns.at(-1).toward, 'the last firing is aimed at the entry interface');
+      // (the modules part at the record's instant and the entry is steered from there; the landing system's events and the landing)
+      assert.deepEqual(doing(byId(plan.events, 'cm-sm-separation')), ['separate:cm-sm-separation', `attitude:${o.entry.parting.id}`]);
+      assert.ok('entry' in o.entry.parting.hold);
+      assert.deepEqual(byId(plan.events, 'main-deployment').when, [{ height: o.els.mains.height.value, going: 'down' }]);
+      assert.equal(plan.record.landing, o.mission.landing);
+      assert.equal(plan.record.bound, undefined);
+      assert.deepEqual(plan.gravity, { central: 'earth', terms: ['j2', 'moon', 'sun'], sphere: RSPHERE });
+      assert.ok(downOf(plan), 'the command module comes down');
+    });
 
   if (o.sii.outboard.spent)
     test(`${f.id}: the S-II's four are cut when the run has spent its propellant, and what follows that cutoff keeps the record's intervals`, () => {

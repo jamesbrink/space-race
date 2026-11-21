@@ -114,8 +114,16 @@ the clock alone would drift from what the hardware did, the guidance closes the 
   the instant the time to go gives once it is under four seconds (`endAt`). Its account (`BurnFlown`) carries what it was
   for (`aim`) and what the burn flown ahead reached (`reached`); its impulse is `<event>.velocity`, which a check of the
   record's holds, and tools/residuals.mjs prints both. The figures a kind is given are what the burn was aimed at; the
-  impulse the record has is never an input, nor a first guess. No flight's plan uses these kinds yet (the lunar plans, G0,
-  will): tests/pursuit.test.mjs holds each against a closed form (Hohmann's first burn, 2 v sin(Δi/2), an entry from
+  impulse the record has is never an input, nor a first guess. Apollo 8's plan flies `pericynthion`, `orbit` and `entry`
+  (below, "A Saturn V flies to the Moon and home"). A Newton step that only just shrinks the misses has gone past the bottom
+  of a long valley and comes back over it on the next: it is halved while halving helps. A `pericynthion` can be given the
+  plane the orbit about the Moon is to be in (`inclination` to the Moon's equator, its principal axes'): sought once the
+  height and the time are met, along what they leave free (`Condition.nearest`, in place of the least impulse), met where
+  it can be and otherwise brought as near as it goes, since an approach comes in at its own angle to the equator and no orbit
+  from it is tilted less. An `orbit` whose heights the craft is not between (heights over a sphere the record was not quite
+  flown about) takes the nearer where the craft is; one given `lit` is lit not by the clock but at the craft's own
+  periapsis about the body it is about, looked for within a window either side of the record's instant (a circularization,
+  which the ground timed so). tests/pursuit.test.mjs holds each against a closed form (Hohmann's first burn, 2 v sin(Δi/2), an entry from
   apogee by the conic, an intercept met under J2) and against Apollo 8's Mission Report (LOI solved from Table 5-II's
   ignition for its 168.5 by 60.0 n. mi.: 2990 ft/s in 246.6 s for the record's 2997 in 246.9; the first midcourse
   correction solved for the pericynthion it reached: 16.6 ft/s for the 20.4 achieved). Simplified: the attitude is where
@@ -1031,8 +1039,9 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   its guidance on its speed, and `Ascended.injected` is what the checks read (`injection.<field>`). In orbit the stack is
   held by the upper stage's own attitude jets (`ThrusterSet.coasting`: they turn it with nothing burning, at their own
   authority; stagedlive.ts `steering`), and the coast and the stack between its burns fly the Moon as a third body
-  (`FlightPlan.gravity`, core/gravity.ts `thirdOf`, added to the step and not to what an accelerometer reads). Nothing after
-  the injection is flown: the stack coasts on whole, three days, as a coast with no burn does. Where a record has the S-II's
+  (`FlightPlan.gravity`, core/gravity.ts `thirdOf`, added to the step and not to what an accelerometer reads). On a
+  flight whose record stops at the injection nothing after it is flown: the stack coasts on whole, three days, as a coast
+  with no burn does. Where a record has the S-II's
   four outboard engines cut by its oxygen depletion sensors (`sii.outboard.spent`: Apollo 13's, whose centre engine shut
   itself down 132 s early, and 14's), the plan cuts them when the run has spent the stage's usable propellant
   (saturn-v-plan.ts `siiSpent`, the instant `schedule` finds the tank dry) and times the separation and the S-IVB's start
@@ -1041,6 +1050,33 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   run itself stopped the engine an event cuts (staged.ts `stopOf`). A start the stack comes
   down from before its cutoff (eight degrees of pitch-over on a heavy first stage) is halved and bisected to one in the
   air before Newton's method (`steer`); every earlier flight's start is in the air and is not touched.
+- **A Saturn V flies to the Moon and home** (missions/usa/apollo/vehicles/apollo-lunar-plan.ts `apolloLunarPlan`, written
+  from each flight's `ApolloLunarRecord`, apollo-lunar-record.ts, as Apollo 8's orbital.ts is). The plan is the Saturn V's
+  to the injection (`saturnVPlan`, the ascent the same to the last figure: tests/plan.test.mjs) and the command and service
+  modules' after it, from csm-plan.ts, which the Saturn IB's plan writes its own from too (`csmBodies`, `csmJoints`,
+  `csmEngines`, `csmSheds`, `burnEvents`, `elsEvents`: Apollo 7's plan is the same object to the key). The spacecraft parts
+  from the S-IVB at the record's instant, which ends the ascent (staged.ts `ascend`: the S-IVB's joint is the spacecraft's
+  parting), and the S-IVB with the instrument unit, the adapter and what rode in it is let go as a body of its own
+  (sim/shed.ts), pushed by nothing (its evasive manoeuvre and the slingshot its dump gave it are not flown). Each firing
+  after it is lit by the clock at the record's instant, in its own attitude, and solved as it lights for what it reached on
+  the day (`Burn.toward`): the separation manoeuvres flown as the record's impulse along the attitude the air-to-ground
+  gives, the midcourse corrections for a pericynthion (the first for the plan's lunar orbit's plane too), the insertion and
+  the circularization for an orbit about the Moon (the circularization at the run's own periapsis), the transearth
+  injection and the return's correction for the entry interface's angle and instant. The service propulsion system's last
+  firing is solved for an end, so the coast has no braking burn (orbital.ts `coastEvents`: the engine's last lighting is
+  the braking burn only where it is not solved, `toward`): it comes down from the modules' parting as it falls, in orbit
+  until then (`phaseAt`), its entry's figures read from the parting (`OrbitResults.interfaceAt`, `entryG`), steered by the
+  command module computer to its target (`Hold.entry`), and the Earth landing system to the sea. The whole flight is flown
+  under the Earth with J2, the Moon's field and the Sun, the centre changed at the guidance computer's sphere
+  (`GravityDef.sphere`), and by JPL's ephemeris: the page loads it before a flight that names a sphere is flown
+  (app/session.ts `ephemerisArrives`), and the tests and the figures fly such a flight by it (useEphemeris), every other as
+  before. A plan whose last stage is lit again after its orbit is reached cuts the parking orbit for itself (staged.ts
+  `pushAhead`: the parting's push is the injection's orbit's business). The record's impulse is each firing's check
+  (`<id>.velocity`), the entry's events are checks as Apollo 7's are, and tests/apollo-8-flight.test.mjs holds the run to
+  the recovery forces' place: Apollo 8 comes down 0.5 n. mi. from it, 12 s after 147:00:42. A lunar module rides in the
+  adapter as the Saturn V record's `sivb.payload` and stays with the S-IVB: its transposition, docking and extraction need
+  joints formed by docking (A3), and a flight that carried one is not yet written from this record. tests/longrun.test.mjs
+  holds the six-day run to its samples and heap.
 - **The descent can be given by hand** (orbital.ts `DescentHands`, staged.ts `flyOn`). Its events are the record's data:
   the modules' parting (`entry.separation`), the ejection (`ejection.altitude`), and each body's parachutes; a body other
   than the first (the entry body, which carries the pilot until the ejection and the instrument module until the modules

@@ -44,8 +44,16 @@ missions/                             the record: one folder per nation, program
                                       saturn-ib-record.ts, saturn-ib-plan.ts, saturn-ib-flies.ts, a Saturn IB flight's record (`SaturnIBRecord`,
                                       its flight's orbital.ts), the plan written from it (`saturnIBPlan`: the S-IB's eight H-1s, the S-IVB's J-2
                                       to the orbit, the tower, the spacecraft parted, its firings in orbit as `Burn`s, the modules parted, the
-                                      entry, the Earth landing system to the sea; `localAim`, `CSM_OUTSIDE`, `CSM_MATING_HEIGHT`) and what its
-                                      model sheds and burns (`saturnIBFlies`);
+                                      entry, the Earth landing system to the sea; `CSM_MATING_HEIGHT`) and what its model sheds and burns
+                                      (`saturnIBFlies`);
+                                      csm-record.ts, csm-plan.ts, the command and service modules as any Apollo record has them (`CsmRecord`,
+                                      `Burn`, `EntryRecord`, `ElsRecord`) and their part of the plan, whatever carried them up (`csmBodies`,
+                                      `csmJoints`, `csmEngines`, `csmSheds`, `burnEvents`, `modulesParting`, `elsEvents`, `elsChutes`;
+                                      `localAim`, `CSM_OUTSIDE`);
+                                      apollo-lunar-record.ts, apollo-lunar-plan.ts, a Saturn V flight flown to the Moon and home
+                                      (`ApolloLunarRecord`: a Saturn V record and the spacecraft's, its flight's orbital.ts) and the plan written
+                                      from it (`apolloLunarPlan`: `saturnVPlan` to the injection, the spacecraft's parting, each firing solved for
+                                      what it was for, the modules' parting, the entry, the landing system; the Moon's field and the sphere);
                                       sm-rcs.ts, the service module's reaction control system as the attitude is flown with it (`smRcsChambers`,
                                       the sixteen chambers at their quads; `smRcsSet`, with the SCS's deadbands and minimum impulse; `massRow`);
                                       command-module-aero.ts, the Block II command module's trim drag (CM-107's, TN D-6725);
@@ -524,7 +532,7 @@ where it was left.
 
 - `tests/onestate.test.mjs` holds every flight into orbit to one state from the pad to the ground (simulator.md, "One state, changed only by what pushes it"): between any two samples of the record's run the velocity changes by gravity and by what the run says was pushing, the only step at one instant is the parting joint's push, the coast begins from the state the ascent left, a last stage cut by its guidance on the orbit leaves the record's period (on changed copies of three flights too), and every flight leaves its pad along its azimuth in the batch run, the samples drawn and the live vehicle.
 - `tests/attitude.test.mjs` holds the attitude in orbit on its jets (sim/attitude.ts): a chamber's torque against the record's moment of inertia, the gas it burns, a free tumble's momentum and energy, Hold damping a tumble into its deadbands, the keys' rate, steps that do not depend on how often they are asked, and guidance steering and cutting a burn lit by hand.
-- `tests/longrun.test.mjs` holds a flight of days to what a phone can hold (issue #173): Gemini VII's record run, fourteen days, by how many samples it keeps and how much heap it holds; `tests/rails.test.mjs` holds a coast kept by how fast its motion changes to the one that kept every step, between its samples.
+- `tests/longrun.test.mjs` holds a flight of days to what a phone can hold (issue #173): Gemini VII's record run, fourteen days, and Apollo 8's, six days out to the Moon and home, by how many samples each keeps and how much heap it holds; `tests/rails.test.mjs` holds a coast kept by how fast its motion changes to the one that kept every step, between its samples.
 - `tests/lunargravity.test.mjs` holds the Moon's field to the published table and to its potential's gradient, the Moon's axes to the IAU's pole, the two sides of the sphere to the same gravity, and a coast through the sphere (Apollo 8's injection as the run reaches it) to one state across the crossing, to the same coast on rails, and to the Mission Report's pericynthion (a recorded miss).
 - `tests/cislunar.test.mjs` checks the path beyond a low orbit: a low orbit predicted to the bit as before, an orbit of more than six hours followed once round, a path that leaves the Earth's sphere, one that meets the Moon and one that passes it, Apollo 10's record predicted on from its injection to the Moon near the record's time (and to the same passing under a sphere's whole field), and the frame a path is drawn in.
 - `tests/lunarsetting.test.mjs` holds the light on the Moon's ground to no step (the Sun's disc over the horizon, the exposure), every landing site to its LM's landing instant, the crew who went out to the landing flights' commanders and LM pilots, and the Sun over each site at its landing low in the east (world/moonsky.ts, against the point under it)

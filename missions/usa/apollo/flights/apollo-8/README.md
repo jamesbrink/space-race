@@ -40,12 +40,19 @@ fast as the S-IVB's small attitude jets allow. With G and B on, the record's asc
 closed loop, its events at their times) makes the parking orbit and the injection. The run, and how it compares with the
 record, is in [mission.md](mission.md), from MSFC's flight evaluation of SA-503 (MPR-SAT-FE-69-1).
 
-The flight ends with the injection: the stack, whole, LTA-B still in the adapter, coasts on toward the Moon, which pulls on it. What came
-next is not flown.
+With the sequencer on the flight goes on from the injection as the record has it: the spacecraft parts from the S-IVB, makes
+its two separation manoeuvres, and each firing after that is lit at the record's instant and solved as it lights for what
+it reached on the day, on the state the run is in: the midcourse corrections for the pericynthion, the lunar orbit's
+insertion and circularization for its orbits, the transearth injection and the return's correction for the entry
+interface. Ten revolutions of the Moon later the command module parts from the service module, its computer steers the
+entry to its target and the parachutes bring it down in the Pacific. The record's run comes down half a nautical mile from
+where the recovery forces put it, twelve seconds late ([mission.md](mission.md)).
 
 ## What is not flown or is simplified
 
-- Nothing after the S-IVB's second cutoff: the command and service modules' separation, the S-IVB with LTA-B sent past the Moon into orbit about the Sun, the lunar orbit and the return. The stack coasts on whole.
+- The S-IVB with LTA-B is let go as a body of its own pushed by nothing: its evasive manoeuvre and the slingshot its oxygen dump gave it, past the Moon into orbit about the Sun, are not flown.
+- Each firing after the injection is solved for what it reached on the day, as the Mission Report's best-estimate solutions have it (the aims themselves are given only in words), so no firing is flown with the flight's navigation or execution errors: the first midcourse correction makes up the run's own injection's error (155.6 ft/s for 20.4), the second and the return's correction have little left to do. Each is a recorded miss with its cause (src/sim/misses.ts). The circularization is lit at the run's own periapsis, 16 minutes before the record's instant.
+- The command module flies CM-107's trim aerodynamics and the Colossus 2A entry program's constants (assumed for CM-103 and Colossus 237); the Earth landing system's heights are Apollo 7's.
 - The aborts are said, not flown: the escape tower (Mode I), and Modes II, III and IV (press kit 68-208, pp. 12 and 27).
 - The S-IC holds the record on this flight's own pitch programme, but the S-II falls short of the record's speed and
   height and the S-IVB makes up the difference, cutting 11 to 15 seconds late (mission.md, `MISSES`); the iterative

@@ -8,7 +8,8 @@
  *
  * What the run flies, and what it does not: from liftoff through the S-IVB's second cutoff, the stack whole; then on, the
  * stack still whole, through the translunar coast with the Moon pulling on it (`FlightPlan.gravity`). The transposition,
- * the lunar module's extraction, the S-IVB's slingshot and everything at the Moon are not flown.
+ * the lunar module's extraction, the S-IVB's slingshot and everything at the Moon are not flown, but where the flight's
+ * record is a lunar one (apollo-lunar-record.ts `ApolloLunarRecord`), which goes on from the injection to the splashdown.
  */
 import type { Measure } from '../../../../src/measure.ts';
 import type { Guidance } from '../../../../src/sim/orbital.ts';
@@ -129,12 +130,16 @@ export interface SaturnVRecord {
      */
     centre: Measure;
   };
-  /** Where the stack is bound after the injection, and what the flight did next that is not flown (plan.ts `PlanRecord.bound`). */
-  bound: { for: string; next: string };
+  /**
+   * Where the stack is bound after the injection, and what the flight did next that is not flown (plan.ts
+   * `PlanRecord.bound`): a flight flown to its injection and no further. Left out of one flown on to its end
+   * (apollo-lunar-record.ts).
+   */
+  bound?: { for: string; next: string };
   /** The parking orbit as published, and the stack on it. */
   orbit: NonNullable<PlanRecord['orbit']>;
   /** The record's instants that set nothing off (Mach 1, the greatest dynamic pressure, the insertion, the injection). */
-  marks: { id: string; label: string; at: Measure }[];
+  marks: NonNullable<PlanRecord['marks']>;
   checks: PlanCheck[];
   coastFixes: OrbitFix[];
   aborts: AbortMode[];

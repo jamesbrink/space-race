@@ -29,6 +29,7 @@ import {
   periodsOf,
 } from '../world/meanelements.ts';
 import { elementsOf, gravity, planeThrough, type State, sunlit } from '../world/orbit.ts';
+import { principalAxes } from '../world/moon.ts';
 import { ratioOf } from '../world/thermosphere.ts';
 import { julianDate } from '../world/time.ts';
 import { airAt, airDrag } from './air.ts';
@@ -1217,7 +1218,8 @@ export function shipOf(plan: FlightPlan): Ship {
   const used = prior.reduce((sum, m) => sum + (m.fuel ?? 0), 0);
   const burnMass = (ignition && 'ignite' in ignition ? ignition.massAtIgnition?.value : undefined) ?? orbit.mass.value - used;
   const available = burn ? coastTank(plan, burn) - used : 0;
-  const velocity = burn?.flown?.value ?? 0;
+  // (no braking burn, where the engine's last lighting was solved for an end (`coastEvents`): nothing is flown as the record's)
+  const velocity = coastEvents(plan).on ? (burn?.flown?.value ?? 0) : 0;
   const fuel = burn?.tanks.length ? Math.max(0, Math.min(available, rocketFuel(burn, burnMass, velocity))) : 0;
   const joint = burn && c.joints.find((j) => j.gone.includes(burn.body));
   const entry = c.bodies.find((b) => b.aero) ?? c.bodies[c.bodies.length - 1]!;
@@ -1386,7 +1388,11 @@ export function coastEvents(plan: FlightPlan): {
   if (!burn) return { armed: [] };
   const joint = c.joints.find((j) => j.gone.includes(burn.body));
   const parting = joint && doing((a) => 'separate' in a && a.separate === joint.id);
-  const on = [...plan.events].reverse().find((e) => e.automatic && e.do.some((a) => 'ignite' in a && a.ignite === burn.id));
+  const last = [...plan.events].reverse().find((e) => e.automatic && e.do.some((a) => 'ignite' in a && a.ignite === burn.id));
+  // (the engine's last lighting is the braking burn, flown as the record's; one solved for an end is not: a return from the
+  // Moon's transearth injection, aimed at the entry interface (`Pursuit.entry`), is a manoeuvre like the others (`movesOf`),
+  // and nothing brakes the coast, which comes down to the modules' parting as it falls)
+  const on = last?.do.some((a) => 'ignite' in a && a.ignite === burn.id && a.toward) ? undefined : last;
   const off =
     on && plan.events.slice(plan.events.indexOf(on) + 1).find((e) => e.automatic && e.do.some((a) => 'cut' in a && a.cut === burn.id));
   const follows = on?.when.find((w) => 'after' in w);
@@ -1694,15 +1700,16 @@ export function flyOrbit(
       gravity: contextGravity,
       about: aboutOf,
       height: (s, at) => frame.place(s.r, at).height - seaLevel,
-      ...(field.moon ? { moon: field.moon } : {}),
+      ...(field.moon ? { moon: field.moon, moonPole: (at: number) => frame.fromIcrf(principalAxes(frame.jdTT(at)).axes[2]) } : {}),
       oblate: (r) => sub(gravity(r), scale(r, -EARTH.gm.value / length(r) ** 3)),
       accel: (at) => (exhaust ? most / (1 - (most * (at - from)) / exhaust) : most),
       ...(exhaust ? { exhaust } : {}),
       ...(pursued ? { target: pursued } : {}),
     };
   };
+  // (in orbit until the braking burn, or with none until the modules part: a return from the Moon comes down so)
   const phaseAt = (at: number, g: number, was: OrbitPhase): OrbitPhase =>
-    at < on ? 'orbit' : at < off ? 'braking' : was === 'entry' || g >= ENTRY_G ? 'entry' : 'descent';
+    at < Math.min(on, parted) ? 'orbit' : at >= on && at < off ? 'braking' : was === 'entry' || g >= ENTRY_G ? 'entry' : 'descent';
 
   let phase: OrbitPhase = 'orbit';
   const sample = (s = state, at = t, incoming = false): OrbitSample => {
@@ -1919,8 +1926,9 @@ export function flyOrbit(
   /** What happens at the instant now reached. */
   const arrive = (): void => {
     moves.forEach((m, i) => {
-      // (a burn lit on an elevation is lit where the target rises to it, and one that finishes it once it has: `retime`)
-      if (t === m.on && !(m.toward && 'elevation' in m.toward) && !waits(m)) light(m, i);
+      // (a burn lit on an elevation is lit where the target rises to it, and one that finishes it once it has: `retime`; one lit
+      // at its periapsis there: below)
+      if (t === m.on && !(m.toward && ('elevation' in m.toward || ('orbit' in m.toward && m.toward.orbit.lit))) && !waits(m)) light(m, i);
     });
     for (const c of ranges) {
       const it = (c.when as { at: number }).at === t ? pursued?.at(t) : undefined;
@@ -2143,6 +2151,30 @@ export function flyOrbit(
       // (its corrections and its braking moved with the arrival it solved; where it was not solved, at the record's instants)
       retime(m.lit, steeredBurn[i]?.reached?.meetAt);
     });
+    // A burn lit at the craft's periapsis (`Pursuit.orbit.lit`): lit at the instant within the step its motion about the
+    // body it is about stopped falling, the step ending there; or at its window's end, where it has not.
+    moves.forEach((m, i) => {
+      if (!m.toward || !('orbit' in m.toward) || !m.toward.orbit.lit || lit[i]) return;
+      const { window } = m.toward.orbit.lit;
+      if (t < m.on - window.value) return;
+      const rising = (s: State, at: number): number => {
+        const c = aboutOf(s, at).s;
+        return dot(c.r, c.v);
+      };
+      const part = (to: number): State => (to === t ? state : to === as ? last : advance(last, as, to - as, (s, at) => pushAs(s, at, as)));
+      const low = as >= m.on - window.value && rising(last, as) < 0 && rising(state, t) >= 0;
+      if (!low && t < m.on + window.value) return;
+      if (low) {
+        // (the state there before the instant is moved: `part` gives the step's end for the instant it ends at)
+        const at = crossing((to) => rising(part(to), to), as, t);
+        state = part(at);
+        t = at;
+      }
+      lit[i] = true;
+      m.on = t;
+      marks = [...marks, t].sort((p, q) => p - q);
+      light(m, i);
+    });
     // (what the steered manoeuvres gave over the step, as their accelerometers sensed it)
     thrusts.forEach((x, i) => {
       if (!x) return;
@@ -2293,7 +2325,8 @@ export function flyOrbit(
       if (now.sunlit < 0.5 && Number.isNaN(results.shadowIn)) results.shadowIn = at;
       else if (now.sunlit >= 0.5 && Number.isNaN(results.shadowOut)) results.shadowOut = at;
     }
-    if (t > off) {
+    // (the entry's figures, once the braking burn is over: or, with none, once the modules have parted, a return from the Moon's)
+    if (t > Math.min(off, parted)) {
       if (Number.isNaN(results.interfaceAt) && before.altitude > interfaceHeight && now.altitude <= interfaceHeight) {
         const part = (before.altitude - interfaceHeight) / (before.altitude - now.altitude);
         const air = airOf(state, t);

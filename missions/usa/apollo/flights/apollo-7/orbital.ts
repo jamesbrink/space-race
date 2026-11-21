@@ -9,7 +9,8 @@ import { earthFrame } from '../../../../../src/world/earthframe.ts';
 import { cross, dot, ecefToGeodetic, enuAxes, scale, sub, unit } from '../../../../../src/world/frames.ts';
 import { step } from '../../../../../src/world/orbit.ts';
 
-import { CSM_OUTSIDE, localAim, saturnIBPlan } from '../../vehicles/saturn-ib-plan.ts';
+import { CSM_OUTSIDE, localAim } from '../../vehicles/csm-plan.ts';
+import { saturnIBPlan } from '../../vehicles/saturn-ib-plan.ts';
 import { massRow } from '../../vehicles/sm-rcs.ts';
 import type { Burn, SaturnIBRecord } from '../../vehicles/saturn-ib-record.ts';
 import { aborts, escapeEngine } from './escape.ts';
