@@ -381,6 +381,7 @@ src/
   sim/staged.ts                       an orbital flight's powered ascent, flown whole: stages burning together and in turn, dropped as the record says, on its steering law
   sim/stagedlive.ts                   the same ascent stepped a tick at a time and steered by hand or by guidance
   sim/staging.ts                      what happens when a hand stages a vehicle: the rules every vehicle is held to, whatever it is
+  sim/craftlive.ts                    a spacecraft in orbit flown live: its own engines lit, throttled, cut and lit again by hand, tick by tick, on the coast's forces and the rocket equation
   sim/lever.ts                        the throttle lever as a hand has it, and every liquid engine's hand range (`handRange`: its own, or the game's where it ran at one thrust)
   sim/misses.ts                       the recorded misses: where a flown run falls outside a documented check's tolerance, and why
   sim/heating.ts                      the air's heat: stagnation-point heat flux (Sutton and Graves) and each named surface's temperature as a lump

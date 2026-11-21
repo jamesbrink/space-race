@@ -327,7 +327,13 @@ for (const [w, h, touch] of process.env.SR_ONLY && !staging ? [] : SIZES) {
       if (after.next !== 'Jettison the retropack') fail(where, `after the record's retrofire Space is "${after.next}"`);
       await seek(3000);
       await page.keyboard.press('Space');
-      await page.waitForTimeout(1500);
+      await page.waitForTimeout(400);
+      // (the retrorockets lit by hand burn live until they are spent: sim/craftlive.ts; the clock run on past them)
+      const burning = await read();
+      if (!/burning/.test(burning.next)) fail(where, `Space lit nothing by hand: ${JSON.stringify(burning)}`);
+      await page.evaluate(() => window.sr.clock.setRate(8));
+      await page.waitForFunction(() => !/burning/.test(document.querySelector('[data-cell=next]').textContent), null, { timeout: 30_000 });
+      await page.evaluate(() => window.sr.clock.setRate(1));
       const hand = await read();
       if (!/Manual descent/.test(hand.mode) || hand.next !== 'Jettison the retropack')
         fail(where, `Space fired nothing by hand: ${JSON.stringify(hand)}`);

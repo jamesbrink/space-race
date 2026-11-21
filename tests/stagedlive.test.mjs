@@ -8,9 +8,19 @@ import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { ascend, givenUp, partingAt, sequenceOf, stagesOf, steer } from '../src/sim/staged.ts';
+import { ascend, givenUp, madeBy, partingAt, sequenceOf, stagesOf, steer } from '../src/sim/staged.ts';
 import { downOf } from '../src/sim/descent.ts';
-import { coastOf, flyDown, flyEjected, flyOrbit, heightsBall } from '../src/sim/orbital.ts';
+import {
+  coastEngineState,
+  coastOf,
+  craftAt,
+  flyDown,
+  flyEjected,
+  flyOrbit,
+  heightsBall,
+  injectionState,
+  movesOf,
+} from '../src/sim/orbital.ts';
 import { abortAt } from '../src/sim/plan.ts';
 import { ejectedVerdict } from '../src/sim/verdict.ts';
 import { orbitalRelease } from '../src/sim/run.ts';
@@ -20,6 +30,9 @@ import { aboutAxis, turn } from '../src/sim/rigid.ts';
 import { guided } from '../src/sim/fliers.ts';
 import { handRange } from '../src/sim/lever.ts';
 import { stagedPilot, stagedVehicle } from '../src/sim/stagedlive.ts';
+import { craftVehicle } from '../src/sim/craftlive.ts';
+import { TICK } from '../src/sim/vehicle.ts';
+import { G0 } from '../src/world/bodies.ts';
 import { frameOf } from '../src/world/earthframe.ts';
 import { add, cross, DEG, dot, length, scale, siteFrame, sub, unit } from '../src/world/frames.ts';
 import { elementsOf } from '../src/world/orbit.ts';
@@ -849,4 +862,148 @@ test('the throttle lever on the live staged vehicle: full it is the record’s r
     handRange(stages[0].engine).least,
     'under the least the lever holds at the least: a cut is a step of its own',
   );
+});
+
+// ---- The spacecraft's own engines in orbit, lit by hand (src/sim/craftlive.ts) ----
+
+const findFlight = (id) => all.find((f) => f.id === id);
+/** A flight's craft taken up at its orbit's injection, its engines `ids` (with `cutAt`), and the state there. */
+function craftAtInjection(id, ids, cutAt) {
+  const f = findFlight(id);
+  const p = f.plan;
+  const frame = frameOf(f);
+  const t = p.record.orbit.injection.at.value;
+  const at = injectionState(p, siteFrame(f.site), frame);
+  const v = craftVehicle(p, frame, f.site.seaLevel.value, { engines: ids, ...(cutAt ? { cutAt } : {}) });
+  const own = craftAt(p, t, ids);
+  const axis = unit(at.v);
+  const s = v.start({ t, r: at.r, v: at.v, mass: own.mass, tanks: own.tanks, starts: own.starts, axis });
+  return { f, p, v, s, axis, own };
+}
+/** Tick `s` `n` times on `c` (the controls of every tick after the first, which is `first`'s). */
+function ticks(v, s, n, c, first = c) {
+  let x = v.tick(s, first);
+  for (let i = 1; i < n; i++) x = v.tick(x, c);
+  return x;
+}
+
+test('the SPS lit by hand in orbit: what it gave is the rocket equation’s on what it drew from its tank, the burn as its motion shows it, and the plan written from it draws the same', () => {
+  const { p, v, s, axis, own } = craftAtInjection('usa/apollo/apollo-7', ['sps']);
+  const sps = v.engines[0];
+  assert.equal(sps.tank, 'sps-propellant');
+  // 30 s at the lever's full, cut by the lever; beside it the same craft coasting
+  const burnt = v.tick(ticks(v, s, 3000, { axis }, { axis, light: ['sps'] }), { axis, lever: 0 });
+  const coast = ticks(v, s, 3001, { axis });
+  const b = burnt.burns[0];
+  assert.equal(b.ended, 'lever');
+  assert.ok(Math.abs(b.off - b.on - 30) < 1e-9, `lit 30 s (${b.off - b.on})`);
+  const ve = G0 * sps.def.isp.vacuum.value;
+  const rocket = ve * Math.log(b.mass / (b.mass - b.fuel));
+  assert.ok(Math.abs(b.sensed - rocket) < 1e-6, `sensed ${b.sensed} m/s, the rocket equation ${rocket}`);
+  assert.ok(Math.abs(b.fuel - (sps.thrust / ve) * 30) < 1e-6, `drew its flow for 30 s: ${b.fuel} kg`);
+  assert.ok(Math.abs(own.tanks['sps-propellant'] - burnt.tanks['sps-propellant'] - b.fuel) < 1e-6, 'from its tank');
+  assert.ok(Math.abs(burnt.mass - (b.mass - b.fuel)) < 1e-6, 'and from the ship');
+  assert.equal(burnt.engines.sps.starts, own.starts.sps - 1, 'one start used');
+  // the motion: against the same craft coasting, the change is the impulse along the axis (less what the two places'
+  // gravity differs by over the burn, a few parts in a thousand)
+  const dv = sub(burnt.v, coast.v);
+  assert.ok(Math.abs(length(dv) - rocket) / rocket < 3e-3, `the velocity changed by ${length(dv).toFixed(3)} m/s for ${rocket.toFixed(3)}`);
+  assert.ok(Math.acos(dot(unit(dv), axis)) < 0.5 * DEG, 'along the axis it pushed');
+  console.log(
+    `# Apollo 7's SPS by hand, 30 s at full from ${b.mass.toFixed(1)} kg: drew ${b.fuel.toFixed(3)} kg, gave ${b.sensed.toFixed(6)} m/s (the rocket equation ${rocket.toFixed(6)}); its motion changed by ${length(dv).toFixed(3)} m/s against the coast`,
+  );
+  // written into the plan as a manoeuvre of the record's (the first of the SPS's), the batch run's account draws the same
+  const k = movesOf(p).findIndex((m) => m.engine === 'sps');
+  const planned = madeBy(p, givenUp(p), k, { on: b.on, off: b.off, axis, flown: b.sensed, mass: b.mass });
+  const after = coastEngineState(planned, 'sps', b.off + 1);
+  assert.equal(after.starts, own.starts.sps - 1);
+  assert.ok(
+    Math.abs(after.kg - burnt.tanks['sps-propellant']) < 1e-6,
+    `the plan’s account leaves ${after.kg} kg, the burn ${burnt.tanks['sps-propellant']}`,
+  );
+  const again = craftAt(planned, b.off + 1, ['sps']);
+  assert.ok(Math.abs(again.mass - burnt.mass) < 1e-6, 'and the same ship');
+});
+
+test('the one lever on the SPS in orbit: the game’s range on a fixed-thrust engine, said so; lower it burns longer for the same propellant and gives the same; under its least it is cut, and raised again lit once more', () => {
+  const { v, s, axis } = craftAtInjection('usa/apollo/apollo-7', ['sps']);
+  const range = v.engines[0].range;
+  assert.ok(range && !range.real && range.fixed && range.confidence === 'estimated', 'the SPS ran at one thrust: the range is the game’s');
+  const full = ticks(v, s, 3000, { axis }, { axis, light: ['sps'], lever: 1 });
+  const low = ticks(v, s, 5000, { axis }, { axis, light: ['sps'], lever: range.least });
+  assert.ok(Math.abs(full.burns[0].fuel - low.burns[0].fuel) < 1e-6, 'the same propellant');
+  assert.ok(Math.abs(full.burns[0].sensed - low.burns[0].sensed) < 1e-6, 'the same impulse');
+  assert.ok(Math.abs(v.thrustOf(low, 'sps') - range.least * v.engines[0].thrust) < 1e-6, 'at its least');
+  // under its least: cut by the lever, said; raised again, lit once more on a start of its own
+  const cut = v.tick(low, { axis, lever: range.least - 0.05 });
+  assert.ok(!v.burning(cut, 'sps') && cut.burns[0].ended === 'lever');
+  assert.ok(cut.said.some((n) => n.title === 'Cut'));
+  const relit = v.tick(cut, { axis, lever: 1 });
+  assert.ok(v.burning(relit, 'sps'), 'lit again by the lever');
+  assert.equal(relit.burns.length, 2);
+  assert.equal(relit.engines.sps.starts, cut.engines.sps.starts - 1);
+});
+
+test('the SPS lit and cut by hand as often as it can be started, then no more; dry, it stops as its tank empties', () => {
+  const { v, s, axis, own } = craftAtInjection('usa/apollo/apollo-7', ['sps']);
+  let x = s;
+  for (let i = 0; i < own.starts.sps; i++) x = v.tick(v.tick(x, { axis, light: ['sps'] }), { axis, cut: ['sps'] });
+  assert.equal(x.burns.length, own.starts.sps, `${own.starts.sps} burns`);
+  x = v.tick(x, { axis, light: ['sps'] });
+  assert.ok(!v.burning(x, 'sps') && x.said.at(-1).title === 'Not lit', x.said.at(-1).text);
+  // a tank of 50 kg: it stops on the instant it is empty, within the tick, and has given what 50 kg gives
+  const dry = v.start({ t: s.t, r: s.r, v: s.v, mass: s.mass, tanks: { 'sps-propellant': 50 }, starts: { sps: 1 }, axis });
+  const out = ticks(v, dry, 300, { axis }, { axis, light: ['sps'] });
+  const b = out.burns[0];
+  assert.equal(b.ended, 'dry');
+  assert.ok(Math.abs(b.fuel - 50) < 1e-9 && out.tanks['sps-propellant'] < 1e-9, `drew ${b.fuel} kg`);
+  const ve = G0 * v.engines[0].def.isp.vacuum.value;
+  assert.ok(Math.abs(b.sensed - ve * Math.log(b.mass / (b.mass - 50))) < 1e-6);
+});
+
+test('the spacecraft’s engines are the plan’s, whatever the flight: a Gemini’s manoeuvring thrusters (no tank in the plan: nothing drawn, the push over the mass) each way, its retrorockets a solid that burns its record’s impulse and cannot be cut', () => {
+  const { v, s, axis } = craftAtInjection('usa/gemini/gt-4', ['aft-thrusters', 'forward-thrusters', 'retrorockets']);
+  const aft = ticks(v, s, 1000, { axis }, { axis, light: ['aft-thrusters'] });
+  const fore = ticks(v, s, 1000, { axis }, { axis, light: ['forward-thrusters'] });
+  const coast = ticks(v, s, 1000, { axis });
+  const [a, f] = [aft.burns[0], fore.burns[0]];
+  assert.equal(aft.mass, s.mass, 'no tank in the plan: nothing drawn');
+  const want = (id) => (v.engines.find((e) => e.id === id).thrust * 10) / s.mass;
+  assert.ok(Math.abs(a.sensed - want('aft-thrusters')) < 1e-9, `the aft pair: ${a.sensed} m/s`);
+  assert.ok(dot(sub(aft.v, coast.v), axis) > 0.99 * a.sensed, 'pushing along the nose');
+  assert.ok(dot(sub(fore.v, coast.v), axis) < -0.99 * f.sensed, 'and the forward pair toward the tail');
+  // the retrorockets: no lever, no cut; out when spent, having given the record's impulse
+  const retro = v.engines.find((e) => e.id === 'retrorockets');
+  assert.equal(retro.range, null, 'a solid has no lever');
+  let r = v.tick(s, { axis, light: ['retrorockets'] });
+  r = v.tick(r, { axis, cut: ['retrorockets'] });
+  assert.ok(v.burning(r, 'retrorockets') && r.said.at(-1).title === 'Not cut');
+  const burn = retro.def.burn.value;
+  r = ticks(v, r, Math.ceil(burn / TICK) + 10, { axis });
+  const b = r.burns[0];
+  assert.equal(b.ended, 'spent');
+  assert.ok(Math.abs(b.off - b.on - burn) < 1e-9, `burned ${b.off - b.on} s`);
+  assert.ok(Math.abs(b.sensed - retro.def.flown.value) < 1e-9, `gave ${b.sensed} m/s, the record’s ${retro.def.flown.value}`);
+  r = v.tick(r, { axis, light: ['retrorockets'] });
+  assert.ok(!v.burning(r, 'retrorockets') && r.said.at(-1).title === 'Not lit', 'a solid fires once');
+});
+
+test('a braking engine lit by hand with its integrator: a Vostok’s TDU (no tank in the plan) cut when it has the impulse it was set to; a Soyuz’s SKD on its tank, the rocket equation’s, as often as it starts', () => {
+  const tdu = craftAtInjection('ussr/vostok/vostok-1', ['tdu-1'], {
+    'tdu-1': findFlight('ussr/vostok/vostok-1').plan.craft[0].engines.find((e) => e.id === 'tdu-1').deltaV.value,
+  });
+  const e = tdu.v.engines[0];
+  const out = ticks(tdu.v, tdu.s, 6000, { axis: tdu.axis }, { axis: tdu.axis, light: ['tdu-1'] });
+  const b = out.burns[0];
+  assert.equal(b.ended, 'integrator');
+  assert.ok(Math.abs(b.sensed - e.integrator) < 1e-9, `cut at ${b.sensed} m/s for ${e.integrator}`);
+  assert.ok(Math.abs(b.off - b.on - (e.integrator * tdu.s.mass) / e.thrust) < 1e-9, 'its thrust over the mass, the mass as it stood');
+  assert.equal(out.engines['tdu-1'].starts, 0);
+  const skd = craftAtInjection('ussr/soyuz/soyuz-1', ['skd']);
+  const k = skd.v.engines[0];
+  assert.ok(k.tank && k.flow > 0, 'the SKD draws on its tank');
+  const lit = ticks(skd.v, skd.s, 2000, { axis: skd.axis }, { axis: skd.axis, light: ['skd'] });
+  const c = lit.burns[0];
+  assert.ok(Math.abs(c.sensed - k.exhaust * Math.log(c.mass / (c.mass - c.fuel))) < 1e-6, 'the rocket equation’s');
+  assert.equal(lit.engines.skd.starts, skd.own.starts.skd - 1);
 });

@@ -1316,6 +1316,33 @@ export function coastEngineState(plan: FlightPlan, id: string, at: number, flown
 }
 
 /**
+ * The spacecraft as `plan` has it at `at` in the coast, for a burn by hand to be flown live from (sim/craftlive.ts
+ * `CraftFrom`): the ship's mass in orbit (`Ship.mass`) less what its engines have drawn from their tanks by then, and
+ * what each of its engines has left of its tank and of its starts (`coastEngineState`), by the plan's ids.
+ */
+export function craftAt(
+  plan: FlightPlan,
+  at: number,
+  engines: readonly string[],
+): { mass: number; tanks: Record<string, number>; starts: Record<string, number> } {
+  const c = plan.craft[0]!;
+  const tanks: Record<string, number> = {};
+  const starts: Record<string, number> = {};
+  let drawn = 0;
+  for (const id of engines) {
+    const engine = c.engines.find((e) => e.id === id);
+    if (!engine) continue;
+    const state = coastEngineState(plan, id, at);
+    starts[id] = state.starts;
+    const tank = engine.tanks[0];
+    if (!tank || tank in tanks || !c.tanks.some((t) => t.id === tank)) continue;
+    tanks[tank] = state.kg;
+    drawn += coastTank(plan, engine) - state.kg;
+  }
+  return { mass: shipOf(plan).mass - drawn, tanks, starts };
+}
+
+/**
  * The coast's instants as the plan has them (sim/plan.ts, written from the record by vostok-plan.ts, or that plan as a hand changed
  * it): the burn the record's coast flies (the engine with the record's impulse, `EngineDef.flown`) lit and cut, the
  * body it is on let go, and the height at which what comes down is let loose after that (the event set off by height once

@@ -1,13 +1,42 @@
-import { coastEngineState, coastEvents, coastOf, crewWords, type Move, shipOf } from '../../sim/orbital.ts';
-import { clockAt } from '../../sim/plan.ts';
-import { byHand, movedTo } from '../../sim/staged.ts';
+import { type CraftState, type CraftVehicle, craftVehicle } from '../../sim/craftlive.ts';
+import { handRange } from '../../sim/lever.ts';
+import { coastEngineState, coastEvents, coastOf, craftAt, crewWords, type Move, shipOf } from '../../sim/orbital.ts';
+import { clockAt, type EngineDef } from '../../sim/plan.ts';
+import { multiply, turn } from '../../sim/rigid.ts';
+import { orbitalFlown, type Run } from '../../sim/run.ts';
+import { byHand, madeBy } from '../../sim/staged.ts';
+import { type LiveSample, TICK } from '../../sim/vehicle.ts';
+import { G0 } from '../../world/bodies.ts';
+import { add, angleBetween, cross, DEG, length, scale, sub, unit, type Vec3 } from '../../world/frames.ts';
+import { KEEP, MOST, type ThrottleView } from '../deck.ts';
 import type { OrbitDeck } from '../orbitdeck.ts';
 import { handAxis, turnTo } from './coast.ts';
 
 /**
- * A burn (phase.ts): the coast's braking burn (`burnNext`, `fire`, `retroWhy`) and the record's manoeuvres fired by hand
- * (`nextMove`, `move`). Functions of the deck's state (orbitdeck.ts), each what was a method of it.
+ * A burn (phase.ts): the coast's braking burn (`burnNext`, `fire`, `retroWhy`) and the record's manoeuvres (`nextMove`,
+ * `move`), each lit by a hand and flown live (sim/craftlive.ts) on the one lever until it stops: cut by the lever or Cut, dry,
+ * cut by the braking engine's integrator, or a solid spent (`burnOn`). Then it is written into the plan as what it was
+ * (staged.ts `madeBy`, `byHand`'s `made`: lit and cut at its instants, its impulse the one it gave) and the rest of the
+ * flight flown again from where it left the spacecraft (`OrbitDeck.burnt`). Functions of the deck's state (orbitdeck.ts).
  */
+
+/** A burn lit by hand and flown live until it stops (`burnOn`): what it stands for and how it is drawn. */
+export interface LiveBurn {
+  /** A manoeuvre of the record's (`movesOf`, by `index`), or the coast's braking burn. */
+  kind: 'move' | 'braking';
+  index: number;
+  engine: string;
+  label: string;
+  craft: CraftVehicle;
+  state: CraftState;
+  /** From the coast's point to the spacecraft's centre of mass, as the run's samples draw it (staged.ts `recordSamples`). */
+  offset: Vec3;
+  /** The sample it lit at: what a sample of it keeps of the run's that the craft does not fly. */
+  template: LiveSample;
+  /** How many of the run's samples are kept (one a tenth of a second, and at its stop), and how many of its notes said. */
+  kept: number;
+  heard: number;
+}
 
 /**
  * Whether the coast's burn is the next thing a hand could do, which Space then does: once alone, with the hands free (a
@@ -18,7 +47,7 @@ export function burnNext(deck: OrbitDeck): boolean {
   if (deck.can('retro')) return true;
   const manual = deck.recordPlan.record?.manual;
   const t = deck.clock.t;
-  if (!deck.on || !manual || manual.code || deck.free || deck.fired !== null || !(t > deck.parting)) return false;
+  if (!deck.on || deck.burn || !manual || manual.code || deck.free || deck.fired !== null || !(t > deck.parting)) return false;
   if (deck.mine === null && t >= coastOf(deck.recordPlan).on) return false;
   return retroWhy(deck) === null;
 }
@@ -41,19 +70,12 @@ export function burnByHand(deck: OrbitDeck): boolean {
   return (plan.record?.manual?.periods ?? []).some((p) => command >= p.from.value && command <= p.to.value + 1e-6);
 }
 
-/** Fire the braking engine by hand along the long axis as it points: the rest of the flight flown again from it. */
+/** Light the braking engine by hand, along the long axis as it points: flown live from here (`burnOn`). */
 export function fire(deck: OrbitDeck, t: number): void {
   const deltaV = deck.recordPlan.record?.manual && coastEvents(deck.recordPlan).burn?.deltaV;
-  if (!deltaV || deck.parts <= t) return;
-  turnTo(deck, t);
-  // the long axis, in the flight's frame
-  const aim = handAxis(deck, t);
-  const plan = byHand(deck.planned ?? deck.recordPlan, t, aim);
-  const burn = shipOf(plan).off - t;
-  deck.planned = plan;
-  deck.fired = t;
-  deck.refly();
-  deck.host.say?.(burnName(deck), `Fired by hand: ${burn.toFixed(0)} s to ${deltaV.value} m/s`);
+  const engine = coastEvents(deck.recordPlan).burn;
+  if (!deltaV || !engine || deck.parts <= t) return;
+  light(deck, t, { kind: 'braking', index: -1, engine, label: burnName(deck), cutAt: deltaV.value });
 }
 
 /**
@@ -68,9 +90,10 @@ export function nextMove(deck: OrbitDeck): Move | null {
   const m = shipOf(plan).moves[index];
   if (!m) return null;
   const t = deck.clock.t;
-  const last = deck.moved.at(-1);
+  // (not while a burn burns; and not before the record's own last manoeuvre has ended where the hands took over in it)
+  if (deck.burn) return null;
   const previous = shipOf(plan).moves[index - 1];
-  if (previous && t < (last === undefined ? previous.off : last + previous.off - previous.on)) return null;
+  if (previous && !deck.moved.length && t < previous.off) return null;
   const base = deck.planned ?? deck.givenUp();
   const engine = plan.craft[0]!.engines.find((e) => e.id === m.engine)!;
   const resources = coastEngineState(base, engine.id, t);
@@ -82,19 +105,207 @@ export function nextMove(deck: OrbitDeck): Move | null {
   return m;
 }
 
-/** The record's next manoeuvre fired by hand now, along the long axis as the hand holds it, its impulse and length the record's. */
+/** The record's next manoeuvre's engine lit by hand now, along the long axis as the hand holds it: flown live from here (`burnOn`). */
 export function move(deck: OrbitDeck, t: number): void {
   const m = nextMove(deck);
   if (!m) return;
+  const engine = deck.recordPlan.craft[0]!.engines.find((e) => e.id === m.engine)!;
+  light(deck, t, { kind: 'move', index: deck.priorMoves + deck.moved.length, engine, label: m.label });
+}
+
+/**
+ * An engine lit by hand at `t`: the craft taken up from the run on show there (the coast's state, the ship's mass less what
+ * its tanks have given, the engine's starts left: orbital.ts `craftAt`) and its first tick flown, the engine lit in it (or
+ * not, and the deck told why). The lever, where it stands under the engine's least, is put full: a hand lighting an engine
+ * has it open. The run is cut at the lighting; `burnOn` flies the rest live.
+ */
+function light(
+  deck: OrbitDeck,
+  t: number,
+  what: { kind: LiveBurn['kind']; index: number; engine: EngineDef; label: string; cutAt?: number },
+): void {
+  turnTo(deck, t);
+  const plan = deck.planned ?? deck.givenUp();
+  const id = what.engine.id;
+  const at = deck.sampleAt(t);
+  // (the coast's point is the centre of mass less the offset it had as the spacecraft parted: staged.ts recordSamples)
+  const parted = (deck.ascended ?? orbitalFlown(deck.flight).ascent).samples.at(-1)!;
+  const offset = scale(parted.axis, deck.centre);
+  const own = craftAt(plan, t, [id]);
+  const craft = craftVehicle(plan, deck.frame, deck.flight.site.seaLevel.value, {
+    engines: [id],
+    ...(what.cutAt !== undefined ? { cutAt: { [id]: what.cutAt } } : {}),
+  });
+  const range = handRange(what.engine);
+  if (range && deck.lever.at < range.least - 1e-9) deck.leverTo(range.most);
+  const axis = handAxis(deck, t);
+  const s0 = craft.start({ t, r: sub(at.centre, offset), v: at.v, mass: own.mass, tanks: own.tanks, starts: own.starts, axis });
+  const s1 = craft.tick(s0, { axis, light: [id], lever: deck.lever.at });
+  if (!craft.burning(s1, id)) {
+    for (const n of s1.said) deck.host.say?.(n.title, n.text);
+    return;
+  }
+  const { rails: _, rotation: __, throttles: ___, ...template } = at;
+  const burn: LiveBurn = { ...what, engine: id, craft, state: s1, offset, template, kept: 0, heard: s1.said.length };
+  const run = deck.run!;
+  const samples = (run.samples as LiveSample[]).filter((x) => x.t < t - 1e-9);
+  samples.push(sampleOf(deck, burn, s0, true), sampleOf(deck, burn, s1));
+  burn.kept = samples.length;
+  deck.burn = burn;
+  // (while it burns its fire is drawn from its lighting, on and on: the run's fires as they would be with it burning)
+  const fires =
+    what.kind === 'braking'
+      ? deck.fires({ on: t, off: Infinity })
+      : deck.fires(
+          undefined,
+          madeBy(deck.recordPlan, plan, what.index, { on: t, off: Number.MAX_SAFE_INTEGER / 2, axis, flown: 0, mass: own.mass }),
+        );
+  deck.run = { ...run, samples, duration: Infinity, fires };
+  deck.host.fly(deck.run);
+  deck.host.say?.(
+    what.label,
+    `Lit by hand${range ? ` at ${Math.round(craft.share(s1, id) * 100)} %` : ''}: ${what.engine.kind === 'solid' ? 'a solid, it burns until it is spent' : 'cut it with the lever, or Cut'}`,
+  );
+  if (!deck.clock.running) deck.clock.play(true);
+}
+
+/** A state of a burn flown live as the run's sample: the template's, moved to where the craft is and lying as the hand holds it. */
+function sampleOf(deck: OrbitDeck, burn: LiveBurn, s: CraftState, before = false): LiveSample {
+  const centre = add(s.r, burn.offset);
+  const drift = deck.encounters?.contacts.rotation?.(s.t);
+  const q = drift ? multiply(deck.hand!.q, drift.delta) : deck.hand!.q;
+  const axis = turn(q, [1, 0, 0]);
+  const here = deck.frame.place(s.r, s.t);
+  const wind = sub(s.v, cross(deck.frame.spin, s.r));
+  const thrust = before ? 0 : burn.craft.thrustOf(s, burn.engine);
+  const share = burn.craft.share(s, burn.engine);
+  return {
+    ...burn.template,
+    t: s.t,
+    r: sub(centre, scale(axis, deck.centre)),
+    v: s.v,
+    centre,
+    axis,
+    attitude: q,
+    altitude: here.height,
+    latitude: here.latitude,
+    longitude: here.longitude,
+    speed: length(s.v),
+    groundSpeed: length(wind),
+    g: thrust / s.mass / G0,
+    mass: s.mass,
+    alpha: angleBetween(axis, wind) / DEG,
+    burning: thrust > 0 ? [{ engine: burn.engine, thrust }] : [],
+    ...(thrust > 0 && share < 1 ? { throttles: { [burn.engine]: share } } : {}),
+  };
+}
+
+/**
+ * The burn flown live up to the clock (no more than `MOST` a frame, as the ascent is): a tick at a time on the hand's
+ * attitude and the lever, a sample kept each tenth of a second and where it stops. Stopped, it is written into the plan and
+ * the rest of the flight flown again from there (`burnt`).
+ */
+export function burnOn(deck: OrbitDeck, t: number): void {
+  const burn = deck.burn!;
+  let s = burn.state;
+  if (t <= s.t) return;
   turnTo(deck, t);
   const axis = handAxis(deck, t);
-  deck.planned = movedTo(deck.recordPlan, deck.planned ?? deck.givenUp(), deck.priorMoves + deck.moved.length, t, axis);
-  deck.moved.push(t);
+  const run = deck.run! as Run & { samples: LiveSample[] };
+  const upTo = s.t + Math.min(t - s.t, MOST);
+  let lit = true;
+  while (s.t < upTo - TICK / 2) {
+    s = burn.craft.tick(s, { axis, lever: deck.lever.at });
+    lit = burn.craft.burning(s, burn.engine);
+    const last = run.samples[burn.kept - 1]!;
+    const end = !lit || s.t >= upTo - TICK / 2;
+    if (lit && !end && s.t - last.t < KEEP - TICK / 2) continue;
+    run.samples.length = burn.kept;
+    run.samples.push(sampleOf(deck, burn, s));
+    if (!lit || s.t - last.t >= KEEP - TICK / 2) burn.kept = run.samples.length;
+    if (!lit) break;
+  }
+  burn.state = s;
+  for (const n of s.said.slice(burn.heard)) deck.host.say?.(n.title, n.text);
+  burn.heard = s.said.length;
+  if (lit) {
+    // (the run's samples grow in place, as the ascent's do: the scene reads them as they come)
+    if (t - s.t > MOST) deck.clock.seek(s.t);
+    return;
+  }
+  made(deck);
+}
+
+/** The burn flown live has stopped: written into the plan as it was made, and the flight flown on from where it left it. */
+function made(deck: OrbitDeck): void {
+  const burn = deck.burn!;
+  const s = burn.state;
+  const b = s.burns.at(-1)!;
+  deck.burn = null;
+  deck.craftTicks += s.ticks;
+  const base = deck.planned ?? deck.givenUp();
+  const engine = burn.craft.engines[0]!;
+  // (the line it pushed along on the whole: the nose's way for one that pushes toward the tail, as the plan's aim is read)
+  const line = length(b.push) > 0 ? scale(unit(b.push), engine.def.astern ? -1 : 1) : s.axis;
+  const done = { off: b.off, flown: b.sensed, mass: b.mass };
+  if (burn.kind === 'move') {
+    deck.planned = madeBy(deck.recordPlan, base, burn.index, { on: b.on, axis: line, ...done });
+    deck.moved.push(b.on);
+  } else {
+    deck.planned = byHand(base, b.on, line, done);
+    deck.fired = b.on;
+  }
+  deck.burnt = { t: s.t, r: s.r, v: s.v, past: (deck.run!.samples as LiveSample[]).slice() };
   deck.refly();
+  const why = { cut: 'Cut', lever: 'Cut by the lever', dry: 'Tanks empty', integrator: 'Cut by its integrator', spent: 'Burned out' }[
+    b.ended ?? 'cut'
+  ];
   deck.host.say?.(
-    m.label,
-    `Fired by hand: ${(m.off - m.on).toFixed(0)} s, ${(m.accel * (m.off - m.on)).toFixed(1)} m/s ${m.accel < 0 ? 'toward the tail' : 'toward the nose'}`,
+    burn.label,
+    `${why}: ${(b.off - b.on).toFixed(1)} s, ${b.sensed.toFixed(1)} m/s${engine.tank ? `, ${b.fuel.toFixed(0)} kg drawn` : ''}`,
   );
+}
+
+/** What the lever works in the coast: the burn flown live, or the engine Space lights next (the lever set for it), or nothing. */
+export function coastThrottle(deck: OrbitDeck): ThrottleView | null {
+  const burn = deck.burn;
+  if (burn) {
+    const s = burn.state;
+    const e = burn.craft.engines[0]!;
+    const thrust = burn.craft.thrustOf(s, e.id);
+    return {
+      engines: e.label,
+      burning: thrust > 0,
+      range: e.range,
+      thrust,
+      left: e.tank ? (s.tanks[e.tank] ?? 0) : 0,
+      flow: e.flow * burn.craft.share(s, e.id),
+      isp: e.exhaust / G0,
+      mass: s.mass,
+    };
+  }
+  const t = deck.clock.t;
+  const m = nextMove(deck);
+  const engine = m
+    ? deck.recordPlan.craft[0]!.engines.find((e) => e.id === m.engine)
+    : burnNext(deck)
+      ? coastEvents(deck.recordPlan).burn
+      : undefined;
+  if (!engine || t >= deck.parts) return null;
+  const plan = deck.planned ?? deck.givenUp();
+  const own = craftAt(plan, t, [engine.id]);
+  const tank = engine.tanks[0];
+  return {
+    engines: engine.label,
+    burning: false,
+    range: handRange(engine),
+    thrust: 0,
+    left: tank && tank in own.tanks ? own.tanks[tank]! : 0,
+    flow: 0,
+    isp: engine.isp?.vacuum.value ?? 0,
+    mass: own.mass,
+    ...(engine.kind === 'solid' ? { not: 'fired whole by Space' } : { doing: 'Space lights it' }),
+  };
 }
 
 /** Why the braking engine cannot be fired now by a hand that is free, or null: it went with the instrument module, or he has left. */

@@ -1761,7 +1761,16 @@ export function drawnOf(down: DescentFlown, offset: Vec3, ground = 0): DrawnDesc
  * automatic one would (a timer it arms is never armed). What the flight deck flies from a hand's burn (orbitdeck.ts); the
  * rest is the plan's. Each event keeps the record's instant (`at`): only when it is set off changes.
  */
-export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
+export function byHand(
+  plan: FlightPlan,
+  t: number,
+  aim: Vec3,
+  /**
+   * The burn as a hand made it, flown live (sim/craftlive.ts): cut at `off`, having given `flown` m/s, the ship at `mass` kg
+   * as it lit. Left out: the record's impulse at the engine's thrust, as above.
+   */
+  made?: { off: number; flown: number; mass: number },
+): FlightPlan {
   const parting = plan.record?.manual?.parting;
   const out = structuredClone(plan);
   unaimed(out);
@@ -1772,8 +1781,9 @@ export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
   if (resources.starts <= 0 || resources.kg <= 0) return out;
   if (out.record?.coastFixes) out.record.coastFixes = out.record.coastFixes.filter((fix) => fix.at.value <= t);
   // (a solid burns for as long as it burns; a liquid until its integrator has the impulse, at its chambers' thrust)
-  const burn =
-    k.burn.kind === 'solid' && k.burn.burn
+  const burn = made
+    ? made.off - t
+    : k.burn.kind === 'solid' && k.burn.burn
       ? k.burn.burn.value
       : k.burn.tanks.length
         ? Math.min(shipOf(plan).fuel, resources.kg) / (k.burn.count * flowOf(k.burn))
@@ -1784,9 +1794,14 @@ export function byHand(plan: FlightPlan, t: number, aim: Vec3): FlightPlan {
     k.command.do = k.command.do.filter((a) => !('arm' in a));
   }
   if (!waits(k.on, 0)) setOff(k.on, t);
-  if (k.on) for (const a of k.on.do) if ('ignite' in a) delete a.firingTime;
+  if (k.on)
+    for (const a of k.on.do)
+      if ('ignite' in a) {
+        delete a.firingTime;
+        if (made) a.massAtIgnition = { value: made.mass, confidence: 'derived', source: MADE };
+      }
   if (!waits(k.off, burn)) setOff(k.off, t + burn);
-  k.burn.flown = { ...k.burn.flown!, value: deltaV.value };
+  k.burn.flown = made ? { value: made.flown, confidence: 'derived', source: MADE } : { ...k.burn.flown!, value: deltaV.value };
   const held = shipOf(plan).aimId;
   for (const a of out.attitude) if (a.id === held && 'aim' in a.hold) a.hold = { ...a.hold, aim: 'fixed', sense: 1, vector: aim };
   if (!waits(k.parting, parting.value)) setOff(k.parting, t + burn + parting.value);
@@ -1832,6 +1847,35 @@ export function movedTo(record: FlightPlan, plan: FlightPlan, k: number, t: numb
   setOff(lit, t);
   lit.do = [{ attitude: held }, ...lit.do.filter((a) => !('attitude' in a && a.attitude === held))];
   setOff(eventOf(out, m.cut), t + (m.off - m.on));
+  return out;
+}
+
+/** What a burn written from one a hand made live says of its figures. */
+const MADE = 'this flight’s own burn, made by hand and flown live (sim/craftlive.ts): its impulse the rocket equation’s on what it drew';
+
+/**
+ * `plan` with the record's `k`th manoeuvre (`movesOf(record)`) made by hand and flown live (sim/craftlive.ts `CraftBurn`),
+ * as `movedTo` writes one, but lit at `made.on` and cut at `made.off` as the hand had them, its impulse the one it gave
+ * (`Action.flown`, so what it drew is the rocket equation's from the ship's mass as it lit, `massAtIgnition`, as it was
+ * live), along `axis` (the long axis it pushed along on the whole, as `movedTo`'s); nothing of the record's firing time or
+ * of guidance's aim (`toward`) is kept. What the flight deck writes when a hand's manoeuvre stops (deck/phases/burn.ts).
+ */
+export function madeBy(
+  record: FlightPlan,
+  plan: FlightPlan,
+  k: number,
+  made: { on: number; off: number; axis: Vec3; flown: number; mass: number },
+): FlightPlan {
+  const m = movesOf(record)[k]!;
+  const out = movedTo(record, plan, k, made.on, made.axis);
+  for (const a of eventOf(out, m.lit)!.do)
+    if ('ignite' in a && a.ignite === m.engine) {
+      delete a.firingTime;
+      delete a.toward;
+      a.flown = { value: made.flown, confidence: 'derived', source: MADE };
+      a.massAtIgnition = { value: made.mass, confidence: 'derived', source: MADE };
+    }
+  setOff(eventOf(out, m.cut), made.off);
   return out;
 }
 

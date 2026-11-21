@@ -412,7 +412,10 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     follows, what that command arms, and the parting of the burn's body. The command is set off by its `time`, not by a
     `command` trigger: every trigger of an event must hold, so one that only a hand's command could set off would never be
     set off by the record's pilot. A hand's burn (staged.ts `byHand`) is that chain re-timed instead: commanded and lit at
-    its instant, cut by its integrator, the modules parting after, and no timer started.
+    its instant, cut by its integrator, the modules parting after, and no timer started. Flown live on the deck (below,
+    "A spacecraft's own engines are lit by hand") it is written so once it has stopped (`byHand`'s `made`): cut at the
+    instant it stopped, its impulse the one it gave and the ship's mass as it lit, so the plan's account of the tank draws
+    what the burn drew.
   - `PlanCheck.when` says where a figure is read: an instant, the most while some bodies are aboard, the most while an
     engine burns.
   - `problems(plan)` says in words what is wrong with a plan. A plan is checked before it is flown.
@@ -457,8 +460,11 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
     lifts (`AeroDef.lift`, lift over drag against Mach number) while a bank is held (`Hold.bank`, from the event that sets
     it; or the bank an entry steered to a place is flying, `Hold.entry`, "An entry is steered" above): orbital.ts `liftOf`, square to the motion through the air in the plane of the plumb line, turned about the motion by
     the bank. Mercury's and the Vostoks' plans have neither, and fly what they flew before to the last bit. Given up
-    (staged.ts `givenUp`, the hands free) the manoeuvres are too; a hand fires the record's next one along the long axis
-    (`movedTo`, its impulse and length the record's; on the deck, Space before the coast's burn).
+    (staged.ts `givenUp`, the hands free) the manoeuvres are too; a hand lights the engine of the record's next one along the
+    long axis (on the deck, Space before the coast's burn), flies it live and cuts it, and the burn is written in the record
+    manoeuvre's place as it was made (`madeBy`: lit and cut at the hand's instants, its impulse what it gave, `Action.flown`,
+    from the ship's mass as it lit, `massAtIgnition`). `movedTo` (the record's impulse and length, lit when a hand says)
+    is what `madeBy` writes over.
   - A Soyuz's: missions/ussr/soyuz/vehicles/soyuz-plan.ts `soyuzPlan`, from its record (the flight's orbital.ts: a
     `SoyuzRecord`, soyuz-record.ts, an R-7 flight's record with the ship's own). It is `vostokPlan` of the record in the R-7
     flights' shape (the 11A511's stages, the sequence, the braking burn's chain, the descent's bodies), with the ship laid on
@@ -1223,9 +1229,11 @@ read gives enough of to fly (issue #10).
   schedule in the state (`StagedState.hand`) from which what each stage burns is integrated exactly; a lever at full and
   never moved writes nothing, and the run is the record's (tests/stagedlive.test.mjs). Under a stage's least the deck
   asks for it to be cut (deck/phases/ascent.ts `leverCuts`), whenever it is lit. Each sample of a run flown so carries the
-  settings (`LiveSample.throttles`), and the fires burn at them (`Ascent.fireLevels`). Not reached by it: the spacecraft's
-  own burn in orbit (Space fires it whole, its impulse the plan's: orbital.ts), and the docking deck's thrusters, which
-  are on or off. The arrows are the deck's while it is flown, not the camera's (viewer/camera/input.ts `SPOKEN`): the
+  settings (`LiveSample.throttles`), and the fires burn at them (`Ascent.fireLevels`). In orbit it is `CraftControls.lever`
+  on the spacecraft's own engine lit by hand (sim/craftlive.ts, below): the engine at the lever's share of its rated thrust,
+  its flow with it; under its least cut, and raised to it again in the same burn lit once more on a start of its own.
+  Not lit, the row names the engine Space lights next ("Space lights it"). Not reached by it: a solid (a retropack, a
+  Gemini's retrorockets), which Space fires whole, and the docking deck's thrusters, which are on or off. The arrows are the deck's while it is flown, not the camera's (viewer/camera/input.ts `SPOKEN`): the
   view tilts by dragging there.
 - **A run flown by hand is never lost by leaving it** (`Deck.leave`, `deck/leaving.ts`; gallery.md has the ways out). Within
   the flight the deck parks it as data (state, run, samples), the clock reset for the site and put back on Resume, which waits
@@ -1286,13 +1294,42 @@ read gives enough of to fly (issue #10).
   live runs only). The Flown panel draws the run in amber over the record's as it grows
   (`Flown.fly`). The cockpit reads only the flight's data: a new flight with a `Craft.rigid` and
   `flies` can be flown without being told how.
+- **A spacecraft's own engines are lit by hand** (sim/craftlive.ts `craftVehicle`; #148). Alone in orbit with the hands
+  free, Space lights the engine of the record's next manoeuvre (or, after them, the coast's braking engine), and the burn
+  is flown a tick at a time (vehicle.ts `TICK`) up to the clock, no more than `MOST` a frame, as the ascent is
+  (deck/phases/burn.ts `light`, `burnOn`): the coast's forces (the plan's gravity, `fieldFor`, about the Moon within its
+  sphere; the coast's drag on the joined ship, orbital.ts `shipPush`), and the engine's thrust along the long axis as the
+  hand holds it then (the coast's `turnTo`: the keys turn it while it burns), against it for one that pushes toward the
+  tail. The engine is the plan's (`craftEngines`: every engine of the first craft that is not a stage), at its rated
+  vacuum thrust times the lever's share; where it draws on a tank of the plan's and has a specific impulse, what it draws
+  is its thrust over g0 Isp, taken from that tank and from the ship (orbital.ts `craftAt` gives both as the plan has them
+  at the lighting), so the impulse it gives is the rocket equation's on what it drew, and it stops on the instant the tank
+  is empty, within the tick. One with no tank in the plan (a Gemini's OAMS, a Vostok's TDU) draws nothing, as the coast's
+  manoeuvres are flown. It starts as often as `EngineDef.starts` says, then is not lit and the deck says why. The braking
+  engine is flown with its integrator (`EngineDef.deltaV`): cut when it has sensed that impulse, as `byHand` has it; a
+  manoeuvre has none (the hand cuts it). A solid, lit, cannot be cut and burns its `burn`, pushing the record's impulse
+  (`EngineDef.flown`) evenly over it, as the coast flies it. Stopped, the burn is written into the plan as what happened
+  (`madeBy`, `byHand`'s `made`) and the rest of the flight is flown again from the state it stopped in (orbitdeck.ts
+  `burnt`: `whole` flies on from there, `samplesOf` keeps the samples flown live before it), so the plan's account of
+  starts and propellant (orbital.ts `coastEngineState`, `movesOf`) is the burn's own: it draws, by the rocket equation from
+  the mass as it lit, what the burn drew. While it burns the path is "if cut now", the coast from there with nothing lit.
+  A kept run flies it again from what the hands did (tape.ts): its ticks are the deck's (`craftTicks`), and the frames
+  are written while the hand turns it. With B on the record's burns are lit at their instants as before (the plan's own
+  events, flown whole by the coast); G and B in the coast keep what they did. Not modelled: the attitude as a rigid body
+  turned by the jets (the hand's attitude is the coast's, turned at `manual.rate`; #148's second half, A2b), ullage
+  (the engine is taken to start), the engine's start and shutdown transients, and any limit on a burn's length.
+  tests/stagedlive.test.mjs holds an SPS burn by hand to the rocket equation on what it drew, against its motion and the
+  plan's account; the lever, the starts and a tank run dry; a Gemini's thrusters each way and its retrorockets; a Vostok's
+  TDU to its integrator and a Soyuz's SKD on its tank. tests/resume.test.mjs flies an SPS burn by hand, throttled, cut and
+  lit again, written and flown again to the bit.
 - **An orbital flight is as flown until it is taken over.** As flown (the default, "As flown: automatic"), the run is the
   record's (`flyWhole`), shown through `Ascent` as a run that carries its own attitude (`recordSamples`, sim/run.ts
   `orbitalRecord`, from the plan); what it drops is flown from the plan's `Craft.sheds`, each released from the outgoing trajectory at the joint's instant. The departing body's velocity is the retained body's less their relative separation speed (`orbitalRelease`), from the joint or the shed body's own push. After a burn by hand the attitude drawn is the hand's: as it was left until the modules part, then turning to lie along the motion through the air. Its pilot had no controls going up, and the deck says
   so where the override is offered (a hand on the keys in the ascent says it in a note). Once the spacecraft is alone the
   code on the lock (its digits) frees the hand controls, as the envelope did: W S A D Q E turn the spacecraft at
-  `manual.rate`, the timer's burn is given up, Space fires the braking engine along the long axis (`byHand`), and the rest
-  is flown again from that burn. A spacecraft whose hand controls had no lock (`PlanRecord.manual` without a `code`: Mercury's
+  `manual.rate`, the timer's burn is given up, Space lights the braking engine along the long axis and it is flown live
+  until it stops (cut by the lever or Cut, by its integrator, dry, or a solid spent: "A spacecraft's own engines are lit
+  by hand", below), and the rest is flown again from where it stopped. A spacecraft whose hand controls had no lock (`PlanRecord.manual` without a `code`: Mercury's
   fly-by-wire and manual proportional) is the hand's as soon as a key turns it once alone, its coast's burn then Space and
   called by its plan label (`Retrorockets`); a descent event's `asked` is what the deck calls it. Each is an edit of the plan (staged.ts `byHand`, `givenUp`, `partingAt`): the coast's
   events set off at other instants (their `time` triggers; `at`, the record's instant, kept), the burn's impulse and its
