@@ -226,7 +226,14 @@ rules are the screen's, the same for every path, never tuned to a flight:
   the vehicle's distance from the Earth's centre where it is more (`PIN_SHARE`, `pinFar`: 150 km at 150,000 km): on rails at
   a million times a prediction is hours of flight old before the next, and the run's physics and the predictor's part by
   tens of kilometres over that on a coast to the Moon, the same path; at 20 km the line was let go of the vehicle and drawn
-  35 km off it, behind it from the chase view (`test:path --deep`, Apollo 8 and 10 at a million times).
+  35 km off it, behind it from the chase view (`test:path --deep`, Apollo 8 and 10 at a million times). A line drawn as it lies among the
+  stars is turned with the Earth to the scene's instant, the sample's (path.ts `turnAt`), as the vehicle and the globe
+  are, and never to the instant on the line the vehicle was found at, which the search for it moves: that search took its
+  slope with the Earth's turn held and its place with it turned, so each step went further off, and the line swung about
+  the Earth's axis by the Earth's turn in the seconds it was off (21 km a second of it at 300,000 km). On Apollo 8 past
+  T+140000 it lay 30 to 254 km off the vehicle, swinging with the day as the small difference between the stage's own
+  placing of the vehicle and the path's (up to 166 m, with the day's period: what the pin takes up) set the search off;
+  turned to the sample's instant it lies within that 166 m (measured in the page at 100,000 times from T+120000).
 - **The frame is the path's own** (pathline.ts `drawnIn`, path.ts `frameFor`), never a flight's or a phase's. A path
   that comes down before the Earth has turned an eighth of a turn under it (`WOUND`, three hours, estimated: a lob, an
   ascent cut short and a return from a low orbit are well within it) is drawn over the ground, where it comes down, with
@@ -271,9 +278,28 @@ rules are the screen's, the same for every path, never tuned to a flight:
   row for it), and the Moon's own way from now to then is drawn with its outline where it will be, so the path is seen
   to go to where the Moon is going and not to where it is. Once the Moon itself is drawn there (the flight scene's body:
   "The Moon in the flight scene") and is more than 4 to 8 pixels across, its outline where it is now gives way to it
-  (`PathHost.moonCovers`); the marker, the outline where the path passes it and its way there stay. Simplified: near the Moon the path is still drawn about the Earth, among the
-  stars, where a path in orbit about the Moon is a coil along the Moon's way (drawn about the Moon: the rest of B4); the
-  map is fitted to the ball round the Earth that holds the path, so a path to the Moon fills a radius of it.
+  (`PathHost.moonCovers`); the marker, the outline where the path passes it and its way there stay. **Near the Moon the line is drawn about the Moon** (path.ts `Lunar`, `aboutOf`,
+  `aboutShift`; pathline.ts `aboutWeight`, `Knotted`, `crossingsOf`), for any flight whose vehicle is in the Moon's
+  sphere: the plan's own where its gravity changes centre there (`GravityDef.sphere`, the guidance computer's
+  `RSPHERE`), else Laplace's (sim/predict.ts `sphereOf`), the sphere the warp names. The stretch of the line inside it,
+  from where the line flown came in to where the line ahead goes out, is drawn where it is from the Moon as the Moon is
+  now (each point moved by the Moon's way from its instant to the scene's), so an orbit of the Moon closes round the drawn
+  Moon and a pass of it is a curve round it, where drawn about the Earth among the stars the one was a coil along the
+  Moon's way and the other a swing beside where the Moon will be; outside it, the line is drawn about the Earth as before,
+  eased from the one to the other over `ABOUT_EASE` (six hours, chosen) either side of the crossing, so it bends and never
+  breaks. The line flown and the record's line are drawn by the same rule, the record's cut again as the Moon moves. Its
+  apsides there are the Moon's (`apolune`, `perilune`: heights over its mean sphere, the Earth's apsides inside the
+  sphere let go, and a pass that is a perilune marked as that), and the line ends short of coming round as an orbit's
+  does, by the sweep round the Moon's centre (`relativeTo`, `endOf`). Where the path crosses the sphere it is marked
+  ("Into the Moon's sphere", "Out of the Moon's sphere"), and a path that comes down from beyond the stationary radius is
+  marked where it comes down through the mission's entry interface where its record names one (`PathSource.entry`), with
+  the speed there. The Moon hides what of every line is behind it (`uMoon`: the ray from the eye passes inside its
+  sphere first, by the Earth's rule, faint on the map where the Earth's is), its own outlines excepted. The Moon's place
+  for all of it is the prediction's gravity's, kept as knots an hour apart (within a centimetre of it: tests/pathline).
+  On the map about the Earth, a path that passes the Moon is fitted with the Moon taken in, where it is and where the path
+  passes it. Simplified: the other things that fly are still drawn about the Earth near the Moon; the flown line inside
+  the sphere is drawn about the Moon only as far back as it is kept (`FLOWN_SPAN`); an entry interface is marked only where
+  the record gives one (Apollo 7's today, whose orbit never reaches the stationary radius, so no flight shows it yet).
 - **The record's flight is a line of reference, there from the pad** (`viewer/pathref.ts`, path.ts `layRef`): the run
   the record itself makes of the flight (sim/run.ts `recordOf`, or the deck's own, `PathSource.intended`), for a flight
   flown by hand to be held to. One rule for any flight, from the run's samples and events alone.

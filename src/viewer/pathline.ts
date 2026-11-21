@@ -610,3 +610,113 @@ export function ribbon(
   }
   return chords;
 }
+
+/**
+ * How much of another body's own motion a point of the line at instant `t` is drawn without, 0 to 1: all of it within
+ * [`from`, `to`], the stretch of the path inside the sphere of the body the flight is in now (the Moon's), so that
+ * stretch is drawn about that body as it is now and an orbit of it closes round it, and none of it `ease` seconds or
+ * more outside, where the path is drawn about the Earth as it lies among the stars; between, on the smooth step, so the
+ * line bends from one to the other and never breaks.
+ */
+export function aboutWeight(t: number, from: number, to: number, ease: number): number {
+  const out = t < from ? from - t : t > to ? t - to : 0;
+  const x = Math.min(1, out / Math.max(ease, 1e-9));
+  return 1 - x * x * (3 - 2 * x);
+}
+
+/**
+ * A body's way (its centre from the Earth's, in the frame that does not turn) as knots `step` seconds apart on its own
+ * clock's multiples, each its place and velocity, made as each is first asked for and kept: where it is at any instant
+ * is the cubic between two (`at`). The Moon's way, an hour between knots, is then within a decimetre of its ephemeris
+ * (the cubic's own error, r (wh)^4 / 384, at w its 2.66e-6 rad/s, is a centimetre; the rest is the ephemeris's own last
+ * bits, `knot`), and a line of thousands of points over days asks its ephemeris five times an hour of it, once.
+ */
+export class Knotted {
+  private readonly knots = new Map<number, Float64Array>();
+  private readonly where: (t: number) => ArrayLike<number>;
+  readonly step: number;
+  private readonly most: number;
+  constructor(where: (t: number) => ArrayLike<number>, step = 3600, most = 4096) {
+    this.where = where;
+    this.step = step;
+    this.most = most;
+  }
+
+  private knot(k: number): Float64Array {
+    const kept = this.knots.get(k);
+    if (kept) return kept;
+    if (this.knots.size >= this.most) this.knots.clear();
+    const t = k * this.step;
+    const p = this.where(t);
+    // (its velocity by the five-point difference over a sixth of the step either side: a difference a second wide, as it
+    // was, read the last bits of the ephemeris's Julian date, a few centimetres of the Moon's place, as centimetres a
+    // second, and the cubic carried them across the hour to ten metres)
+    const h = this.step / 6;
+    const a = this.where(t + h);
+    const b = this.where(t - h);
+    const c = this.where(t + 2 * h);
+    const d = this.where(t - 2 * h);
+    const v = (q: number) => (8 * (a[q]! - b[q]!) - (c[q]! - d[q]!)) / (12 * h);
+    const s = new Float64Array([p[0]!, p[1]!, p[2]!, v(0), v(1), v(2)]);
+    this.knots.set(k, s);
+    return s;
+  }
+
+  /** Where it is at `t`, into `out` at `o`; and its velocity into `vel` if given. */
+  at(t: number, out: Float64Array | number[], o = 0, vel?: Float64Array | number[]): void {
+    const h = this.step;
+    const k = Math.floor(t / h);
+    const A = this.knot(k);
+    const B = this.knot(k + 1);
+    const s = (t - k * h) / h;
+    const s2 = s * s;
+    const s3 = s2 * s;
+    const a = 2 * s3 - 3 * s2 + 1;
+    const b = (s3 - 2 * s2 + s) * h;
+    const d = -2 * s3 + 3 * s2;
+    const e = (s3 - s2) * h;
+    for (let q = 0; q < 3; q++) {
+      out[o + q] = a * A[q]! + b * A[3 + q]! + d * B[q]! + e * B[3 + q]!;
+      if (vel)
+        vel[q] = ((6 * s2 - 6 * s) / h) * A[q]! + (3 * s2 - 4 * s + 1) * A[3 + q]! + ((-6 * s2 + 6 * s) / h) * B[q]! + (3 * s2 - 2 * s) * B[3 + q]!;
+    }
+  }
+}
+
+/**
+ * Where a curve crosses a sphere of `radius` about a moving centre (`centre`, at an instant into `out`), from `after`
+ * on: each instant its distance from the centre passes the radius between two of its points, found by halving on the
+ * cubic to a millisecond, and whether it goes in there. A crossing in and out again between two points (a graze shorter
+ * than the points are apart) is not seen.
+ */
+export function crossingsOf(
+  c: Curve,
+  centre: (t: number, out: Float64Array) => void,
+  radius: number,
+  after = Number.NEGATIVE_INFINITY,
+): { t: number; into: boolean }[] {
+  const out: { t: number; into: boolean }[] = [];
+  const m = new Float64Array(3);
+  const p = new Float64Array(3);
+  const off = (t: number, i: number): number => {
+    centre(t, m);
+    curveAt(c, t, p, 0, i);
+    return Math.hypot(p[0]! - m[0]!, p[1]! - m[1]!, p[2]! - m[2]!) - radius;
+  };
+  let was = c.n ? off(c.t[0]!, 0) : 0;
+  for (let i = 1; i < c.n; i++) {
+    const now = off(c.t[i]!, i - 1);
+    if (Math.sign(now) !== Math.sign(was) && c.t[i]! > after) {
+      let lo = c.t[i - 1]!;
+      let hi = c.t[i]!;
+      for (let k = 0; k < 64 && hi - lo > 1e-3; k++) {
+        const mid = 0.5 * (lo + hi);
+        if (Math.sign(off(mid, i - 1)) === Math.sign(was)) lo = mid;
+        else hi = mid;
+      }
+      if (hi > after) out.push({ t: hi, into: now < 0 });
+    }
+    was = now;
+  }
+  return out;
+}

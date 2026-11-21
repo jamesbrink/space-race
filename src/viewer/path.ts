@@ -6,11 +6,13 @@ import { clockAt, eventOf } from '../sim/plan.ts';
 import {
   apsides,
   type Burn,
+  elements,
   type Prediction,
   type Predictor,
   predictor,
   programmeAxis,
   type Sequence,
+  sphereOf,
   type Start,
 } from '../sim/predict.ts';
 import type { Sample } from '../sim/fly.ts';
@@ -24,9 +26,12 @@ import { ecefToSite, ecefToSiteDirection, type Site, siteFrame, type Vec3 } from
 import { absolute, uOrigin } from './origin.ts';
 import { cloudAheadGlsl, sceneDepthGlsl, uDepthRange, uLast, uSceneDepth } from './overlay.ts';
 import {
+  aboutWeight,
+  crossingsOf,
   type Curve,
   curveAt,
   curveOf,
+  Knotted,
   pieceOf,
   DEPTH_DIM,
   DEPTH_LEAST,
@@ -173,12 +178,14 @@ import { disposeTree } from './dispose.ts';
  * rings round the Earth). The record's line drawn over the ground stops at that radius for the same reason
  * (`layRef`). On the map from far enough out the Moon is marked where it is, to scale, and where the path on show
  * passes it (sim/predict.ts `Pass`) the passing is marked on the line, with the Moon's way from now to then and its
- * outline where it will be (`layBodies`).
+ * outline where it will be (`layBodies`). In the Moon's sphere (`Lunar`), the stretch of the line inside it is drawn about
+ * the Moon as it is now (`aboutOf`, `aboutShift`), eased to the Earth's frame either side of the crossing, its apsides there
+ * the Moon's and its crossings marked; and the Moon hides what is behind it (`uMoon`).
  *
  * Frames. The prediction is in the simulator's frame, which does not turn. `surface` draws each point where it will be
  * over the ground at its own instant (the Earth turned to that instant, then the site's frame, as viewer/ascent.ts places
  * the vehicle): it meets the sea where the vehicle will. `orbit` draws the path as it lies in the frame that does not
- * turn: each point with the Earth turned to the instant on show. Only a path that comes round without meeting the ground
+ * turn: each point with the Earth turned to the scene's instant (`turnAt`). Only a path that comes round without meeting the ground
  * is drawn in `orbit` (the navball's O chooses); one that comes down is drawn over the ground, where it comes down.
  *
  * The markers (pathmarks.ts lays them out) are glyphs on the line, each with a label and a figure, all of them found
@@ -274,6 +281,12 @@ const PIN_FAR = 20_000;
  * be at the Moon's distance as it is in a low orbit. Under 20,000 km out this is `PIN_FAR`. Chosen.
  */
 const PIN_SHARE = 1e-3;
+/**
+ * Seconds over which the line goes from being drawn about the Moon to being drawn about the Earth, either side of where it
+ * crosses the Moon's sphere (`aboutWeight`): six hours, about a tenth of a coast between the two, so the bend between the
+ * frames is a long curve and not a corner. Chosen.
+ */
+const ABOUT_EASE = 6 * 3600;
 const PIN_OVER = 10;
 /** And over at least this many times the offset itself: so taking it onto the vehicle bends the line by under a degree. */
 const PIN_SLOPE = 100;
@@ -379,6 +392,7 @@ const FRAG = /* glsl */ `
   uniform vec3 uPole;         // and its axis, north
   uniform float uRadius;      // the ellipsoid that hides the line: its equator's radius, m
   uniform float uStretch;     // and how much longer than its polar radius that is (a/b - 1)
+  uniform vec4 uMoon;         // another body that hides the line (the Moon): its centre in the view's frame and its radius, m (w 0: none)
   uniform float uPxPerRad;    // pixels to a radian of the view
   uniform vec2 uView;         // the target's size, pixels
   varying float vSide, vT, vWide;
@@ -393,6 +407,12 @@ const FRAG = /* glsl */ `
     vec3 f = vView + uPole * dot(vView, uPole) * uStretch;
     float k = -dot(e, f) / max(dot(f, f), 1e-6);
     float seen = k > 0.0 && k < 1.0 ? smoothstep(0.0, 1.4, (length(e + f * k) - uRadius) / max(length(f) * k, 1e-3) * uPxPerRad) : 1.0;
+    // and behind the Moon, a sphere, by the same rule (its own outline on the map is not hidden by it: uMoon.w 0 there)
+    if (uMoon.w > 0.0) {
+      float km = dot(uMoon.xyz, vView) / max(dot(vView, vView), 1e-6);
+      if (km > 0.0 && km < 1.0)
+        seen = min(seen, smoothstep(0.0, 1.4, (length(vView * km - uMoon.xyz) - uMoon.w) / max(length(vView) * km, 1e-3) * uPxPerRad));
+    }
     // behind what the scene has drawn (the vehicle, the ground, the cabin's walls): a hundredth nearer than it is, so the
     // sea it comes down to does not hide its end (overlay.ts: the finished frame it is drawn over has no depth of its own).
     // (In the map what the Earth hides is drawn faintly, uBehind: there the Earth's own depth is not asked.)
@@ -597,6 +617,11 @@ export interface PathSource {
    * (sim/run.ts `recordOf`, made once a flight), which is the same run.
    */
   intended?(): readonly RefSample[];
+  /**
+   * The height of the mission's entry interface, m (`PlanRecord.entryInterface`, documented), where it names one: a path
+   * that comes down from beyond the stationary radius is marked where it comes down through it.
+   */
+  readonly entry?: number | undefined;
 }
 
 /** The point a sample's simulator flies (`PathSample.flies`), which the path predicts from and holds to. */
@@ -628,6 +653,13 @@ const KINDS = {
   main: ['Main', 52],
   // (the nearest it comes to another body, named by that body: the Moon)
   pass: ['', 97],
+  // (about the Moon, where the flight is in its sphere: its apsides there, over its mean sphere)
+  apolune: ['Apolune', 99],
+  perilune: ['Perilune', 98],
+  // (into or out of another body's sphere, named by the crossing: `Lunar`)
+  sphere: ['', 66],
+  // (coming down from far out through the mission's entry interface: `PathSource.entry`)
+  interface: ['Entry interface', 64],
   // (on the map: the vehicle itself, and each other thing that flies; their words are their names)
   craft: ['', 130],
   other: ['', 30],
@@ -637,6 +669,8 @@ const KINDS = {
   ref: ['', 20],
 } as const satisfies Record<string, readonly [string, number]>;
 type Kind = keyof typeof KINDS;
+/** The apsides among them, about the Earth and the Moon: never the next thing to happen (they come every revolution). */
+const APSIS: ReadonlySet<Kind> = new Set(['apogee', 'perigee', 'apolune', 'perilune']);
 const NEXT = 25;
 /** What each mark of the record's line is called on it (pathref.ts `RefKind`), and its highest point; and how much each matters among them (as the prediction's own of the same kind among its: pathmarks.ts offers fewer the smaller the line is on the screen). */
 const REF_WORDS = { staging: 'Staging', cutoff: 'Cutoff', retro: 'Retrofire', burn: 'Burn', down: 'Down', apogee: 'Ap' } as const;
@@ -722,6 +756,22 @@ interface Shown {
    */
   left: Float64Array;
   leftAt: number;
+  /** Where it crosses the sphere of another body (the Moon's: `Lunar`), each instant and whether it goes in there, once asked (`markOut`). */
+  crossings?: { t: number; into: boolean }[];
+  /** The curve about that body's centre (its place and velocity taken off each point), its sweep round it and the furthest it goes from it: where a line drawn about the Moon ends (`endOf`), once asked. */
+  rel?: { curve: Curve; sweep: Sweep; top: number };
+}
+
+/**
+ * The Moon as the line is drawn about it: the body the prediction's gravity places (core/gravity.ts `Passed`), its way as
+ * knots (pathline.ts `Knotted`), and the radius of the sphere within which a flight is its: the plan's, where its
+ * gravity changes centre there (`GravityDef.sphere`, the guidance computer's `RSPHERE`), else Laplace's (sim/predict.ts
+ * `sphereOf`, derived), the same sphere the warp names (sim/warp.ts).
+ */
+interface Lunar {
+  body: Passed;
+  way: Knotted;
+  sphere: (t: number) => number;
 }
 
 /** A line's buffers on the GPU and in doubles: the ribbon's, and the points it was last sampled at (scene frame). */
@@ -959,6 +1009,19 @@ export class FlightPath {
    * went further off each step), and Apollo 8's line lay 30 to 240 km off the vehicle past 250,000 km.
    */
   private turnAt = 0;
+  /** The Moon as the line is drawn about it (`Lunar`), made the first time it is asked; null for a flight whose gravity names none. */
+  private lunar: Lunar | null | undefined = undefined;
+  /**
+   * Where the flight is in the Moon's sphere now: the stretch of the line drawn about the Moon as it is at the scene's
+   * instant (`now`), from when the flight came into the sphere (the line flown's) to when it leaves it (the line ahead's),
+   * `aboutWeight` easing it to the Earth's either side over `ABOUT_EASE`; null about the Earth.
+   */
+  private about: { from: number; to: number; now: Float64Array; key: string } | null = null;
+  private readonly aboutM = new Float64Array(3);
+  private readonly aboutQ = new Float64Array(3);
+  private readonly moonView = new THREE.Vector3();
+  /** The line flown's instant it came into the Moon's sphere, and what of the line flown that was found for. */
+  private cameIn = { key: '', t: Number.NEGATIVE_INFINITY };
   private sampledFor = '';
   private readonly keyNow = new Float64Array(21).fill(Number.NaN);
   private readonly markAt = new Float64Array(3);
@@ -1048,6 +1111,7 @@ export class FlightPath {
       uPole: { value: new THREE.Vector3(0, 1, 0) },
       uRadius: { value: WGS84_A },
       uStretch: { value: WGS84_A / WGS84_B - 1 },
+      uMoon: { value: new THREE.Vector4(0, 0, 0, 0) },
       uPxPerRad: { value: 1000 },
       uDepth: { value: new THREE.Vector2(1, 1) },
       uThin: { value: DEPTH_THIN },
@@ -1340,7 +1404,46 @@ export class FlightPath {
       const b = Math.min(c.n, pieceOf(c, this.drawnRef.to) + 2);
       if (b - a > 1) take(c.r.subarray(a * 3, b * 3), b - a);
     }
-    return { centre: this.centre, pole: this.pole, radius: WGS84_A, turned: this.earth.angle(t), reach, extent };
+    // (the Moon, where the path on show passes it: the map about the Earth takes it in)
+    const lunar = this.lunarOf();
+    const m = this.aboutQ;
+    const mv = new Float64Array(3);
+    const pass = lunar ? this.shown?.result.passes.find((p) => p.body === lunar.body.name) : undefined;
+    if (lunar && pass) {
+      reach = Math.max(reach, Math.hypot(...pass.centre) + lunar.body.radius);
+      lunar.way.at(t, m);
+      reach = Math.max(reach, Math.hypot(m[0]!, m[1]!, m[2]!) + lunar.body.radius);
+    }
+    // the way the path's plane faces: the vehicle's motion about the body whose sphere it is in (the Moon's, there), in the scene
+    let inMoon = false;
+    let p: Vec3 = [r[0], r[1], r[2]];
+    let u: Vec3 = [s.v[0], s.v[1], s.v[2]];
+    if (lunar) {
+      lunar.way.at(s.t, m, 0, mv);
+      if (Math.hypot(r[0] - m[0]!, r[1] - m[1]!, r[2] - m[2]!) < lunar.sphere(s.t)) {
+        inMoon = true;
+        p = [r[0] - m[0]!, r[1] - m[1]!, r[2] - m[2]!];
+        u = [s.v[0] - mv[0]!, s.v[1] - mv[1]!, s.v[2] - mv[2]!];
+      }
+    }
+    const h: Vec3 = [p[1] * u[2] - p[2] * u[1], p[2] * u[0] - p[0] * u[2], p[0] * u[1] - p[1] * u[0]];
+    const hn = Math.hypot(...h);
+    let plane: THREE.Vector3 | undefined;
+    if (hn > 0) {
+      const q = this.markAt;
+      this.sceneOf([h[0] / hn, h[1] / hn, h[2] / hn], 0, t, 'orbit', t, q, 0);
+      plane = new THREE.Vector3(q[0]! - this.centre.x, q[1]! - this.centre.y, q[2]! - this.centre.z).normalize();
+    }
+    return {
+      centre: this.centre,
+      pole: this.pole,
+      radius: WGS84_A,
+      turned: this.earth.angle(t),
+      reach,
+      extent,
+      ...(plane ? { plane } : {}),
+      ...(inMoon ? { inMoon } : {}),
+    };
   }
 
   /** While the engine burns: the path if guidance flies on to the record's cutoff (true), or if the engine were cut now. Remembered. */
@@ -1659,6 +1762,86 @@ export class FlightPath {
     return r ? Math.max(PIN_FAR, PIN_SHARE * Math.hypot(r[0], r[1], r[2])) : PIN_FAR;
   }
 
+  /** The Moon as the line is drawn about it (`Lunar`), for a flight whose gravity names it: made once, null for one whose names none. */
+  private lunarOf(): Lunar | null {
+    if (this.lunar === undefined) {
+      const body = moonOnEarthFlight(this.earth).body ?? null;
+      const given = this.flight.plan?.gravity?.sphere?.value;
+      this.lunar = body
+        ? { body, way: new Knotted((t) => body.where(t)), sphere: given !== undefined ? () => given : (t) => sphereOf(body, t) }
+        : null;
+    }
+    return this.lunar;
+  }
+
+  /**
+   * Where the flight at `s` is in the Moon's sphere, the stretch of the line on show drawn about the Moon (`about`): to
+   * where the curve next leaves the sphere (`crossingsOf`, kept with the curve), from where the line flown came into it.
+   * Null where the flight is outside it, or its gravity names no Moon. A flight a fifth of the Moon's distance from it or
+   * nearer the Earth is not asked further (no sphere of it comes so near the Earth).
+   */
+  private aboutOf(s: PathSample, shown: Shown): { from: number; to: number; now: Float64Array; key: string } | null {
+    const lunar = this.lunarOf();
+    if (!lunar) return null;
+    const r = fliesOf(s);
+    const m = this.aboutQ;
+    lunar.way.at(s.t, m);
+    const sphere = lunar.sphere(s.t);
+    if (Math.hypot(r[0], r[1], r[2]) < 0.8 * Math.hypot(m[0]!, m[1]!, m[2]!) - sphere) return null;
+    if (Math.hypot(r[0] - m[0]!, r[1] - m[1]!, r[2] - m[2]!) > sphere) return null;
+    shown.crossings ??= crossingsOf(shown.curve, (t, out) => lunar.way.at(t, out), sphere, shown.result.from);
+    const to = shown.crossings.find((c) => !c.into && c.t > s.t)?.t ?? Number.POSITIVE_INFINITY;
+    // (when it came in: the run's own samples where the deck has them (`PathSource.track`), else the line flown, from the
+    // last back to the first outside the sphere; found again only when they have changed. The line flown keeps a few hours,
+    // and the record's line drawn by the same rule goes back to the pad: from a stretch that began before the line flown
+    // does, the record's way out from the Earth was drawn moved by the Moon's three days)
+    const track = this.source.track?.(s.t);
+    const f = this.flown;
+    const key = track?.length ? `t${track.length}|${track[track.length - 1]!.t}` : `f${f.n}|${f.n ? f.t[f.n - 1] : 0}`;
+    if (this.cameIn.key !== key) {
+      let t = Number.NEGATIVE_INFINITY;
+      const q = this.aboutM;
+      const n = track?.length ? track.length : f.n;
+      const tAt = (i: number): number => (track?.length ? track[i]!.t : f.t[i]!);
+      const outside = (i: number): boolean => {
+        lunar.way.at(tAt(i), q);
+        if (track?.length) {
+          const p = track[i]!.centre ?? track[i]!.r;
+          return Math.hypot(p[0] - q[0]!, p[1] - q[1]!, p[2] - q[2]!) > sphere;
+        }
+        return Math.hypot(f.r[i * 3]! - q[0]!, f.r[i * 3 + 1]! - q[1]!, f.r[i * 3 + 2]! - q[2]!) > sphere;
+      };
+      for (let i = n - 1; i >= 0; i--) {
+        if (tAt(i) > s.t) continue;
+        if (outside(i)) {
+          t = i + 1 < n ? 0.5 * (tAt(i) + tAt(i + 1)) : tAt(i);
+          break;
+        }
+      }
+      this.cameIn = { key, t };
+    }
+    const now = this.about?.now ?? new Float64Array(3);
+    lunar.way.at(this.turnAt, now);
+    return { from: this.cameIn.t, to, now, key: `${this.cameIn.t}|${to}` };
+  }
+
+  /**
+   * A place of the line at instant `t` (`p`, in the simulator's frame) moved by the Moon's way from then to the scene's
+   * instant, by as much as the line is drawn about the Moon there (`aboutWeight`): inside the sphere the flight is in, it
+   * is drawn where it is from the Moon as the Moon is now, so an orbit of it closes round it; outside, as it lies about the
+   * Earth. Nothing while the flight is about the Earth.
+   */
+  private aboutShift(p: Float64Array | number[], t: number): void {
+    const about = this.about;
+    const lunar = this.lunar;
+    if (!about || !lunar) return;
+    const w = aboutWeight(t, about.from, about.to, ABOUT_EASE);
+    if (!(w > 0)) return;
+    const m = this.aboutM;
+    lunar.way.at(t, m);
+    for (let k = 0; k < 3; k++) p[k] = p[k]! + w * (about.now[k]! - m[k]!);
+  }
+
   /** How far the flight at sample `s` is from the curve on show at its instant, m (pathline.ts `departure`; 0 outside the curve's span). */
   private leftBy(shown: Shown, s: PathSample): number {
     const left = this.leftNow;
@@ -1726,9 +1909,88 @@ export class FlightPath {
       const p = points[i]!;
       return Math.hypot(...a.r) - (Math.hypot(...p.r) - p.altitude);
     };
+    // (where it crosses the Moon's sphere, drawn among the stars, the crossings are marked; and while the flight is inside it,
+    // its apsides there are the Moon's)
+    const lunar = shown.frame === 'orbit' && points.length > 1 ? this.lunarOf() : null;
+    const inside: [number, number][] = [];
+    const moonMarks: { kind: Kind; t: number; r: Vec3; figure: string; name?: string }[] = [];
+    if (lunar) {
+      const m = new Float64Array(3);
+      const way = (t: number, out: Float64Array) => lunar.way.at(t, out);
+      lunar.way.at(r.from, m);
+      const sphere = lunar.sphere(r.from);
+      let top = 0;
+      for (const p of points) top = Math.max(top, Math.hypot(...p.r));
+      // (a path that keeps within a fifth of the Moon's distance less its sphere comes nowhere near it: nothing asked)
+      if (top > 0.8 * Math.hypot(m[0]!, m[1]!, m[2]!) - sphere) {
+        shown.crossings ??= crossingsOf(shown.curve, way, sphere, r.from);
+        const p0 = points[0]!.r;
+        let from: number | null = Math.hypot(p0[0] - m[0]!, p0[1] - m[1]!, p0[2] - m[2]!) < sphere ? r.from : null;
+        const at = [0, 0, 0];
+        for (const c of shown.crossings) {
+          curveAt(shown.curve, c.t, at);
+          moonMarks.push({
+            kind: 'sphere',
+            t: c.t,
+            r: [at[0]!, at[1]!, at[2]!],
+            figure: '',
+            name: c.into ? `Into the ${lunar.body.name}’s sphere` : `Out of the ${lunar.body.name}’s sphere`,
+          });
+          // (the stretch the flight is in now, inside from the start: the Moon is the body it is about)
+          if (!c.into && from !== null && inside.length === 0) inside.push([from, c.t]);
+          from = null;
+        }
+        if (from !== null) inside.push([from, points[points.length - 1]!.t]);
+        // its apsides about the Moon in the stretch inside it is in now: where the radial speed from the Moon's centre changes sign
+        const v = new Float64Array(3);
+        for (const [a, b] of inside) {
+          const rel = points
+            .filter((p) => p.t >= a && p.t <= b)
+            .map((p) => {
+              lunar.way.at(p.t, m, 0, v);
+              return { ...p, r: [p.r[0] - m[0]!, p.r[1] - m[1]!, p.r[2] - m[2]!] as Vec3, v: [p.v[0] - v[0]!, p.v[1] - v[1]!, p.v[2] - v[2]!] as Vec3 };
+            });
+          for (const x of apsides(rel, r.from)) {
+            lunar.way.at(x.t, m);
+            moonMarks.push({
+              kind: x.kind === 'apo' ? 'apolune' : 'perilune',
+              t: x.t,
+              r: [x.r[0] + m[0]!, x.r[1] + m[1]!, x.r[2] + m[2]!],
+              figure: `${km(Math.hypot(...x.r) - lunar.body.radius)} km`,
+            });
+          }
+        }
+      }
+    }
+    const within = (t: number) => inside.some(([a, b]) => t >= a && t <= b);
     for (const kind of ['apo', 'peri'] as const) {
-      const a = apsides(points, r.from).find((x) => x.kind === kind);
+      const a = apsides(points, r.from).find((x) => x.kind === kind && !within(x.t));
       if (a) list.push({ kind: kind === 'apo' ? 'apogee' : 'perigee', t: a.t, r: a.r, figure: `${km(height(a))} km` });
+    }
+    // (about the Moon, its nearest and furthest ahead, the next of each)
+    for (const kind of ['apolune', 'perilune'] as const) {
+      const a = moonMarks.find((x) => x.kind === kind);
+      if (a) list.push(a);
+    }
+    // (and where it comes down through the entry interface, from far out: the orbit it is on reaches beyond the stationary radius)
+    const extra: { kind: Kind; t: number; r: Vec3; figure: string; name?: string }[] = [];
+    const entry = this.source.entry;
+    const first = points[0];
+    if (entry !== undefined && r.impact && first && points.length > 1) {
+      const el = elements(first.r, first.v);
+      if (!(el.apoapsis < STATIONARY)) {
+        for (let i = points.length - 2; i >= 0; i--) {
+          const a = points[i]!;
+          const b = points[i + 1]!;
+          if (!(a.altitude > entry && b.altitude <= entry)) continue;
+          const t = a.t + ((a.altitude - entry) / (a.altitude - b.altitude)) * (b.t - a.t);
+          const at = [0, 0, 0];
+          const vel = [0, 0, 0];
+          curveAt(shown.curve, t, at, 0, 0, vel);
+          extra.push({ kind: 'interface', t, r: [at[0]!, at[1]!, at[2]!], figure: `${(Math.hypot(vel[0]!, vel[1]!, vel[2]!) / 1000).toFixed(2)} km/s` });
+          break;
+        }
+      }
     }
     // (what happens on the way, in order of time: its events, and the nearest it comes to another body, named by the body)
     const happens: { kind: Kind; t: number; r: Vec3; figure: string; name?: string }[] = [
@@ -1738,7 +2000,12 @@ export class FlightPath {
         r: e.r,
         figure: e.kind === 'peak' && e.value ? `${e.value.toFixed(1)} g` : '',
       })),
-      ...r.passes.map((p) => ({ kind: 'pass' as Kind, t: p.t, r: p.r, figure: p.strikes ? 'impact' : `${km(p.height)} km`, name: p.body })),
+      // (a pass that is a perilune about the Moon is marked as that)
+      ...r.passes
+        .filter((p) => p.strikes || !moonMarks.some((m) => m.kind === 'perilune' && Math.abs(m.t - p.t) < 120))
+        .map((p) => ({ kind: 'pass' as Kind, t: p.t, r: p.r, figure: p.strikes ? 'impact' : `${km(p.height)} km`, name: p.body })),
+      ...moonMarks.filter((m) => m.kind === 'sphere'),
+      ...extra,
     ];
     list.push(...happens.sort((a, b) => a.t - b.t));
     if (r.impact) list.push({ kind: r.chute ? 'down' : 'impact', t: r.impact.t, r: r.impact.r, figure: `${km(r.impact.range)} km` });
@@ -1931,6 +2198,7 @@ export class FlightPath {
   private alongAt(shown: Shown, t: number, out: Float64Array, o: number, mix: number): void {
     shown.hint = curveAt(shown.curve, t, this.at3, 0, shown.hint);
     carried(this.at3, 0, t, shown.left, shown.leftAt);
+    this.aboutShift(this.at3, t + this.shift);
     this.sceneOf(this.at3, 0, t + this.shift, shown.frame, this.turnAt, out, o);
     const was = shown.was;
     if (was && mix < 1 && t >= was.curve.t[0]! && t <= was.curve.t[was.curve.n - 1]!) {
@@ -2049,6 +2317,16 @@ export class FlightPath {
     if (outcome !== 'orbit' && outcome !== 'limit') return { to: t1, over: 0 };
     const limit = { to: t1, over: Math.min(LIMIT_FADE_MOST, LIMIT_FADE * Math.max(0, t1 - now)) };
     if (c.n < 2) return limit;
+    // (drawn about the Moon to its end, an orbit of the Moon: where it stops is found round the Moon, as an orbit's round the Earth)
+    const lunar = this.lunar;
+    if (this.about && this.about.to === Number.POSITIVE_INFINITY && lunar) {
+      const rel = (shown.rel ??= relativeTo(c, lunar.way));
+      if (outcome === 'limit' && rel.sweep.at[c.n - 1]! < Math.PI) return limit;
+      const at = this.at3;
+      curveAt(rel.curve, now, at, 0, shown.hint);
+      const short = overHorizon(Math.hypot(at[0]!, at[1]!, at[2]!), rel.top, lunar.body.radius) + TAIL_SHORT;
+      return tailOf(rel.curve, rel.sweep, now, short, TAIL_FADE, limit.over);
+    }
     if (!shown.sweep) {
       shown.sweep = sweepOf(c);
       let top = 0;
@@ -2087,6 +2365,7 @@ export class FlightPath {
     // its slow turn in a revolution, the Earth's bulge, is taken up where it is taken onto the vehicle)
     this.shift = shown.result.outcome === 'orbit' ? turnsPast(s.t, t0, t1) : 0;
     this.turnAt = s.t;
+    this.about = shown.frame === 'orbit' ? this.aboutOf(s, shown) : null;
     // how far the flight has left the curve on show, and the one it is eased from: each is drawn carried with it by that
     // much (a path flown under guidance is held to its programme instead, and made again as soon as the flight leaves it)
     for (let x: Shown | null = shown; x; x = x.was) {
@@ -2184,6 +2463,7 @@ export class FlightPath {
     for (const mk of this.marks) {
       from.set(mk.r);
       carried(from, 0, mk.t, shown.left, shown.leftAt);
+      this.aboutShift(from, mk.t + this.shift);
       this.sceneOf(from, 0, mk.t + this.shift, shown.frame, this.turnAt, a, 0);
       mk.at.set(a[0]!, a[1]!, a[2]!);
     }
@@ -2261,6 +2541,7 @@ export class FlightPath {
           return;
         }
         hint = curveAt(flown, t, v, 0, hint);
+        this.aboutShift(v, t);
         this.sceneOf(v, 0, t, shown.frame, this.turnAt, out, o);
         if (pinned) {
           const w = weight(f1 - t);
@@ -2580,6 +2861,7 @@ export class FlightPath {
       m.off = !(at > t && at <= w.to - 0.5 * w.over);
       if (m.off) return;
       hint = curveAt(c, at, v, 0, hint);
+      this.aboutShift(v, at);
       this.sceneOf(v, 0, at, frame, t, p, 0);
       m.at.set(p[0]!, p[1]!, p[2]!);
     };
@@ -2613,6 +2895,10 @@ export class FlightPath {
       b,
       frame === 'orbit' ? 1 : 0,
       frame === 'orbit' ? t : 0,
+      // (drawn about the Moon: the stretch, and where the Moon is now, which moves it)
+      this.about ? this.about.from : 0,
+      this.about ? this.about.to : 0,
+      this.about ? this.about.now[0]! : 0,
     ];
     let same = true;
     for (let i = 0; i < values.length; i++) {
@@ -2627,6 +2913,7 @@ export class FlightPath {
     let h = 0;
     const along = (x: number, out: Float64Array, o: number) => {
       h = curveAt(c, x, v, 0, h);
+      this.aboutShift(v, x);
       this.sceneOf(v, 0, x, frame, t, out, o);
     };
     this.refAlong = along;
@@ -2707,6 +2994,7 @@ export class FlightPath {
     this.now = now;
     this.shift = 0;
     this.turnAt = now;
+    this.about = null;
     // (over the turning ground; on the map, what reaches beyond the stationary radius as it lies among the stars: `frameFor`)
     const frame = this.mapped && this.bareHigh(now, s) ? 'orbit' : 'surface';
     // (standing on the pad nothing flies, and the stage has no vehicle to give: the flight's own place is where it is)
@@ -3042,6 +3330,16 @@ export class FlightPath {
     this.unturn.copy(camera.quaternion).invert();
     (u.uCentre!.value as THREE.Vector3).copy(this.centre).sub(eye).applyQuaternion(this.unturn);
     (u.uPole!.value as THREE.Vector3).copy(this.pole).applyQuaternion(this.unturn);
+    // (the Moon where it is at the scene's instant, in the same frame: it hides what of the line is behind it)
+    const lunar = this.lunarOf();
+    const moon = u.uMoon!.value as THREE.Vector4;
+    if (lunar && this.sample) {
+      const m = this.aboutM;
+      lunar.way.at(this.turnAt, m);
+      this.sceneOf(m, 0, this.turnAt, 'orbit', this.turnAt, m, 0);
+      this.moonView.set(m[0]!, m[1]!, m[2]!).sub(eye).applyQuaternion(this.unturn);
+      moon.set(this.moonView.x, this.moonView.y, this.moonView.z, lunar.body.radius);
+    } else moon.set(0, 0, 0, 0);
     if (vessel) (u.uShip!.value as THREE.Vector3).copy(ship).sub(eye).applyQuaternion(this.unturn);
     else (u.uShip!.value as THREE.Vector3).set(0, 0, 1e20);
     // ...and on the target: its outline as a capsule, its long axis from end to end and as broad as it is, with a margin
@@ -3093,7 +3391,7 @@ export class FlightPath {
     const refBox = [Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY];
     const chips: ChipIn[] = [];
     const where = new Map<string, { x: number; y: number }>();
-    const next = this.marks.find((m) => m.t > now && !m.off && m.kind !== 'apogee' && m.kind !== 'perigee')?.id;
+    const next = this.marks.find((m) => m.t > now && !m.off && !APSIS.has(m.kind))?.id;
     let x0 = Number.POSITIVE_INFINITY;
     let x1 = Number.NEGATIVE_INFINITY;
     let y0 = Number.POSITIVE_INFINITY;
@@ -3292,7 +3590,7 @@ export class FlightPath {
   /** What a marker says: its name, its figure, and how long until it. */
   private words(m: Mark, now: number): string {
     if (m.kind === 'craft' || m.kind === 'other' || m.kind === 'body') return `<b>${esc(m.figure)}</b>`;
-    if (m.kind === 'ref' || m.kind === 'pass')
+    if (m.kind === 'ref' || m.kind === 'pass' || m.kind === 'sphere')
       return `<b>${esc(m.name ?? '')}</b>${m.figure ? ` ${m.figure}` : ''} <em>${clock(m.t - now)}</em>`;
     return `<b>${KINDS[m.kind][0]}</b>${m.figure ? ` ${m.figure}` : ''} <em>${clock(m.t - now)}</em>`;
   }
@@ -3448,13 +3746,17 @@ export class FlightPath {
       const across =
         (2 * h.body.radius * lens.pxPerRad) / Math.max(h.body.radius, Math.hypot(a[0]! - eye[0], a[1]! - eye[1], a[2]! - eye[2]));
       h.drawn = THREE.MathUtils.smoothstep(across, 4, 8) * (this.host.moonCovers?.() ?? 0);
-      const key = [eye[0], eye[1], eye[2], t, frame === 'orbit' ? 1 : 0, pass ? pass.t : -1, pass ? pass.distance : -1];
+      const key = [eye[0], eye[1], eye[2], t, frame === 'orbit' ? 1 : 0, pass ? pass.t : -1, pass ? pass.distance : -1, this.about ? 1 : 0];
       if (key.every((x, i) => x === h.key[i])) continue;
       h.key = key;
       h.discAt = this.ringRound(h.disc, [a[0]!, a[1]!, a[2]!], h.body.radius, eye);
       if (pass) {
         const at = pass.t + this.shift;
-        this.sceneOf(pass.centre, 0, at, frame, t, a, 0);
+        // (where the line is drawn about the Moon, so is the Moon where the path passes it: there, the Moon as it is now)
+        const centre = this.aboutQ;
+        centre.set(pass.centre);
+        this.aboutShift(centre, at);
+        this.sceneOf(centre, 0, at, frame, t, a, 0);
         h.meetAt = this.ringRound(h.meet, [a[0]!, a[1]!, a[2]!], h.body.radius, eye);
         // its way there: its own places from now to then, each with the way it is going
         const span = Math.max(1, at - t);
@@ -3471,7 +3773,9 @@ export class FlightPath {
           hint = curveAt(curve, x, v, 0, hint);
           this.sceneOf(v, 0, x, frame, t, into, o);
         };
-        h.way.n = sample(place, curve.t, t, t + span, lens, BODY_MOST, h.way.t, h.way.p);
+        // (and it has no way there to draw: drawn about the Moon, the Moon stands)
+        const about = this.about;
+        h.way.n = about && aboutWeight(at, about.from, about.to, ABOUT_EASE) >= 1 ? 0 : sample(place, curve.t, t, t + span, lens, BODY_MOST, h.way.t, h.way.p);
         h.wayAt = [h.discAt[0], h.discAt[1], h.discAt[2]];
         upload(h.way, h.wayAt, t);
         // (it leaves the body's outline and comes in to the one it will have: neither end is cut square)
@@ -3495,6 +3799,8 @@ export class FlightPath {
           uOpacity: { value: BODY_OPACITY },
           // (no ends: a Vector4 begins with a 1 in its last place, which would be an end to go out by)
           uEnds: { value: new THREE.Vector4(0, 0, 0, 0) },
+          // (and not hidden by the Moon: its outline is drawn round it)
+          uMoon: { value: new THREE.Vector4(0, 0, 0, 0) },
         },
         defines: { FLOWN: '' },
         transparent: true,
@@ -3571,6 +3877,23 @@ export class FlightPath {
     upload(line, at, 0, true);
     return at;
   }
+}
+
+/** A curve about another body's centre (its way's place and velocity taken off each point), its sweep round that centre, and the furthest it goes from it: where a line drawn about the Moon stops short of coming round (`endOf`). */
+function relativeTo(c: Curve, way: Knotted): { curve: Curve; sweep: Sweep; top: number } {
+  const curve: Curve = { t: c.t, r: new Float64Array(c.n * 3), v: new Float64Array(c.n * 3), n: c.n };
+  const m = new Float64Array(3);
+  const v = new Float64Array(3);
+  let top = 0;
+  for (let i = 0; i < c.n; i++) {
+    way.at(c.t[i]!, m, 0, v);
+    for (let k = 0; k < 3; k++) {
+      curve.r[i * 3 + k] = c.r[i * 3 + k]! - m[k]!;
+      curve.v[i * 3 + k] = c.v[i * 3 + k]! - v[k]!;
+    }
+    top = Math.max(top, Math.hypot(curve.r[i * 3]!, curve.r[i * 3 + 1]!, curve.r[i * 3 + 2]!));
+  }
+  return { curve, sweep: sweepOf(curve), top };
 }
 
 /** How far ahead a prediction looked, in words: the six hours of the least, else hours, or days from two of them. */
