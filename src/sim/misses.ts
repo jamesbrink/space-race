@@ -266,7 +266,7 @@ const GT8_ENTRY =
 const GT12_DOCKED =
   'The orbit after the first docked burn and every burn after it holds its perigee and misses its apogee, 13 to 15 km over the record’s: the second and third dockings and the station keeping round them, which took the record’s orbit down from 162.7 by 156.4 nautical miles after the rendezvous to 161.4 by 153.0 before the first eclipse phasing (Tables 4.3-III and 4.3-II), are not flown, so the run comes to the docked burns some 7 km higher in its axis, and each burn, at the pair’s measured impulse, takes as much off it as the record’s did. Not adjusted';
 const GT12_TPI =
-  'The terminal phase is lit at the record’s instant, the Agena 11 km nearer than the record has it as the coelliptic burn was made (the run’s orbit after the three burns before it within 4 km of the record’s), and solved to reach the Agena when the ground’s theoretical braking was to be (3:38:12): 8.9 m/s where the crew’s, from the backup charts, was 6.6 (21.8 ft/s). Not adjusted';
+  'The terminal phase is lit at the record’s instant, the Agena 11 km nearer than the record has it as the coelliptic burn was made (the run’s orbit after the three burns before it within 4 km of the record’s), and solved to reach the Agena when the ground’s theoretical braking was to be (3:38:12): 8.9 m/s where the crew’s, from the backup charts, was 6.6 (21.8 ft/s). Lit on its 27 degrees it asks 8.0, but the braking then misses (mission.md, section 3). Not adjusted';
 const GT12_CORRECTIONS =
   'The run has no navigation, radar or platform error: the terminal phase it solves reaches the Agena, and the corrections the crew made from their charts, which took out theirs, solve to nothing. Not adjusted';
 const GT12_ENTRY =
