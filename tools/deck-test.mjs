@@ -3,7 +3,7 @@
 // every key shown a button that does what the key does, nothing in the control block hidden, overlapping or (on touch)
 // under 24 px, the panels tucking and H clearing them, Space walking the flight's own sequence, Vostok 1 taken over in
 // the ascent with real keys: turned by W and staged by Space, and the throttle on a ballistic flight and one into orbit.
-//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=staging|leaving|touch|apollo-escape|apollo-escape-replay|throttle|by-hand|warp for one section; SR_FLIGHTS=gatv-5003,atda for some flights)
+//   pnpm dev, then: node tools/deck-test.mjs [url]   (SR_ONLY=staging|leaving|touch|apollo-escape|apollo-escape-replay|throttle|attitude|by-hand|warp|fit for one section; SR_FLIGHTS=gatv-5003,atda for some flights)
 import { launch, open, url as urlOf } from './browser.mjs';
 
 const url = urlOf(process.argv.slice(2));
@@ -88,6 +88,44 @@ const fly = async (id, w, h, touch, console = [], byHand = false) => {
   if (!byHand) await asFlown(opened.page);
   return opened;
 };
+
+/**
+ * The figures fit at every magnitude (deck/fit.ts): each shown at the widest the deck can give it (ROOM digits, a sign and
+ * a point, in its longest unit) stays inside its own cell, and no two touch. What does not, as "Speed 8888.8 leaves its cell".
+ */
+const crowdedFigures = (page) =>
+  page.evaluate(() => {
+    const gauges = [...document.querySelectorAll('#ui > .cockpit .gauge')].filter((g) => g.getBoundingClientRect().width > 0);
+    const kept = gauges.map((g) => [g.querySelector('b').textContent, g.querySelector('i').textContent]);
+    const bad = [];
+    for (const text of ['8888.8', '88888', '-888.8', '-8888']) {
+      for (const g of gauges) {
+        g.querySelector('b').textContent = text;
+        const unit = g.querySelector('i');
+        if (unit.textContent === 'm/s') unit.textContent = 'km/s';
+      }
+      const boxes = gauges.map((g) => {
+        const cell = g.getBoundingClientRect();
+        const parts = [...g.children].filter((c) => c.getBoundingClientRect().width > 0);
+        const range = document.createRange();
+        const inside = parts.every((c) => {
+          range.selectNodeContents(c);
+          return [...range.getClientRects()].every((r) => r.left >= cell.left - 0.5 && r.right <= cell.right + 0.5);
+        });
+        // (the name and the unit share a line: they may not run into each other either)
+        const [name, unit] = [g.querySelector('span').getBoundingClientRect(), g.querySelector('i').getBoundingClientRect()];
+        const apart = unit.width === 0 || name.right <= unit.left + 0.5 || name.bottom <= unit.top + 0.5;
+        return { label: g.querySelector('span').textContent, inside, apart };
+      });
+      for (const b of boxes)
+        if (!b.inside || !b.apart) bad.push(`${b.label} ${text}${b.inside ? '' : ' leaves its cell'}${b.apart ? '' : ' touches its unit'}`);
+    }
+    gauges.forEach((g, i) => {
+      g.querySelector('b').textContent = kept[i][0];
+      g.querySelector('i').textContent = kept[i][1];
+    });
+    return bad;
+  });
 
 /** Each panel's box and the deck's order, as the page has them. */
 const layout = (page) =>
@@ -193,42 +231,8 @@ for (const [w, h, touch] of process.env.SR_ONLY && !staging ? [] : SIZES) {
       return [...range.getClientRects()].every((line) => line.left >= button.left && line.right <= button.right);
     });
     if (!labelFits) fail(where, `the next action's label extends beyond its button: "${await label()}"`);
-    // the figures fit at every magnitude (deck/fit.ts): each shown at the widest the deck can give it (ROOM digits, a sign and
-    // a point, in its longest unit) stays inside its own cell, and no two touch
-    const crowded = await page.evaluate(() => {
-      const gauges = [...document.querySelectorAll('#ui > .cockpit .gauge')].filter((g) => g.getBoundingClientRect().width > 0);
-      const kept = gauges.map((g) => [g.querySelector('b').textContent, g.querySelector('i').textContent]);
-      const bad = [];
-      for (const text of ['8888.8', '88888', '-888.8', '-8888']) {
-        for (const g of gauges) {
-          g.querySelector('b').textContent = text;
-          const unit = g.querySelector('i');
-          if (unit.textContent === 'm/s') unit.textContent = 'km/s';
-        }
-        const boxes = gauges.map((g) => {
-          const cell = g.getBoundingClientRect();
-          const parts = [...g.children].filter((c) => c.getBoundingClientRect().width > 0);
-          const range = document.createRange();
-          const inside = parts.every((c) => {
-            range.selectNodeContents(c);
-            return [...range.getClientRects()].every((r) => r.left >= cell.left - 0.5 && r.right <= cell.right + 0.5);
-          });
-          // (the name and the unit share a line: they may not run into each other either)
-          const [name, unit] = [g.querySelector('span').getBoundingClientRect(), g.querySelector('i').getBoundingClientRect()];
-          const apart = unit.width === 0 || name.right <= unit.left + 0.5 || name.bottom <= unit.top + 0.5;
-          return { label: g.querySelector('span').textContent, inside, apart };
-        });
-        for (const b of boxes)
-          if (!b.inside || !b.apart)
-            bad.push(`${b.label} ${text}${b.inside ? '' : ' leaves its cell'}${b.apart ? '' : ' touches its unit'}`);
-      }
-      gauges.forEach((g, i) => {
-        g.querySelector('b').textContent = kept[i][0];
-        g.querySelector('i').textContent = kept[i][1];
-      });
-      return bad;
-    });
-    for (const c of crowded) fail(where, `a figure does not fit: ${c}`);
+    // the figures fit at every magnitude (crowdedFigures)
+    for (const c of await crowdedFigures(page)) fail(where, `a figure does not fit: ${c}`);
     if (id.startsWith('ussr') && w === 1280) {
       // taken over in the ascent with real keys: G takes it, W held turns it (the attitude held), B and Space drop the strap-ons
       for (let i = 0; i < 100 && (await page.evaluate(() => window.sr.clock.t)) < 50; i++) {
@@ -1860,6 +1864,32 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'warp') {
     if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
     await ctx.close();
   }
+}
+// The figures fit at the other shapes a phone gives the deck: a small one upright (360 wide) and one on its side, the
+// compact line shut and the whole deck opened by More, on a ballistic flight and one into orbit (crowdedFigures)
+if (!process.env.SR_ONLY || process.env.SR_ONLY === 'fit') {
+  for (const [w, h] of [
+    [360, 780],
+    [844, 390],
+    [390, 844],
+  ])
+    for (const id of ['usa/mercury/mr-3-freedom-7', 'ussr/vostok/vostok-1']) {
+      const where = `${id} at ${w} x ${h}`;
+      const { page, errors, context: ctx } = await fly(id, w, h, true);
+      await page.waitForTimeout(800);
+      let checked = 0;
+      for (const open of [false, true]) {
+        if (open) {
+          await page.click('#ui > .cockpit [data-do=keys]');
+          await page.waitForTimeout(400);
+        }
+        for (const c of await crowdedFigures(page)) fail(`${where}${open ? ', opened' : ''}`, `a figure does not fit: ${c}`);
+        checked++;
+      }
+      if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+      else console.log(`  ${where}: the figures fit, shut and opened (${checked} looks)`);
+      await ctx.close();
+    }
 }
 await browser.close();
 console.log(failed ? `deck: ${failed} failed` : 'deck: every promise kept');

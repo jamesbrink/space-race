@@ -366,10 +366,12 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
     .cockpit:not(.keys-open) .gauges { grid-template-columns: repeat(3, 1fr); }
     .cockpit:not(.keys-open) .gauge:nth-child(n + 4) { display: none; }
   }
-  .cockpit:not(.keys-open) .gauge { display: flex; align-items: baseline; gap: 5px; padding: 6px 8px 4px; }
-  .cockpit:not(.keys-open) .gauge span { font-size: 9.5px; }
-  .cockpit:not(.keys-open) .gauge b { order: 2; font-size: 17px; line-height: 1.2; }
-  .cockpit:not(.keys-open) .gauge i { display: inline; order: 3; }
+  /* (the widest a figure can be, five digits, a sign and a point in its longest unit, 8888.8 km/s, fits its third of a 390 px
+     phone and its fifth of the deck on its side: fit.ts `ROOM`, tools/deck-test.mjs) */
+  .cockpit:not(.keys-open) .gauge { display: flex; align-items: baseline; gap: 3px; padding: 6px 5px 4px; }
+  .cockpit:not(.keys-open) .gauge span { font-size: 9.5px; letter-spacing: 0.04em; }
+  .cockpit:not(.keys-open) .gauge b { order: 2; font-size: 16px; line-height: 1.2; }
+  .cockpit:not(.keys-open) .gauge i { display: inline; order: 3; letter-spacing: 0; }
   .cockpit:not(.keys-open) .cockpit-prompt:not(.due) { display: none !important; }
   .cockpit:not(.keys-open) .deck-act { padding: 5px 6px 6px; }
   /* (the deck rises: More points the way it opens) */
@@ -398,12 +400,13 @@ body:has(#ui.piloting) #stage { width: 100%; height: 100dvh; }
   }
 }
 @media (max-width: 360px) {
-  .cockpit:not(.keys-open) .gauge { min-width: 0; gap: 3px; padding-inline: 5px; }
+  .cockpit:not(.keys-open) .gauge { min-width: 0; gap: 3px; padding-inline: 4px; }
+  .cockpit:not(.keys-open) .gauge span { letter-spacing: 0; }
   .cockpit:not(.keys-open) .gauge b { font-size: 15px; }
 }
 /* (on its side the deck, with the navball away, stands in the middle of the foot) */
 @media (max-height: 520px) {
-  #ui > .cockpit:not(.keys-open) .deck-main { grid-column: 1 / -1; justify-self: center; width: min(560px, 100%); }
+  #ui > .cockpit:not(.keys-open) .deck-main { grid-column: 1 / -1; justify-self: center; width: min(640px, 100%); }
   #ui > .cockpit.keys-open { max-height: calc(100dvh - var(--top) - 56px); overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
 }
 /* the way back at the right of the clock's line: to the launch site, its name without its icon (the gallery is a step on from there) */
