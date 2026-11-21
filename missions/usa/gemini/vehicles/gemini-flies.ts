@@ -108,11 +108,14 @@ export function geminiFlies(o: GeminiTitanRecord): NonNullable<Flight['flies']> 
       { node: 'Stage1Engine_Chamber_2', on: 'first-stage-engine', burns: 'hydrazine-n2o4' },
       { node: 'Stage2Engine_AblativeSkirt', radius: 32.4 * IN, on: 'second-stage-engine', burns: 'hydrazine-n2o4' },
       { node: 'Retro_RocketNozzles', on: 'retrorockets', burns: 'solid-perchlorate' },
-      ...o.moves.map((m) => ({
-        node: m.thrusters === 'aft' ? 'Equipment_AftThrusters' : 'Retro_ForwardThrusters',
-        on: m.thrusters === 'aft' ? 'aft-thrusters' : 'forward-thrusters',
-        burns: 'hydrazine-n2o4' as const,
-      })),
+      // (a burn made docked on the target's engine has no fire on the spacecraft: the target is not drawn in flight)
+      ...o.moves
+        .filter((m) => m.thrusters !== 'docked')
+        .map((m) => ({
+          node: m.thrusters === 'aft' ? 'Equipment_AftThrusters' : 'Retro_ForwardThrusters',
+          on: m.thrusters === 'aft' ? 'aft-thrusters' : 'forward-thrusters',
+          burns: 'hydrazine-n2o4' as const,
+        })),
     ],
     // each by the plan's joint that lets it go (vehicles/gemini-titan-plan.ts), at the record's instant
     drops: [
