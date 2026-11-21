@@ -45,6 +45,18 @@ SECOND_TOP = station(2519)
 TAPER_TOP = SECOND_TOP + 19 * 12
 THIRD_TOP = station(3222)
 IU_TOP = THIRD_TOP + 36
+# The S-II's five J-2s: the outer four on a 17.5 ft circle (MSFC-MAN-503 p. 5-1), gimballed at STA 1664 (saturn-v.md).
+SII_ENGINE_CIRCLE_RADIUS = 17.5 * 12 / 2
+SII_GIMBAL = station(1664)
+# Its base (MSFC-MAN-503 p. 5-1, figs. 5-1 and 5-2): the thrust structure is a truncated cone "from approximately 18 feet
+# in diameter to the 33 foot outside diameter of the airframe", carrying the J-2s at its foot, and a fiberglass honeycomb
+# heat shield "supported from the lower portion of the thrust structure" closes the base round them. Fig. 5-1 gives the
+# aft skirt and thrust structure together as 14 1/2 ft: from the LOX tank's attachment ring (STA 1855, the girth the tank
+# is modelled at) that puts the cone's foot at about STA 1681. Where its top meets the skirt is estimated: as high in the
+# aft skirt as clears the LOX tank's aft dome, which the figure shows inside it.
+SII_CONE_FOOT_RADIUS = 18 * 12 / 2
+SII_CONE_FOOT = station(1855 - 14.5 * 12)
+SII_CONE_TOP = station(1834)
 SLA_TOP = IU_TOP + 28 * 12
 CSM_OFFSET = SLA_TOP - SM_BOTTOM
 HEIGHT = 363 * 12
@@ -178,6 +190,25 @@ def first_engines(parent, steel, alloy):
         post = MeshBuilder()
         post.tube((0, 0, station(100) * IN), (0, 0, THRUST_BASE * IN), 6 * IN, segs=8, caps=False)
         post.build(f"F1_ThrustPost_{i + 1}", alloy, mount)
+
+
+def second_stage_base(parent, metal, shield, alloy):
+    """The S-II's thrust cone, the inside of its aft skirt down to the skirt's edge, and the base heat shield across the
+    cone's foot with a post from each J-2's gimbal to it. Every level of detail: once the aft interstage has gone, these
+    close the stage's base, where the open skirt showed the LOX dome (and, coarser, the sky through the skin)."""
+    inside = LOWER_RADIUS - 0.5  # the skin's inner face
+    cone = MeshBuilder()
+    cone.lathe(prof([(SII_CONE_FOOT_RADIUS, SII_CONE_FOOT), (inside, SII_CONE_TOP), (inside, COLLAR_TOP)]), segs=128)
+    shell = cone.build("SII_ThrustCone", metal, parent)
+    base = MeshBuilder()
+    base.lathe(prof([(0, SII_CONE_FOOT), (SII_CONE_FOOT_RADIUS, SII_CONE_FOOT)]), segs=128)
+    heat_shield = base.build("SII_BaseHeatShield", shield, parent)
+    mark_shells([shell.name, heat_shield.name])
+    posts = MeshBuilder()
+    for i in range(5):
+        x, y, _ = radial(0 if i == 4 else SII_ENGINE_CIRCLE_RADIUS, TAU * i / 4, 0)
+        posts.tube((x, y, SII_GIMBAL * IN), (x, y, SII_CONE_FOOT * IN), 4 * IN, segs=8, caps=False)
+    posts.build("SII_GimbalPosts", alloy, parent)
 
 
 def dome(mesh, radius, centre, depth, side):
@@ -416,6 +447,9 @@ def build(*, lunar_module=None, adapter_number=None, impact_radio=None, aps_seri
     else:
         barrel("IU_", iu, [(THIRD_TOP, IU_TOP, u, u, 255)], white, black)
     fairings(first, white, fairing_black, shield)
+    # (fiberglass honeycomb: its finish is not known, the colour is estimated)
+    sii_shield = material("saturn-sii-heat-shield", (0.42, 0.40, 0.36), roughness=0.8, double_sided=True)
+    second_stage_base(second, metal, sii_shield, alloy)
     markings(first, second, red)
     if srlib.DETAIL >= 0.5:
         corrugations(first, "SIC_IntertankStringers", r, r, 756, 940, 144, white, black)
@@ -428,7 +462,7 @@ def build(*, lunar_module=None, adapter_number=None, impact_radio=None, aps_seri
     engines = group("SecondStageEngines")
     for i in range(5):
         mount = group(f"SII_J2_{i + 1}", engines)
-        mount.location = radial(0 if i == 4 else 17.5 * 12 / 2, TAU * i / 4, station(1664) - structure.ds(100))
+        mount.location = radial(0 if i == 4 else SII_ENGINE_CIRCLE_RADIUS, TAU * i / 4, SII_GIMBAL - structure.ds(100))
         structure.j2_engine(mount, steel, alloy, saturn_ib.J2_EXIT_INNER_RADIUS, BELL_RIM)
     third_engine = group("ThirdStageEngine")
     third_engine.location.z = (THIRD_TOP - saturn_ib.SIVB_TOP) * IN
