@@ -69,6 +69,17 @@ const SITES = [
     hold: 4,
   },
   {
+    // (on the Moon, stood at its landing site as its first excursion began: where the walker stands and looks is found in the
+    // page, beside the rover stowed in its LM's quadrant I and looking at it: `moon`)
+    name: 'Hadley: the rover’s outer tapes, beside quadrant I of Falcon',
+    flight: 'usa/apollo/apollo-15',
+    moon: 'hadley',
+    at: 119 * 3600 + 39 * 60 + 17, // the cabin depressurised for the first excursion (flight.ts)
+    part: 'Lunar Roving Vehicle 1',
+    fn: 'Outer tapes: let it out',
+    hold: 4,
+  },
+  {
     name: 'Complex 34: the crew access arm at the 220-foot tower landing',
     flight: 'usa/apollo/apollo-7',
     at: -8865,
@@ -196,11 +207,24 @@ for (const site of SITES)
       await page.evaluate(() => Promise.allSettled(window.sr.stage.arriving ?? []));
       // the morning's hardware where it was, the motion full, and on foot at the part, looking at it
       const named = await page.evaluate(
-        async ({ at, from, look, third }) => {
+        async ({ at, from, look, third, moon }) => {
           const sr = window.sr;
           sr.stage.setAutoRotate(false);
           sr.clock.pause();
-          sr.clock.seek(at);
+          if (moon) {
+            await sr.onMoon(moon, at);
+            sr.clock.pause();
+            // beside what is worked, a step and a half out from it, looking at its middle
+            const stage = sr.stage;
+            const i = stage.defs.findIndex((d) => d.parts.some((p) => p.drives));
+            const box = new stage.staged[i].box.constructor().setFromObject(stage.staged[i].shown);
+            const c = box.getCenter(box.min.clone());
+            const out = Math.hypot(c.x, c.z);
+            const fx = c.x + (c.x / out) * 1.6;
+            const fz = c.z + (c.z / out) * 1.6;
+            from = [fx, stage.groundAt(fx, fz) ?? 0, fz];
+            look = [c.x, c.y, c.z];
+          } else sr.clock.seek(at);
           await new Promise((done) => setTimeout(done, 4000));
           const walker = sr.flight.models.find((m) => m.walker).id;
           sr.stage.enterWalk(walker, { x: from[0], y: from[1], z: from[2] });
@@ -220,7 +244,7 @@ for (const site of SITES)
           await new Promise((done) => setTimeout(done, 1500));
           return document.querySelector('.reticle span')?.textContent ?? '';
         },
-        { at: site.at, from: site.from, look: site.look, third: view === 'shoulder' },
+        { at: site.at, from: site.from, look: site.look, third: view === 'shoulder', moon: site.moon },
       );
       if (!check(named === site.part, `the reticle names the ${site.part} (it names "${named}")`)) {
         await context.close();

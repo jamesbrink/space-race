@@ -2,6 +2,8 @@
 // thing is in its way (#29: Vostok 1's GAZ-21 would not go forward from where it stood at 07:50: it was measured with its
 // door open and was taken for a metre wider than it was, so a wall's corner it cleared held it).
 //   node tools/drive-test.mjs [url] [--flight <id>]      (default url: http://localhost:5180/)
+// On the Moon, each flight that took a rover is stood at its landing site as its first excursion began, its rover let out of
+// its LM by hand (its deployment's functions run to their ends) and come to rest, and driven the same way.
 // For each flight that has a site and a walker, the clock is put at a few hours round liftoff (the clock paused, the hardware
 // let catch it up) and every vehicle in view is got into with the real keys and driven for up to six seconds a try
 // with W: straight, then on the right lock and on the left. It passes if it gets a car's length (its nose to its tail) along
@@ -12,7 +14,7 @@
 // not the machine's: a busy machine drives as far as an idle one. A vehicle standing just where it was tried at an earlier
 // hour of the same day is not tried again (the same car in the same place). The flights are driven on --jobs pages at once
 // (default 4), each flight's lines printed together when it is done.
-//   node tools/drive-test.mjs [url] [--flight <id>] [--jobs n]
+//   node tools/drive-test.mjs [url] [--flight <id>] [--jobs n] [--moon]      (--moon: only the rovers on the Moon)
 import { launch, open, opt, url as urlOf } from './browser.mjs';
 import { globSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -21,14 +23,22 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const args = process.argv.slice(2);
 const only = opt(args, '--flight', null);
 const jobs = Math.max(1, Number(opt(args, '--jobs', '4')) || 4);
+/** Only the rovers on the Moon. */
+const moonOnly = args.includes('--moon');
 const url = urlOf(args);
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const ids = [];
+/** On the Moon (`sr.onMoon`): each flight whose rover is deployed at its landing site, stood there as its first excursion began, the rover let out by hand. */
+const moons = new Map();
 for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) {
   const { flight } = await import(pathToFileURL(join(root, file)).href);
-  if (flight.surroundings && flight.models.some((m) => m.walker) && (!only || flight.id === only)) ids.push(flight.id);
+  if (only && flight.id !== only) continue;
+  if (flight.surroundings && flight.models.some((m) => m.walker) && !moonOnly) ids.push(flight.id);
+  const rover = flight.models.find((m) => m.lunarRover?.deploy);
+  if (rover) moons.set(`${flight.id} on the Moon`, { id: flight.id, site: rover.lunarRover.site, at: rover.seats?.[0]?.open[0] ?? 0 });
 }
 ids.sort();
+ids.push(...[...moons.keys()].sort());
 /** Seconds from liftoff at which the day is looked at: the vehicles of the morning, the hours before and the hour after. */
 const SAMPLES = [-3 * 3600, -4500, -3000, -900, 600];
 
@@ -39,7 +49,9 @@ const browser = await launch({ args: ['--autoplay-policy=no-user-gesture-require
 const failures = [];
 
 /** Drive every vehicle of one flight's day; its lines into `lines`. */
-async function driveFlight(id, lines) {
+async function driveFlight(name, lines) {
+  const moon = moons.get(name);
+  const id = moon?.id ?? name;
   const check = (ok, what) => {
     lines.push(`  ${ok ? 'ok  ' : 'FAIL'} ${what}`);
     if (!ok) failures.push(what);
@@ -61,12 +73,31 @@ async function driveFlight(id, lines) {
       window.sr.stage.setAutoRotate?.(false);
       window.sr.clock.pause();
     });
+    if (moon) {
+      // stood at the landing site, and its rover let out of its LM by hand, each of its deployment's functions run to its end in turn
+      check(await page.evaluate(({ site, at }) => window.sr.onMoon(site, at), moon), `${name}: stood at ${moon.site}`);
+      await page.waitForFunction(() => document.querySelector('.loading.done'), null, { timeout: 180_000 });
+      const deployed = await page.evaluate(async () => {
+        const { stage, clock } = window.sr;
+        clock.pause();
+        const at = stage.defs.findIndex((d) => d.parts.some((p) => p.drives));
+        const part = stage.defs[at]?.parts.find((p) => p.drives);
+        if (!part) return 'no rover at the site';
+        for (const f of stage.hands.functions(stage.defs[at].id, part.node)) stage.hands.set(stage.defs[at].id, part.node, f.fn.id, 1);
+        for (let i = 0; i < 100; i++) {
+          await new Promise((r) => setTimeout(r, 100));
+          if (i > 10 && !stage.onFoot.settling.size) return null;
+        }
+        return 'it did not come to rest on the ground';
+      });
+      check(!deployed, `${name}: its rover let out and come to rest${deployed ? `: ${deployed}` : ''}`);
+    }
     await page.mouse.click(400, 100);
     const tried = new Set();
     /** Where each vehicle has been tried from today: its name, then its place to a centimetre and its heading to a tenth of a degree. */
     const triedAt = new Set();
-    for (const at of SAMPLES) {
-      await page.evaluate((t) => window.sr.clock.seek(t), at);
+    for (const at of moon ? [moon.at] : SAMPLES) {
+      if (!moon) await page.evaluate((t) => window.sr.clock.seek(t), at);
       for (let i = 0; i < 300 && (await page.evaluate(() => window.sr.stage.catchingUp)); i++) await wait(100);
       const seen = await page.evaluate(() => {
         const found = [];

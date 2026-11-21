@@ -1,5 +1,6 @@
 // Every wheel stays on what it runs on (types.ts Runs; viewer/runs.ts): checked in the running viewer at each launch site.
-//   node tools/wheels-test.mjs [url] [--flight <id>] [--report] [--tolerance <mm>]      (default url: http://localhost:5180/)
+//   node tools/wheels-test.mjs [url] [--flight <id>] [--moon] [--report] [--tolerance <mm>]      (default url: http://localhost:5180/)
+// --moon: only the rovers on the Moon, driven by hand (the end of this file).
 // For every flight with a launch site, every `slide` and `drive` that has wheels or says what it runs on (its slider
 // moves and its `clocked` ones) is played through its whole move in small steps (every half metre of travel, and at
 // least 60), at every level of detail, and at each step each wheel's gap to what it runs on is measured: across its
@@ -20,11 +21,15 @@ const args = process.argv.slice(2);
 const only = opt(args, '--flight', null);
 const tolerance = Number(opt(args, '--tolerance', 5)) / 1000;
 const report = flag(args, '--report');
+/** Only the rovers on the Moon (the end of this file). */
+const moonOnly = flag(args, '--moon');
 const url = urlOf(args);
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 /** What of a part's moves are to be checked: a slide or a drive with wheels or with `runs`. */
 const flights = [];
+/** And on the Moon: each flight whose rover is let out at its landing site, driven there by hand (see the end). */
+const moons = [];
 for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) {
   const { flight } = await import(pathToFileURL(join(root, file)).href);
   if (!flight.site || (only && flight.id !== only)) continue;
@@ -39,9 +44,12 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: root })) 
           if (move.kind === 'slide' || move.kind === 'drive') moving.push({ model: m, part: part.node, clocked, index: i });
         });
   });
-  if (moving.length) flights.push({ id: flight.id, moving });
+  if (moving.length && !moonOnly) flights.push({ id: flight.id, moving });
+  const rover = flight.models.find((m) => m.lunarRover?.deploy);
+  if (rover) moons.push({ id: flight.id, site: rover.lunarRover.site, at: rover.seats?.[0]?.open[0] ?? 0 });
 }
 flights.sort((a, b) => a.id.localeCompare(b.id));
+moons.sort((a, b) => a.id.localeCompare(b.id));
 
 const browser = await launch();
 const fails = [];
@@ -370,6 +378,113 @@ for (const flight of flights) {
     else if (!r.checked) fails.push(`${tag}: nothing it runs on was found under it`);
   }
   if (errors.length) fails.push(`${flight.id}: page errors: ${errors.slice(0, 3).join(' | ')}`);
+  await close();
+}
+// On the Moon: each rover let out of its LM by hand and driven over its landing site with the real keys, straight, then on
+// each lock; every tenth of a second each of its wheels is measured off its own tread's triangles (the furthest round its
+// rim it reaches) against the ground under it: one that bears must be on it within the tolerance, one that hangs (its
+// spring with nothing to push, in a sixth of a g) over it, not in it.
+for (const moon of moons) {
+  const { page, errors, close } = await open(browser, `${url}#${moon.id}/site/pad`, {
+    viewport: [800, 500],
+    console: [],
+    wait: () => window.sr?.stage && document.querySelector('.loading.done'),
+    timeout: 180_000,
+  });
+  const tag = `${moon.id} on the Moon at ${moon.site}: the rover driven`;
+  try {
+    await page.evaluate(() => {
+      window.sr.demo?.stop?.(true);
+      if (window.sr.demo) window.sr.demo.start = () => {};
+      window.sr.stage.setAutoRotate?.(false);
+    });
+    await page.evaluate(({ site, at }) => window.sr.onMoon(site, at), moon);
+    await page.waitForFunction(() => document.querySelector('.loading.done'), null, { timeout: 180_000 });
+    const boarded = await page.evaluate(async () => {
+      const { stage, clock, flight } = window.sr;
+      clock.pause();
+      const at = stage.defs.findIndex((d) => d.parts.some((p) => p.drives));
+      const part = stage.defs[at].parts.find((p) => p.drives);
+      for (const f of stage.hands.functions(stage.defs[at].id, part.node)) stage.hands.set(stage.defs[at].id, part.node, f.fn.id, 1);
+      for (let i = 0; i < 100 && (i < 10 || stage.onFoot.settling.size); i++) await new Promise((r) => setTimeout(r, 100));
+      const car = stage.staged[at].shown.getObjectByName(part.node);
+      const p = car.getWorldPosition(car.position.clone());
+      stage.enterWalk(flight.models.find((m) => m.walker).id, { x: p.x + 2, y: p.y, z: p.z + 2 });
+      stage.onFoot.aim = { vehicle: car };
+      return stage.onFoot.walkDrive();
+    });
+    if (!boarded) throw new Error('it was not got into');
+    await page.waitForFunction(() => Boolean(window.sr.stage.onFoot.wheel), null, { timeout: 30_000 });
+    await page.mouse.click(400, 100);
+    const sample = () =>
+      page.evaluate(() => {
+        const { stage } = window.sr;
+        const w = stage.onFoot.wheel;
+        if (!w) return null;
+        const treads = (window.__treads ??= new Map());
+        const out = [];
+        for (const c of w.corners) {
+          let points = treads.get(c.wheel);
+          if (!points) {
+            // the crown of its tread, from its own triangles: within 5 mm of the furthest it reaches from its axle (its Z)
+            c.wheel.updateWorldMatrix(true, true);
+            const into = c.wheel.matrixWorld.clone().invert();
+            const all = [];
+            c.wheel.traverse((m) => {
+              if (!m.isMesh) return;
+              const pos = m.geometry.getAttribute('position');
+              const to = into.clone().multiply(m.matrixWorld);
+              for (let i = 0; i < pos.count; i++) all.push(m.position.clone().fromBufferAttribute(pos, i).applyMatrix4(to));
+            });
+            const rho = (v) => Math.hypot(v.x, v.y);
+            const most = all.reduce((m, v) => Math.max(m, rho(v)), 0);
+            points = all.filter((v) => rho(v) > most - 0.005);
+            treads.set(c.wheel, points);
+          }
+          c.wheel.updateWorldMatrix(true, false);
+          let gap = Infinity;
+          for (const v of points) {
+            const q = v.clone().applyMatrix4(c.wheel.matrixWorld);
+            const g = stage.groundAt(q.x, q.z);
+            if (g !== null) gap = Math.min(gap, q.y - g);
+          }
+          out.push({ name: c.wheel.name, contact: c.contact, gap });
+        }
+        return out;
+      });
+    let worst = 0;
+    let worstAt = '';
+    let hanging = 0;
+    let checked = 0;
+    // (it stands as it came off its saddle, its nose to the LM: backed away first, then round on each lock)
+    for (const [keys, ms] of [[['s'], 4000], [['s', 'a'], 3000], [['w', 'd'], 4000]]) {
+      for (const k of keys) await page.keyboard.down(k);
+      const t0 = Date.now();
+      while (Date.now() - t0 < ms) {
+        await page.waitForTimeout(100);
+        for (const s of (await sample()) ?? []) {
+          if (!Number.isFinite(s.gap)) continue;
+          checked++;
+          if (!s.contact) {
+            hanging++;
+            if (s.gap < -tolerance) fails.push(`${tag}: ${s.name} hangs ${(-s.gap * 1000).toFixed(1)} mm in the ground`);
+            continue;
+          }
+          if (Math.abs(s.gap) > Math.abs(worst)) [worst, worstAt] = [s.gap, s.name];
+        }
+      }
+      for (const k of keys) await page.keyboard.up(k);
+    }
+    const gone = await page.evaluate(() => window.sr.stage.onFoot.wheel?.distance ?? 0);
+    console.log(`${tag} ${gone.toFixed(1)} m: worst ${(worst * 1000).toFixed(1)} mm (${worstAt}); ${checked} wheels measured, ${hanging} hanging`);
+    rows.push({ flight: moon.id, worst });
+    if (gone < 3) fails.push(`${tag}: it went only ${gone.toFixed(1)} m`);
+    if (!checked) fails.push(`${tag}: nothing it runs on was found under it`);
+    else if (Math.abs(worst) > tolerance) fails.push(`${tag}: a bearing wheel is ${(worst * 1000).toFixed(1)} mm ${worst > 0 ? 'over' : 'into'} the ground (${worstAt})`);
+  } catch (e) {
+    fails.push(`${tag}: ${e.message ?? e}`);
+  }
+  if (errors.length) fails.push(`${moon.id} on the Moon: page errors: ${errors.slice(0, 3).join(' | ')}`);
   await close();
 }
 await browser.close();
