@@ -1,4 +1,4 @@
-import { lc39Crew } from '../../crew/lc39.ts';
+import { lc39Crew, moonSuits } from '../../crew/lc39.ts';
 
 // Apollo 16 Press Kit, p. 126 and the three crew biographies. KSC-72PC-0170 shows the emblem on Duke's left breast.
 export const launchCrew = lc39Crew(
@@ -24,5 +24,5 @@ export const launchCrew = lc39Crew(
         'Six chest connections let Duke change life-support systems. The eagle and shield on his left breast are visible as he waits in the White Room for his turn to board.',
     },
   ],
-  true,
+  moonSuits('apollo-16', ['Young', 'Duke'], 'A7LB', 7),
 );

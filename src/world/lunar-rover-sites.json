@@ -10,7 +10,6 @@
       "lander": "models/usa/apollo/apollo-16/orion.glb"
     },
     "taurus-littrow": {
-      "landerBearing": 270,
       "unloaded": [
         "LMTraverseGravimeter",
         "LMSEP",

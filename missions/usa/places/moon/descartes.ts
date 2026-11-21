@@ -50,8 +50,7 @@ export const DESCARTES = landingSite({
     roll: {
       value: 0,
       confidence: 'documented',
-      source:
-        'Apollo 16 Mission Report, MSC-07230, section 9, p. 9-19: "essentially zero roll"',
+      source: 'Apollo 16 Mission Report, MSC-07230, section 9, p. 9-19: "essentially zero roll"',
     },
   },
 });

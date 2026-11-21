@@ -3,7 +3,7 @@ import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ROVER_SITES, type RoverSite } from '../world/lunar-terrain.ts';
 import { disposeTree } from './dispose.ts';
-import { landerAt, lunarGround } from './lunar/ground.ts';
+import { landerAt, landerPose, lunarGround } from './lunar/ground.ts';
 import { type LunarSetting, lunarSetting } from './lunar/setting.ts';
 
 /**
@@ -59,8 +59,10 @@ export async function lunarDrivingGround(
     ground.position.x = -centre;
     // (the whole Moon beyond draws itself in both looks: setting.selfDrawn, which the scene adds apart from the looks)
     ground.add(s.floor!, ...s.scenery);
-    // The LM on its pads, on the frame's origin (the plane its pads stand on: SiteDef), its forward hatch on its bearing.
-    model.rotation.y = ((90 - lander.bearing) * Math.PI) / 180;
+    // The LM on its pads, on the frame's origin (the plane its pads stand on: SiteDef), turned and tipped as it stood at rest
+    // (the site's `rest`: ground.ts landerPose; its pads set on this ground by the stay on the Moon, app/surface.ts, not here)
+    const pose = landerPose(lander.rest, [], () => 0);
+    model.rotation.set(pose.attitude.roll, pose.rotationY, pose.attitude.pitch, 'YZX');
     const unloaded = new Set(lander.unloaded);
     model.traverse((node) => {
       if (unloaded.has(node.name) || node.name.includes('ProbeHinge')) node.visible = false;

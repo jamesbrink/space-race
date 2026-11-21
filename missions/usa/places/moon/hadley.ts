@@ -51,8 +51,7 @@ export const HADLEY = landingSite({
     roll: {
       value: -8.6,
       confidence: 'documented',
-      source:
-        'Apollo 15 Mission Report, MSC-05161, section 7.1: "8.6 degrees roll to the left" (left negative)',
+      source: 'Apollo 15 Mission Report, MSC-05161, section 7.1: "8.6 degrees roll to the left" (left negative)',
     },
   },
 });

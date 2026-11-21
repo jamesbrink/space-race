@@ -13,7 +13,7 @@ from srlib import run  # noqa: E402
 
 
 def build():
-    lunar_module.build(deployed=True, spacecraft=5)
+    lunar_module.build(deployed=True, spacecraft=5, landed=True)
     return "31 ft deployed span over four footpads; 23 ft 1 in from pad plane to S-band antenna"
 
 
