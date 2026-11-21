@@ -265,8 +265,9 @@ rules are the screen's, the same for every path, never tuned to a flight:
   40 km of it). Where the path on show passes it (sim/predict.ts `Pass`) the passing is marked on the line by the Moon's
   name with the height over its surface and the time to it (a chip when it is off the window; the path's figures have a
   row for it), and the Moon's own way from now to then is drawn with its outline where it will be, so the path is seen
-  to go to where the Moon is going and not to where it is. Simplified: the Moon is an outline, not its disc lit as the
-  Sun has it (the flight scene's Moon is issue B3); near the Moon the path is still drawn about the Earth, among the
+  to go to where the Moon is going and not to where it is. Once the Moon itself is drawn there (the flight scene's body:
+  "The Moon in the flight scene") and is more than 4 to 8 pixels across, its outline where it is now gives way to it
+  (`PathHost.moonCovers`); the marker, the outline where the path passes it and its way there stay. Simplified: near the Moon the path is still drawn about the Earth, among the
   stars, where a path in orbit about the Moon is a coil along the Moon's way (drawn about the Moon: the rest of B4); the
   map is fitted to the ball round the Earth that holds the path, so a path to the Moon fills a radius of it.
 - **The record's flight is a line of reference, there from the pad** (`viewer/pathref.ts`, path.ts `layRef`): the run
