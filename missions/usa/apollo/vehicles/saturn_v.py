@@ -211,6 +211,18 @@ def second_stage_base(parent, metal, shield, alloy):
     posts.build("SII_GimbalPosts", alloy, parent)
 
 
+def third_stage_skirt(parent, metal):
+    """The inside of the S-IVB's aft skirt, from its edge up to where the aft dome meets it. Every level of detail: from
+    behind and below, once the S-II has gone, the skin's outer face alone let the sky through between dome and skirt."""
+    inside = UPPER_RADIUS - 0.5  # the skin's inner face
+    # (the 130-in aft dome, centred on Douglas STA 287.8 in the S-IVB tank frame, crosses this radius just below its equator)
+    equator = structure.ds(287.8) + THIRD_TOP - saturn_ib.SIVB_TOP
+    meets = equator - math.sqrt(structure.DOME_RADIUS**2 - inside**2)
+    skirt = MeshBuilder()
+    skirt.lathe(prof([(inside, TAPER_TOP), (inside, meets)]), segs=128)
+    mark_shells([skirt.build("SIVB_AftSkirtInner", metal, parent).name])
+
+
 def dome(mesh, radius, centre, depth, side):
     profile = [(radius * math.cos(t * math.pi / 28), centre + side * depth * math.sin(t * math.pi / 28)) for t in range(15)]
     structure.turn(mesh, profile if side == 1 else list(reversed(profile)), sides=96)
@@ -481,7 +493,9 @@ def build(*, lunar_module=None, adapter_number=None, impact_radio=None, aps_seri
     first_tanks = group("FirstStageTankStructure")
     second_tanks = group("SecondStageTankStructure")
     third_tanks = group("ThirdStageTankStructure")
+    third_tanks.location.z = third_engine.location.z
     equipment = group("InstrumentUnitEquipment")
+    third_stage_skirt(third, metal)
     if interior():
         # Boeing D5-15782 Fig. 1-1 locates the LOX aft crown, its rim and the
         # distinct RP-1 crown below. The 262.4-inch intertank spans the rims.
@@ -509,9 +523,11 @@ def build(*, lunar_module=None, adapter_number=None, impact_radio=None, aps_seri
         weld = station(1855)
         forward = SECOND_TOP - 11.5 * 12
         tanks(second_tanks, "SII_Tank", 194, [(weld, 120, -1), (weld, 144, 1), (forward, 128, 1)], [(weld, forward)], metal, warm)
-        third_tanks.location.z = third_engine.location.z
         structure.second_stage(third_tanks, metal, warm, steel)
         instrument_unit(equipment, steel, metal, impact_radio)
+    else:
+        # (the aft dome and the thrust cone at every level: once the S-II has gone they are the S-IVB's base)
+        structure.aft_closure(third_tanks, metal, steel)
     adapter(group("SpacecraftAdapter"), white, lunar_module is not None, adapter_number)
     if lunar_module is None:
         payload(group("LunarTestArticle"), steel, alloy)

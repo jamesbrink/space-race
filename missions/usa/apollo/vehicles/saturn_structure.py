@@ -174,12 +174,36 @@ def first_stage(parent, metal, warm, dark):
     finish(gas, "SIB_FuelPressurizationSpheres", metal, parent)
 
 
+def aft_dome(mesh):
+    """The S-IVB's aft LOX dome, the 130-in sphere's lower half."""
+    sphere_cap(mesh, DOME_RADIUS, ds(287.8), -math.pi / 2, 0)
+
+
+def thrust_cone(mesh):
+    """The S-IVB's engine thrust cone, from the J-2's gimbal at STA 100 to the aft dome. Returns its radius at the dome."""
+    # Engine thrust cone penetrates the aft dome only at its tangent attachment.
+    cone_r = math.sqrt(DOME_RADIUS**2 - (287.8 - 186.9) ** 2)
+    turn(mesh, [(13, ds(121.4)), (cone_r, ds(183.5)), (cone_r, ds(186.9))])
+    turn(mesh, [(5, ds(100)), (9, ds(100)), (13, ds(121.4)), (12, ds(121.4)), (5, ds(100))])
+    return cone_r
+
+
+def aft_closure(parent, metal, dark):
+    """Below full detail, where the tanks are not built: the S-IVB's aft dome and thrust cone alone, which close the
+    stage's base once its interstage has gone (seen from behind in flight). The same meshes as second_stage's."""
+    aft, cone = MeshBuilder(), MeshBuilder()
+    aft_dome(aft)
+    thrust_cone(cone)
+    finish(aft, "SIVB_AftTankDome", metal, parent, cut=True)
+    finish(cone, "SIVB_ThrustCone", dark, parent, cut=True)
+
+
 def second_stage(parent, metal, warm, dark, *, spheres_per_bank=4):
     """Three dome stations, O2 baffles, helium banks and thrust cone of S-IVB-205."""
     aft, common, forward, rings, supports, equipment, cone, ribs = (MeshBuilder() for _ in range(8))
     # The production forward/aft domes include manholes and fittings. Form only the part of the
     # 130-in spherical surface inside the 260-in tank; carry the small crown discrepancy at the bosses.
-    sphere_cap(aft, DOME_RADIUS, ds(287.8), -math.pi / 2, 0)
+    aft_dome(aft)
     sphere_cap(forward, DOME_RADIUS, ds(553), 0, math.pi / 2)
     common_centre = ds(335.2) - DOME_RADIUS
     joint_angle = math.asin((ds(244.4) - common_centre) / DOME_RADIUS)
@@ -221,10 +245,7 @@ def second_stage(parent, metal, warm, dark, *, spheres_per_bank=4):
             ball(equipment, polar(114, a, z), 12.5)
             beam(equipment, polar(124, a, z), polar(129.4, a, z), 6, 5)
     ball(equipment, polar(76, math.radians(52), ds(158.6)), 12.5)
-    # Engine thrust cone penetrates the aft dome only at its tangent attachment.
-    cone_r = math.sqrt(DOME_RADIUS**2 - (287.8 - 186.9) ** 2)
-    turn(cone, [(13, ds(121.4)), (cone_r, ds(183.5)), (cone_r, ds(186.9))])
-    turn(cone, [(5, ds(100)), (9, ds(100)), (13, ds(121.4)), (12, ds(121.4)), (5, ds(100))])
+    cone_r = thrust_cone(cone)
     for i in range(24):
         a = TAU * i / 24
         pipe(ribs, [polar(13, a, ds(121.4)), polar(cone_r, a, ds(183.5))], 1, 8)
