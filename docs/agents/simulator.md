@@ -1355,9 +1355,54 @@ read gives enough of to fly (issue #10).
   the mass as it lit, what the burn drew. While it burns the path is "if cut now", the coast from there with nothing lit.
   A kept run flies it again from what the hands did (tape.ts): its ticks are the deck's (`craftTicks`), and the frames
   are written while the hand turns it. With B on the record's burns are lit at their instants as before (the plan's own
-  events, flown whole by the coast); G and B in the coast keep what they did. Not modelled: the attitude as a rigid body
-  turned by the jets (the hand's attitude is the coast's, turned at `manual.rate`; #148's second half, A2b), ullage
-  (the engine is taken to start), the engine's start and shutdown transients, and any limit on a burn's length.
+  events, flown whole by the coast); B in the coast keeps what it did. With G on as a burn is lit (with the hands free G
+  is the computer's one switch, for the burns and, on a flight whose entry is steered, for the entry too: orbitdeck.ts
+  `guidesBurns`, `toggle`, phases/entry.ts `switchEntry`), the computer flies it (phases/burn.ts `steerOf`,
+  `tickBurn`; sim/craftlive.ts `guide`, sim/steering.ts `Steering`, R-577 §5.3.3): what the record's manoeuvre was for
+  is solved on the state as it lights (sim/pursuit.ts `solveBurn`, on the craft's own forces) where it needs no target,
+  else External ΔV of the record's impulse along the line the record's attitude gives there (the braking burn: its
+  integrator's impulse along the coast's aim); each tick its thrust line is where the axis is pointed (through the
+  autopilot on a rigid body, at once on a craft turned by hand), what the burn gave is fed back as the accelerometers'
+  sensing, and the engine stops at its `cutAt` within the tick (`CraftControls.stop`, 'guidance'). Before the burn,
+  G on turns the craft to the next burn's line (`burnAim`), as the computer turned it to its burn attitude before ignition,
+  and on a craft its jets turn Space lights the burn only within 5 degrees of it (`ALIGNED`, the game's; until then the
+  deck says how far it has to go).
+  G thrown off during a burn gives it to the hands; thrown on, it takes the next burn lit. The axis each tick is the
+  attitude's: the rigid body's, stepped with the burn's own ticks, where the jets are hardware ("The attitude in orbit is
+  a rigid body on its jets", below); the hand's, as before, where not. Not modelled: ullage (the engine is taken to start),
+  the engine's start and shutdown transients, its gimbal (the jets hold the attitude through a burn, where the service
+  propulsion engine's thrust vector control held pitch and yaw), and any limit on a burn's length.
+- **The attitude in orbit is a rigid body on its jets** (sim/attitude.ts; #148's second half). Where the plan gives the
+  hand's thruster set as hardware (`ThrusterSet.chambers` with its `supplies` and `inertia`: Apollo 7's service module
+  RCS, apollo/vehicles/sm-rcs.ts; every Gemini's orbit attitude and manoeuvre system, gemini/vehicles/oams-attitude.ts),
+  the spacecraft alone with its hands free is a rigid body (orientation and body rates; Euler's equations on the record's
+  principal moments at its mass, `inertiaAt` between the record's rows) turned by each chamber's own torque (where it
+  stands crossed with the way it pushes, so a chamber's cross-coupling is the hardware's: the CSM's quads stand 7.25
+  degrees off the axes and its pitch pair yaws it by that angle's tangent), each burning its thrust over g0 Isp from its
+  supply until it is empty. Hold (on at every entry) is the craft's own autopilot, axis by axis: it keeps the attitude it
+  holds within `deadband` and damps the rate to within `rateband` of what it wants, the rate it wants being the keys'
+  (`rate` at full throw: the held attitude turned at that rate, so it is held where the keys let go) less, outside the
+  deadband, sqrt(α e) to bring it back without passing (α the axis's own acceleration on its chambers, no more than the
+  hand's rate); a chamber fires for as long as it takes to close the rate and never less than `minimum`, so it limit-cycles
+  in the deadband in pulses. Hold off, the keys open the hand's chambers direct and nothing damps: a tumble begun goes on,
+  its angular momentum kept (tests/attitude.test.mjs). The figures: the CSM's 16 chambers at R-547's quad places, 100 lbf
+  (the News Reference, assumed), 280 s (estimated), the SCS's 15 ms one-shot, its 0.2 degree deadband at the low rate
+  (Apollo 7's Table 5.16-V) and 0.2 deg/s rate deadband, Table A.5-I's moments, the 1,341.7 lb the quads were loaded with;
+  a Gemini's eight attitude chambers as SEDR 300's Figure 8-72 numbers them (their places on the rim read off the figure,
+  estimated), 23 lb at 258 s (SP-121), the 18 ms minimum pulse, the 0.2 deg/s rate damping and the horizon scan mode's 5
+  degree deadband; its load and moments estimated (none read). The deck: the systems' Attitude jets bar and the navball's
+  RCS figure are the supplies left (`OrbitDeck.rcsAt`); the run's samples are drawn from the states kept in the hand's
+  log (one each half degree turned, `logged`), between them as they lie. Time: steps of the TICK while anything fires or
+  is asked, free steps (at most a fiftieth of a radian, short of where the deadband could next be met) while quiet, each
+  chosen from the state alone, so a kept run flies again the same without its frames being written
+  (tests/resume.test.mjs); the clock (and its time-lapse) is held to 6,400 of its steps a second (`paceFor`: 64 times while
+  the jets work, some thousands of times as a slow drift's free steps lengthen, no limit while it is still), and a warp
+  to the next is not offered while the jets work. Where the plan gives no chambers (the Vostoks, Voskhods and Soyuzes, the Mercury-Atlas
+  capsules), the keys turn the attitude at the hand controller's rate, as before: no jets, no gas, no tumble. Not modelled:
+  the products of inertia (the principal axes are the body's), a chamber's own place in its quad and its start and
+  shutdown, what the jets push the craft along (translation) and what their propellant takes off its mass, anything else
+  that turns it (gravity gradient, the air, slosh), and the propellant the record's own flight drew before the hands took
+  the attitude (the supply is as loaded).
   tests/stagedlive.test.mjs holds an SPS burn by hand to the rocket equation on what it drew, against its motion and the
   plan's account; the lever, the starts and a tank run dry; a Gemini's thrusters each way and its retrorockets; a Vostok's
   TDU to its integrator and a Soyuz's SKD on its tank. tests/resume.test.mjs flies an SPS burn by hand, throttled, cut and
@@ -1378,8 +1423,8 @@ read gives enough of to fly (issue #10).
   that instant (flown from the pad with its attitude placed as the law's: the two agree to a hundredth of a metre a
   second) and flown on by the switches and the hands, Space sets off the record's steps in turn whenever it is pressed
   (each stage lit, cut, let go; the fairing; the spacecraft parted), and once parted the spacecraft coasts from where that
-  ascent left it (`flyOrbit` from `parted`), short of an orbit or not, as the record's own run does from its own. Its hand controls are the user's without the lock. The turning in orbit is a hand's on the attitude, not a
-  rigid body's: no jets, no gas, no tumble. The deck predicts the path from every instant of the flight by the one
+  ascent left it (`flyOrbit` from `parted`), short of an orbit or not, as the record's own run does from its own. Its hand controls are the user's without the lock. The turning in orbit is a rigid body's on its jets where the
+  plan gives them as hardware, and a hand's on the attitude where not ("The attitude in orbit is a rigid body on its jets"). The deck predicts the path from every instant of the flight by the one
   propagator (below, "The flight deck has a navball and a predicted path"; orbitdeck.ts `predict`, given to path.ts as the
   source's `predict`): on the launch vehicle, under guidance or by hand, where it goes if the engines stopped now ("if cut now" beside
   the figures: fliers.ts `guided`, `stopped`: every engine cut at the instant on show and none lit again, what it still

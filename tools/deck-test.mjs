@@ -1514,6 +1514,99 @@ if (!process.env.SR_ONLY || process.env.SR_ONLY === 'throttle') {
 // Taken by hand (deck.ts `START`): every entry to Fly has guidance and the sequencer off; the navball's flight director
 // shows the record's attitude on the pad and going up; the next step is offered with the record's time; and a flight left
 // on its pad untouched keeps nothing.
+// The attitude in orbit on its jets (sim/attitude.ts): Apollo 7's spacecraft alone, taken by a key. Hold on, W turns it
+// at the hand's rate; Hold off (Enter), Q rolls it on the jets and it goes on rolling; Hold on again damps it. The systems'
+// Attitude jets bar and the navball's RCS figure fall as the jets burn. G with the hands free is guidance's for a burn:
+// on, Space lights the next manoeuvre, steered and cut by guidance.
+if (!process.env.SR_ONLY || process.env.SR_ONLY === 'attitude') {
+  const id = 'usa/apollo/apollo-7';
+  const where = 'Apollo 7 attitude on its jets';
+  const { page, errors, context: ctx } = await fly(id, 1280, 800, false);
+  try {
+    const read = () =>
+      page.evaluate(() => {
+        const c = window.sr.cockpit;
+        const att = c.hand?.att;
+        return {
+          rigid: Boolean(att),
+          w: att ? att.w.map((x) => (x * 180) / Math.PI) : null,
+          left: att ? att.left.reduce((s, x) => s + x, 0) : null,
+          hold: c.hold,
+          guidance: document.querySelector('#ui > .cockpit [data-do=guidance]').getAttribute('aria-pressed') === 'true',
+          burning: Boolean(c.burn),
+          steered: Boolean(c.burn?.steering),
+          bar: document.querySelector('[data-cell=rcs]')?.textContent ?? '',
+          kg: document.querySelector('[data-cell=rcs-kg]')?.textContent ?? '',
+          ball: document.querySelector('.navball-rcs')?.hidden === false ? document.querySelector('.navball-rcs b').textContent : null,
+        };
+      });
+    // (alone: ten minutes after the spacecraft has left the S-IVB)
+    const t0 = await page.evaluate(() => window.sr.cockpit.parting + 600);
+    await page.evaluate((t) => {
+      const { clock, cockpit } = window.sr;
+      clock.seek(t);
+      clock.setRate(1);
+      clock.play(true);
+      window.__said = [];
+      const say = cockpit.host.say;
+      cockpit.host.say = (title, text) => {
+        window.__said.push(`${title}: ${text}`);
+        return say?.(title, text);
+      };
+    }, t0);
+    await page.waitForTimeout(300);
+    // (a key takes the hands, as its pilot's did: no lock on Apollo 7's)
+    await page.keyboard.press('KeyW');
+    await page.waitForTimeout(300);
+    let s = await read();
+    if (!s.rigid) fail(where, `the hands taken, the attitude is not a rigid body: ${JSON.stringify(s)}`);
+    // (guidance's switch as the deck shows it: off, the burns are the hands')
+    if (s.guidance) await page.keyboard.press('KeyG');
+    await page.waitForTimeout(200);
+    await page.keyboard.down('KeyW');
+    await page.waitForTimeout(2500);
+    s = await read();
+    await page.keyboard.up('KeyW');
+    if (!(s.w[1] > 0.4 && s.w[1] < 1)) fail(where, `W under Hold did not turn it at the hand's 0.7 deg/s: ${JSON.stringify(s.w)}`);
+    if (!/%/.test(s.bar) || !/kg/.test(s.kg) || !s.ball) fail(where, `no propellant shown for the jets: ${JSON.stringify(s)}`);
+    const full = s.left;
+    await page.keyboard.press('Enter');
+    await page.keyboard.down('KeyQ');
+    await page.waitForTimeout(700);
+    await page.keyboard.up('KeyQ');
+    await page.waitForTimeout(1500);
+    s = await read();
+    if (s.hold || !(Math.abs(s.w[0]) > 2))
+      fail(where, `Hold off, Q did not roll it on the jets and leave it rolling: ${JSON.stringify(s)}`);
+    const rolling = s.w[0];
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(4000);
+    s = await read();
+    if (!s.hold || !(Math.abs(s.w[0]) < 1))
+      fail(where, `Hold on again did not damp the roll of ${rolling.toFixed(1)} deg/s: ${JSON.stringify(s.w)}`);
+    if (!(s.left < full)) fail(where, `the jets drew nothing: ${full} then ${s.left} kg`);
+    // (G on: the autopilot turns the craft to the next manoeuvre's line; Space, once it is there, lights it, steered by
+    // guidance, and guidance cuts it)
+    await page.keyboard.press('KeyG');
+    await page.evaluate(() => window.sr.clock.setRate(8));
+    for (let k = 0; k < 120 && !(await read()).burning; k++) {
+      await page.keyboard.press('Space');
+      await page.waitForTimeout(1000);
+    }
+    s = await read();
+    if (!s.burning || !s.steered) fail(where, `G on, Space lit no burn steered by guidance: ${JSON.stringify(s)}`);
+    await page.evaluate(() => window.sr.clock.setRate(8));
+    await page.waitForFunction(() => !window.sr.cockpit.burn, null, { timeout: 120_000 });
+    const said = await page.evaluate(() => window.__said);
+    if (!said.some((x) => /by guidance/.test(x))) fail(where, `the burn was not cut by guidance: ${JSON.stringify(said.slice(-4))}`);
+    console.log(
+      `  ${where}: W turned it under Hold, rolled at ${rolling.toFixed(1)} deg/s and damped, ${(full - s.left).toFixed(2)} kg drawn; ${said.filter((x) => /guidance/i.test(x)).at(-1)}`,
+    );
+    if (errors.length) fail(where, errors.slice(0, 2).join(' | '));
+  } finally {
+    await ctx.close();
+  }
+}
 if (!process.env.SR_ONLY || process.env.SR_ONLY === 'by-hand') {
   for (const id of ['usa/mercury/mr-3-freedom-7', 'ussr/vostok/vostok-1']) {
     const where = `${id} by hand`;

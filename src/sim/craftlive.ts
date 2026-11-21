@@ -6,8 +6,10 @@
  *
  * Forces. The coast's: gravity as the plan names it (core/gravity.ts `fieldFor`, about the Moon inside its sphere), the air
  * of the coast on the joined ship (orbital.ts `shipPush`, the same drag), and the engines' thrust along the long axis as the
- * controls give it (`CraftControls.axis`: the hand's attitude, held as the deck turns it; no attitude dynamics here), or
- * against it for one that pushes toward the tail (`EngineDef.astern`).
+ * controls give it (`CraftControls.axis`: the attitude as the deck has it, its own rigid body turned by its jets where the
+ * plan gives them as hardware, sim/attitude.ts, or a hand's turn at its rate where not), or against it for one that pushes
+ * toward the tail (`EngineDef.astern`). Guidance flies a burn by `guide` (sim/steering.ts): its line is what the deck points
+ * the axis along, and its cut an instant the engine stops at within its tick (`CraftControls.stop`).
  *
  * The engine. A liquid engine burns at its rated vacuum thrust times the lever's share (sim/lever.ts `handRange`: its own
  * range, or the game's where it ran at one thrust, said so on the lever); under its least the lever cuts it, and raised to
@@ -24,15 +26,17 @@
  * stops at its own instant within a tick (dry, its integrator, spent), and the tick is flown in two pieces either side.
  */
 import { clamp } from '../util/math.ts';
-import { G0 } from '../world/bodies.ts';
+import { EARTH, G0, MOON } from '../world/bodies.ts';
 import type { EarthFrame } from '../world/earthframe.ts';
-import { add, scale, type Vec3 } from '../world/frames.ts';
-import type { State } from '../world/orbit.ts';
+import { add, dot, length, scale, sub, type Vec3 } from '../world/frames.ts';
+import { gravity, type State } from '../world/orbit.ts';
 import { airAt } from './air.ts';
-import { centreAt, fieldFor, stepAbout, stepIn } from './core/gravity.ts';
+import { centreAt, fieldFor, recentred, stepAbout, stepIn } from './core/gravity.ts';
 import { type HandRange, handRange } from './lever.ts';
 import { shipPush, solarAt } from './orbital.ts';
-import type { EngineDef, FlightPlan } from './plan.ts';
+import type { EngineDef, FlightPlan, Pursuit } from './plan.ts';
+import { type BurnContext, solveBurn, type Target } from './pursuit.ts';
+import { externalDv, localVertical, Steering } from './steering.ts';
 import { stagesOf } from './staged.ts';
 import type { Said } from './stagedlive.ts';
 import { TICK } from './vehicle.ts';
@@ -79,8 +83,8 @@ export interface CraftBurn {
   /** The impulse sensed, m/s, and as a vector in the flight's frame (its sum along the line the thrust pushed at each tick). */
   sensed: number;
   push: Vec3;
-  /** Why it stopped: a hand's cut, the lever under its least, its tank empty, its integrator, a solid spent. */
-  ended?: 'cut' | 'lever' | 'dry' | 'integrator' | 'spent';
+  /** Why it stopped: a hand's cut, the lever under its least, its tank empty, its integrator, a solid spent, guidance's cut. */
+  ended?: 'cut' | 'lever' | 'dry' | 'integrator' | 'spent' | 'guidance';
 }
 
 export interface CraftState {
@@ -112,6 +116,8 @@ export interface CraftControls {
   cut?: readonly string[];
   /** The lever, of rated thrust (left out: as it was). */
   lever?: number;
+  /** Instants, s from liftoff, at which guidance cuts an engine burning, by id (sim/steering.ts `Steering.cutAt`): it stops there within the tick. */
+  stop?: Readonly<Record<string, number>>;
 }
 
 /** Where the craft is taken up: the coast's state, the ship's mass, what is left in its tanks and of each engine's starts. */
@@ -136,6 +142,14 @@ export interface CraftVehicle {
   thrustOf(state: CraftState, id: string): number;
   /** The share of rated thrust a liquid engine is held to now by the lever (1 for a solid). */
   share(state: CraftState, id: string): number;
+  /**
+   * Guidance's steering for engine `id` lit now (sim/steering.ts, as the computer flew a burn it had been given): solved on
+   * the state as it stands for what the burn is for (`aim.toward`, sim/pursuit.ts `solveBurn`, on this craft's own forces)
+   * where that can be solved, else External ΔV of the impulse `aim.line` times `aim.size` (m/s, in the flight's frame),
+   * laid in the local vertical now. Its thrust at each tick is the line to point the axis along, and its `cutAt` the
+   * instant to cut. Null for a solid, which no guidance cuts.
+   */
+  guide(state: CraftState, id: string, aim: { line: Vec3; size: number; toward?: Pursuit; target?: Target }): Steering | null;
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -172,13 +186,14 @@ export function craftEngines(plan: FlightPlan, ids?: readonly string[], cutAt: R
 /**
  * The craft of `plan` in `frame`. `engines`: its engines that can be lit here, by id (all of the spacecraft's if left out);
  * `cutAt`: for each engine flown with an integrator that shuts it down (a braking engine's, `EngineDef.deltaV`), the impulse
- * it is set to, m/s. A manoeuvre by hand has none: the hand cuts it.
+ * it is set to, m/s. A manoeuvre by hand has none: the hand cuts it. `radius`: the ball the orbit's heights are over, m
+ * (orbital.ts `heightsBall`), for a burn guidance solves for an orbit (`guide`); the equatorial radius if left out.
  */
 export function craftVehicle(
   plan: FlightPlan,
   frame: EarthFrame,
   seaLevel: number,
-  options: { engines?: readonly string[]; cutAt?: Readonly<Record<string, number>> } = {},
+  options: { engines?: readonly string[]; cutAt?: Readonly<Record<string, number>>; radius?: number } = {},
 ): CraftVehicle {
   const all = craftEngines(plan, options.engines, options.cutAt);
   const byId = new Map(all.map((e) => [e.id, e]));
@@ -272,10 +287,12 @@ export function craftVehicle(
     return said.length === s.said.length ? s : { ...s, said };
   };
 
-  /** How long from `s` each burning engine has before it stops by itself (dry, its integrator, spent), s. */
-  const untilStop = (s: CraftState): { e: CraftEngine; at: number; why: 'dry' | 'integrator' | 'spent' }[] => {
+  type Stop = 'dry' | 'integrator' | 'spent' | 'guidance';
+  /** How long from `s` each burning engine has before it stops by itself (dry, its integrator, spent) or guidance cuts it (`stops`), s. */
+  const untilStop = (s: CraftState, stops: Readonly<Record<string, number>> = {}): { e: CraftEngine; at: number; why: Stop }[] => {
     const on = all.filter((e) => burning(s, e.id));
-    const out: { e: CraftEngine; at: number; why: 'dry' | 'integrator' | 'spent' }[] = [];
+    const out: { e: CraftEngine; at: number; why: Stop }[] = [];
+    for (const e of on) if (!solid(e) && stops[e.id] !== undefined) out.push({ e, at: Math.max(0, stops[e.id]! - s.t), why: 'guidance' });
     // (what every engine lit draws: on each tank, and in all, kg/s)
     const draws = new Map<string, number>();
     let flow = 0;
@@ -356,10 +373,10 @@ export function craftVehicle(
     let s = command(state, controls);
     const ticks = s.ticks + 1;
     const end = s.t0 + ticks * TICK;
-    // in pieces: to each instant an engine stops by itself within the tick, and on to the tick's end
+    // in pieces: to each instant an engine stops by itself (or guidance cuts it) within the tick, and on to the tick's end
     for (let n = 0; n < 8 && s.t < end; n++) {
       const left = end - s.t;
-      const stops = untilStop(s).filter((x) => x.at < left);
+      const stops = untilStop(s, controls.stop).filter((x) => x.at < left);
       const first = stops.reduce((m, x) => Math.min(m, x.at), Infinity);
       if (!Number.isFinite(first)) {
         s = fly(s, left);
@@ -372,6 +389,7 @@ export function craftVehicle(
           dry: `${cap(x.e.label)} stopped: its tanks are empty`,
           integrator: `${cap(x.e.label)} cut by its integrator at the ${x.e.integrator} m/s it was set to`,
           spent: `${cap(x.e.label)} burned out`,
+          guidance: `${cap(x.e.label)} cut by guidance: the velocity to be gained is gained`,
         }[x.why];
         s = { ...s, said: [...s.said, { t: s.t, title: x.why === 'spent' ? 'Burned out' : 'Shut down', text: said }] };
       }
@@ -379,11 +397,67 @@ export function craftVehicle(
     return { ...s, t: end, ticks };
   };
 
+  /** A state about the body it is flown about at an instant, with that body's GM and the radius heights about it are above. */
+  const aboutOf = (s: State, at: number) =>
+    field.about && centreAt(earthSide, s.r, at) === 'moon'
+      ? { body: 'moon' as const, s: recentred(earthSide, s, at, 'moon'), gm: MOON.gm.value, radius: MOON.equatorialRadius.value }
+      : { body: 'earth' as const, s, gm: EARTH.gm.value, radius: options.radius ?? EARTH.equatorialRadius.value };
+  const guide = (s: CraftState, id: string, aim: { line: Vec3; size: number; toward?: Pursuit; target?: Target }): Steering | null => {
+    const e = byId.get(id);
+    if (!e || solid(e) || !(aim.size > 0)) return null;
+    const [t0, m0] = [s.t, s.mass];
+    const thrust = e.thrust * shareOf(s, e);
+    const flow = e.flow * shareOf(s, e);
+    // (the thrust's acceleration as its propellant goes, from the lighting: as the coast's own steered burns have it)
+    const accel = (at: number): number => thrust / Math.max(1e-9, m0 - flow * Math.max(0, at - t0));
+    const exhaust = e.exhaust > 0 ? e.exhaust : undefined;
+    const here: State = { r: s.r, v: s.v };
+    const centred = (x: State, at: number): State => aboutOf(x, at).s;
+    if (aim.toward) {
+      // (the craft's own forces flown ahead, a step at a time: what the burn is solved on, as the coast solves its own)
+      const ctx: BurnContext = {
+        fly: (x, from, to, push) =>
+          advance(x, from, to - from, (q, at) => {
+            const air = airAt(frame, q.r, q.v, at, seaLevel);
+            return shipPush(plan, from, air.wind, air.altitude, null, solarAt(frame, q.r, at, air.altitude), push ? { push } : undefined);
+          }),
+        gravity: (x, at) => {
+          const c = aboutOf(x, at);
+          return (field.about ? field.about(c.body) : field).at(c.s.r, at);
+        },
+        about: aboutOf,
+        height: (x, at) => frame.place(x.r, at).height - seaLevel,
+        ...(field.moon ? { moon: field.moon } : {}),
+        oblate: (r) => sub(gravity(r), scale(r, -EARTH.gm.value / length(r) ** 3)),
+        accel,
+        ...(exhaust ? { exhaust } : {}),
+        ...(aim.target ? { target: aim.target } : {}),
+      };
+      try {
+        const solved = solveBurn(aim.toward, ctx, here, t0);
+        if (solved) return solved.steering();
+      } catch {
+        // (what the burn is for cannot be solved from here: it is flown on the record's impulse, below)
+      }
+    }
+    const lv = localVertical(centred(here, t0));
+    const impulse = scale(aim.line, aim.size);
+    return new Steering(
+      { external: externalDv(centred(here, t0), [dot(impulse, lv[0]), dot(impulse, lv[1]), dot(impulse, lv[2])], accel(t0)) },
+      t0,
+      here,
+      accel,
+      exhaust,
+      centred,
+    );
+  };
+
   return {
     plan,
     engines: all,
     start,
     tick,
+    guide,
     burning,
     thrustOf: (s, id) => {
       const e = byId.get(id);

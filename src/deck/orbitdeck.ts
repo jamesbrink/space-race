@@ -1,4 +1,6 @@
+import { type Attitude, type AttitudeControls, type AttitudeState, attitudeOf, gasOf, paceFor, quietFor } from '../sim/attitude.ts';
 import type { Impact } from '../sim/contact.ts';
+import { craftEngines } from '../sim/craftlive.ts';
 import { downOf } from '../sim/descent.ts';
 import { apparentBy, type Descend, guided, spacecraft } from '../sim/fliers.ts';
 import { along } from '../sim/fly.ts';
@@ -7,6 +9,7 @@ import {
   coastEngineState,
   coastEvents,
   coastOf,
+  craftAt,
   type DescentFlown,
   type DescentHands,
   heightsBall,
@@ -21,7 +24,7 @@ import { bodiesAt, due, offRails, onRails, passed, RAILS_FLOOR, railsRate } from
 import type { Railed } from '../sim/rails.ts';
 import { moonIn } from '../sim/core/gravity.ts';
 import { type Marked, type Track, trackOf, type WarpTarget, warpTargets } from '../sim/warp.ts';
-import { aboutAxis, conjugate, multiply, type Quat, turn } from '../sim/rigid.ts';
+import { aboutAxis, conjugate, multiply, nlerp, type Quat, turn } from '../sim/rigid.ts';
 import {
   attend,
   attitudeBetween,
@@ -102,7 +105,7 @@ import {
   hotNote,
   dueAt,
 } from './phases/ascent.ts';
-import { digit, freeHands, planHands, drawHands, manualJetsGone, turnTo, pushOf } from './phases/coast.ts';
+import { controlsOf, digit, freeHands, planHands, drawHands, manualJetsGone, turnTo, pushOf, rigidTo } from './phases/coast.ts';
 import {
   burnAsked,
   burnByHand,
@@ -189,8 +192,51 @@ export class OrbitDeck extends Deck {
   /** The lock: digits typed so far; the hands free (by the code, or because the flight is the user's). */
   typed = '';
   free = false;
-  /** The hand's attitude (fly.ts's frame, body to frame) and when it was last turned; the burn by hand, once fired. */
-  hand: { q: Quat; t: number; log: { t: number; q: Quat }[] } | null = null;
+  /**
+   * The hand's attitude (fly.ts's frame, body to frame) and when it was last turned, and its log (what the run's samples are
+   * drawn from); where the craft's attitude jets are hardware (`attitude`), the rigid body's state (`att`, each kept in the
+   * log too) and the ship's mass its moments of inertia are read at.
+   */
+  hand: {
+    q: Quat;
+    t: number;
+    log: { t: number; q: Quat; att?: AttitudeState }[];
+    att?: AttitudeState;
+    mass?: number;
+    /** The controls the rigid body was last flown under, to the instant `t`; how many steps of it have been flown (`ticks`). */
+    ctl?: AttitudeControls;
+    steps?: number;
+  } | null = null;
+  private attitudeDef: Attitude | null | undefined = undefined;
+  /** The craft's attitude control as hardware (sim/attitude.ts `attitudeOf`), or null: turned as a hand turns it, at its rate. */
+  get attitude(): Attitude | null {
+    if (this.attitudeDef === undefined) this.attitudeDef = attitudeOf(this.recordPlan);
+    return this.attitudeDef;
+  }
+  /**
+   * Whether guidance flies a burn lit by hand at `t` (phases/burn.ts `steerOf`), and turns the craft to the next before it:
+   * the guidance switch as it stands then, which, alone with no burn of the timer's to come on a flight whose entry is
+   * steered, is the entry's computer (`switchEntry`): one switch for the computer, burns and entry alike.
+   */
+  guidesBurns(t: number): boolean {
+    return t > this.parting && steers(this) && !burnPending(this, t) ? entrySteered(this, t) : this.guidance;
+  }
+  /** The attitude jets' propellant at `t`, where they are hardware: what is left of it (the live burn's, the hand's, or full) and whether they are still aboard. */
+  rcsAt(t: number): { gas: { left: number; full: number }; aboard: boolean } | null {
+    const a = this.attitude;
+    if (!a) return null;
+    const att = this.burn?.att ?? this.hand?.att;
+    return { gas: gasOf(a, att ?? { left: a.supplies.map((s) => s.full) }), aboard: !manualJetsGone(this, t) };
+  }
+  /** The ship's mass at `t` on the flight as it stands, kg (orbital.ts `craftAt`, every engine of the spacecraft's counted). */
+  shipMass(t: number): number {
+    const plan = this.planned ?? this.givenUp();
+    return craftAt(
+      plan,
+      t,
+      craftEngines(plan).map((e) => e.id),
+    ).mass;
+  }
   /** Which of the record's own periods by hand (`manual.periods`) the hands are in, as flown, and the samples they turned from. */
   byPlan: number | null = null;
   planBase: readonly LiveSample[] | null = null;
@@ -576,7 +622,7 @@ export class OrbitDeck extends Deck {
     this.show();
   }
   protected get ticks(): number {
-    return (this.state?.ticks ?? 0) + this.craftTicks + (this.burn?.state.ticks ?? 0);
+    return (this.state?.ticks ?? 0) + this.craftTicks + (this.burn?.state.ticks ?? 0) + (this.hand?.steps ?? 0);
   }
   /** The lever put somewhere by the deck itself (a hand lighting an engine in orbit opens it: phases/burn.ts). */
   leverTo(to: number): void {
@@ -597,7 +643,12 @@ export class OrbitDeck extends Deck {
       this.asked,
       this.free,
       this.typed,
-      this.hand && [this.hand.q, this.hand.t, this.hand.log.length],
+      // (a rigid body's: the states it was flown to, not where it is drawn at the instant last shown, which a kept run
+      // comes to where the clock is put back on Resume)
+      this.hand &&
+        (this.hand.att
+          ? [this.hand.log.length, this.hand.att, this.hand.mass ?? null, this.hand.steps ?? 0]
+          : [this.hand.q, this.hand.t, this.hand.log.length]),
       this.fired,
       this.moved,
       this.given,
@@ -680,6 +731,7 @@ export class OrbitDeck extends Deck {
         )
         .join('')}
       ${service?.tanks.length ? tank('coast-fuel', 'Service propulsion', `${service.label}: propellant and ignition starts remaining`) : ''}
+      ${this.attitude ? tank('rcs', 'Attitude jets', `${this.attitude.set.label}: the attitude jets' propellant left, every supply together (sim/attitude.ts)`) : ''}
       <div class="tank engine" title="The braking engine: when it fires, and how"><span>Braking</span><b data-cell="retro"></b><i></i></div>
       ${code ? `<div class="tank jets" title="The lock on the hand controls: a lamp for each digit of its code typed in order"><span>Lock</span><b>${[...code].map((d, i) => `<u data-digit="${i}">${d}</u>`).join('')}<u data-cell="lock"></u></b></div>` : ''}
       <div class="tank motors" title="Every engine burning now, with its thrust"><span>Burning</span><b data-cell="motors"></b></div>`;
@@ -797,13 +849,34 @@ export class OrbitDeck extends Deck {
       // (B, alone: the descent's automatic sequence off or on again; before the timer's burn that gives the burn up too)
       if (which === 'sequence' && !burnPending(this, t)) return void switchDescent(this);
       // (G, alone on a flight whose entry is steered: the entry's computer off, the bank the stick's, or on again)
-      if (which === 'guidance' && !burnPending(this, t) && steers(this)) return void switchEntry(this);
+      if (which === 'guidance' && !burnPending(this, t) && steers(this)) {
+        // (the computer's switch for the burns too: the rigid body flown up to now as it was, and a burn burning given to the hands)
+        const was = entrySteered(this, t);
+        if (this.hand?.att && this.fired === null && !this.burn) rigidTo(this, t);
+        switchEntry(this);
+        if (was && this.burn) this.burn.steering = null;
+        return;
+      }
       if (!this.free && this.fired === null) {
         freeHands(
           this,
           `Taken over: not the flight of ${this.day}. Steer with the flight controls and use the action button to fire the ${burnName(this).toLowerCase()}`,
         );
         if (which === 'sequence') switchDescent(this);
+        return;
+      }
+      // (G with the hands free: guidance steers a burn lit by hand and cuts it, sim/steering.ts; off, the hands fly it and cut it)
+      if (which === 'guidance' && this.free) {
+        // (the rigid body flown up to now as it was: guidance's aim, or none, from here)
+        if (this.hand?.att && this.fired === null && !this.burn) rigidTo(this, t);
+        this.guidance = !this.guidance;
+        if (!this.guidance && this.burn) this.burn.steering = null;
+        this.host.say?.(
+          'Guidance',
+          this.guidance
+            ? `On: a burn lit is steered and cut by the computer${this.burn ? ' from the next one lit' : ''}`
+            : 'Off: a burn lit is pointed by the hands and cut by them',
+        );
       }
       return;
     }
@@ -820,6 +893,8 @@ export class OrbitDeck extends Deck {
     const t = this.clock.t;
     const waiting = t <= 0 && !this.clock.running;
     if (!waiting && this.mine === null && t <= this.parting && !this.ascended) takeOver(this);
+    // (the rigid body flown up to now under the Hold it had: the other takes it from there)
+    if (this.hand?.att && this.fired === null && !this.burn) rigidTo(this, t);
     this.hold = !this.hold;
     if (waiting) this.mine = recordOnPad(this) ? null : 0;
   }
@@ -1160,7 +1235,12 @@ export class OrbitDeck extends Deck {
           q = passiveSpherePose(log[i]!.q, sample.passive.wind, sample.passive.alignment);
         } else if (t === null || sample.t <= Math.min(ship.off, parts)) {
           while (i + 1 < log.length && log[i + 1]!.t <= sample.t) i++;
-          q = log[i]!.q;
+          // (a rigid body's log keeps a state each half degree it turns: the samples between lie between them)
+          const after = log[i + 1];
+          q =
+            this.hand.att && after && after.t > log[i]!.t
+              ? nlerp(log[i]!.q, after.q, (sample.t - log[i]!.t) / (after.t - log[i]!.t))
+              : log[i]!.q;
         } else if (sample.t < parts) q = left;
         else {
           const base = sample.rotation ? multiply(sample.attitude, conjugate(sample.rotation.delta)) : sample.attitude;
@@ -1313,9 +1393,12 @@ export class OrbitDeck extends Deck {
   private rails(t: number): void {
     const run = this.run!;
     const on = this.liveNow ? this.railed !== null : run.samples.length > 0 && onRails(run.at(t) as LiveSample, this.asked.length > 0);
+    // (a rigid body turning or firing holds the clock to what its steps can keep up with: sim/attitude.ts `paceFor`)
+    const att = this.burn?.att ?? this.hand?.att;
+    const pace = att && this.attitude && this.fired === null ? paceFor(this.attitude, att, controlsOf(this)) : Number.POSITIVE_INFINITY;
     if (!on) {
       this.clock.endWarp();
-      this.clock.allow(RATES[RATES.length - 1]!);
+      this.clock.allow(Math.min(pace, RATES[RATES.length - 1]!));
       this.clock.hold(Number.NaN);
       return;
     }
@@ -1337,7 +1420,7 @@ export class OrbitDeck extends Deck {
       way.reach(t + 0.1 * go.rate);
       if (way.end !== end) go = fastest();
     }
-    this.clock.allow(go.rate);
+    this.clock.allow(Math.min(pace, go.rate));
     this.clock.hold(go.next);
   }
 
@@ -1442,6 +1525,10 @@ export class OrbitDeck extends Deck {
         'Not until it is still: nothing burning or to be set off, its turning damped'
       );
     }
+    // (the craft's own jets working, or a hand on them: each tick of its attitude is flown, so no warp)
+    const att = this.burn?.att ?? this.hand?.att;
+    if (att && this.attitude && this.fired === null && quietFor(this.attitude, att, controlsOf(this)) === 0)
+      return 'Not while the craft’s attitude jets are working';
     return offRails(run.at(this.clock.t) as LiveSample, this.asked.length > 0);
   }
 
@@ -1704,7 +1791,12 @@ export class OrbitDeck extends Deck {
     // axis is where it is drawn from: the path predicts from the one and draws at the other, viewer/path.ts `PathSample.flies`)
     const ended = t >= this.run.duration && !broken;
     const stack = t < this.parting;
-    const shown = ended || stack ? Object.assign({}, s, ended ? { down: true } : {}, stack ? { flies: s.r } : {}) : s;
+    // (the attitude jets' propellant, where they are hardware: the navball reads it beside the attitude)
+    const rcs = this.rcsAt(t);
+    const shown =
+      ended || stack || rcs
+        ? Object.assign({}, s, ended ? { down: true } : {}, stack ? { flies: s.r } : {}, rcs ? { gas: rcs.gas } : {})
+        : s;
     for (const fn of this.watchers) fn(shown, null, news);
     const set = (id: string, text: string) => this.put(id, text);
     const el = elementsOf(s.r, s.v);
@@ -1790,6 +1882,15 @@ export class OrbitDeck extends Deck {
       row.style.setProperty('--left', `${100 * fraction}%`);
       row.classList.toggle('low', aboard && fraction < 0.2);
     }
+    // (the attitude jets' propellant: full until a hand takes the attitude, then as the rigid body has drawn it)
+    if (rcs) {
+      const fraction = rcs.aboard ? rcs.gas.left / rcs.gas.full : 0;
+      const row = this.cells.get('rcs')!.parentElement!;
+      set('rcs', rcs.aboard ? (fraction < 0.002 ? 'Empty' : `${(fraction * 100).toFixed(0)} %`) : 'Gone');
+      set('rcs-kg', rcs.aboard && fraction >= 0.002 ? `${rcs.gas.left.toFixed(0)} kg` : '');
+      row.style.setProperty('--left', `${100 * fraction}%`);
+      row.classList.toggle('low', rcs.aboard && fraction < 0.2);
+    }
     const retro =
       this.fired !== null
         ? { on: this.fired, off: shipOf(this.planned!).off }
@@ -1864,7 +1965,7 @@ export class OrbitDeck extends Deck {
     const guidance = this.root.querySelector<HTMLButtonElement>('[data-do=guidance]')!;
     // (alone, with no burn to come and an entry steered to a place, guidance is the entry's computer)
     const steering = alone && !burnPending(this, t) && steers(this);
-    guidance.setAttribute('aria-pressed', String(steering ? entrySteered(this, t) : this.guidance && !this.free));
+    guidance.setAttribute('aria-pressed', String(steering ? entrySteered(this, t) : this.guidance && (!this.free || alone)));
     guidance.disabled = Boolean(this.padImpact);
     // (alone, with no burn to come, the sequencer is the descent's automatic sequence)
     const descending = alone && !burnPending(this, t);

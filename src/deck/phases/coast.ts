@@ -1,18 +1,24 @@
+import { advance, advanceTo, type AttitudeControls, type AttitudeState, attitudeStart, drift, sameControls } from '../../sim/attitude.ts';
 import { bankFlown } from '../../sim/entry.ts';
 import { coastOf, shipOf } from '../../sim/orbital.ts';
 import { clockAt } from '../../sim/plan.ts';
 import { aboutAxis, conjugate, multiply, normalize, type Quat, turn } from '../../sim/rigid.ts';
 import { attitudeBetween, between, descentRecords, either, orbitalFlown } from '../../sim/run.ts';
 import type { LiveSample } from '../../sim/vehicle.ts';
-import { DEG, type Vec3 } from '../../world/frames.ts';
+import { angleBetween, DEG, type Vec3 } from '../../world/frames.ts';
 import type { OrbitDeck } from '../orbitdeck.ts';
-import { burnName } from './burn.ts';
+import { burnAim, burnName } from './burn.ts';
 import { wall } from './surface.ts';
 
 /**
  * The coast (phase.ts): the spacecraft alone and its hand controls. The lock (`digit`), the hands freed (`freeHands`), the
  * attitude turned by the keys (`turnTo`, `push`) or as the record turned it in its periods by hand (`planHands`), and the
  * orbit taken from the record's (`takeOrbitAt`). Functions of the deck's state (orbitdeck.ts), each what was a method of it.
+ *
+ * Where the plan gives the craft's attitude jets as hardware (sim/attitude.ts `attitudeOf`), the attitude is a rigid body
+ * they turn (`rigidTo`): Hold is its autopilot, the keys ask it a rate; Hold off, the keys fire the jets and nothing damps.
+ * Its states are kept in the hand's log as they are flown (`logged`), not frame by frame. Where not, the keys turn the
+ * attitude at the hand controller's rate, as they always did.
  */
 
 const KEYS: Record<string, [axis: Vec3, sense: number]> = {
@@ -60,7 +66,9 @@ export function freeHands(deck: OrbitDeck, why: string | null): void {
   const attitude = attitudeBetween(a, b, k);
   const drift = deck.encounters?.contacts.rotation?.(t);
   const q = drift ? multiply(attitude, conjugate(drift.delta)) : attitude;
-  deck.hand = { q, t, log: [{ t, q }] };
+  const jets = deck.attitude;
+  const att = jets ? attitudeStart(jets, t, q) : undefined;
+  deck.hand = { q, t, log: [{ t, q, ...(att ? { att } : {}) }], ...(att ? { att, mass: deck.shipMass(t) } : {}) };
   if (why !== null) deck.refly();
   else drawHands(deck);
   // (the timer's burn given up: nothing of the descent happens until a hand fires the engine)
@@ -152,10 +160,78 @@ export function manualJetsGone(deck: OrbitDeck, t: number): boolean {
   return !!jets && !!brake && craft.joints.some((joint) => joint.gone.includes(brake.body) && joint.gone.includes(jets.body));
 }
 
+/** The hand's log keeps a state of the rigid body once it has turned this far from the last kept, radians, or after `LOG_EVERY` turning. */
+const LOG_TURN = 0.5 * DEG;
+const LOG_EVERY = 30;
+/** How often guidance's line before a burn is read, s of the flight's time (it turns with the orbit, a few hundredths of a degree a second). */
+const AIM_EVERY = 2;
+
+/** The keys held and the finger's stick as the attitude's controls (roll, pitch, yaw), with Hold as it stands; `aim` guidance's line. */
+export function controlsOf(deck: OrbitDeck, aim: AttitudeControls['aim'] = null): AttitudeControls {
+  const p = pushOf(deck);
+  return { hold: deck.hold, stick: [p.roll, p.pitch, p.yaw], aim, mass: deck.hand?.mass ?? 0 };
+}
+
+/** A state of the rigid body kept in the hand's log (what the run's samples are drawn from), where it has turned enough since the last. */
+export function logged(deck: OrbitDeck, s: AttitudeState): void {
+  const h = deck.hand!;
+  const last = h.log.at(-1)!;
+  const turned = angleBetween(turn(last.q, [1, 0, 0]), turn(s.q, [1, 0, 0])) + angleBetween(turn(last.q, [0, 1, 0]), turn(s.q, [0, 1, 0]));
+  if (turned > LOG_TURN || (s.t - last.t >= LOG_EVERY && turned > 1e-9)) h.log.push({ t: s.t, q: s.q, att: s });
+}
+
+/**
+ * The rigid body flown on to `t` (sim/attitude.ts `advance`: whole steps, so what it comes to does not depend on the
+ * frames), the attitude shown at `t` flown free from the last of them. Looking back, it is shown as it was flown (the
+ * log); a hand on the controls there takes the history up from the state kept there, and what came after it goes.
+ * Once the module with the jets has gone, nothing more is flown.
+ */
+export function rigidTo(deck: OrbitDeck, t: number): void {
+  // (while a burn burns its own ticks fly the attitude with it: phases/burn.ts)
+  if (deck.burn) return;
+  const h = deck.hand!;
+  const a = deck.attitude!;
+  // (guidance on: the autopilot turns the craft to the next burn's line ahead of it, as the computer did before ignition;
+  // the line read every `AIM_EVERY` of the flight's time, each instant's the same however often it is asked)
+  const memo = new Map<number, Vec3 | null>();
+  const aim = (at: number): Vec3 | null => {
+    const k = Math.floor(at / AIM_EVERY) * AIM_EVERY;
+    if (!memo.has(k)) memo.set(k, deck.guidesBurns(k) ? burnAim(deck, k) : null);
+    return memo.get(k)!;
+  };
+  const c = controlsOf(deck, aim);
+  let att = h.att!;
+  if (t < att.t - 1e-9) {
+    let i = h.log.length - 1;
+    while (i > 0 && h.log[i]!.t > t) i--;
+    if (!c.stick.some((x) => x !== 0)) {
+      h.t = t;
+      h.q = h.log[i]!.q;
+      return;
+    }
+    h.log.length = i + 1;
+    att = h.log[i]!.att ?? att;
+  }
+  const until = manualJetsGone(deck, t) ? Math.min(t, deck.parts) : t;
+  // (each step kept in the log where it has turned, and counted among the deck's ticks: a kept run is checked against them)
+  const step = (s: AttitudeState) => {
+    logged(deck, s);
+    h.steps = (h.steps ?? 0) + 1;
+  };
+  // (controls changed since the deck last followed: what they asked is flown to that instant, and the new taken from it)
+  if (h.ctl && !sameControls(h.ctl, c) && h.t > att.t && h.t <= until) att = advanceTo(a, att, h.ctl, h.t, step);
+  att = advance(a, att, c, until, step);
+  h.att = att;
+  h.ctl = c;
+  h.t = t;
+  h.q = drift(a, att, Math.max(att.t, until), c.mass);
+}
+
 /** Turn the hand's attitude on to `t` by the keys held and the finger's stick. */
 export function turnTo(deck: OrbitDeck, t: number): void {
   const h = deck.hand;
   if (!h || deck.fired !== null) return;
+  if (h.att) return void rigidTo(deck, t);
   const until = manualJetsGone(deck, t) ? deck.parts : t;
   const from = h.t;
   const dt = until - from;

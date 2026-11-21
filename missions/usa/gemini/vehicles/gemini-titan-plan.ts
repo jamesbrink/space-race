@@ -38,6 +38,7 @@ import type {
   ThrusterSet,
 } from '../../../../src/sim/plan.ts';
 import type { Confidence, Curve, Heating, ShedBody } from '../../../../src/types.ts';
+import { OAMS_ATTITUDE_SET } from './oams-attitude.ts';
 
 /** One engine as the record has it: one chamber's figures, `count` alike. */
 export interface TitanEngine {
@@ -385,7 +386,15 @@ export function geminiTitanPlan(o: GeminiTitanRecord): FlightPlan {
       mode: 'automatic',
       authority: o.ascent.steering.authority,
     },
-    { id: 'oams', label: 'Attitude by hand', body: 'equipment-section', does: ['rotation', 'translation'], mode: 'manual', rate: o.hand },
+    {
+      id: 'oams',
+      label: 'Attitude by hand',
+      body: 'equipment-section',
+      does: ['rotation', 'translation'],
+      mode: 'manual',
+      rate: o.hand,
+      ...OAMS_ATTITUDE_SET,
+    },
     { id: 'reentry-control', label: 'Re-entry control by hand', body: 'reentry-module', does: ['rotation'], mode: 'manual', rate: o.hand },
   ];
   const chute = (name: string, x: { dragArea: Measure; fills: Measure }, instead?: string): ChuteDef => ({

@@ -236,6 +236,12 @@ stirrup posture's and nothing more.
 | Retrograde rockets | about 2,500 lbf for 5.5 s each, fired one after another | documented (press kit, p. 8) |
 | Propellants | monomethylhydrazine and nitrogen tetroxide | documented (SEDR VIII, p. 8-260) |
 
+In the simulator the eight attitude chambers turn the spacecraft alone in orbit as a rigid body (`oams-attitude.ts`,
+sim/attitude.ts): each numbered as Figure 8-72 numbers it and opened by the commands its table gives it (3, 4, 7 and 8 for
+yaw and for roll), 23 lb at 258 s (SP-121, Table 4-I), the attitude control electronics' 18 ms least pulse (p. 8-28), its
+rate command's damping to 0.2 deg/s (p. 8-23) and the horizon scan mode's 5 degree deadband (p. 8-24) for the hold. Where
+they stand on the rim, the load they draw on and the spacecraft's moments of inertia are estimated.
+
 ## Sections
 
 | Node | What it is |
@@ -315,6 +321,12 @@ Where a part's own words tell what happened on Gemini-Titan 3, a later flight gi
 The three late ships use the common cabin, shingles, docking nose and adapter framework. Gemini X report figures 3.1-2 and 3.1-3 place the new 22-inch oxidizer sphere at the old primary oxygen mount. A single primary oxygen tank on the fuel-cell module served both crew and cells. Spacecraft 10 and 11 also had a cylindrical reserve oxidizer tank; spacecraft 12 deleted it. The main sphere remains on all three. Each ship's launch fit and evidence limits are recorded with [spacecraft 10](../flights/gt-10/spacecraft.md), [spacecraft 11](../flights/gt-11/spacecraft.md) and [spacecraft 12](../flights/gt-12/spacecraft.md).
 
 ## What the model gets wrong or leaves out
+
+- **The attitude jets in the simulator are placed by eye.** Figure 8-72 draws the eight attitude chambers on the adapter's
+  aft rim and dimensions none: they are taken in four pairs at 45 degrees from the vertical, 58 in from the axis and 85 in
+  aft of the centre of mass, each firing straight out. The spacecraft's moments of inertia (a solid frustum's, 2,700 and
+  8,000 kg m² at 3,600 kg) and its load (spacecraft 3's planned 366 lb, taken for every ship) are estimated; the
+  translation chambers, the re-entry control system and what the jets push the craft along are not flown.
 
 - **The pressure vessel is fitted, not drawn** ("Crew station", above). Its flat sides, its
   floor and where the seats and panels stand in it are what two seated men, the documented seat
