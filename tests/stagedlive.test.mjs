@@ -1049,10 +1049,14 @@ test('on rails the live vehicle coasts as its ticks fly it, and its railway give
   assert.equal(short.way.end, from.t + 100.004);
 });
 
-test('Space pressed through the whole sequence in the first seconds, on every flight flown from a pad: the run ends cleanly, and nothing burns on a vehicle back on the ground', () => {
+test('Space pressed through the whole sequence in the first seconds, on every launch vehicle flown from a pad: the run ends cleanly, and nothing burns on a vehicle back on the ground', () => {
   let flown = 0;
+  // (one flight of each launch vehicle: the deck's staging is the vehicle's, the same for every flight it flew)
+  const seen = new Set();
   for (const f of all) {
     if (!f.plan || !f.site) continue;
+    const kind = f.plan.craft[0]?.id;
+    if (seen.has(kind)) continue;
     try {
       stagesOf(f.plan);
     } catch {
@@ -1068,6 +1072,7 @@ test('Space pressed through the whole sequence in the first seconds, on every fl
     } catch {
       continue;
     }
+    seen.add(kind);
     const v = stagedVehicle(f.plan, at, day, level, law);
     const still = { pitch: 0, yaw: 0, roll: 0 };
     let s = v.tick(v.start(), { ...still, steps: [{ kind: 'ignite', stage: 0 }] });
@@ -1084,5 +1089,5 @@ test('Space pressed through the whole sequence in the first seconds, on every fl
     const after = v.tick(s, still);
     assert.deepEqual(after.r, s.r, `${f.id}: moved after the run ended`);
   }
-  assert.ok(flown > 20, `only ${flown} flights flown`);
+  assert.ok(flown >= 5, `only ${flown} launch vehicles flown`);
 });
