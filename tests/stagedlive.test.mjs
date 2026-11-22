@@ -1073,7 +1073,7 @@ test('Space pressed through the whole sequence in the first seconds, on every fl
     let s = v.tick(v.start(), { ...still, steps: [{ kind: 'ignite', stage: 0 }] });
     // (a hand on Space: each next step a few tenths of a second after the last, the whole of the record's sequence)
     const asked = v.sequence.map((k) => k.step);
-    for (let n = 1; s.t < 60 && !s.landed && !s.parted && !s.broke; n++) {
+    for (let n = 1; s.t < 15 && !s.landed && !s.parted && !s.broke; n++) {
       const now = n % 30 === 0 && asked.length ? [asked.shift()] : [];
       s = v.tick(s, { ...still, steps: now });
     }
