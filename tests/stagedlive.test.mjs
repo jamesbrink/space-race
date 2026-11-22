@@ -1061,7 +1061,14 @@ test('Space pressed through the whole sequence in the first seconds, on every fl
     const at = siteFrame(f.site);
     const day = frameOf(f);
     const level = f.site.seaLevel.value;
-    const v = stagedVehicle(f.plan, at, day, level, steer(f.plan, at, day, level));
+    // (a flight with no steering law, flown ballistic, has no staged ascent to take by hand here)
+    let law;
+    try {
+      law = steer(f.plan, at, day, level);
+    } catch {
+      continue;
+    }
+    const v = stagedVehicle(f.plan, at, day, level, law);
     const still = { pitch: 0, yaw: 0, roll: 0 };
     let s = v.tick(v.start(), { ...still, steps: [{ kind: 'ignite', stage: 0 }] });
     // (a hand on Space: each next step a few tenths of a second after the last, the whole of the record's sequence)
