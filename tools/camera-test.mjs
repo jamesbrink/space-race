@@ -73,6 +73,15 @@ async function open({ model = 'vehicle', width = 1440, height = 900, touch = fal
     const v = (p) => [p.x, p.y, p.z];
     const tmp = st.camera.position.clone();
     window.__frames = [];
+    // Lit, with the record's guidance and sequence flying the rest: Fly is taken by hand (deck.ts `START`: both off), so
+    // a sequence that wants the record's flight throws both switches on first (left off, nothing stages it and the clock
+    // never comes to the separation)
+    window.__flyRecord = () => {
+      const c = window.sr.cockpit;
+      if (!c.guidance) c.command('guidance');
+      if (!c.sequence) c.command('sequence');
+      c.command('next');
+    };
     window.__probe = () => {
       const c = st.camera;
       const e = c.matrixWorld.elements;
@@ -179,7 +188,9 @@ function separation(frames) {
   const sep = frames.findIndex((f) => f.shed.some((s) => s[0] === 1));
   check(
     sep > 0,
-    `the booster left at T+${frames[Math.max(0, sep)]?.clock.toFixed(2)} and is drawn (recorded from T+${frames[0]?.clock.toFixed(2)})`,
+    sep < 0
+      ? `the booster left and is drawn: it never left, from T+${frames[0]?.clock.toFixed(2)} to T+${frames.at(-1)?.clock.toFixed(2)}`
+      : `the booster left at T+${frames[sep]?.clock.toFixed(2)} and is drawn (recorded from T+${frames[0]?.clock.toFixed(2)})`,
   );
   if (sep <= 0) return;
   // the booster as seen from the capsule: it drifts off at a few metres a second, and never jumps
@@ -364,7 +375,7 @@ const sequences = {
     await h.page.evaluate(() => {
       const sr = window.sr;
       sr.cockpit.eventAt = -1e9;
-      sr.cockpit.command('next'); // ignition: the sequencer and the autopilot fly the rest
+      window.__flyRecord(); // ignition: the sequencer and the autopilot fly the rest
       sr.stage.setCamera('chase');
       sr.clock.setRate(25);
       sr.clock.play(true);
@@ -461,6 +472,11 @@ const sequences = {
     await tried('after ignition');
     await h.page.keyboard.press('Escape');
     await h.wait(2500);
+    // (left by Escape, the flight is kept to resume: thrown away, as the next sequence starts its own from the pad)
+    await h.page.evaluate(() => {
+      window.sr.cockpit.end();
+      window.sr.clock.reset();
+    });
   },
   // The map (M, camera/map.ts): from the chase view of a flight in the air, with the real key, the wheel and the mouse.
   // It takes in all of the path; its zoom pulls straight back from what it turns about, which is the vehicle (carried
@@ -475,7 +491,7 @@ const sequences = {
     await h.page.evaluate(() => {
       const sr = window.sr;
       sr.cockpit.eventAt = -1e9;
-      sr.cockpit.command('next');
+      window.__flyRecord();
       sr.stage.setCamera('chase');
       sr.clock.setRate(25);
       sr.clock.play(true);
