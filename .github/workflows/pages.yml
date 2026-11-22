@@ -68,7 +68,7 @@ jobs:
           node-version: 24
       - run: node --test tests/layout.test.mjs
 
-  # typecheck, lint, format check: the first three parts of the `pnpm check` people run before a commit
+  # typecheck, lint, format check, hygiene: the first parts of the `pnpm check` people run before a commit
   lint:
     needs: changes
     if: needs.changes.outputs.code == 'true'
@@ -88,7 +88,7 @@ jobs:
           version: 0.17.3
           args: --version
       - run: pnpm install --frozen-lockfile
-      - run: pnpm typecheck && pnpm lint && pnpm format:check
+      - run: pnpm typecheck && pnpm lint && pnpm format:check && pnpm hygiene
 
   # the fourth part, `pnpm test`, on several runners. Every file but one, three ways (node's own sharding):
   test:
