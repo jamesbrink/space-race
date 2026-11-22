@@ -1084,7 +1084,8 @@ test('Space pressed through the whole sequence in the first seconds, on every la
     }
     flown++;
     if (!s.landed) continue;
-    for (let i = 0; i < stagesOf(f.plan).length; i++) assert.equal(v.burning(s, i), false, `${f.id}: stage ${i} still burning on the ground`);
+    for (let i = 0; i < stagesOf(f.plan).length; i++)
+      assert.equal(v.burning(s, i), false, `${f.id}: stage ${i} still burning on the ground`);
     assert.equal(v.thrust(s), 0, `${f.id}: thrust on the ground`);
     const after = v.tick(s, still);
     assert.deepEqual(after.r, s.r, `${f.id}: moved after the run ended`);

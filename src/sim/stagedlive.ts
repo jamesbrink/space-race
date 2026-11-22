@@ -414,7 +414,8 @@ export function stagedVehicle(
    */
   const ended = (s: StagedState, t: number): StagedState => {
     let craft = s.craft;
-    for (const [id, e] of Object.entries(craft.engines)) if (Number.isFinite(e.lit) && !Number.isFinite(e.out)) craft = burnOut(craft, id, t);
+    for (const [id, e] of Object.entries(craft.engines))
+      if (Number.isFinite(e.lit) && !Number.isFinite(e.out)) craft = burnOut(craft, id, t);
     return craft === s.craft ? s : { ...s, craft, ...viewOf(craft) };
   };
 
