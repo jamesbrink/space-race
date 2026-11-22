@@ -17,10 +17,10 @@ const LONGEST = 1500;
 
 /** This file names every pattern it looks for: it is not held to them. */
 const SELF = 'tools/hygiene.mjs';
-const tracked = git('ls-files').split('\n').filter((f) => f && f !== SELF);
-const files = args.has('--staged')
-  ? git('diff', '--cached', '--name-only', '--diff-filter=ACMR').split('\n').filter(Boolean)
-  : tracked;
+const tracked = git('ls-files')
+  .split('\n')
+  .filter((f) => f && f !== SELF);
+const files = args.has('--staged') ? git('diff', '--cached', '--name-only', '--diff-filter=ACMR').split('\n').filter(Boolean) : tracked;
 const checked = files.filter((f) => f !== SELF);
 const code = (f) => /\.(ts|mjs|js)$/.test(f) && !f.startsWith('public/') && !f.includes('node_modules/');
 const src = (f) => f.startsWith('src/') && f.endsWith('.ts');
@@ -39,7 +39,12 @@ const HARD = [
     hit: (f) => /(^|\/)_[^_/][^/]*\.(mjs|js|ts|py)$/.test(f) || /\.(orig|rej)$/.test(f),
     why: 'a scratch or merge-leftover file (tools/_*.mjs, *.orig, *.rej) is not committed',
   },
-  { name: 'console.log', applies: src, hit: (_, t) => /\bconsole\.log\(/.test(t), why: 'src/ logs through console.debug or ui.say, not console.log' },
+  {
+    name: 'console.log',
+    applies: src,
+    hit: (_, t) => /\bconsole\.log\(/.test(t),
+    why: 'src/ logs through console.debug or ui.say, not console.log',
+  },
   {
     name: 'type escapes',
     applies: (f) => code(f),
@@ -86,7 +91,11 @@ const measure = (list) => {
 
 if (args.has('--write')) {
   const now = measure(tracked);
-  const sorted = Object.fromEntries(Object.keys(now).sort().map((f) => [f, now[f]]));
+  const sorted = Object.fromEntries(
+    Object.keys(now)
+      .sort()
+      .map((f) => [f, now[f]]),
+  );
   writeFileSync(BASELINE, `${JSON.stringify(sorted, null, 2)}\n`);
   console.log(`hygiene: baseline written, ${Object.keys(now).length} files over an allowance`);
   process.exit(0);
@@ -115,7 +124,9 @@ for (const [f, m] of Object.entries(now)) {
   }
 }
 if (failures.length) {
-  console.error(`hygiene: ${failures.length} failure${failures.length === 1 ? '' : 's'} (docs/agents/hygiene.md)\n  ${failures.join('\n  ')}`);
+  console.error(
+    `hygiene: ${failures.length} failure${failures.length === 1 ? '' : 's'} (docs/agents/hygiene.md)\n  ${failures.join('\n  ')}`,
+  );
   process.exit(1);
 }
 if (!args.has('--quiet')) console.log(`hygiene: ${checked.length} files checked, nothing new`);
