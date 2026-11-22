@@ -1048,3 +1048,34 @@ test('on rails the live vehicle coasts as its ticks fly it, and its railway give
   short.way.reach(from.t + 1000);
   assert.equal(short.way.end, from.t + 100.004);
 });
+
+test('Space pressed through the whole sequence in the first seconds, on every flight flown from a pad: the run ends cleanly, and nothing burns on a vehicle back on the ground', () => {
+  let flown = 0;
+  for (const f of all) {
+    if (!f.plan || !f.site) continue;
+    try {
+      stagesOf(f.plan);
+    } catch {
+      continue;
+    }
+    const at = siteFrame(f.site);
+    const day = frameOf(f);
+    const level = f.site.seaLevel.value;
+    const v = stagedVehicle(f.plan, at, day, level, steer(f.plan, at, day, level));
+    const still = { pitch: 0, yaw: 0, roll: 0 };
+    let s = v.tick(v.start(), { ...still, steps: [{ kind: 'ignite', stage: 0 }] });
+    // (a hand on Space: each next step a few tenths of a second after the last, the whole of the record's sequence)
+    const asked = v.sequence.map((k) => k.step);
+    for (let n = 1; s.t < 60 && !s.landed && !s.parted && !s.broke; n++) {
+      const now = n % 30 === 0 && asked.length ? [asked.shift()] : [];
+      s = v.tick(s, { ...still, steps: now });
+    }
+    flown++;
+    if (!s.landed) continue;
+    for (let i = 0; i < stagesOf(f.plan).length; i++) assert.equal(v.burning(s, i), false, `${f.id}: stage ${i} still burning on the ground`);
+    assert.equal(v.thrust(s), 0, `${f.id}: thrust on the ground`);
+    const after = v.tick(s, still);
+    assert.deepEqual(after.r, s.r, `${f.id}: moved after the run ended`);
+  }
+  assert.ok(flown > 20, `only ${flown} flights flown`);
+});
