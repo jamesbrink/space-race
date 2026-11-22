@@ -1,0 +1,17 @@
+#!/bin/sh
+# Before a commit (docs/agents/hygiene.md): the staged files formatted and linted, and the hygiene rules held.
+# SKIP_HOOKS=1 skips it (say why in the commit).
+[ "${SKIP_HOOKS:-}" = 1 ] && exit 0
+set -e
+root=$(git rev-parse --show-toplevel)
+cd "$root"
+biome=node_modules/.bin/biome
+if [ -x "$biome" ]; then
+  "$biome" check --staged --no-errors-on-unmatched --files-ignore-unknown=true
+fi
+staged_py=$(git diff --cached --name-only --diff-filter=ACMR -- '*.py')
+if [ -n "$staged_py" ] && command -v ruff >/dev/null 2>&1; then
+  # shellcheck disable=SC2086
+  ruff check $staged_py && ruff format --check $staged_py
+fi
+node tools/hygiene.mjs --staged --quiet
