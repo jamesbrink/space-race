@@ -273,6 +273,40 @@ export function level(
 }
 
 /**
+ * The burn a firing made on the target asks for (`toward`: a reach, a level or a coelliptic burn; a station is held, not
+ * solved), lit at `t` from `state` at `accel` m/s^2, flown ahead by `ahead`: `aimed`, the instant a reach is aimed at,
+ * and the record's own impulse (its line, and its size, m/s), each solve's first guess. Null where none is to be had.
+ */
+export function solveToward(
+  toward: Exclude<Pursuit, { station: unknown }>,
+  ahead: Ahead,
+  target: Target,
+  state: State,
+  t: number,
+  accel: number,
+  aimed: number,
+  recorded: { line: Vec3; velocity: number },
+): Burn | null {
+  if ('reach' in toward)
+    return reach(
+      ahead,
+      target,
+      state,
+      t,
+      accel,
+      { ahead: toward.reach.ahead.value, above: toward.reach.above.value },
+      aimed,
+      scale(recorded.line, recorded.velocity),
+    );
+  if ('level' in toward) {
+    const want = 'ahead' in toward.level ? { ahead: toward.level.ahead.value } : { above: toward.level.above.value };
+    return level(ahead, target, state, t, accel, want, toward.at.value, recorded.velocity * (dot(recorded.line, state.v) < 0 ? -1 : 1));
+  }
+  const dv = coelliptic(target, state, t, undefined, 'planar' in toward && toward.planar === true);
+  return dv && { line: unit(dv), length: length(dv) / accel };
+}
+
+/**
  * The change of velocity that leaves a craft on an orbit of the target's shape (coelliptic: the same centre and the same
  * line of apsides, the height between the two the same all the way round), m/s: the target is taken where it passes
  * over the craft's place (a little before or after now, by the angle between them), and the craft is given the axis

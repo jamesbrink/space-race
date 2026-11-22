@@ -28,8 +28,8 @@ import {
   type PublishedOrbit,
   periodsOf,
 } from '../world/meanelements.ts';
-import { elementsOf, gravity, planeThrough, type State, sunlit } from '../world/orbit.ts';
 import { principalAxes } from '../world/moon.ts';
+import { elementsOf, gravity, planeThrough, type State, sunlit } from '../world/orbit.ts';
 import { ratioOf } from '../world/thermosphere.ts';
 import { julianDate } from '../world/time.ts';
 import { airAt, airDrag } from './air.ts';
@@ -57,14 +57,12 @@ import {
 import {
   type Ahead,
   type BurnContext,
-  coelliptic,
-  level,
   elevationOf,
   flownFrom,
   needsTarget,
   publishedState,
-  reach,
   solveBurn,
+  solveToward,
   stationPush,
   steeredKind,
   type Target,
@@ -1899,34 +1897,7 @@ export function flyOrbit(
       burns.push({ lit: m.lit, cut: m.cut, on: t, off: m.off, velocity: 0, solved: true });
       return;
     }
-    const solved = !toward
-      ? null
-      : 'reach' in toward
-        ? reach(
-            flyAhead,
-            pursued!,
-            state,
-            t,
-            size,
-            { ahead: toward.reach.ahead.value, above: toward.reach.above.value },
-            aimedAt[i]!,
-            scale(record.line, record.velocity),
-          )
-        : 'level' in toward
-          ? level(
-              flyAhead,
-              pursued!,
-              state,
-              t,
-              size,
-              'ahead' in toward.level ? { ahead: toward.level.ahead.value } : { above: toward.level.above.value },
-              toward.at.value,
-              record.velocity * (dot(record.line, state.v) < 0 ? -1 : 1),
-            )
-          : (() => {
-              const dv = coelliptic(pursued!, state, t, undefined, 'planar' in toward && toward.planar === true);
-              return dv && { line: unit(dv), length: length(dv) / size };
-            })();
+    const solved = toward && solveToward(toward, flyAhead, pursued!, state, t, size, aimedAt[i]!, record);
     if (!solved) {
       burns.push({ ...record, ...(m.fuel === undefined ? {} : { fuel: m.fuel }) });
       return;

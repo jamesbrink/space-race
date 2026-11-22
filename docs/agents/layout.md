@@ -410,6 +410,7 @@ src/
   sim/attitude.ts                     a spacecraft's attitude in orbit as a rigid body its own jets turn (`ThrusterSet.chambers`, the record's mass properties): Hold its autopilot (deadbands, rate damping, minimum impulse), the keys a rate or the jets direct; stepped so a kept run flies again the same
   sim/lever.ts                        the throttle lever as a hand has it, and every liquid engine's hand range (`handRange`: its own, or the game's where it ran at one thrust)
   sim/misses.ts                       the recorded misses: where a flown run falls outside a documented check's tolerance, and why
+  sim/misses-reasons.ts               why each recorded miss stands: the reasoning in full that the table's `why` gives
   sim/heating.ts                      the air's heat: stagnation-point heat flux (Sutton and Graves) and each named surface's temperature as a lump
   sim/loads.ts                        what a structure is limited by (q alpha, load factors), and when it gives
   sim/mechanism.ts                    a mechanism on a programme that a hand can take (a periscope and its door): how far out it is at an instant

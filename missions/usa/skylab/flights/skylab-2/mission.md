@@ -91,6 +91,7 @@ orbit's ball is so (`orbit.radius`).
 
 ## What the plan gets wrong or leaves out
 
+- The S-IVB is flown on from the spacecraft's separation as a passive body of its own (saturn-ib-plan.ts), at its mass at first motion less its usable propellant, nothing taken off for what it vented; its passivation and the burns that brought it down in the Pacific at 21,607 s (Events, item 145) are not flown, so it stays in orbit.
 - The burns' instants before the terminal phase, and every burn's line, are the profile's, not this flight's.
 - The spacecraft's mass is the flight evaluation's at separation, less what the run burns; its service propulsion load
   (2,200 kg) is estimated.

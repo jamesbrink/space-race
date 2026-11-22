@@ -5,11 +5,8 @@
   "src/deck/orbitdeck.ts": {
     "lines": 2136
   },
-  "src/sim/misses.ts": {
-    "lines": 1754
-  },
   "src/sim/orbital.ts": {
-    "lines": 2434
+    "lines": 2418
   },
   "src/sim/staged.ts": {
     "lines": 2278

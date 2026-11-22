@@ -33,8 +33,15 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
           ? ['stage:1', 'modules']
           : flight.id.includes('/gemini/')
             ? ['staging-nuts', 'equipment-section-release', 'retro-section-release']
-            : flight.id === 'usa/apollo/apollo-7'
-              ? ['sib-separation', 'les-jettison', 'cm-sm-separation', 'forward-shield-jettison']
+            : // (a Saturn IB's: saturn-ib-flies.ts; its S-IVB too, where it is not flown on as the target, plan.ts `target`)
+              flight.plan.craft[0].joints.some((j) => j.id === 'sib-separation')
+              ? [
+                  'sib-separation',
+                  'les-jettison',
+                  ...(flight.plan.target?.joint === 'spacecraft-separation' ? [] : ['spacecraft-separation']),
+                  'cm-sm-separation',
+                  'forward-shield-jettison',
+                ]
               : // (a Saturn V's stages, its aft interstage and its tower: saturn-v-plan.ts; and one flown on to the sea, the
                 // S-IVB the spacecraft leaves, the service module and the forward heat shield: apollo-lunar-plan.ts)
                 flight.plan.craft[0].joints.some((j) => j.id === 'sii-separation')
@@ -208,7 +215,8 @@ for (const file of globSync('missions/*/*/flights/*/flight.ts', { cwd: new URL('
     const run = orbitalRecord(flight);
     const at = run.samples.find((s) => !s.riding);
     const target = flight.flies.target;
-    if (flight.id === 'usa/apollo/apollo-7') {
+    // (a stage flown on as the target its burns are made on, with a track of its own: Apollo 7's S-IVB)
+    if (target?.drop) {
       assert.ok(target, 'the released S-IVB has a rendezvous track');
       const ascent = Ascent.of(flight);
       const index = flight.flies.drops.findIndex((drop) => drop.on === target.drop);
