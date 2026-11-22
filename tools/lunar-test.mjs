@@ -10,13 +10,13 @@
 //   hop      on foot as the first of the crew: a standing jump lifts the feet JUMP (2.4 m: walk.ts JUMP_HEIGHT under the
 //            Moon's 1.62 m/s^2) and the walker falls by the Moon's gravity
 //   back     `sr.offMoon` stands the flight at its pad again, under the Earth's gravity, and what the GPU holds is back to
-//            within SLACK of what it held before
+//            within SLACK of what it held before, its geometries and its textures
 // --shots writes stills: the LM from across the site, from beside it, the walker's eyes on the Earth, and the light trace.
 import assert from 'node:assert/strict';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { skyAt } from '../src/world/moonsky.ts';
 import { fromSelenographic, MOON_RADIUS } from '../src/world/moon.ts';
+import { skyAt } from '../src/world/moonsky.ts';
 import { julianDate } from '../src/world/time.ts';
 import { checks, launch, open, opt, url as urlOf } from './browser.mjs';
 
@@ -262,6 +262,15 @@ try {
   const after = await held();
   console.log(`  (back at the pad the GPU holds ${JSON.stringify(after)}; before the Moon ${JSON.stringify(before)})`);
   check(after.geometries <= before.geometries * SLACK, 'the geometries are back to their level');
+  // (the pad's place is built again on the way back: what the last one made is let go with it, the crew's bones' textures
+  // and the globe's stand-ins for maps among it, which were kept, four more each time: dispose.ts, globe.ts `fill`. The
+  // first trip keeps what is made once and kept for good, the suits worn there and the shadows' caches: the second keeps nothing)
+  const again = await page.evaluate(async ([site, t]) => (await sr.onMoon(site, t)) && sr.offMoon(), [siteId, at]);
+  const twice = await held();
+  check(
+    again === true && twice.textures <= after.textures + 1,
+    `the place's textures are let go with it: ${twice.textures} after a second trip, ${after.textures} after the first`,
+  );
   // (what the setting made, by its materials' names, and the targets it drew into, which have none: the crew's own suits are
   // the flight's models, kept for the pad, and three's own tables are its for good)
   const kept = await page.evaluate(() => [...window.__textures.values()].filter((s) => s.startsWith('moon ')).map((s) => s.slice(5)));

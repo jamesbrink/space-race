@@ -1,5 +1,6 @@
-import { DEEP, GLINT_GLSL, ICE, LAND, seaSlopes, WATER_GLSL } from './earth-surface.ts';
 import * as THREE from 'three';
+import type { Wave } from '../sim/sea.ts';
+import { EARTH as BODY, EARTH_SPHERE } from '../world/bodies.ts';
 import {
   add,
   dot,
@@ -12,33 +13,32 @@ import {
   sub,
   type Vec3,
 } from '../world/frames.ts';
-import { EARTH as BODY, EARTH_SPHERE } from '../world/bodies.ts';
 import { planeAt, surfaceDirection } from '../world/region.ts';
 import { RELIEF_GLSL } from '../world/relief.ts';
 import { ellipsoidNormal, gaussianRadius, horizonDistance, seaPoint } from '../world/surface.ts';
 import { type Clouds, cloudCutGlsl, cloudMiddle, uCloudsLeft } from './air.ts';
 import { ATMOSPHERE_GLSL, atmosphereUniforms } from './atmosphere.ts';
+import { plumbIn } from './camera/maths.ts';
 import { type Day, HIGH_HEIGHT } from './day.ts';
+import { DEEP, GLINT_GLSL, ICE, LAND, seaSlopes, WATER_GLSL } from './earth-surface.ts';
 import { fieldAs } from './field.ts';
 import { fillGlobe, RINGS, remakeAfter, SPOKES } from './globemesh.ts';
-import type { Wave } from '../sim/sea.ts';
+import { vec3 } from './glsl.ts';
+import type { Beyond } from './land.ts';
+import { later } from './later.ts';
+import { colourCube, colourCubeOf, colourMap, cubeOf, layersOf, packCube, packFace, packLayer } from './pack.ts';
 import {
   chopSlope,
   fillSwell,
   MESH_FADE,
-  swellHeight,
   PIXEL_FADE,
   SWELL_HALF,
   type SwellFrame,
   swellGeometry,
   swellGlsl,
+  swellHeight,
   swellHoleFrame,
 } from './swell.ts';
-import { plumbIn } from './camera/maths.ts';
-import { vec3 } from './glsl.ts';
-import type { Beyond } from './land.ts';
-import { later } from './later.ts';
-import { colourCube, colourCubeOf, colourMap, cubeOf, layersOf, packCube, packFace, packLayer } from './pack.ts';
 import { tier } from './tier.ts';
 import { cumulusBiasGlsl, cumulusCellsGlsl, deckHeightGlsl, highOf, sheetsGlsl, weatherGlsl } from './weather.ts';
 import { type WeatherMap, weatherSlots } from './weathermap.ts';
@@ -403,13 +403,27 @@ function cube(faces: (THREE.DataTexture | ImageBitmap)[]): THREE.CubeTexture {
   return texture;
 }
 
+/** What `empty` made: a globe's own, let go when the maps it stands in for take its slot (`fill`). */
+const placeholders = new WeakSet<THREE.Texture>();
+/** Put `texture` in `slot`, and let go of the placeholder it held (`empty`): nobody else reads it, and dropped with the place it would not be, as it is no longer in the slot (dispose.ts). */
+function fill(slot: THREE.IUniform, texture: THREE.Texture): void {
+  const was = slot.value as THREE.Texture | null;
+  slot.value = texture;
+  if (was && was !== texture && placeholders.delete(was)) was.dispose();
+}
+
 /** A cube of one value everywhere (by default 0, which the land's map reads as sea), or of one colour, until the maps arrive. */
 function empty(value: number | THREE.Color = 0, colorSpace: THREE.ColorSpace = THREE.NoColorSpace): THREE.CubeTexture {
-  if (typeof value === 'number') return cube(FACES.map(() => new THREE.DataTexture(new Uint8Array([value]), 1, 1, THREE.RedFormat)));
+  if (typeof value === 'number') {
+    const texture = cube(FACES.map(() => new THREE.DataTexture(new Uint8Array([value]), 1, 1, THREE.RedFormat)));
+    placeholders.add(texture);
+    return texture;
+  }
   const rgba = new Uint8Array([Math.round(value.r * 255), Math.round(value.g * 255), Math.round(value.b * 255), 255]);
   const texture = cube(FACES.map(() => new THREE.DataTexture(rgba, 1, 1, THREE.RGBAFormat)));
   texture.format = THREE.RGBAFormat;
   texture.colorSpace = colorSpace;
+  placeholders.add(texture);
   return texture;
 }
 const blank2D = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1, THREE.RGBAFormat);
@@ -748,7 +762,7 @@ export class Globe {
           async ([relief, colour]) => {
             await packCube(renderer, this.maps!, relief, 2);
             // (the land's colours, six faces tools/globe-surface.mjs writes: copied in a piece a frame, and shown when all are in)
-            this.uniforms.uGlobeColour!.value = await colourCube(renderer, colour);
+            fill(this.uniforms.uGlobeColour!, await colourCube(renderer, colour));
           },
         ),
       ];
@@ -775,7 +789,7 @@ export class Globe {
       colour ??= colourCubeOf(face.width);
       await packFace(renderer, colour, i, face, null, i === FACES.length - 1);
     }
-    this.uniforms.uGlobeColour!.value = colour!.texture;
+    fill(this.uniforms.uGlobeColour!, colour!.texture);
     if (this.region) await this.loadSurface(this.region);
     this.surfacedAt = performance.now();
   }
@@ -816,7 +830,7 @@ export class Globe {
     if (this.wholed) return this.wholed;
     const renderer = this.renderer;
     const maps = (this.maps = cubeOf(renderer, tier().globeHalved ? FACE / 2 : FACE));
-    this.uniforms.uGlobeMaps!.value = maps.texture;
+    fill(this.uniforms.uGlobeMaps!, maps.texture);
     this.arrived = true;
     if (tier().globeEager)
       this.wholed = Promise.all([cubeFaces('land'), cubeFaces('ice')])

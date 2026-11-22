@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 
 /**
  * Let go of what is on the GPU for everything under `root`: each geometry, each material (its programs are released
- * when nothing else draws with them) and the pictures the materials wear as their own maps. What a material reads
+ * when nothing else draws with them), the pictures the materials wear as their own maps, and a skinned mesh's bones'. What a material reads
  * through its uniforms is left alone: those are often shared by every material of a kind (the weather's, the
  * atmosphere's: weathermap.ts, atmosphere.ts) and belong to whoever made them; and so is any picture a render target
  * draws into, which is its target's. Anything let go is made again by the renderer if it is drawn again: this frees,
@@ -20,6 +20,8 @@ export function disposeTree(root: THREE.Object3D, place?: { keep: Set<THREE.Text
     // (an instanced or batched mesh has buffers of its own besides its geometry's: where each copy stands, its colour)
     const many = o as THREE.Object3D & { isInstancedMesh?: boolean; isBatchedMesh?: boolean; dispose?: () => void };
     if (many.isInstancedMesh || many.isBatchedMesh) many.dispose?.();
+    // (and a skinned one its bones' texture, which the renderer made for it as it was first drawn: Skeleton.computeBoneTexture)
+    (o as THREE.SkinnedMesh).skeleton?.dispose();
     const own = mesh.material as THREE.Material | THREE.Material[] | undefined;
     for (const m of own ? (Array.isArray(own) ? own : [own]) : []) materials.add(m);
     const real = mesh.userData?.real as THREE.Material | undefined;
