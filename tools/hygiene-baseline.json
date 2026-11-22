@@ -1,0 +1,56 @@
+{
+  "src/deck/deck.ts": {
+    "lines": 1569
+  },
+  "src/deck/orbitdeck.ts": {
+    "lines": 2134
+  },
+  "src/sim/misses.ts": {
+    "lines": 1710
+  },
+  "src/sim/orbital.ts": {
+    "lines": 2411
+  },
+  "src/sim/staged.ts": {
+    "lines": 2268
+  },
+  "src/ui/gallery.ts": {
+    "lines": 1739
+  },
+  "src/viewer/cabin.ts": {
+    "lines": 1577
+  },
+  "src/viewer/clouds.ts": {
+    "lines": 2249
+  },
+  "src/viewer/exhaust.ts": {
+    "lines": 1511
+  },
+  "src/viewer/onfoot/gait.ts": {
+    "lines": 2334
+  },
+  "src/viewer/onfoot/walk.ts": {
+    "lines": 2023
+  },
+  "src/viewer/path.ts": {
+    "lines": 3928
+  },
+  "src/viewer/stage.ts": {
+    "lines": 3013
+  },
+  "src/world/grgm900c.ts": {
+    "suppressions": 2
+  },
+  "src/world/stars.ts": {
+    "suppressions": 2
+  },
+  "tests/steering.test.mjs": {
+    "suppressions": 1
+  },
+  "tools/lunar-gravity-bake.mjs": {
+    "suppressions": 2
+  },
+  "tools/path-test.mjs": {
+    "suppressions": 3
+  }
+}

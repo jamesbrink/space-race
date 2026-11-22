@@ -25,7 +25,8 @@ earlier, single-mission take on the same idea (vanilla JS, toon-shaded, real orb
 ```sh
 pnpm install
 pnpm dev              # Vite with hot reload, http://localhost:5180
-pnpm check            # typecheck, lint, format check, tests: must pass before a commit
+pnpm check            # typecheck, lint, format check, hygiene, tests: must pass before a commit
+pnpm hygiene          # the mechanical code-hygiene rules over the tree (docs/agents/hygiene.md; the git hooks run them too)
 pnpm test             # node --test tests/: the world, both simulators, the gait, the walk, every flight.ts against its GLBs
 pnpm lint             # Biome (TS, JS, CSS, JSON) and Ruff (Python)
 pnpm format           # rewrite files in place: Biome and Ruff (`nix fmt` does the same, plus Nix)
@@ -131,6 +132,7 @@ Detail lives in `docs/agents/`. Read the one for what you are about to change; e
 | The camera | [camera.md](docs/agents/camera.md) | one camera, a set of rigs; zoom never surprises; once the user takes the camera only an explicit act moves it |
 | On foot: walk, gait, ragdoll, driving, actions | [walking.md](docs/agents/walking.md) | nothing there knows a flight; motion follows the gait and never a timer; a planted foot is planted; loose things tick at a fixed rate; a mission adds a verb as data |
 | The gallery, a flight's places, the address bar, the front page, the Lineup | [gallery.md](docs/agents/gallery.md) | every flight has the same three places (Gallery, Launch site, Fly) and opens in its gallery; one it lacks is shown and says why, never hidden; the gallery is a second stage that shares nothing with the site's, which sleeps as it stands; only `address.ts` reads or writes an address; going to another flight or place is a step in the history, anything else rewrites the one it is on; old `#pad` links still land on the site; the front page is no flight's, picks none for the visitor, and holds nothing of a flight nor a flight of it; the Lineup reads only the flights' data and the history, writes no word of its own, and holds the coarsest level of every vehicle and the finest only of what is looked at |
+| Any change at all: hooks, hygiene rules, code patterns | [hygiene.md](docs/agents/hygiene.md) | one rule in one place, proved on every flight; every reachable state handled; a bug fix carries the test that would have caught it; no conflict markers, scratch files, `console.log`, `@ts-ignore` or `.only`; a TODO names its issue; files in `src/` past 1,500 lines and lint suppressions only ever go down (tools/hygiene-baseline.json); the git hooks run it |
 | Sound | [sound.md](docs/agents/sound.md) | synthesised, no files; follows the clock; levels and timbres are estimated and say so |
 
 ## Being there

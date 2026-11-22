@@ -1,0 +1,12 @@
+#!/bin/sh
+# Before a push (docs/agents/hygiene.md): the types, and the policy tests that are quick. CI runs the whole check.
+# SKIP_HOOKS=1 skips it.
+[ "${SKIP_HOOKS:-}" = 1 ] && exit 0
+set -e
+cd "$(git rev-parse --show-toplevel)"
+# (a push of a "wip:" branch is allowed to be unfinished; it is never merged as it is)
+branch=$(git rev-parse --abbrev-ref HEAD)
+case "$branch" in wip/*) exit 0 ;; esac
+node tools/hygiene.mjs --quiet
+if [ -x node_modules/.bin/tsc ]; then node_modules/.bin/tsc --noEmit; fi
+node --test tests/names.test.mjs tests/layout.test.mjs tests/keys.test.mjs >/dev/null

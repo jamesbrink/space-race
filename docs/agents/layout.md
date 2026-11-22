@@ -488,6 +488,8 @@ tools/
   ut1-bake.mjs                        bakes src/world/ut1.ts from the IERS's EOP C01 series: UT1 - TAI since 1956
   stars.mjs                           bakes the stars (the Bright Star Catalogue: stars.ts and public/sky/stars.bin) and the Milky Way (NASA's map: public/sky/milkyway.jpg its light, milkyway.tint.jpg its colour)
   figures.mjs                         the simulators' figures to the last digit, every run the tests fly, against tests/fixtures/figures.json (`pnpm figures`; made on hal9000, not in `pnpm check`)
+  hygiene.mjs                         the mechanical code-hygiene rules over the tree or the staged files, and their ratchet (`pnpm hygiene`; hygiene.md)
+  hygiene-baseline.json               the ratchet: each file over an allowance (length in src/, lint suppressions) and how far; it only goes down
   residuals.mjs                       what every flight into orbit misses its record by, as one table: when each stage stopped, the orbit left on, where and when it came down, the step in velocity at the parting, each tracking fix (`node tools/residuals.mjs [flight]`: simulator.md, "One state")
   predictions.mjs                     the predictions the figures capture (`predict:*`), each made again from a start nudged and in a frame turned (tests/predict.test.mjs, #30)
   png.mjs                             one-channel PNGs written and read without a library (the globe's maps)
