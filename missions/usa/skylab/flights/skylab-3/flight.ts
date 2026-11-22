@@ -5,9 +5,11 @@ import { nodes } from '../../../apollo/vehicles/stack-gallery.ts';
 import { LC39B } from '../../../places/cape-canaveral/lc-39.ts';
 import { sa207Elevation, sl3Ingress as ingress, sl3Launcher } from '../../../places/cape-canaveral/lc39-skylab.ts';
 import { spacecraftMotors } from '../../vehicles/csm-motors.ts';
+import { skylabFlies } from '../../vehicles/skylab-plan.ts';
 import { workshopModel } from '../../vehicles/workshop-gallery.ts';
 import { launchCrew } from './crew.ts';
 import { command, csmViews, port, service } from './csm117.ts';
+import { skylab3Plan } from './orbital.ts';
 import { specs, timeline } from './record.ts';
 import { launcher, SA207_THRUST, stackViews } from './sa207.ts';
 import { WEATHER } from './weather.ts';
@@ -39,6 +41,8 @@ export const flight: Flight = {
   ],
   timeline,
   specs,
+  plan: { ...skylab3Plan, aloft: WEATHER.aloft },
+  flies: skylabFlies(skylab3Plan),
   motors: [...SA207_THRUST, ...spacecraftMotors],
   models: [
     {

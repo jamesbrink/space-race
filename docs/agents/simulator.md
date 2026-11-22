@@ -1039,7 +1039,19 @@ The rules every simulator, predictor and deck keeps. Each names the one place it
   docking; the profile's figures this flight's record does not give are the second visit's plan's and say so. The docked
   stay is not flown docked (no joint is formed yet): the spacecraft coasts on alone beside the workshop for 27 days, the
   stand-up EVA, the failed captures and the hard dock are marks, and the two deorbit firings are flown at the record's
-  minutes, the entry steered to the landing place (`Hold.entry`).
+  minutes, the entry steered to the landing place (`Hold.entry`). Skylab 3's (skylab-3/orbital.ts, mission.md) is SA-207 on the
+  same profile, its burns at the mission report's instants with their impulses as checks; its workshop is placed where the
+  record's own firings, flown open from the run's insertion, bring the spacecraft to the terminal phase (no figure of that
+  launch's own was read); the service module's quads B and D give nothing from their isolation for their leaks
+  (`Thruster.isolated`, sim/attitude.ts: the autopilot holds the attitude on what is left); a single deorbit firing at the
+  record's instant. An H-1 is flown at its flight's own level where the record has the stage's flow in flight
+  (`H1Figures.flow`, each evaluation's Fig. 6-2: the engines ran 2 to 3 per cent over their Table 6-2 figures, which are
+  reduced to standard sea-level conditions, and burned what the mass tables have them burn only at that level): rated at the
+  highest and throttled to the record's level under it, thrust with flow, the nozzle's exit area its own (saturn-ib-plan.ts
+  `h1`). Apollo 7's record has none and is flown on its figures as before. A pitch programme read off a figure is
+  registered on the figure's interior gridlines and checked against its own event marks and the record's documented start
+  and arrest, never on the plot's border: SA-207's Fig. 9-3 has its first 100-s division drawn short, and read from the
+  border every point came 7 to 12 s early and the S-IB flew 13 km low (the same signature as #181's on AS-506's Fig. 10-4).
 - **A Saturn V leaves its orbit for the Moon** (missions/usa/apollo/vehicles/saturn-v-plan.ts, written from each flight's
   record, `SaturnVRecord`). Its ascent is a stated law as every flight's: the S-IC's tilt programme flown open (each flight's
   read off a figure of its own flight evaluation), then the linear tangent from the instant the iterative guidance began,

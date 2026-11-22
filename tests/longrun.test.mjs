@@ -12,6 +12,7 @@ import { join } from 'node:path';
 import { flight as apollo8 } from '../missions/usa/apollo/flights/apollo-8/flight.ts';
 import { flight } from '../missions/usa/gemini/flights/gt-7/flight.ts';
 import { flight as skylab2 } from '../missions/usa/skylab/flights/skylab-2/flight.ts';
+import { flight as skylab3 } from '../missions/usa/skylab/flights/skylab-3/flight.ts';
 import { between, orbitalFlown, orbitalRecord } from '../src/sim/run.ts';
 import { useEphemeris } from '../src/world/ephemeris.ts';
 import { length, sub } from '../src/world/frames.ts';
@@ -98,4 +99,22 @@ test('a twenty-eight-day record run with a target is kept as a long one is, and 
   assert.ok(days > 27.9, `${days} days`);
   assert.ok(run.samples.length < SKYLAB_SAMPLES, `${run.samples.length} samples, ${SKYLAB_SAMPLES} allowed`);
   assert.ok(heap < SKYLAB_HEAP, `${heap.toFixed(1)} MiB of heap, ${SKYLAB_HEAP} allowed`);
+});
+
+/** Skylab 3's record run, 59 days with the workshop flown to the docking: the most samples and heap, MiB (measured when set: 33,667 and 43.7). */
+const SKYLAB3_SAMPLES = 42_000;
+const SKYLAB3_HEAP = 70;
+
+test('a fifty-nine-day record run is kept as a long one is', () => {
+  const before = held();
+  const whole = orbitalFlown(skylab3);
+  const run = orbitalRecord(skylab3);
+  const heap = held() - before;
+  const days = run.duration / 86_400;
+  console.log(
+    `# Skylab 3's record run, ${days.toFixed(2)} days: ${run.samples.length} samples (${whole.coast.samples.length} of the coast), ${heap.toFixed(1)} MiB of heap`,
+  );
+  assert.ok(days > 59.4, `${days} days`);
+  assert.ok(run.samples.length < SKYLAB3_SAMPLES, `${run.samples.length} samples, ${SKYLAB3_SAMPLES} allowed`);
+  assert.ok(heap < SKYLAB3_HEAP, `${heap.toFixed(1)} MiB of heap, ${SKYLAB3_HEAP} allowed`);
 });

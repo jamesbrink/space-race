@@ -262,6 +262,12 @@ const GT6A_ENTRY =
 const SL2_SPLASH =
   'Down at 13:54:40, 291 s after the record’s 13:49:49, 44 km short and 142 km across the track from the place the secondary sources give. The two deorbit firings are flown at the record’s instants, which are to the minute (Astronautics and Aeronautics, 1973), on the second visit’s planned impulses (258.5 and 191.9 ft/s), this flight’s own not having been read; the run has coasted 27 days alone from the first soft docking, a hundred metres from the workshop, and the computer steers the entry to a place across its track, which it flies long to reach. The ground’s timing of the firings for the recovery area is not flown. Not adjusted';
 
+/** Skylab 3's rendezvous and return (skylab-3/mission.md): the profile flown on a workshop placed where the record's firings bring the spacecraft. */
+const SL3_PHASING =
+  'NC1 and NC2 together are 111.7 m/s against the record’s 113.0, but split otherwise: NC1 is flown as a level burn sized for the workshop’s place at NC2, worked back from the terminal phase over the heights the second visit planned after NC2 (202 by 215 nautical miles, the press kit), and NC2 for the workshop’s height at NCC. The run comes to them from an insertion 4.6 km lower in apogee than SA-207’s (221.7 against 226.3 km; the S-IVB cut 4.3 s early) and has no navigation or execution error, so the corrective combination finds less to take out (5.6 m/s against 11.5). The workshop’s place on its orbit is derived from these firings (no figure of this launch’s own was read: mission.md). Not adjusted';
+const SL3_SPLASH =
+  'Down at 22:24:50, 296 s after the record’s 22:19:54, but 4,830 km along the track and 148 km across it from the determined landing point. The single deorbit firing is flown at the record’s instant (21:38:18) for its 18 s, against the motion; the ground timed it on the tracked orbit, which the run is not on: after 59 days coasted alone from the docking, on the orbit its rendezvous put it on (some 407 by 432 km; the workshop was placed on the 424.6 by 439.5 km the press kit expected), its place along the orbit is 10 minutes from the real ship’s, a few kilometres in mean height being some revolutions in 59 days, and its plane has drifted with it. Timed by guidance for the landing place along the track (sim/plan.ts LandingAim) it lights 36 minutes late and comes down level with the place, 897 km to one side. The docked stay is not flown as a joined craft (A3). Not adjusted';
+
 /** Gemini VIII's rendezvous, made on GATV-5003 flown from its insertion vector, and its early entry (gt-8/mission.md). */
 const GT8_DH =
   'The four burns before the coelliptic are flown at the record’s instants and impulses: what they were aimed at (the apogee 15 nautical miles under the Agena’s, the phase, the node) is not a kind guidance solves yet. The run comes to them on an orbit whose apogee is some 5 km over the record’s, the ascent cut on the record’s period, which the report’s heights and period give some 3 km apart; so the coelliptic orbit the run solves on the Agena lies 5 to 7 km over the record’s, about 21 km under the Agena where the record has 25 (13.5 nautical miles), and closes on it slower. The Agena is 10 km farther than the record has it at the radar’s lock-on, before the coelliptic burn, and 37 km farther by the terminal phase’s instant. Not adjusted';
@@ -1284,6 +1290,18 @@ export const MISSES: Record<string, Record<string, Record<string, Miss>>> = {
     shown: {},
     descent: {
       'cm.at': { by: 291.3, slack: 30, why: SL2_SPLASH, short: 'deorbit at the record’s minute' },
+    },
+  }),
+  // Skylab 3 from the pad, its rendezvous made on the workshop (skylab-3/mission.md)
+  'usa/skylab/skylab-3': inUnits({
+    ascent: {},
+    shown: {
+      'nc1.velocity': { by: 5.69, slack: 1, why: SL3_PHASING, short: 'the phasing split otherwise' },
+      'nc2.velocity': { by: -7.0, slack: 1, why: SL3_PHASING, short: 'the phasing split otherwise' },
+      'ncc.velocity': { by: -5.83, slack: 1, why: SL3_PHASING, short: 'no navigation error to correct' },
+    },
+    descent: {
+      'cm.at': { by: 295.9, slack: 30, why: SL3_SPLASH, short: 'deorbit at the record’s minute, 59 days on' },
     },
   }),
   // Soyuz 1: the record from the pad and from its published orbit (missions/ussr/soyuz/flights/soyuz-1/mission.md, "Against the record")

@@ -55,6 +55,8 @@ export interface Jet {
   /** Worked by the autopilot (an automatic supply's chamber) or by the hand direct (a manual supply's): one supply is both's. */
   auto: boolean;
   hand: boolean;
+  /** From when it gives nothing, s from liftoff (`Thruster.isolated`): infinite for one that works throughout. */
+  isolated: number;
 }
 
 /** A craft's attitude control as it is flown, from its thruster set. */
@@ -116,6 +118,15 @@ export function inertiaAt(rows: readonly { mass: number; moments: Vec3 }[], mass
   return rows.at(-1)!.moments;
 }
 
+/** The torque of the autopilot's chambers among `jets` together about each axis, N m: [axis][0 the positive way, 1 the negative]. */
+function authorityOf(jets: readonly Jet[]): [number, number][] {
+  return [0, 1, 2].map((i) =>
+    ([1, -1] as const).map((sense) =>
+      jets.filter((j) => j.auto && j.axis === i && j.sense === sense).reduce((sum, j) => sum + Math.abs(j.torque[i]), 0),
+    ),
+  ) as [number, number][];
+}
+
 /** The craft's attitude control of `plan`: its hand's thruster set given as hardware with its supplies and inertia, or null (turned as a hand turns it, at its rate). */
 export function attitudeOf(plan: FlightPlan): Attitude | null {
   const set = plan.craft[0]?.thrusters.find((t) => t.mode === 'manual' && t.chambers?.length && t.supplies?.length && t.inertia?.length);
@@ -134,13 +145,10 @@ export function attitudeOf(plan: FlightPlan): Attitude | null {
       supply,
       auto: modes.size === 1 || mode === 'automatic',
       hand: modes.size === 1 || mode === 'manual',
+      isolated: c.isolated?.value ?? Number.POSITIVE_INFINITY,
     };
   });
-  const authority = [0, 1, 2].map((i) =>
-    ([1, -1] as const).map((sense) =>
-      jets.filter((j) => j.auto && j.axis === i && j.sense === sense).reduce((sum, j) => sum + Math.abs(j.torque[i]), 0),
-    ),
-  ) as [number, number][];
+  const authority = authorityOf(jets);
   const rows = set
     .inertia!.map((r) => ({ mass: r.mass.value, moments: [r.roll.value, r.pitch.value, r.yaw.value] as Vec3 }))
     .sort((a, b) => a.mass - b.mass);
@@ -208,7 +216,7 @@ function flyBody(q: Quat, w: Vec3, torque: Vec3, inertia: Vec3, h: number): { q:
 const lead = (a: Attitude, e: number): number => (a.deadband > 0 ? clamp((a.rateband / a.deadband) * e, -a.rate, a.rate) : 0);
 
 /** Whether the autopilot has gas to work with: some automatic chamber's supply not empty. */
-const canHold = (a: Attitude, s: AttitudeState): boolean => a.jets.some((j) => j.auto && s.left[j.supply]! > 0);
+const canHold = (a: Attitude, s: AttitudeState): boolean => a.jets.some((j) => j.auto && s.left[j.supply]! > 0 && s.t < j.isolated);
 
 /**
  * How long the craft may be flown free from `s` under `c` with nothing firing, s (whole ticks, at least two), or 0 where
@@ -265,6 +273,9 @@ export interface Firing {
  */
 export function jetsFor(a: Attitude, s: AttitudeState, c: AttitudeControls, h: number): Firing {
   const inertia = a.inertia(c.mass);
+  // (a chamber isolated for a fault gives nothing from then on, and the autopilot's authority is what is left)
+  const isolated = a.jets.some((j) => s.t >= j.isolated);
+  const authority = isolated ? authorityOf(a.jets.filter((j) => s.t < j.isolated)) : a.authority;
   // (a hand on the controls has them over guidance's line while it is there: let go, the line takes the craft back)
   const asked = c.stick[0] !== 0 || c.stick[1] !== 0 || c.stick[2] !== 0;
   const aim = asked ? null : aimAt(c, s.t);
@@ -278,7 +289,7 @@ export function jetsFor(a: Attitude, s: AttitudeState, c: AttitudeControls, h: n
     for (let i = 0; i < 3; i++) {
       // (the switching line: the rate off what is asked, and the error's lead, no more than the hand's rate)
       const sigma = s.w[i]! - wc[i]! + lead(a, e[i]!);
-      const torque = a.authority[i]![sigma < 0 ? 0 : 1]!;
+      const torque = authority[i]![sigma < 0 ? 0 : 1]!;
       if (Math.abs(sigma) > a.rateband && torque > 0)
         on[i] = -Math.sign(sigma) * Math.max(a.minimum, ((Math.abs(sigma) - a.rateband) * inertia[i]!) / torque);
     }
@@ -294,7 +305,7 @@ export function jetsFor(a: Attitude, s: AttitudeState, c: AttitudeControls, h: n
   const opened = new Map<string, { jet: Jet; open: number }>();
   for (const j of a.jets) {
     const k = now[j.axis]!;
-    if (!k || Math.sign(k) !== j.sense || !(auto ? j.auto : j.hand)) continue;
+    if (!k || Math.sign(k) !== j.sense || !(auto ? j.auto : j.hand) || s.t >= j.isolated) continue;
     const was = opened.get(j.name);
     if (!was || was.open < Math.abs(k)) opened.set(j.name, { jet: j, open: Math.abs(k) });
   }
