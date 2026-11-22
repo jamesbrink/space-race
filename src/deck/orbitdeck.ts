@@ -1817,15 +1817,8 @@ export class OrbitDeck extends Deck {
     // (the run as flown, and the instant its coast hands over to the descent: from there it comes down on its own bodies)
     const whole = this.flown ?? orbitalFlown(this.flight);
     const handed = whole.down ? whole.coast.samples[whole.coast.samples.length - 1]!.t : Number.POSITIVE_INFINITY;
-    // the phase it is in (phases/phase.ts), and what the middle panel shows in it
-    // (stood at a landing site on the Moon, the deck is in its surface phase there: Go out and Lift off, deck.ts `onSurface`)
-    const here = {
-      down: down || this.surfaced !== null,
-      alone,
-      burning: thrust > 0,
-      entering: s.entered || t > handed,
-      altitude: s.altitude,
-    };
+    // the phase it is in (phases/phase.ts), and what the middle panel shows in it: on the Moon, its surface (deck.ts `onSurface`)
+    const here = { down: down || !!this.surfaced, alone, burning: thrust > 0, entering: s.entered || t > handed, altitude: s.altitude };
     this.figures(PHASES[phaseOf(here)].figures(here));
     this.figure('altitude', down ? 0 : Math.max(0, s.altitude) / KM, down || s.altitude < 99_950 ? 2 : 1);
     this.figure('speed', alone || high ? s.speed : t > 0 && !down ? s.groundSpeed : 0, 0);

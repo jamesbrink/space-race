@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
-import { cycleLength, Gait, give, JOINTS, jointKey, landing, pose as poseOf, RUNG, rungs, swing, view } from '../src/viewer/onfoot/gait.ts';
+import { cycleLength, Gait, give, JOINTS, jointKey, landing, pose as poseOf, swing, view } from '../src/viewer/onfoot/gait.ts';
+import { RUNG, rungs } from '../src/viewer/onfoot/ladder.ts';
 
 /** The pose at a phase and speed, with whatever else the moment has. */
 const pose = (phase, speed, air = 0, more = {}) => poseOf({ phase, speed, air, ...more });

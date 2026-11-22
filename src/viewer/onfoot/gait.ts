@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { smoothstep } from '../../util/math.ts';
+import { RUNG } from './ladder.ts';
 
 /**
  * How a jointed figure moves its limbs when it walks, runs, stands and jumps: no recorded
@@ -1124,34 +1125,9 @@ const BENT_OUT = 12;
 /** How long getting up takes to go from however the figure lay to its own keys, seconds. */
 export const RISE_IN = 0.5;
 
-/** How far apart a ladder's rungs are, metres (srlib.ladder: the first is this far above its foot), and how far up one cycle of the limbs goes: a rung with each foot. */
-export const RUNG = 0.3;
+/** How far up one cycle of a climber's limbs goes: a rung with each foot (ladder.ts `RUNG`). */
 const RUNGS = 2 * RUNG;
 
-/**
- * On a ladder, which rung each hand and foot is on: its height above the ladder's foot, metres, when the climber's own
- * level (where the walker has his feet) is `y` above it. Each holds its rung for half a cycle while he rises a rung
- * past it, then goes up two in the other half: the left foot and the right hand together, then the others. A foot's
- * rung is the one at his level or the next above; a hand's is `reach` rungs above its foot's. By height alone: stop
- * on the ladder and they stop, come down and they come down the same rungs.
- */
-export function rungs(
-  y: number,
-  reach = 5,
-  pitch = RUNG,
-  first = RUNG,
-): { 'Foot.L': number; 'Foot.R': number; 'Hand.L': number; 'Hand.R': number } {
-  // (a ladder that says where its rungs are, the LM's, has them `pitch` apart from `first` over its foot: walk.ts Ladder.rungs)
-  const two = 2 * pitch;
-  const u = y / two;
-  const on = (o: number, up: number): number => {
-    const v = u - o;
-    const f = v - Math.floor(v);
-    const k = Math.max(0, (f - 0.5) / 0.5);
-    return two * (o + Math.floor(v) + k * k * (3 - 2 * k)) + first + pitch * up;
-  };
-  return { 'Foot.L': on(0, 0), 'Foot.R': on(0.5, 0), 'Hand.R': on(0, reach), 'Hand.L': on(0.5, reach) };
-}
 /** How many times a second a standing figure's breathing is moved on: the rate a still view is redrawn at anyway. */
 const BREATH_RATE = 12;
 /** Seconds a breath takes: twelve a minute. */

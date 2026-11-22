@@ -209,6 +209,7 @@ src/
   ui/lineup.ts  ui/lineup.css         the Lineup's page: the card, the programmes, the timeline's strip and its words, and what is written on the picture
   ui/navball.css  ui/cockpit.css      the navball's and the flight deck's looks
   deck/deck.ts                        the flight deck, one for every flight: its three panels, keys and their buttons, the stick and roll, tucking, the card that ends a flight
+  deck/markup.ts                      the deck's three panels as markup: every key and control a button that does what its key does
   deck/decks.ts                       which deck flies a flight: one for each kind of plan (`DECKS[plan.kind]`, `deckOf`); the decks' shared settings are deck.ts's
   deck/leaving.ts  deck/ask.ts        what an act does to a flight flown by hand (the pure rule: kept wherever the visitor goes, asked about only where it is lost), and the question asked
   deck/tape.ts                        a run flown by hand kept as what was done to the deck and when, flown again exactly on its own clock; its stamp
@@ -229,6 +230,7 @@ src/
   viewer/dispose.ts                   letting go of a tree's geometries, materials and pictures on the GPU (a flight or a place the stage has left)
   viewer/programs.ts                  the place's number in every program's key: another place or day is built again under its own shaders' text
   viewer/stage.ts                     the stage: one scene of a flight's models in their setting, the camera, the clock; it owns the pieces below and keeps
+  viewer/glass.ts                     the panes: window glass, a helmet visor dark or clear, a lens
                                       the one API the page uses (`window.sr.stage`)
   viewer/stage/pipeline.ts            the frame from the scene to the screen: the passes, drawn from the eye, the drawing's resolution, the near plane fitted to what is there
   viewer/stage/cabinview.ts           the view from a seat: which is sat in (the site's on board, the gallery's exhibit), what is looked out of, the lean to it, the way in to a port
@@ -285,6 +287,7 @@ src/
   viewer/onfoot/handworks.ts          the functions of a model's parts worked by hand (a tower raised, a jib lowered), held until the script moves the hardware, and their levers
   viewer/onfoot/operate.ts            what a function worked by hand looks like from where it is run, from its moves' data (pure): where it is, will be and can go; how far along it is
   viewer/onfoot/walk.ts               walking the site on foot: footing, collision, input, the view at the eyes or over the shoulder (the camera put there by camera/foot.ts)
+  viewer/onfoot/ladder.ts             ladders: what one is as a model declares it, where a body hangs on it, a tick on it, the run of one that leans, its rungs
   viewer/onfoot/escape.ts             what Escape does on foot (pure): a captured mouse is freed first and the walk goes on, the next Escape leaves
   viewer/onfoot/gait.ts               how a jointed figure moves its limbs: walk, run, stand, jump, from distance and speed
   viewer/onfoot/ragdoll.ts            a figure gone limp after a long fall: points, sticks, and the bones laid along them
