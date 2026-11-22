@@ -3,16 +3,16 @@
     "lines": 1569
   },
   "src/deck/orbitdeck.ts": {
-    "lines": 2134
+    "lines": 2136
   },
   "src/sim/misses.ts": {
-    "lines": 1710
+    "lines": 1754
   },
   "src/sim/orbital.ts": {
-    "lines": 2411
+    "lines": 2434
   },
   "src/sim/staged.ts": {
-    "lines": 2268
+    "lines": 2278
   },
   "src/ui/gallery.ts": {
     "lines": 1739
