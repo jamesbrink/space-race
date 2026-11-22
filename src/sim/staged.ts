@@ -1098,7 +1098,7 @@ function solve(plan: FlightPlan, site: Geodetic, frame: EarthFrame, seaLevel: nu
   // (into the plane of the flight's target, where the record's guidance steered there: the node of the orbit at the cutoff
   // is solved for that of the target's own as it then stands, in place of the inclination, `Guidance.target.plane`)
   const def = plan.target;
-  const into = g.target.plane === 'target' && def && !('joint' in def) ? metOf(def, frame, seaLevel) : undefined;
+  const into = g.target.plane === 'target' && def && !('joint' in def) && !('craft' in def) ? metOf(def, frame, seaLevel) : undefined;
   if (g.target.plane === 'target' && !into)
     throw new Error('the ascent is aimed into its target’s plane, and it has no target of its own to aim at');
   const nodeOf = (s: { r: Vec3; v: Vec3 }): number => {
