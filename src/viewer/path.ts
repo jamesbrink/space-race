@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { prefs } from '../app/prefs.ts';
+import { moonOnEarthFlight, type Passed } from '../sim/core/gravity.ts';
 import { type CraftState, hasLeft } from '../sim/craft.ts';
+import type { Sample } from '../sim/fly.ts';
 import { ballisticOf } from '../sim/fly.ts';
 import { clockAt, eventOf } from '../sim/plan.ts';
 import {
@@ -12,35 +14,38 @@ import {
   predictor,
   programmeAxis,
   type Sequence,
-  sphereOf,
   type Start,
+  sphereOf,
 } from '../sim/predict.ts';
-import type { Sample } from '../sim/fly.ts';
 import { filled, recordOf } from '../sim/run.ts';
 import type { SitedFlight } from '../types.ts';
-import { moonOnEarthFlight, type Passed } from '../sim/core/gravity.ts';
+import { esc } from '../util/dom.ts';
+import { capsOf, is, isTyping, modified } from '../util/keys.ts';
+import { Scope } from '../util/scope.ts';
 import { EARTH, EARTH_ROTATION_RATE, WGS84_A, WGS84_B } from '../world/bodies.ts';
-import { step } from '../world/orbit.ts';
 import { type EarthFrame, frameOf } from '../world/earthframe.ts';
 import { ecefToSite, ecefToSiteDirection, type Site, siteFrame, type Vec3 } from '../world/frames.ts';
+import { step } from '../world/orbit.ts';
+import type { MapOf } from './camera/rig.ts';
+import { disposeTree } from './dispose.ts';
 import { absolute, uOrigin } from './origin.ts';
 import { cloudAheadGlsl, sceneDepthGlsl, uDepthRange, uLast, uSceneDepth } from './overlay.ts';
 import {
   aboutWeight,
-  crossingsOf,
   type Curve,
+  carried,
+  crossingsOf,
   curveAt,
   curveOf,
-  Knotted,
-  pieceOf,
   DEPTH_DIM,
   DEPTH_LEAST,
   DEPTH_THIN,
   departure,
   drawnIn,
-  carried,
+  Knotted,
   limbPx,
   overHorizon,
+  pieceOf,
   type Ribbon,
   ribbon,
   type Sweep,
@@ -76,11 +81,6 @@ import {
   referenceCurve,
   windowOf,
 } from './pathref.ts';
-import type { MapOf } from './camera/rig.ts';
-import { esc } from '../util/dom.ts';
-import { capsOf, is, isTyping, modified } from '../util/keys.ts';
-import { Scope } from '../util/scope.ts';
-import { disposeTree } from './dispose.ts';
 
 /**
  * The predicted path, drawn: where the vehicle goes from here if nothing more is done (sim/predict.ts, or the deck's own
@@ -738,8 +738,6 @@ interface Shown {
   curve: Curve;
   began: number;
   was: Shown | null;
-  /** How far it had come from the one before when a newer one began to ease from it: it stays there. */
-  held?: number;
   /**
    * The piece of the curve last asked for (pathline.ts `curveAt`'s hint): the line is sampled along it in order of time,
    * so each place is found from the last in a step or two. (Found from the first piece each time, as it was, a line of a
@@ -1868,12 +1866,10 @@ export class FlightPath {
       // (eased from the line on show as it is drawn now: from the one it was itself eased from, if that is still going)
       was: ease && old && old.curve.n > 1 && n > 0 ? old : null,
     };
-    // (one still easing in is held where it is drawn now, and eased from: so a prediction every fifth of a second under
-    // power, sooner than the ease, moves the line on from where it is, never back to where the last one was going)
-    if (next.was) {
-      next.was.held = this.mixOf(next.was);
-      if (next.was.was) next.was.was.was = null;
-    }
+    // (one still easing in goes on easing as the new one comes in from it: frozen where it was drawn, its pull toward the
+    // newer curve stopped at once and the line's far end lurched with each prediction under power. The one before it has
+    // come all the way in, predictions `EVERY` apart and that at least half `EASE`: nothing under it is read)
+    if (next.was?.was) next.was.was.was = null;
     this.shown = next;
     this.uniforms.uCut!.value = result.cutoff === null ? -1 : result.cutoff - result.from;
     this.sampledFor = '';
@@ -1892,7 +1888,6 @@ export class FlightPath {
 
   /** How far the line on show has come from where it was eased from. */
   private mixOf(shown: Shown): number {
-    if (shown.held !== undefined) return shown.held;
     const k = Math.min(1, Math.max(0, (performance.now() - shown.began) / (EASE * 1000)));
     return k * k * (3 - 2 * k);
   }
@@ -2203,7 +2198,7 @@ export class FlightPath {
   private readonly easeAt = new Float64Array(3);
   private readonly lensEye: [number, number, number] = [0, 0, 0];
 
-  /** Where the line on show puts instant `t` in the scene now, eased from the one before (and that from its own, held). */
+  /** Where the line on show puts instant `t` in the scene now, eased from the one before (and that from its own). */
   private alongAt(shown: Shown, t: number, out: Float64Array, o: number, mix: number): void {
     shown.hint = curveAt(shown.curve, t, this.at3, 0, shown.hint);
     carried(this.at3, 0, t, shown.left, shown.leftAt);
