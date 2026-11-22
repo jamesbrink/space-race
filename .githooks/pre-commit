@@ -7,7 +7,8 @@ root=$(git rev-parse --show-toplevel)
 cd "$root"
 biome=node_modules/.bin/biome
 if [ -x "$biome" ]; then
-  "$biome" check --staged --no-errors-on-unmatched --files-ignore-unknown=true
+  # (lint and format, as `pnpm lint` and `pnpm format:check` hold them in CI: not the assists, which they do not enforce)
+  "$biome" check --staged --assist-enabled=false --no-errors-on-unmatched --files-ignore-unknown=true
 fi
 staged_py=$(git diff --cached --name-only --diff-filter=ACMR -- '*.py')
 if [ -n "$staged_py" ] && command -v ruff >/dev/null 2>&1; then
