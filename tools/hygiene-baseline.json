@@ -1,7 +1,4 @@
 {
-  "src/deck/deck.ts": {
-    "lines": 1569
-  },
   "src/deck/orbitdeck.ts": {
     "lines": 2136
   },
@@ -24,16 +21,16 @@
     "lines": 1511
   },
   "src/viewer/onfoot/gait.ts": {
-    "lines": 2334
+    "lines": 2317
   },
   "src/viewer/onfoot/walk.ts": {
-    "lines": 2023
+    "lines": 1951
   },
   "src/viewer/path.ts": {
     "lines": 3928
   },
   "src/viewer/stage.ts": {
-    "lines": 3013
+    "lines": 2979
   },
   "src/world/grgm900c.ts": {
     "suppressions": 2

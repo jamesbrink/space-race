@@ -2,13 +2,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import { CLIMB_SPEED, centreOf, climb, hang } from '../src/viewer/onfoot/ladder.ts';
 import {
   Body,
   bump,
-  CLIMB_SPEED,
-  centreOf,
-  climb,
-  hang,
   GRAVITY,
   JUMP_HEIGHT,
   JUMP_SPEED,
@@ -18,9 +15,9 @@ import {
   quicken,
   RADIUS,
   RUN_SPEED,
+  Solids,
   STEP,
   STEP_RATE,
-  Solids,
   settle,
   stickSpeed,
   WALK_SPEED,

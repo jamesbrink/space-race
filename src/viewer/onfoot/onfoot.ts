@@ -1,24 +1,25 @@
-import { G0 } from '../../world/bodies.ts';
 import * as THREE from 'three';
 import { sameTarget, type Target, type Workings } from '../../app/actions.ts';
 import type { Action, ModelDef } from '../../types.ts';
+import { G0 } from '../../world/bodies.ts';
 import type { Clock } from '../../world/clock.ts';
 import type { Setting } from '../backdrops.ts';
 import type { Cabin } from '../cabin.ts';
 import type { Cameras } from '../camera/index.ts';
+import { NECK, type Watched } from '../camera/watch.ts';
 import type { Fn } from '../explode.ts';
 import type { Scenery, Staged } from '../lod.ts';
 import type { Looks } from '../look.ts';
 import type { CabinView } from '../stage/cabinview.ts';
 import type { Picker } from '../stage/picker.ts';
 import type { Shadows } from '../stage/shadows.ts';
-import { NECK, type Watched } from '../camera/watch.ts';
 import { Carry } from './carry.ts';
 import { roadOn, Vehicle } from './drive.ts';
-import { jointKey, pose, reach, rungs, seatFit, sitAt, step } from './gait.ts';
+import { jointKey, pose, reach, seatFit, sitAt, step } from './gait.ts';
+import { centreOf, rungs } from './ladder.ts';
 import { boxAt, leadOf, movesOf, sweptBox, wayOf } from './operate.ts';
 import { type Collide, Ragdoll, type Tumbler } from './ragdoll.ts';
-import { centreOf, EYE_FRACTION, type Hit, type Walker } from './walk.ts';
+import { EYE_FRACTION, type Hit, type Walker } from './walk.ts';
 import { Works } from './works.ts';
 
 /** How far beyond a figure's bounds the camera must be, coming out of its eyes after a walk, before it is drawn again, metres. */
