@@ -908,6 +908,8 @@ export class OrbitDeck extends Deck {
     const t = this.clock.t;
     const now = this.now() / 1000;
     if (this.state && t < this.state.t - TICK) return void this.clock.play(true); // (looking back: run on)
+    // (the run ended with the crew aboard, back on the ground or broken up: Space does nothing, N flies it again)
+    if (this.state && (this.state.landed || this.state.broke) && !this.ejected) return;
     // (the guard is a finger's, in real time: not while a stage fires into a joined one, whose top burns in flight time)
     if (now - this.eventAt < GUARD && !firingOf(this)) return;
     const flotation = this.flight.flies?.uprighting;

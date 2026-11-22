@@ -351,7 +351,8 @@ export function nextStep(deck: OrbitDeck): { step: Step; label: string; at: numb
   const v = deck.vehicleOf();
   if (deck.mine === null) return v.sequence.find((k) => k.at > deck.clock.t + 1e-9) ?? null;
   const s = deck.state;
-  if (!s) return null;
+  // (a run that ended, back on the ground or broken up, has no step left: only flying it again or leaving)
+  if (!s || s.landed || s.broke) return null;
   return (
     v.sequence.find((k) => {
       const st = k.step;

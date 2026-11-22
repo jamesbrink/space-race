@@ -44,7 +44,7 @@ import type { State } from '../world/orbit.ts';
 import { airDrag, skyOf } from './air.ts';
 import { fieldFor, moonIn, stepIn } from './core/gravity.ts';
 import { sensed, trapezoid } from './apparent.ts';
-import { act, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
+import { act, burnOut, type CraftState, due, heldBy, part, startCraft } from './craft.ts';
 import { along as alongCurve, MEAN_RADIUS, RIDING } from './fly.ts';
 import { floorAt, keptShare } from './forces.ts';
 import { type Strain, strain, UNSTRAINED } from './loads.ts';
@@ -407,6 +407,16 @@ export function stagedVehicle(
       seq.drops.flatMap((d) => (Number.isFinite(craft.joints[d.joint]!.loose) ? [[d.joint, craft.joints[d.joint]!.loose]] : [])),
     ),
   });
+
+  /**
+   * The run ended on the ground (`landed`): every engine still burning is out with it, so nothing is drawn or said to burn
+   * on a vehicle that came back down; what is left of it lies where it hit.
+   */
+  const ended = (s: StagedState, t: number): StagedState => {
+    let craft = s.craft;
+    for (const [id, e] of Object.entries(craft.engines)) if (Number.isFinite(e.lit) && !Number.isFinite(e.out)) craft = burnOut(craft, id, t);
+    return craft === s.craft ? s : { ...s, craft, ...viewOf(craft) };
+  };
 
   /** Each stage's engine's lever (sim/lever.ts): null for a solid. */
   const ranges = stages.map((st) => handRange(st.engine));
@@ -936,7 +946,8 @@ export function stagedVehicle(
         landed = { t, speed: length(sub(v, cross(spinE, r))) };
     }
     const next: StagedState = { ...s, t, ticks, r, v, q, w, held, apparent, landed };
-    return held || landed ? next : loaded(s, next);
+    if (landed) return ended(next, t);
+    return held ? next : loaded(s, next);
   };
 
   /**
