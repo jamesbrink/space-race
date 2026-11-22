@@ -11,7 +11,7 @@
  * command and service modules' part is every Apollo launch vehicle's (csm-plan.ts). Every figure the flight has its own of
  * is in its record; nothing here names a flight. A J-2 is the Saturn V's (saturn-v-plan.ts `j2`).
  */
-import { doc } from '../../../../src/measure.ts';
+import { derived, doc } from '../../../../src/measure.ts';
 import type {
   AttitudeDef,
   BodyDef,
@@ -131,6 +131,22 @@ export function saturnIBPlan(o: SaturnIBRecord): FlightPlan {
       forward: true,
       motors: [{ name: 'Tower jettison motor', thrust: les.motor.thrust, burn: les.motor.burn }],
     },
+    // (the stage the spacecraft leaves, as a body of its own: unless the record flies it on as the target its burns are made on)
+    ...(o.target && 'joint' in o.target && o.target.joint === 'spacecraft-separation'
+      ? []
+      : [
+          released(
+            'spacecraft-separation',
+            'S-IVB, instrument unit and adapter',
+            derived(
+              sivb.mass.value - (sivb.propellant.usable ?? sivb.propellant.load).value,
+              `${sivb.mass.source}; less the usable propellant (${(sivb.propellant.usable ?? sivb.propellant.load).source})`,
+            ),
+            'S-IVB, instrument unit and adapter envelope in saturn_ib.py: 260 in across, from the S-IB’s top to the spacecraft',
+            [80.2 * FT, CSM_MATING_HEIGHT, 130 * IN, 35],
+            [34, 34, 180],
+          ),
+        ]),
     ...csmSheds(csm, STACK_CM),
   ];
   const craft: Craft = {
