@@ -35,6 +35,8 @@ const CHASE_FILL = 0.5;
 const CHASE_CLEAR = 0.85;
 /** Seconds to come back onto a vehicle that has just changed shape. */
 const SETTLE = 1.2;
+/** The steepest a chase view taken up from far off looks down on the vehicle, over its horizon: as a person would frame it, not from overhead. Chosen. */
+const HANDOVER_TOP = (35 * Math.PI) / 180;
 
 const v = new THREE.Vector3();
 const w = new THREE.Vector3();
@@ -495,12 +497,31 @@ export class ChaseRig extends OrbitRig {
     if (!near)
       from = {
         ...from,
-        position: this.inSight(seen.lengthSq() > 1e-6 ? seen.normalize() : seen.set(-0.62, 0.2, 0.78).normalize())
+        position: this.inSight(this.lowered(seen.lengthSq() > 1e-6 ? seen.normalize() : seen.set(-0.62, 0.2, 0.78).normalize()))
           .multiplyScalar(this.fit)
           .add(this.middle),
       };
     super.enter(from, this.middle);
     this.handSet = near;
+  }
+
+  /**
+   * `way` (a unit vector from the vehicle's middle) no steeper over its horizon than `HANDOVER_TOP`, on the same bearing (or,
+   * straight overhead, the bearing a view starts from). Taken up from far out, where the last view looked down on the whole
+   * Earth, the side it saw the vehicle from was straight above it: under a parachute, the canopy then hid the vehicle and
+   * the path below it (issue #192). A new vector.
+   */
+  private lowered(way: THREE.Vector3): THREE.Vector3 {
+    const up = this.world.upAt(this.middle, new THREE.Vector3());
+    const top = Math.sin(HANDOVER_TOP);
+    const rise = way.dot(up);
+    if (rise <= top) return way.clone();
+    const flat = way.clone().addScaledVector(up, -rise);
+    if (flat.lengthSq() < 1e-6) {
+      flat.set(-0.62, 0, 0.78);
+      flat.addScaledVector(up, -up.dot(flat));
+    }
+    return flat.normalize().multiplyScalar(Math.cos(HANDOVER_TOP)).addScaledVector(up, top);
   }
 
   /**
