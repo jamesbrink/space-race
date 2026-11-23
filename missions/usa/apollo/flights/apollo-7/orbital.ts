@@ -10,7 +10,7 @@ import { cross, dot, ecefToGeodetic, enuAxes, scale, sub, unit } from '../../../
 import { step } from '../../../../../src/world/orbit.ts';
 
 import { CSM_OUTSIDE, localAim } from '../../vehicles/csm-plan.ts';
-import { saturnIBPlan } from '../../vehicles/saturn-ib-plan.ts';
+import { aboveBase, saturnIBPlan } from '../../vehicles/saturn-ib-plan.ts';
 import { massRow } from '../../vehicles/sm-rcs.ts';
 import type { Burn, SaturnIBRecord } from '../../vehicles/saturn-ib-record.ts';
 import { aborts, escapeEngine } from './escape.ts';
@@ -762,6 +762,12 @@ export const orbital: SaturnIBRecord = {
   ],
   mission: {
     manoeuvreTurn: estimated(30, 'Display slew into the published coast burn directions; exact attitude timeline unavailable'),
+    // (without it the model's origin, the S-IB's base, was put where the spacecraft flies, and the command module drawn
+    // 54 m up its axis from there: under the parachutes, above the path it was on, issue #192)
+    centre: derived(
+      aboveBase(950.4),
+      `${WEIGHTS}: the CSM's free flight from XA 950.4 in, from the separation, above the S-IB's base (saturn_ib.py: XA 838 at the adapter's top)`,
+    ),
     entryInterface: doc(400_000 * FT, `${REPORT}, Table 3-VI`),
     landing: {
       at: doc(SPLASH, EVENTS),
