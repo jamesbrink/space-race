@@ -49,6 +49,8 @@ const AS205 = 'Results of the Fifth Saturn IB Launch Vehicle Test Flight (MPR-SA
 
 /** saturn_ib.py: the SM aft bulkhead (XA838) meets the top of the adapter, m above the S-IB's base. */
 export const CSM_MATING_HEIGHT = (80.2 * 12 + 58.4 * 12 + 36 + 28 * 12) * IN;
+/** A station of the spacecraft's (XA, in), m above the S-IB's base: the record's centre of mass as `PlanRecord.centre` has it. */
+export const aboveBase = (xa: number): number => CSM_MATING_HEIGHT + (xa - 838) * IN;
 /** The command module's heat shield, m above the S-IB's base. */
 const STACK_CM = CSM_MATING_HEIGHT + 162 * IN;
 

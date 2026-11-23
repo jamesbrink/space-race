@@ -15,7 +15,7 @@
 import { assumed, derived, doc, estimated } from '../../../../../src/measure.ts';
 import type { AttitudeDef, FlightPlan, OrbitFix, PlanCheck } from '../../../../../src/sim/plan.ts';
 import { CSM_OUTSIDE } from '../../../apollo/vehicles/csm-plan.ts';
-import { saturnIBPlan } from '../../../apollo/vehicles/saturn-ib-plan.ts';
+import { aboveBase, saturnIBPlan } from '../../../apollo/vehicles/saturn-ib-plan.ts';
 import type { Burn, SaturnIBRecord } from '../../../apollo/vehicles/saturn-ib-record.ts';
 import { LC39B } from '../../../places/cape-canaveral/lc-39.ts';
 import {
@@ -725,6 +725,10 @@ export const orbital: SaturnIBRecord = {
   ],
   mission: {
     manoeuvreTurn: estimated(30, 'Display slew into the burn directions; exact attitude timeline unavailable'),
+    centre: assumed(
+      aboveBase(950.4),
+      "Apollo 7 Mission Report, Table A.5-I: the CSM's free flight from XA 950.4 in, the type's, above the S-IB's base (saturn_ib.py)",
+    ),
     entryInterface: assumed(400_000 * FT, 'Apollo 7 Mission Report, Table 3-VI: the type’s'),
     landing: {
       at: doc(SPLASH, 'NASA Historical Data Book, volume III, table 2-49'),
