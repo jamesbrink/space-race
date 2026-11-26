@@ -10,7 +10,7 @@ const [stack] = flight.models;
 const cabinCargo = ['ExtendedVisitFood', 'CometBracketCase', 'ExperimentStowage', 'S201Camera'];
 test('Skylab 4 has three Gallery seats and keeps the fin repair on the launch vehicle in the Lineup', () => {
   assert.equal(lacks(flight, 'gallery'), null);
-  assert.ok(lacks(flight, 'site'));
+  assert.equal(lacks(flight, 'site'), null);
   assert.ok(lacks(flight, 'fly'));
   assert.deepEqual(
     stack.seats.map((seat) => seat.label),
@@ -41,3 +41,18 @@ for (const level of ['', '.lod1', '.lod2']) {
     }
   });
 }
+
+test('Skylab 4 opens in EST for all three crew members to board CSM-118', () => {
+  assert.deepEqual(flight.site.zone, { name: 'EST', utcOffset: -5 });
+  assert.equal(flight.opens.model, 'pad');
+  const crew = flight.models.filter((model) => model.walker);
+  assert.deepEqual(
+    crew.map((model) => model.name),
+    ['Carr', 'Gibson', 'Pogue'],
+  );
+  assert.deepEqual(
+    stack.seats.map((seat) => seat.figure),
+    crew.map((model) => model.id),
+  );
+  for (const seat of stack.seats) assert.equal(seat.open[0], flight.opens.at);
+});

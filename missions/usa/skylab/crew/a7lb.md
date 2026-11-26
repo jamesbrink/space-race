@@ -16,6 +16,12 @@ NASA’s biomedical report lists Bean at 5 ft 9½ in, Garriott at 5 ft 9 in, and
 
 The two red disconnects sit on the wearer’s right. Four blue fittings rise across the front towards the emblem on his left. A smaller fitting and a metal loop lie between the banks. The Smithsonian holds all three flown garments. [Bean’s garment](https://airandspace.si.edu/collection-objects/pressure-suit-apollo-a7-lb-skylab-3-bean-flown/nasm_A19761193000) · [Garriott’s garment](https://airandspace.si.edu/collection-objects/pressure-suit-apollo-a7-lb-skylab-3-garriott-flown/nasm_A19761194000) · [Lousma’s garment](https://airandspace.si.edu/collection-objects/pressure-suit-a7-lb-lousma-skylab-3-flown/nasm_A19761191000)
 
+## Skylab 4
+
+On November 16, 1973, Carr led Gibson and Pogue from the crew quarters to the transfer van for Pad 39B. The launch photographs show their clear bubble helmets, brown shoulder straps, dark gloves and white pressure garments. Each carried a ventilator. At the pad the crew rode the tower elevator and crossed the access arm to the white room. Carr occupied CSM-118’s left couch, Gibson the centre couch and Pogue the right. The walking route starts on the approach to the tower. [NASA’s launch account and suit-up photograph](https://www.nasa.gov/history/50-years-ago-launch-of-skylab-4-the-final-mission-to-skylab/) · [KSC walkout photograph 73PC-725](https://www.nasa.gov/wp-content/uploads/2023/11/skylab-4-launch-16-73pc-725-nov-16-1973.jpg) · [Reference Skylab Flight Plan, Crew Scheduling A.1–2](https://www.ibiblio.org/apollo/Documents/46377138-Reference-Skylab-Flight-Plan-SL-1-SL-2-SL-3-And-SL-4-April-30-1973-SL-1-Launch.pdf)
+
+The biomedical report lists all three men at 5 ft 9 in. That common stature sets their figures before boots and helmets are added. The rounded triangular patch on each left breast has a large black 3 for the third visiting crew, a human figure surrounded by a rainbow, a tree, and a hydrogen atom. Its outline and colours follow NASA’s artwork. The dimensions on the garment are estimated from the suit photographs. Each suit also carries its wearer’s name. [NASA TM X-58163, Appendix A, Skylab 4 crew](https://ntrs.nasa.gov/citations/19760004639) · [NASA mission emblem S72-53094](https://images.nasa.gov/details/S72-53094)
+
 ## Simplifications
 
 - The surviving suits and photography establish the fitting colours and grouping. Diameters, spacing, tape, suit girths, webbing width and embroidered patch size are photographic estimates. Kerwin's coupling layout is assumed from his crewmates' surviving suits.

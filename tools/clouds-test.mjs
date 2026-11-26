@@ -63,6 +63,7 @@ const FLIGHTS = [
   'usa/apollo/apollo-17',
   'usa/skylab/skylab-2',
   'usa/skylab/skylab-3',
+  'usa/skylab/skylab-4',
   'ussr/soyuz/soyuz-1',
   'ussr/soyuz/soyuz-3',
   'ussr/soyuz/soyuz-4',
