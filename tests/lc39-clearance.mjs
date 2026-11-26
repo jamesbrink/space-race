@@ -8,6 +8,7 @@ import { flight as apollo16 } from '../missions/usa/apollo/flights/apollo-16/fli
 import { flight as apollo17 } from '../missions/usa/apollo/flights/apollo-17/flight.ts';
 import { flight as skylab2 } from '../missions/usa/skylab/flights/skylab-2/flight.ts';
 import { flight as skylab3 } from '../missions/usa/skylab/flights/skylab-3/flight.ts';
+import { flight as skylab4 } from '../missions/usa/skylab/flights/skylab-4/flight.ts';
 
 // First vehicle motion relative to range zero, from each Saturn flight evaluation’s event table.
 export const flights = [
@@ -20,6 +21,7 @@ export const flights = [
   [apollo17, 512, 0.24],
   [skylab2, 206, 0.19],
   [skylab3, 207, 0.3],
+  [skylab4, 208, 0.271],
 ];
 
 /** Sample every timed sweep, including hatch and ground-equipment movements independent of the pad slider. */

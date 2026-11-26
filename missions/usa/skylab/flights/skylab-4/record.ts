@@ -11,6 +11,12 @@ const duration = 84 * 86400 + 3600 + 15 * 60 + 31;
 // two-minute countdown hold (§3.3). Crew events: JSC-08963 §§2 and 11 and
 // NASA Astronautics and Aeronautics, 1973, pp. 320–323 (EST in 1973, EDT in February 1974).
 export const timeline: Flight['timeline'] = [
+  { t: utc('1973-11-16T04:56:00Z'), event: 'Ground equipment switches from conditioned air to gaseous nitrogen' },
+  { t: utc('1973-11-16T05:42:00Z'), event: 'Liquid-oxygen chilldown begins' },
+  { t: utc('1973-11-16T07:20:22Z'), event: 'Liquid-hydrogen loading begins' },
+  { t: utc('1973-11-16T08:15:28Z'), event: 'Upper-stage hydrogen reaches normal replenish' },
+  { t: -16320, event: 'Countdown T−3 hours 30 minutes holds for one hour' },
+  { t: -12720, event: 'The count resumes after the one-hour hold' },
   { t: -9720, event: 'Scheduled crew ingress into CSM-118 at countdown T−2 hours 40 minutes' },
   { t: -17 * 60, event: 'The countdown clock stops for its two-minute hold at T−15' },
   { t: -15 * 60, event: 'The terminal count resumes' },

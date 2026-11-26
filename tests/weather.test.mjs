@@ -564,6 +564,25 @@ test('SA-207 stands in ground fog under the two layers reported at range zero', 
   assert.ok(existsSync(new URL(`../public/globe/${day.map}.weather.png`, import.meta.url)));
 });
 
+test('SA-208 has the trace of altocumulus and the wind measured at the northwest Pad 39B light pole', async () => {
+  const flight = await load('usa/skylab/flights/skylab-4/flight.ts');
+  const day = dayOf(flight);
+  const weather = flight.weather;
+  assert.equal(weather.observed.at, flight.launch);
+  assert.equal(day.cumulus, null);
+  assert.ok(weather.middle.cover.value > 0 && weather.middle.cover.value < 0.1);
+  assert.equal(weather.middle.cover.confidence, 'estimated');
+  assert.equal(day.deck.cover, deckPatches(weather.middle.cover.value));
+  assert.ok(Math.abs(day.deck.height - 3962.4) < 1e-6);
+  assert.equal(day.high.cover, null);
+  assert.equal(day.visibility, 16000);
+  assert.equal(day.wind.speed, 3.6);
+  assert.equal(weather.wind.from.value, 202);
+  assert.equal(weather.aloft.observed.at, '1973-11-16T14:00:00Z');
+  assert.equal(day.map, 'cape-canaveral.1973-11-16');
+  assert.ok(existsSync(new URL(`../public/globe/${day.map}.weather.png`, import.meta.url)));
+});
+
 // The days added from the Saturn V flight evaluation reports (AS-503 to AS-505, appendix A, table A-1) and, for Soyuz, the
 // synoptic stations either side of Tyuratam (NOAA ISD): each flight's sky is its own day's, its map is baked, and the
 // figures the viewer draws are the record's.

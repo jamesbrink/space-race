@@ -37,17 +37,19 @@ def launch_webbing(parent, body, shoulder_inset):
     fl.emit(webbing, "Torso_ShoulderWebbing", a7l.paint("skylab-launch-webbing", (0.20, 0.11, 0.055), roughness=0.91), parent)
 
 
-def launch_suit(who, inches, emblem, *, shoulder_inset=2.15):
+def launch_suit(who, inches, emblem, *, shoulder_inset=2.15, chest_emblem=None):
     a7l.fit(who, inches * 2.54)
     # Seat the garment under the rigid neck ring at each stature.
     fl.B.torso[-3:] = [(z, x - 1.0, y - 1.0) for z, x, y in fl.B.torso[-3:]]
     z, x, y = fl.B.torso[-1]
     fl.B.torso[-1] = (z - 0.55, x, y)
     fl.start()
-    a7l.garment(who, a7lb=True, ev=True, insignia=emblem, sleeve_emblems=sleeve_emblems, chest_layout=COUPLINGS)
+    a7l.garment(who, a7lb=True, ev=True, insignia=None if chest_emblem else emblem, sleeve_emblems=sleeve_emblems, chest_layout=COUPLINGS)
     body = fl.B
     torso = fl.Tube([(0, 0, z) for z, _, _ in body.torso], [(x, y) for _, x, y in body.torso], resample=10)
     parent = bpy.data.objects["Torso"]
+    if chest_emblem:
+        chest_emblem(torso, parent, emblem)
     launch_webbing(parent, body, shoulder_inset)
     waist = body.waist_z - body.torso_z0
 

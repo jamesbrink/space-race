@@ -4,6 +4,14 @@ Gerald Carr, Edward Gibson and William Pogue left Kennedy’s Pad 39B at 09:01 E
 
 At range zero, the Sun was in the southeast at azimuth 130.9° true and elevation 24.7°. The Moon was visible in the west at azimuth 261.1° and elevation 41.3°. These are geometric directions from Pad 39B computed with the simulator’s JPL DE440 ephemeris.
 
+## Launch site · 16 November 1973
+
+[Walk Pad 39B](https://jamesbrink.online/space-race/#usa/skylab/skylab-4/site/pad) from the ramp to the tower elevator. At level 320, cross the white room and take Carr’s left couch, Gibson’s centre couch or Pogue’s right couch. The countdown starts at scheduled ingress. The hatch and threshold close before the access arm swings first to standby and then alongside the tower. The four service arms withdraw around first motion. The geometry and estimated arm movements are described in the [Pad 39B hardware notes](../../../places/cape-canaveral/lc-39.md#pad-39b-for-skylab-4-16-november-1973).
+
+At launch the ground tower reported 16 km visibility and effectively clear sky. The team reported a trace of altocumulus at 13,000 ft, and the rocket climbed through clear air. The northwest pad light pole measured 3.6 m/s from 202° at 18.3 m above grade. ERA5 supplies the surface hours and the air aloft. The surrounding cloud field is a procedural reconstruction. [SA-208 flight evaluation, Appendix A](https://ntrs.nasa.gov/citations/19750002068)
+
+![SA-208 on ML-1 at Pad 39B](../../../../../docs/readme/skylab-4-pad.webp)
+
 ## Eight replacement fins
 
 Open the [Gallery](https://jamesbrink.online/space-race/#usa/skylab/skylab-4/gallery) or [compare SA-208 with SA-207 in the Lineup](https://jamesbrink.online/space-race/#lineup/usa/skylab/skylab-4/vs/usa/skylab/skylab-3). Look around the base of the first stage. In November, workers tracing small cracks in the fin fittings found stress corrosion. They changed all eight fins with the rocket still on its launcher. At position four, the crew also spliced a damaged outrigger beam. Select that attachment to see the reinforcement at the joint. Above them, S-IVB-208 and instrument unit S-IU-207 delivered the crew to a 150.10 by 227.08 km orbit. Four panels on adapter SLA-24 opened to release CSM-118, eighteen minutes after launch. [SA-208 flight evaluation, §§3, 4 and 8.3.2](https://ntrs.nasa.gov/citations/19750002068) · [Skylab: A Chronology, p. 338](https://www.nasa.gov/wp-content/uploads/2023/04/sp-4011.pdf)

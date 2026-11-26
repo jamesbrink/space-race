@@ -76,8 +76,8 @@ for (const [flight, serial, firstMotion] of flights) {
         assert.deepEqual([...problems], []);
       });
     }
-  if (serial === 207) {
-    test('SA-207 white room withdraws twelve degrees and parks at 180 degrees clear of the tower', async () => {
+  if (serial === 207 || serial === 208) {
+    test(`SA-${serial} white room withdraws twelve degrees and parks at 180 degrees clear of the tower`, async () => {
       const under = (object, name) => object && (object.name === name || under(object.parent, name));
       const inverse = new Matrix4();
       for (const level of levels) {
