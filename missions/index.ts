@@ -14,6 +14,7 @@ import { flight as apollo14 } from './usa/apollo/flights/apollo-14/flight.ts';
 import { flight as apollo13 } from './usa/apollo/flights/apollo-13/flight.ts';
 import { flight as apollo12 } from './usa/apollo/flights/apollo-12/flight.ts';
 import { flight as apollo10 } from './usa/apollo/flights/apollo-10/flight.ts';
+import { flight as apolloSoyuz } from './usa/apollo/flights/apollo-soyuz/flight.ts';
 import { flight as target5002 } from './usa/gemini/flights/gatv-5002/flight.ts';
 import { flight as target5003 } from './usa/gemini/flights/gatv-5003/flight.ts';
 import { flight as target5004 } from './usa/gemini/flights/gatv-5004/flight.ts';
@@ -109,6 +110,7 @@ export const flights: Flight[] = [
   soyuz12,
   skylab4,
   soyuz16,
+  apolloSoyuz,
   soyuzT2,
 ];
 
