@@ -12,6 +12,7 @@ from mathutils import Vector
 
 import apollo8_equipment
 import apollo_docking
+import astp_csm_equipment
 import cabin_bays
 import command_module
 import console_equipment
@@ -106,12 +107,13 @@ def bell(name, origin, direction, length, radius, mat, parent):
 
 def build(offset=0, *, spacecraft=101):
     """Build top-level part nodes, translated together by offset inches."""
-    if spacecraft not in (101, 103, 104, 106, 107, 108, 109, 110, 112, 113, 114, 116, 117, 118):
+    if spacecraft not in (101, 103, 104, 106, 107, 108, 109, 110, 111, 112, 113, 114, 116, 117, 118):
         raise ValueError(f"Unmodelled CSM-{spacecraft}")
     sim_bay = spacecraft in (112, 113, 114)
     skylab = spacecraft in (116, 117, 118)
+    astp = spacecraft == 111
     later = spacecraft != 101
-    probe_installed = spacecraft in (104, 106, 107, 108, 109, 110, 112, 113, 114, 116, 117, 118)
+    probe_installed = spacecraft in (104, 106, 107, 108, 109, 110, 111, 112, 113, 114, 116, 117, 118)
     white = material("apollo-radiator-white", (0.82, 0.84, 0.80), roughness=0.65)
     silver = material("apollo-aluminium", (0.56, 0.60, 0.63), metallic=0.85, roughness=0.33)
     foil = material("apollo-cm-silver", (0.64, 0.67, 0.69), metallic=0.88, roughness=0.25)
@@ -159,14 +161,15 @@ def build(offset=0, *, spacecraft=101):
         silver,
         sim_door=door,
         spacecraft=spacecraft,
+        experiment_covers=astp_csm_equipment.cover_stations(SPS_EXIT_XA) if astp else (),
     )
     # These meshes enclose the service-module compartments. Clip both wall
     # faces, the rims, seams and fairing together; leaving an
     # unmarked inner wall would make the apparent opening solid again.
     # The quads and engine are separate nodes and remain whole in cutaway.
     mark_shells([obj.name for obj in sm.children if obj.type == "MESH"])
-    service_tanks.build(groups["ServiceSumpTanks"], SPS_EXIT_XA, storage=not skylab)
-    service_tanks.pressurant(groups["ServiceHelium"], SPS_EXIT_XA, forward_only=skylab)
+    service_tanks.build(groups["ServiceSumpTanks"], SPS_EXIT_XA, storage=not (skylab or astp))
+    service_tanks.pressurant(groups["ServiceHelium"], SPS_EXIT_XA, forward_only=skylab or astp)
     if spacecraft == 109:
         groups["OxygenShelf"] = group("OxygenShelf")
         groups["OxygenTankTwoCore"] = group("OxygenTankTwoCore")
@@ -229,7 +232,7 @@ def build(offset=0, *, spacecraft=101):
         void,
         docking_ring=probe_installed,
     )
-    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft in (106, 107, 108, 109, 110, 112, 113, 114, 116, 117, 118))
+    hatch_interior.build(hatch_leaf, CM_BASE, lightweight=spacecraft in (106, 107, 108, 109, 110, 111, 112, 113, 114, 116, 117, 118))
     forward_compartment.build(groups["ForwardCompartment"], CM_BASE, combined_hatch=later, hatch_setback=10 if probe_installed else 0)
     pressure_vessel.build(groups["CabinStructure"], CM_BASE)
     window_glazing.build(groups["CabinWindows"], CM_BASE, hatch_parent=hatch_leaf)
@@ -245,7 +248,7 @@ def build(offset=0, *, spacecraft=101):
         forward_compartment.recovery_loop(groups["RecoveryLoop"], CM_BASE)
         groups["TelemetryPower"] = group("TelemetryPower")
         console_equipment.telemetry_power(groups["TelemetryPower"], CM_BASE)
-    if spacecraft in (107, 108, 109, 110, 112, 113, 114, 116, 117, 118):
+    if spacecraft in (107, 108, 109, 110, 111, 112, 113, 114, 116, 117, 118):
         groups["WaterDispenser"] = group("WaterDispenser")
         cabin_bays.water_dispenser(groups["WaterDispenser"], CM_BASE, spacecraft)
     unitized_couch.build(groups["CrewCouches"], CM_BASE, foldable=later)
@@ -254,7 +257,7 @@ def build(offset=0, *, spacecraft=101):
         apollo8_equipment.antenna(groups["HighGainAntenna"], SM_BOTTOM)
     if later:
         apollo8_equipment.navigation(groups["CabinEquipmentBays"], CM_BASE)
-    if probe_installed and not skylab:
+    if probe_installed and not (skylab or astp):
         # Inside the right rendezvous window, visible to the LM crew (Apollo Program Summary Report, section 4.7.5).
         # Register to the reconstructed pane. Target size and standoff are estimates.
         normal = Vector((0.5163366, -0.0096678, 0.8563311))
@@ -296,6 +299,8 @@ def build(offset=0, *, spacecraft=101):
                 groups[name] = group(name)
             skylab_csm_equipment.third_visit_stowage(groups, CM_BASE)
             skylab_s201.build(groups["S201Camera"], CM_BASE)
+    if astp:
+        astp_csm_equipment.build(groups, SPS_EXIT_XA, CM_BASE, RADIUS)
     mark_shells(["CM_CrewCompartmentSkin", "CM_ForwardShield", "CM_AftShield"])
     for obj in groups.values():
         obj.location.z = offset * IN

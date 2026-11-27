@@ -99,6 +99,8 @@ def shade(groups, station):
             "CometBracketCase",
             "ExperimentStowage",
             "S201Camera",
+            "ASTPExperimentControls",
+            "ASTPVideoRecorder",
         )
         if name in groups
     )

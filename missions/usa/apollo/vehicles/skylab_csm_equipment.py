@@ -78,8 +78,7 @@ def build(groups, origin_xa, cm_base, spacecraft):
         blade.build(f"SM{spacecraft}_Scimitar_{sign}", radome, groups["VHFAntennas"], smooth=False)
     if not interior():
         return
-    alloy = material("skylab-rcs-titanium", (0.53, 0.54, 0.52), metallic=0.76, roughness=0.39)
-    frame = material("skylab-equipment-rack", (0.26, 0.29, 0.30), metallic=0.72)
+    alloy, frame = propellant_materials()
     gold = material("skylab-descent-cell-case", (0.55, 0.48, 0.32), metallic=0.58, roughness=0.48)
     insulator = material("skylab-terminal-insulator", (0.12, 0.095, 0.074), roughness=0.56)
     vessels = groups["PropellantStorageModule"]
@@ -92,34 +91,7 @@ def build(groups, origin_xa, cm_base, spacecraft):
     def box(builder, r, t, xa, dims):
         builder.box(Vector(dims) * IN, Matrix.Translation(station(r, t, xa) * IN) @ SECTOR)
 
-    # The handbook specifies counts and envelopes; rack positions within bay I are estimated.
-    radius, length = 12.64 / 2, 38.819
-    rack = MeshBuilder()
-    fittings = MeshBuilder()
-    middle, outer, pitch = (56.8, 68.2, 12.7) if spacecraft == 118 else (55.5, 68, 13)
-    locations = [(43, -7), (43, 7)] + [(middle, pitch * i) for i in (-1.5, -0.5, 0.5, 1.5)] + [(outer, pitch * i) for i in (-1, 0, 1)]
-    for i, (r, t) in enumerate(locations):
-        tank = "Oxidizer" if i < 5 else "Fuel"
-        name = f"SM{spacecraft}_PSM_{tank}{i + 1 if i < 5 else i - 4}"
-        centre = station(r, t, 892)
-        _lathe(name, profile(radius, 0, length), centre, alloy, vessels)
-        for h in (-1.5, length - 0.2):
-            _lathe(f"{name}_Port{int(h)}", [(0, 0), (0.9, 0), (0.9, 1.7), (0, 1.7)], centre + Vector((0, 0, h)), frame, vessels)
-    for i, (r, t) in enumerate(((48, 0), (63, -12.5), (63, 12.5)), 1):
-        centre = station(r, t, 942)
-        _ball(f"SM{spacecraft}_PSM_Helium{i}", 12.37, centre, alloy, vessels)
-        fittings.tube(station(r, t, 932.4) * IN, station(r, t, 937.4) * IN, 2.5 * IN, segs=24)
-        fittings.tube(centre * IN, station(r, t, 949.5) * IN, 0.82 * IN, segs=10)
-    for r, width in ((43, 26), (middle, 50), (outer, 37)):
-        for xa in (890, 932.5):
-            box(rack, r, 0, xa, (3.4, width, 1.0))
-    for t in (-11.5, 11.5):
-        box(rack, 56, t, 889.1, (31, 1.35, 0.72))
-        box(rack, 56, t, 933.4, (31, 1.35, 0.72))
-    for t in (-11.5, 11.5):
-        box(rack, 42.7, t, 911.25, (0.95, 0.95, 44.2))
-    rack.build(f"SM{spacecraft}_PSM_Cradle", frame, vessels)
-    fittings.build(f"SM{spacecraft}_PSM_HeliumNecks", frame, vessels)
+    propellant_module(vessels, origin_xa, spacecraft, finishes=(alloy, frame))
 
     # On 118 the battery compartment was under the coated forward corner
     # of bay I (JSC-08963 fig. 6-1); internal rack stations are estimated.
@@ -162,6 +134,55 @@ def build(groups, origin_xa, cm_base, spacecraft):
     centre = (0, 0, 902 - origin_xa)
     _lathe(f"SM{spacecraft}_WaterTank", profile(13, 0, 31), centre, alloy, water)
     _lathe(f"SM{spacecraft}_WaterTankOutlet", [(0, 31), (1.3, 31), (1.3, 33), (0, 33)], centre, frame, water)
+
+
+def propellant_materials():
+    return (
+        material("skylab-rcs-titanium", (0.53, 0.54, 0.52), metallic=0.76, roughness=0.39),
+        material("skylab-equipment-rack", (0.26, 0.29, 0.30), metallic=0.72),
+    )
+
+
+def propellant_module(vessels, origin_xa, spacecraft, *, axial_shift=0, finishes=None):
+    """Shared auxiliary RCS rack. SOH envelopes and estimated local placement."""
+    if not interior():
+        return
+    alloy, frame = finishes if finishes is not None else propellant_materials()
+
+    def station(r, t, xa):
+        return SECTOR @ Vector((r, t, xa + axial_shift - origin_xa))
+
+    def box(builder, r, t, xa, dims):
+        builder.box(Vector(dims) * IN, Matrix.Translation(station(r, t, xa) * IN) @ SECTOR)
+
+    # The handbook specifies counts and envelopes; rack positions within bay I are estimated.
+    radius, length = 12.64 / 2, 38.819
+    rack = MeshBuilder()
+    fittings = MeshBuilder()
+    middle, outer, pitch = (56.8, 68.2, 12.7) if spacecraft in (111, 118) else (55.5, 68, 13)
+    locations = [(43, -7), (43, 7)] + [(middle, pitch * i) for i in (-1.5, -0.5, 0.5, 1.5)] + [(outer, pitch * i) for i in (-1, 0, 1)]
+    for i, (r, t) in enumerate(locations):
+        tank = "Oxidizer" if i < 5 else "Fuel"
+        name = f"SM{spacecraft}_PSM_{tank}{i + 1 if i < 5 else i - 4}"
+        centre = station(r, t, 892)
+        _lathe(name, profile(radius, 0, length), centre, alloy, vessels)
+        for h in (-1.5, length - 0.2):
+            _lathe(f"{name}_Port{int(h)}", [(0, 0), (0.9, 0), (0.9, 1.7), (0, 1.7)], centre + Vector((0, 0, h)), frame, vessels)
+    for i, (r, t) in enumerate(((48, 0), (63, -12.5), (63, 12.5)), 1):
+        centre = station(r, t, 942)
+        _ball(f"SM{spacecraft}_PSM_Helium{i}", 12.37, centre, alloy, vessels)
+        fittings.tube(station(r, t, 932.4) * IN, station(r, t, 937.4) * IN, 2.5 * IN, segs=24)
+        fittings.tube(centre * IN, station(r, t, 949.5) * IN, 0.82 * IN, segs=10)
+    for r, width in ((43, 26), (middle, 50), (outer, 37)):
+        for xa in (890, 932.5):
+            box(rack, r, 0, xa, (3.4, width, 1.0))
+    for t in (-11.5, 11.5):
+        box(rack, 56, t, 889.1, (31, 1.35, 0.72))
+        box(rack, 56, t, 933.4, (31, 1.35, 0.72))
+    for t in (-11.5, 11.5):
+        box(rack, 42.7, t, 911.25, (0.95, 0.95, 44.2))
+    rack.build(f"SM{spacecraft}_PSM_Cradle", frame, vessels)
+    fittings.build(f"SM{spacecraft}_PSM_HeliumNecks", frame, vessels)
 
 
 def parasol(parent, cm_base):

@@ -31,7 +31,7 @@ export const nominalStageMotors: Motor[] = [
   },
 ];
 
-export function skylabStages(serial: 206 | 207 | 208): Part[] {
+export function skylabStages(serial: 206 | 207 | 208 | 210): Part[] {
   return [
     part(
       'SaturnSecondStage',
@@ -40,7 +40,9 @@ export function skylabStages(serial: 206 | 207 | 208): Part[] {
       8,
       17,
       'A single hydrogen-burning stage delivered the crew to its rendezvous orbit.',
-      'A common bulkhead separated the hydrogen and oxygen. The cylinder above the interstage carried the two attitude-control modules and the three small rockets that settled the propellants at staging. The flight evaluation records a single J-2 burn.',
+      serial === 210
+        ? 'A common bulkhead separated the hydrogen and oxygen. S-IVB-210 made one J-2 burn to deliver the spacecraft and its airlock to parking orbit.'
+        : 'A common bulkhead separated the hydrogen and oxygen. The cylinder above the interstage carried the two attitude-control modules and the three small rockets that settled the propellants at staging. The flight evaluation records a single J-2 burn.',
     ),
     part(
       'SecondStageTankStructure',
@@ -138,7 +140,9 @@ export function skylabStages(serial: 206 | 207 | 208): Part[] {
       12,
       -4,
       'Four fixed inboard engines and four steerable outboards developed 1.64 million pounds-force at liftoff.',
-      'Each engine had a nominal sea-level rating of 205,000 pounds-force. The flight evaluation records the inboards shutting down together before the four outboards. Bell contours and mounted equipment use common H-1 proportions.',
+      serial === 210
+        ? 'Each engine had a nominal sea-level rating of 205,000 pounds-force. The first stage was completed and static-fired in 1967, then returned from storage for the joint mission. Bell contours and mounted equipment use common H-1 proportions.'
+        : 'Each engine had a nominal sea-level rating of 205,000 pounds-force. The flight evaluation records the inboards shutting down together before the four outboards. Bell contours and mounted equipment use common H-1 proportions.',
     ),
   ];
 }

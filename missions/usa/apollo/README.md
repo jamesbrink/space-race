@@ -16,3 +16,5 @@ sat in. Its launch site and the flight itself are not built.
 [Apollo 10](flights/apollo-10/README.md) pairs Charlie Brown (CSM-106) with Snoopy (LM-4) on SA-505. Snoopy also stands deployed, with the standing stations and the ascent stage that returned to lunar orbit rendezvous.
 
 [Apollo 11](flights/apollo-11/README.md) adds Columbia (CSM-107), Eagle (LM-5) and SA-506. Explore the folded LM aboard the Saturn V or the deployed Eagle with its landing equipment and two standing stations.
+
+[Apollo–Soyuz](flights/apollo-soyuz/README.md) adds CSM-111, docking module DM-2 and Saturn IB SA-210. Inspect the three Apollo couches, the airlock that joined the two spacecraft, and the docking hardware carried into orbit inside the adapter.

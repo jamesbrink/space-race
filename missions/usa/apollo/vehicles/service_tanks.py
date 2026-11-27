@@ -285,7 +285,9 @@ def _markings(parent, radius, forward):
     flag.build("SM_NationalFlag", material("apollo-sm-national-flag", (1, 1, 1), roughness=0.65, image=flag_image()), parent)
 
 
-def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_radius, white, silver, *, sim_door=None, spacecraft=None):
+def panels(
+    parent, radius, aft, forward, fairing_radius, fairing_top, shield_radius, white, silver, *, sim_door=None, spacecraft=None, experiment_covers=()
+):
     """Exterior partitions from the flight plate, NAR P-64 and S68-42513."""
     # Environmental Control, p.121: two 130-degree panels, about 49 ft² each.
     # Aft offset estimated against the 154-in barrel in NASA S68-42513.
@@ -307,7 +309,14 @@ def panels(parent, radius, aft, forward, fairing_radius, fairing_top, shield_rad
         # II/III span 65..195 and V/VI 245..375 degrees. The inner surfaces
         # and annuli use precisely the same angular subdivisions as these skins.
         has_ecs = zone >= 65 or zone < 15
-        if sim_door is not None and a >= 15 and b <= 65:
+        # For CSM-111, leave open only the small instrument ports. The surrounding
+        # bay remains attached throughout the mission.
+        apertures = [(x0, x1) for _, a0, a1, x0, x1 in experiment_covers if a0 <= a and b <= a1]
+        if apertures:
+            for lo, hi in zip([aft, *(x1 for _, x1 in apertures)], [*(x0 for x0, _ in apertures), forward]):
+                sector(barrel, [(radius, lo), (radius, hi)])
+                sector(inner, [(radius - 1, hi), (radius - 1, lo)])
+        elif sim_door is not None and a >= 15 and b <= 65:
             # MSC-05161 fig. A-2. The tank panel closes the sector forward of the cut line.
             bottom, top = aft + 2.5, forward - 37
             for lo, hi in ((aft, bottom), (top, forward)):

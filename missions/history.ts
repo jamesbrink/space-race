@@ -1080,6 +1080,15 @@ export const MILESTONES: readonly Milestone[] = [
     confidence: 'documented',
   },
   {
+    date: '1975-07-17T16:09:09Z',
+    flight: 'usa/apollo/apollo-soyuz',
+    nation: 'USA',
+    title: 'First docking between spacecraft from two nations',
+    text: 'Apollo docked with Soyuz 19. The docking module let the crews move between cabins that ran at different pressures and used different gas mixtures.',
+    source: 'Apollo–Soyuz Test Project Mission Report, JSC-10607, §§2 and 3. NASA SP-4209, chapter XI.',
+    confidence: 'documented',
+  },
+  {
     date: '1980-06-05T14:19:30Z',
     flight: 'ussr/soyuz/soyuz-t-2',
     nation: 'USSR',
@@ -1431,6 +1440,16 @@ export const STORIES: Readonly<Record<string, FlightStory>> = {
       source: 'NASA, Mir Hardware Heritage, §1.9.3; Astronaut.ru, Soviet and Russian spacecraft crew call signs, Soyuz 7 and Soyuz 16',
       confidence: 'documented',
     },
+  },
+  'usa/apollo/apollo-soyuz': {
+    flight: 'usa/apollo/apollo-soyuz',
+    headline: 'An airlock between Apollo and Soyuz',
+    story:
+      'In orbit, Stafford turned Apollo around and took the docking module out of the Saturn’s upper stage. The module adapted Apollo’s probe-and-drogue connection to the docking ring shared with Soyuz. Its two hatches let the astronauts change pressure between the spacecraft.' +
+      '\n\n' +
+      'Two days after launch, Stafford and Leonov shook hands at the end of that passage. The five crew members took turns visiting each other’s spacecraft and carried out joint experiments before separating.',
+    firsts: ['First docking between spacecraft from two nations'],
+    source: 'Apollo–Soyuz Test Project Mission Report, JSC-10607, §2. NASA SP-4209, chapter XI.',
   },
   'ussr/soyuz/soyuz-t-2': {
     flight: 'ussr/soyuz/soyuz-t-2',
@@ -3030,7 +3049,7 @@ export const PEOPLE: readonly Person[] = [
     born: '1930-09-17',
     died: '2024-03-18',
     nation: 'USA',
-    flights: ['usa/gemini/gt-6a', 'usa/gemini/gt-9a', 'usa/apollo/apollo-10'],
+    flights: ['usa/gemini/gt-6a', 'usa/gemini/gt-9a', 'usa/apollo/apollo-10', 'usa/apollo/apollo-soyuz'],
     bio:
       'An Oklahoman who went to Annapolis and into the Air Force, flew interceptors in Germany and taught at its test pilot ' +
       'school. He flew Gemini 6A to the first rendezvous, commanded Gemini 9A, and took Apollo 10’s lunar module to within nine ' +
@@ -3038,6 +3057,27 @@ export const PEOPLE: readonly Person[] = [
       '\n\n' +
       'In 1975 he commanded the American half of the Apollo-Soyuz flight, shaking hands in orbit with Aleksey Leonov.',
     source: `${JSC_BIO}, Thomas P. Stafford; ${FACT_BOOK}; NASA, “NASA Administrator Pays Tribute to Space Pioneer Thomas Stafford” (March 2024)`,
+    confidence: 'documented',
+  },
+  {
+    id: 'brand',
+    name: 'Vance D. Brand',
+    born: '1931-05-09',
+    nation: 'USA',
+    flights: ['usa/apollo/apollo-soyuz'],
+    bio: 'Brand was a Marine aviator and test pilot. Apollo–Soyuz was his first spaceflight. He later commanded three Space Shuttle missions, including the first operational flight of Columbia.',
+    source: 'NASA, Vance D. Brand biographical data. NASA STS-5 press kit.',
+    confidence: 'documented',
+  },
+  {
+    id: 'slayton',
+    name: 'Donald K. Slayton',
+    born: '1924-03-01',
+    died: '1993-06-13',
+    nation: 'USA',
+    flights: ['usa/apollo/apollo-soyuz'],
+    bio: 'One of the original seven Mercury astronauts, Slayton took charge of astronaut assignments after he was grounded for a heart condition. NASA restored him to flight status in 1972. He made his only spaceflight as Apollo–Soyuz’s docking module pilot.',
+    source: 'NASA, ASTP biographies and Astronaut Fact Book.',
     confidence: 'documented',
   },
   {
@@ -3134,7 +3174,7 @@ export const PROGRAMMES: readonly Programme[] = [
     id: 'usa/apollo',
     name: 'Apollo',
     nation: 'USA',
-    years: '1968–1972',
+    years: '1968–1975',
     why:
       'NASA announced in July 1960 a programme to follow Mercury and fly men round the Moon, and named it Apollo. ' +
       'Gagarin’s flight changed its aim: on 25 May 1961 President Kennedy asked Congress to commit the nation to ' +
